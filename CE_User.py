@@ -70,6 +70,12 @@ class CE_User:
         return completed_games
     
 
+    # ----------- setters -----------
+    def set_discord_id(self, input : int) -> None :
+        """Sets this object's Discord ID according to `input`."""
+        self._discord_id = input
+    
+
     # ----------- other methods ------------
     
     def to_dict(self) -> dict :

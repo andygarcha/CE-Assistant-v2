@@ -1,10 +1,16 @@
 import datetime
+from typing import Literal
 from CE_Game import CE_Game
 
 class CE_Roll:
     """Roll event."""
+    _roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
+                         "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
+                         "Triple Threat", "Let Fate Decide", "Fourward Thinking", "Russian Roulette",
+                         "Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
+                         "Game Theory"]
     def __init__(self,
-                 roll_name,
+                 roll_name : _roll_event_names,
                  init_time,
                  due_time,
                  completed_time,
@@ -64,6 +70,10 @@ class CE_Roll:
     def increase_rerolls(self, increase : int) -> None :
         """Increase the number of rerolls allowed for this roll event given by `increase`."""
         self._rerolls += increase
+
+    def set_completion_time(self, current_time : int) -> None :
+        """Sets the time of completion for this roll event given by `current_time`."""
+        self._completed_time = current_time
 
     # ------ other methods ------
     def is_expired(self) -> bool :

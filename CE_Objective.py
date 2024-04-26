@@ -17,8 +17,14 @@ class CE_Objective:
         self._point_value = point_value
         self._point_value_partial = point_value_partial
         self._name = name
-        self._requirements = requirements
-        self._achievement_ce_ids = achievement_ce_ids
+        if requirements == "" : 
+            self._requirements = None
+        else : 
+            self._requirements = requirements
+        if achievement_ce_ids == [] :
+            self._achievement_ce_ids = None
+        else :
+            self._achievement_ce_ids = achievement_ce_ids
     
     # -------------- getters -----------------
 
@@ -54,8 +60,33 @@ class CE_Objective:
         """Returns a list of Challenge Enthusiast IDs associated with the achievements (or `None` if no achievements exist)."""
         return self._achievement_ce_ids
     
+    # -------------- setters ----------------
+
+    def set_community(self, is_community : bool) -> None :
+        """Takes in a boolean `is_community` and sets the local value to such."""
+        self._is_community = is_community
+
+    def set_game_id(self, game_id : str) -> None :
+        """Takes in a string `game_id` and sets the local value to such."""
+        self._game_ce_id = game_id
+    
     # -------------- helper methods -------------
     
     def has_partial(self) -> bool :
         """Returns true if this game has partial points, false if not."""
         return self._point_value_partial != None and self._point_value_partial != 0
+
+    def to_dict(self) -> dict :
+        """Returns this objective as a :class:`dict` for storage purposes."""
+        objective_dict = {
+            self.get_ce_id() : {
+                "Name" : self.get_name(),
+                "Point Value" : self.get_point_value(),
+                "Description" : self.get_description(),
+                "CE ID" : self.get_ce_id()
+            }
+        }
+        if self.get_achievement_ce_ids() != None : 
+            objective_dict[self.get_ce_id()]['Achievements'] = self.get_achievement_ce_ids()
+        if self.get_requirements() != None :
+            objective_dict[self.get_ce_id()]['Requirements'] = self.get_requirements()

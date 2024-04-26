@@ -2,7 +2,7 @@ from typing import Literal
 from CE_Objective import CE_Objective
 from CE_User_Objective import CE_User_Objective
 from CE_Game import CE_Game
-from CE_API_Reader import CE_API_Reader
+import CE_API_Reader
 
 class CE_User_Game():
     """A game that a user owns. This class extends the :class:`CE_Game` class."""
@@ -36,12 +36,18 @@ class CE_User_Game():
         return self._user_community_objectives
     
     # --------- setters -----------
+
     def add_user_objective(self, objective : CE_User_Objective) :
         """Adds a user objective to the object's user_objective's array."""
         if not objective.is_community() : self._user_primary_objectives.append(objective)
         elif objective.is_community() : self._user_community_objectives.append(objective)
         
     # ----------- other methods ------------
+
+    def get_regular_game(self) -> CE_Game :
+        """Returns the regular :class:`CE_Game` object associated with this game."""
+        return CE_API_Reader.get_api_page_data("game", self.get_ce_id())
+    
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.
         Example:
