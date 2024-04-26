@@ -1,6 +1,6 @@
 from CE_Roll import CE_Roll
 from CE_Game import CE_Game
-from CE_Game_User import CE_Game_User
+from CE_User_Game import CE_User_Game
 
 class CE_User:
     """Class for the Challenge Enthusiast user."""
@@ -8,7 +8,7 @@ class CE_User:
                  discord_id : int, 
                  ce_id : str, 
                  casino_score : int, 
-                 owned_games : list[CE_Game_User],
+                 owned_games : list[CE_User_Game],
                  current_rolls : list[CE_Roll], 
                  completed_rolls : list[CE_Roll], 
                  pending_rolls : list[CE_Roll], 
@@ -16,7 +16,7 @@ class CE_User:
         self._discord_id : int = discord_id
         self._ce_id : str = ce_id
         self._casino_score : int = casino_score
-        self._owned_games : list[CE_Game_User] = owned_games
+        self._owned_games : list[CE_User_Game] = owned_games
         self._current_rolls : list[CE_Roll] = current_rolls
         self._completed_rolls : list[CE_Roll] = completed_rolls
         self._pending_rolls : list[CE_Roll] = pending_rolls
@@ -57,12 +57,12 @@ class CE_User:
         else : return "E Rank"
 
     def get_owned_games(self):
-        """Returns a list of :class:`CE_Game_User`s that this user owns."""
+        """Returns a list of :class:`CE_User_Game`s that this user owns."""
         return self._owned_games
 
-    def get_completed_games(self) -> list[CE_Game_User] :
-        """Returns a list of :class:`CE_Game_User`s that this user has completed."""
-        completed_games : list[CE_Game_User] = []
+    def get_completed_games(self) -> list[CE_User_Game] :
+        """Returns a list of :class:`CE_User_Game`s that this user has completed."""
+        completed_games : list[CE_User_Game] = []
 
         for game in self._owned_games :
             if game.get_total_points() == game.get_user_points() : completed_games.append(game)

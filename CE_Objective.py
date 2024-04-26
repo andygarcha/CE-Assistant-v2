@@ -6,12 +6,14 @@ class CE_Objective:
                  description : str,
                  point_value : int,
                  name : str,
+                 game_ce_id : str,
                  requirements : str = None,
                  achievement_ce_ids : list[str] = None,
                  point_value_partial : int = 0):
         self._ce_id = ce_id
         self._is_community = is_community
         self._description = description
+        self._game_ce_id = game_ce_id
         self._point_value = point_value
         self._point_value_partial = point_value_partial
         self._name = name

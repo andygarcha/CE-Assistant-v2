@@ -35,6 +35,30 @@ class CE_Game:
         """Returns the Challenge Enthusiasts ID associated with this game."""
         return self._ce_id
     
+    def get_game_name(self) -> str :
+        """Returns the name of this game."""
+        return self._game_name
+    
+    def get_platform(self) -> str :
+        """Returns the platform this game is hosted on."""
+        return self._platform
+    
+    def get_platform_id(self) -> str :
+        """Returns the ID value of this game on its platform."""
+        return self._platform_id
+    
+    def get_primary_objectives(self) -> list[CE_Objective] : 
+        """Returns the array of CE_Objectives that are Primary."""
+        return self._primary_objectives
+    
+    def get_community_objectives(self) -> list[CE_Objective] :
+        """Returns the array of CE_Objectives that are Community."""
+        return self._community_objectives
+    
+    def get_last_updated(self) -> int :
+        """Returns the unix timestamp of the last time this game was updated."""
+        return self._last_updated
+    
     # ----------- setters -----------
     def add_objective(self, type : Literal["Primary", "Community"], objective : CE_Objective) :
         """Adds an objective to the game's objective arrays."""

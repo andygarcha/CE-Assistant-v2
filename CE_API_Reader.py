@@ -3,14 +3,21 @@ import time
 from typing import Literal
 from CE_Game import CE_Game
 from CE_Objective import CE_Objective
-from CE_Objective_User import CE_Objective_User
+from CE_User_Objective import CE_User_Objective
 from CE_User import CE_User
-from CE_Game_User import CE_Game_User
+from CE_User_Game import CE_User_Game
 import requests
 import json
 
 class CE_API_Reader:
-    def get_api_games_full() -> list[CE_Game] :
+
+    def _timestamp_to_unix(self, input : str) :
+        """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`) 
+        and converts it to unix timestamp (`1708862678`)"""
+        return int(time.mktime(datetime.datetime.strptime(str(input[:-5:]), "%Y-%m-%dT%H:%M:%S").timetuple()))
+
+
+    def get_api_games_full(self) -> list[CE_Game] | None :
         """Returns an array of :class:`CE_Game`'s grabbed from https://cedb.me/api/games/full"""
 
         # Step 1: get the big json intact.
@@ -59,39 +66,37 @@ class CE_API_Reader:
 
             # now that we have all objectives, we can make the object...
             ce_game = CE_Game(game['id'], game['name'], game['platform'], game['platformId'], False,
-                              all_primary_objectives, all_community_objectives)
+                              all_primary_objectives, all_community_objectives, self._timestamp_to_unix(game['updatedAt']))
             # ... and append it to the list.
             all_games.append(ce_game)
         return all_games
     
 
-    def get_api_page_data(self, type : Literal["user", "game"], ce_id : str) -> CE_User | CE_Game :
+    def get_api_page_data(self, type : Literal["user", "game"], ce_id : str) -> CE_User | CE_Game | None :
         """Returns either a :class:`CE_User` or a :class:`CE_Game` from `ce_id` depending on `type`."""
         # if type is user
         if type == "user" :
             json_response = json.loads((requests.get(f"https://cedb.me/api/user/{ce_id}")).text)
 
-            # Go through all of their games and make CE_Game_User's out of them.
-            user_games : list[CE_Game_User] = []
+            # Go through all of their games and make CE_User_Game's out of them.
+            user_games : list[CE_User_Game] = []
             for game in json_response['userGames'] :
-                user_games.append(CE_Game_User(game['game']['id'], game['game']['name'], game['game']['platform'],
-                                               game['game']['platformId'], False, [], [], self._timestamp_to_unix(game['game']['updatedAt']),
-                                               []))
+                user_games.append(CE_User_Game(game['game']['id'], []))
                 
-            # Now go through all their objectives and make CE_Objective_User's out of them.
-            user_objectives : list[CE_Objective_User] = []
+            # Now go through all their objectives and make CE_User_Objective's out of them.
             for objective in json_response['userObjectives'] :
                 user_points = objective['objective']['points'] if not objective['partial'] else objective['objective']['pointsPartial']
-                user_objectives.append(CE_Objective_User(objective['objective']['id'], objective['objective']['community'],
-                                                         objective['objective']['description'], objective['objective']['points'],
-                                                         objective['objective']['name'], None, None, user_points, objective['objective']['pointsPartial']))
+                new_objective = CE_User_Objective(objective['objective']['id'], objective['objective']['gameId'], objective['objective']['community'], user_points)
+
+                # now that we have the objective
+                # we need to assign it to the correct game
+                for ce_game in user_games :
+                    if ce_game.get_ce_id() == new_objective.get_game_ce_id() : 
+                        ce_game.add_user_objective(new_objective)
+                        break
 
             return CE_User(None, json_response['id'], None)
         
     def _mongo_to_game() :
         primary_objectives : list[CE_Objective] = []
 
-    def _timestamp_to_unix(input : str) :
-        """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`) 
-        and converts it to unix timestamp (`1708862678`)"""
-        return int(time.mktime(datetime.datetime.strptime(str(input[:-5:]), "%Y-%m-%dT%H:%M:%S").timetuple()))
