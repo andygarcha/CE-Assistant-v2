@@ -1,4 +1,4 @@
-class CE_Objective:
+class CEObjective:
     """An objective tied to any game on Challenge Enthusiasts."""
     def __init__(self,
                  ce_id : str,

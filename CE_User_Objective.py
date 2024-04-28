@@ -1,7 +1,7 @@
-from CE_Objective import CE_Objective
+from CE_Objective import CEObjective
 
-class CE_User_Objective:
-    """A class for an objective held by a user. Extends the :class:`CE_Objective` class."""
+class CEUserObjective:
+    """A class for an objective held by a user. Extends the :class:`CEObjective` class."""
     def __init__(self,
                  ce_id : str,
                  game_ce_id : str,

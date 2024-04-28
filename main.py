@@ -6,13 +6,13 @@ from discord import app_commands
 import json
 
 # --------- local class imports --------
-from CE_User import CE_User
-from CE_User_Game import CE_User_Game
-from CE_User_Objective import CE_Objective
-from CE_Game import CE_Game
-from CE_Objective import CE_Objective
-from CE_Roll import CE_Roll, _roll_event_names
-import CE_API_Reader
+from CE_User import CEUser
+from CE_User_Game import CEUserGame
+from CE_User_Objective import CEObjective
+from CE_Game import CEGame
+from CE_Objective import CEObjective
+from CE_Roll import CERoll, _roll_event_names
+import CEAPIReader
 import Mongo_Reader
 from FailedScrapeException import FailedScrapeException
 
@@ -74,7 +74,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
                                                    "already connected to another account!")
     
     # grab their data from CE
-    ce_user : CE_User = CE_API_Reader.get_api_page_data("user", ce_id)
+    ce_user : CEUser = CEAPIReader.get_api_page_data("user", ce_id)
     if ce_user == None :
         return await interaction.followup.send("Your Challenge Enthusiast page was not found. " + 
                                                "Please try again later or contact andy.")
@@ -86,7 +86,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     if (challenge_enthusiast_game != None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
             if objective.get_name() in _roll_event_names :
-                ce_user.add_completed_roll(CE_Roll(objective.get_name(), None, None, None, None, None, None, None))
+                ce_user.add_completed_roll(CERoll(objective.get_name(), None, None, None, None, None, None, None))
 
     # add the user to users and dump it
     users.append(ce_user)

@@ -2,9 +2,10 @@ import json
 from typing import Literal
 
 import requests
-from CE_Objective import CE_Objective
+from CE_Objective import CEObjective
+import CEAPIReader
 
-class CE_Game:
+class CEGame:
     """A game that's on Challenge Enthusiasts."""
     def __init__(self,
                  ce_id : str,
@@ -12,8 +13,8 @@ class CE_Game:
                  platform : str,
                  platform_id : str,
                  category : str,
-                 primary_objectives : list[CE_Objective],
-                 community_objectives : list[CE_Objective],
+                 primary_objectives : list[CEObjective],
+                 community_objectives : list[CEObjective],
                  last_updated : int):
         self._ce_id = ce_id
         self._game_name = game_name
@@ -54,23 +55,23 @@ class CE_Game:
         """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
         return self._category
     
-    def get_primary_objectives(self) -> list[CE_Objective] : 
+    def get_primary_objectives(self) -> list[CEObjective] : 
         """Returns the array of CE_Objectives that are Primary."""
         return self._primary_objectives
     
-    def get_primary_objective(self, ce_id : str) -> CE_Objective | None :
-        """Returns the :class:`CE_Objective` object associated
+    def get_primary_objective(self, ce_id : str) -> CEObjective | None :
+        """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
         for objective in self.get_primary_objectives() :
             if objective.get_ce_id() == ce_id : return objective
         return None
     
-    def get_community_objectives(self) -> list[CE_Objective] :
+    def get_community_objectives(self) -> list[CEObjective] :
         """Returns the array of CE_Objectives that are Community."""
         return self._community_objectives
     
-    def get_community_objective(self, ce_id : str) -> CE_Objective | None:
-        """Returns the :class:`CE_Objective` object associated
+    def get_community_objective(self, ce_id : str) -> CEObjective | None:
+        """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
         for objective in self.get_community_objectives() :
             if objective.get_ce_id() == ce_id : return objective
@@ -82,7 +83,7 @@ class CE_Game:
     
     # ----------- setters -----------
 
-    def add_objective(self, type : Literal["Primary", "Community"], objective : CE_Objective) :
+    def add_objective(self, type : Literal["Primary", "Community"], objective : CEObjective) :
         """Adds an objective to the game's objective arrays."""
         if type == "Primary" : self._primary_objectives.append(objective)
         elif type == "Community" : self._community_objectives.append(objective)
@@ -93,6 +94,7 @@ class CE_Game:
     
 
     # --------- helper functions ------------
+
     def is_t0(self) -> bool :
         """Returns true if the game is a Tier 0."""
         return self.get_total_points() == 0
@@ -133,6 +135,25 @@ class CE_Game:
             return int(json_response['medianCompletionTime'] / 60)
         else :
             return None
+        
+
+    def update(self, json_response : 'CEGame' | dict = None) -> str :
+        """Takes in either a :class:`CEGame` or a :class:`dict`
+        and uses that data to update this object.\n
+        This method will return a :class:`str` that is to be sent
+        to #game-additions if an update was warranted, or `None` if none."""
+        if type(json_response) == dict :
+            other = CEAPIReader._ce_to_game(json_response)
+        elif json_response == None :
+            other = CEAPIReader.get_api_page_data('game', self.get_ce_id())
+        else :
+            other = json_response
+
+        if self.get_last_updated() >= other.get_last_updated() : 
+            return None
+
+
+
 
     
     def to_dict(self) -> dict :

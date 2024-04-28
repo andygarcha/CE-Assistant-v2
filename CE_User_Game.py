@@ -1,15 +1,15 @@
 from typing import Literal
-from CE_Objective import CE_Objective
-from CE_User_Objective import CE_User_Objective
-from CE_Game import CE_Game
-import CE_API_Reader
+from CE_Objective import CEObjective
+from CE_User_Objective import CEUserObjective
+from CE_Game import CEGame
+import CEAPIReader
 
-class CE_User_Game():
-    """A game that a user owns. This class extends the :class:`CE_Game` class."""
+class CEUserGame():
+    """A game that a user owns. This class extends the :class:`CEGame` class."""
     def __init__(self,
                  ce_id : str,
-                 user_primary_objectives : list[CE_User_Objective],
-                 user_community_objectives : list[CE_User_Objective] = []):
+                 user_primary_objectives : list[CEUserObjective],
+                 user_community_objectives : list[CEUserObjective] = []):
         self._ce_id = ce_id
         self._user_primary_objectives = user_primary_objectives
         self._user_community_objectives = user_community_objectives
@@ -28,25 +28,25 @@ class CE_User_Game():
         return self._ce_id
     
     def get_user_primary_objectives(self) :
-        """Returns the array of Primary :class:`CE_User_Objective`'s associated with this game."""
+        """Returns the array of Primary :class:`CEUserObjective`'s associated with this game."""
         return self._user_primary_objectives
     
     def get_user_community_objectives(self) :
-        """Returns the array of Community :class:`CE_User_Objective`'s associated with this game."""
+        """Returns the array of Community :class:`CEUserObjective`'s associated with this game."""
         return self._user_community_objectives
     
     # --------- setters -----------
 
-    def add_user_objective(self, objective : CE_User_Objective) :
+    def add_user_objective(self, objective : CEUserObjective) :
         """Adds a user objective to the object's user_objective's array."""
         if not objective.is_community() : self._user_primary_objectives.append(objective)
         elif objective.is_community() : self._user_community_objectives.append(objective)
         
     # ----------- other methods ------------
 
-    def get_regular_game(self) -> CE_Game :
-        """Returns the regular :class:`CE_Game` object associated with this game."""
-        return CE_API_Reader.get_api_page_data("game", self.get_ce_id())
+    def get_regular_game(self) -> CEGame :
+        """Returns the regular :class:`CEGame` object associated with this game."""
+        return CEAPIReader.get_api_page_data("game", self.get_ce_id())
     
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.

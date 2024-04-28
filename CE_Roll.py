@@ -1,6 +1,6 @@
 import datetime
 from typing import Literal
-from CE_Game import CE_Game
+from CE_Game import CEGame
 _roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
                         "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
                         "Triple Threat", "Let Fate Decide", "Fourward Thinking", "Russian Roulette",
@@ -13,7 +13,7 @@ def _get_current_unix() -> int :
     dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.timestamp()
 
-class CE_Roll:
+class CERoll:
     """Roll event."""
 
     def __init__(self,

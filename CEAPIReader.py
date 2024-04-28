@@ -11,16 +11,15 @@ To pull data from all users on the site, use `get_api_users_all()`.
 import datetime
 import time
 from typing import Literal
-from CE_Game import CE_Game
-from CE_Objective import CE_Objective
-from CE_User_Objective import CE_User_Objective
-from CE_User import CE_User
-from CE_User_Game import CE_User_Game
-from CE_Cooldown import CE_Cooldown
+from CE_Game import CEGame
+from CE_Objective import CEObjective
+from CE_User_Objective import CEUserObjective
+from CE_User import CEUser
+from CE_User_Game import CEUserGame
+from CE_Cooldown import CECooldown
 from FailedScrapeException import FailedScrapeException
 import requests
 import json
-
 
 
 # ---------------------- module for ce-api maintenance -----------------------
@@ -32,13 +31,13 @@ def _timestamp_to_unix(input : str) :
 
 
 
-def _ce_to_game(json_response : dict) -> CE_Game :
+def _ce_to_game(json_response : dict) -> CEGame :
     """Takes in a :class:`dict` pulled from the Challenge Enthusiasts API
-    and returns a :class:`CE_Game` object from it."""
+    and returns a :class:`CEGame` object from it."""
 
     # Step 1: iterate through all of the objectives and make two separate arrays.
-    all_primary_objectives : list[CE_Objective] = []
-    all_community_objectives : list[CE_Objective] = []
+    all_primary_objectives : list[CEObjective] = []
+    all_community_objectives : list[CEObjective] = []
     for objective in json_response['objectives'] :
 
         # Step 2: iterate through all the objective requirements and sort those as well.
@@ -54,7 +53,7 @@ def _ce_to_game(json_response : dict) -> CE_Game :
         if achievement_ids == [] : achievement_ids = None
 
         # make the actual objective object...
-        ce_objective = CE_Objective(objective['id'], objective['community'], 
+        ce_objective = CEObjective(objective['id'], objective['community'], 
                                     objective['description'], objective['points'], 
                                     objective['name'], json_response['id'], requirements, 
                                     achievement_ids, objective['pointsPartial'])
@@ -64,7 +63,7 @@ def _ce_to_game(json_response : dict) -> CE_Game :
         else : all_primary_objectives.append(ce_objective)
 
     # now that we have all objectives, we can make the object...
-    ce_game = CE_Game(json_response['id'], json_response['name'], json_response['platform'], 
+    ce_game = CEGame(json_response['id'], json_response['name'], json_response['platform'], 
                       json_response['platformId'], json_response['genre'], 
                       all_primary_objectives, all_community_objectives, 
                       _timestamp_to_unix(json_response['updatedAt']))
@@ -75,8 +74,8 @@ def _ce_to_game(json_response : dict) -> CE_Game :
 
 
 
-def get_api_games_full() -> list[CE_Game] | None :
-    """Returns an array of :class:`CE_Game`'s grabbed from https://cedb.me/api/games/full"""
+def get_api_games_full() -> list[CEGame] | None :
+    """Returns an array of :class:`CEGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
     json_response = []
     done_fetching : bool = False
@@ -93,8 +92,8 @@ def get_api_games_full() -> list[CE_Game] | None :
         raise FailedScrapeException(f"Scraping failed from api/games/full " 
                                     + f"on games {(i-1)*100} through {i*100-1}.")
 
-    # Step 2: iterate through the new json and construct an array of CE_Game's.
-    all_games : list[CE_Game] = []
+    # Step 2: iterate through the new json and construct an array of CEGame's.
+    all_games : list[CEGame] = []
     for game in json_response :
 
         # if the game is unfinished, come back.
@@ -110,8 +109,8 @@ def get_api_games_full() -> list[CE_Game] | None :
 
 
 
-def get_api_users_all() -> list[CE_User] | None :
-    """Returns an array of :class:`CE_User`'s grabbed from https://cedb.me/api/users/all"""
+def get_api_users_all() -> list[CEUser] | None :
+    """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all"""
 
     # Step 1: get the big json intact.
     json_response = []
@@ -132,22 +131,22 @@ def get_api_users_all() -> list[CE_User] | None :
 
 
 
-def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CE_User | CE_Game | None :
-    """Returns either a :class:`CE_User` or a :class:`CE_Game` from `ce_id` depending on `type`."""
+def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEGame | None :
+    """Returns either a :class:`CEUser` or a :class:`CEGame` from `ce_id` depending on `type`."""
     # if type is user
     if type == "user" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/user/{ce_id}")).text)
         if len(json_response) == 0 : return None
 
-        # Go through all of their games and make CE_User_Game's out of them.
-        user_games : list[CE_User_Game] = []
+        # Go through all of their games and make CEUserGame's out of them.
+        user_games : list[CEUserGame] = []
         for game in json_response['userGames'] :
-            user_games.append(CE_User_Game(game['game']['id'], [], []))
+            user_games.append(CEUserGame(game['game']['id'], [], []))
             
-        # Now go through all their objectives and make CE_User_Objective's out of them.
+        # Now go through all their objectives and make CEUserObjective's out of them.
         for objective in json_response['userObjectives'] :
             user_points = objective['objective']['points'] if not objective['partial'] else objective['objective']['pointsPartial']
-            new_objective = CE_User_Objective(objective['objective']['id'], 
+            new_objective = CEUserObjective(objective['objective']['id'], 
                                               objective['objective']['gameId'], 
                                               objective['objective']['community'], 
                                               user_points,
@@ -160,7 +159,7 @@ def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CE_User | 
                     ce_game.add_user_objective(new_objective)
                     break
 
-        return CE_User(0, json_response['id'], 0, user_games, [], [], [], [])
+        return CEUser(0, json_response['id'], 0, user_games, [], [], [], [])
 
     elif type == "game" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/game/{ce_id}")).text)

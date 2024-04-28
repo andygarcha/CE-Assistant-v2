@@ -1,5 +1,5 @@
-from CE_Roll import CE_Roll, _roll_event_names, _get_current_unix
-class CE_Cooldown :
+from CE_Roll import CERoll, _roll_event_names, _get_current_unix
+class CECooldown :
     """An object that represents a Challenge Enthusiast roll cooldown."""
     def __init__(self,
                  roll_name : _roll_event_names,

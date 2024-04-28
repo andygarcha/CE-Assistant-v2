@@ -6,17 +6,17 @@ Handles all MongoDB-related interactions for CE Assistant v2.
 # imports
 from typing import Literal
 from bson import ObjectId
-from CE_Cooldown import CE_Cooldown
-from CE_Game import CE_Game
-from CE_Objective import CE_Objective
-from CE_Roll import CE_Roll
-from CE_User import CE_User
+from CE_Cooldown import CECooldown
+from CE_Game import CEGame
+from CE_Objective import CEObjective
+from CE_Roll import CERoll
+from CE_User import CEUser
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from CE_User_Game import CE_User_Game
-from CE_User_Objective import CE_User_Objective
+from CE_User_Game import CEUserGame
+from CE_User_Objective import CEUserObjective
 
 
 # ----------------------------- mongo helpers --------------------------------
@@ -56,20 +56,20 @@ async def dump_mongo(title : _mongo_names, data) :
 
 
 
-def _mongo_to_game_objective(objective : dict) -> CE_Objective :
-    """Turns the MongoDB dictionary for an objective into a :class:`CE_Objective` object."""
+def _mongo_to_game_objective(objective : dict) -> CEObjective :
+    """Turns the MongoDB dictionary for an objective into a :class:`CEObjective` object."""
     achievements = None
     requirements = None
     if "Achievements" in objective : achievements = objective['Achievements']
     if "Requirements" in objective : requirements = objective['Requirements']
-    return CE_Objective(objective['CE ID'], False, objective['Description'],
+    return CEObjective(objective['CE ID'], False, objective['Description'],
                                 objective['Point Value'], objective['Name'], None,
                                 requirements, achievements)
 
 
 
-def _mongo_to_user_roll(roll : dict) -> CE_Roll :
-    """Turns the MongoDB dictionary for a roll event into a :class:`CE_Roll` object."""
+def _mongo_to_user_roll(roll : dict) -> CERoll :
+    """Turns the MongoDB dictionary for a roll event into a :class:`CERoll` object."""
     event_name, partner, games, init_time, due_time, completed_time, cooldown_days, rerolls
     if 'Event Name' in roll : event_name = roll['Event Name']
     if 'Partner' in roll : partner = roll['Partner']
@@ -80,13 +80,13 @@ def _mongo_to_user_roll(roll : dict) -> CE_Roll :
     if 'Cooldown Days' in roll : cooldown_days = roll['Cooldown Days']
     if 'Rerolls' in roll : rerolls = roll['Rerolls']
 
-    return CE_Roll(event_name, init_time, due_time, completed_time, games,
+    return CERoll(event_name, init_time, due_time, completed_time, games,
                    partner, cooldown_days, rerolls)
 
 
-def _mongo_to_user_game(game : dict) -> CE_User_Game :
+def _mongo_to_user_game(game : dict) -> CEUserGame :
     """Turns a user game (stored in user --> Owned Games) 
-    into a :class:`CE_User_Game` object.
+    into a :class:`CEUserGame` object.
     Game is sent over as such:
     ```
     { 
@@ -103,49 +103,49 @@ def _mongo_to_user_game(game : dict) -> CE_User_Game :
     ```
     """
     game_id = game.keys()[0]
-    primary_objectives : list[CE_User_Objective] = []
-    community_objectives : list[CE_User_Objective] = []
+    primary_objectives : list[CEUserObjective] = []
+    community_objectives : list[CEUserObjective] = []
 
     if 'Primary Objectives' in game :
         for obj in game['Primary Objectives'] :
-            primary_objectives.append(CE_User_Objective(obj, game_id, False, 
+            primary_objectives.append(CEUserObjective(obj, game_id, False, 
                                                         game['Primary Objectives'][obj]))
     if 'Community Objectives' in game :
         for obj in game['Community Objectives'] :
-            community_objectives.append(CE_User_Objective(obj, game_id, True,
+            community_objectives.append(CEUserObjective(obj, game_id, True,
                                                           game['Community Objectives'][obj]))
     
-    return CE_User_Game(game_id, primary_objectives, community_objectives)
+    return CEUserGame(game_id, primary_objectives, community_objectives)
 
 
 
 
 
-def _mongo_to_user(user : dict) -> CE_User :
-    """Turns the MongoDB dictionary into a :class:`CE_User` object."""
-    current_rolls : list[CE_Roll] = []
+def _mongo_to_user(user : dict) -> CEUser :
+    """Turns the MongoDB dictionary into a :class:`CEUser` object."""
+    current_rolls : list[CERoll] = []
     for roll in user['Current Rolls'] :
         current_rolls.append(_mongo_to_user_roll(roll))
-    completed_rolls : list[CE_Roll] = []
+    completed_rolls : list[CERoll] = []
     for roll in user['Completed Rolls'] :
         completed_rolls.append(_mongo_to_user_roll(roll))
-    cooldowns : list[CE_Cooldown] = []
+    cooldowns : list[CECooldown] = []
     for roll in user['Cooldowns'] :
-        cooldowns.append(CE_Cooldown(roll, user['Cooldowns'][roll]))
-    pending_rolls : list[CE_Cooldown] = []
+        cooldowns.append(CECooldown(roll, user['Cooldowns'][roll]))
+    pending_rolls : list[CECooldown] = []
     for pending in user['Pending Rolls'] :
-        pending_rolls.append(CE_Cooldown(pending, user['Pending Rolls'][pending]))
-    user_games : list[CE_User_Game] = []
+        pending_rolls.append(CECooldown(pending, user['Pending Rolls'][pending]))
+    user_games : list[CEUserGame] = []
     for game in user['Owned Games'] :
         user_games.append(_mongo_to_user_game({game : user['Owned Games'][game]}))
 
-    return CE_User(user['Discord ID'], user['CE ID'], user['Casino Score'], user_games,
+    return CEUser(user['Discord ID'], user['CE ID'], user['Casino Score'], user_games,
                    current_rolls, completed_rolls, pending_rolls, cooldowns)
 
 
 
-def _mongo_to_game(game : dict) -> CE_Game :
-    """Turns the MongoDB dictionary into a :class:`CE_Game` object.
+def _mongo_to_game(game : dict) -> CEGame :
+    """Turns the MongoDB dictionary into a :class:`CEGame` object.
     Example input:
     ```
     { 
@@ -166,8 +166,8 @@ def _mongo_to_game(game : dict) -> CE_Game :
     """
 
     # go through objectives first!
-    game_primary_objectives : list[CE_Objective] = []
-    game_community_objectives : list[CE_Objective] = []
+    game_primary_objectives : list[CEObjective] = []
+    game_community_objectives : list[CEObjective] = []
     if 'Primary Objectives' in game :
         for objective in game :
             game_objective = _mongo_to_game_objective(objective)
@@ -181,16 +181,16 @@ def _mongo_to_game(game : dict) -> CE_Game :
             game_objective.set_game_id(game['CE ID'])
             game_community_objectives.append(game_objective)
     
-    return CE_Game(game['CE ID'], game['Name'], game['Platform'], game['Platform ID'], 
+    return CEGame(game['CE ID'], game['Name'], game['Platform'], game['Platform ID'], 
                    game['Category'], game_primary_objectives, game_community_objectives, 
                    game['Last Updated'])
             
 
 
 
-async def get_mongo_users() -> list[CE_User] :
-    """Returns a list of :class:`CE_User`'s pulled directly from the MongoDB database."""
-    users = list[CE_User] = []
+async def get_mongo_users() -> list[CEUser] :
+    """Returns a list of :class:`CEUser`'s pulled directly from the MongoDB database."""
+    users = list[CEUser] = []
     database_user = await get_mongo("user")
     for user in database_user :
         users.append(_mongo_to_user(database_user[user]))
@@ -198,9 +198,9 @@ async def get_mongo_users() -> list[CE_User] :
 
 
 
-async def get_mongo_games() -> list[CE_Game] :
-    """Returns a list of :class:`CE_Game`'s pulled directly from the MongoDB database."""
-    games = list[CE_Game] = []
+async def get_mongo_games() -> list[CEGame] :
+    """Returns a list of :class:`CEGame`'s pulled directly from the MongoDB database."""
+    games = list[CEGame] = []
     database_name = await get_mongo('name')
     for game in database_name :
         games.append(_mongo_to_game(database_name[game]))
@@ -208,8 +208,8 @@ async def get_mongo_games() -> list[CE_Game] :
 
 
 
-async def get_user_from_id(ce_id : str) -> CE_User | None :
-    """Takes in a String `ce_id` and grabs its :class:`CE_User` 
+async def get_user_from_id(ce_id : str) -> CEUser | None :
+    """Takes in a String `ce_id` and grabs its :class:`CEUser` 
     object from the MongoDB database."""
     for user in await get_mongo_users() :
         if user.get_ce_id() == ce_id : return user
@@ -217,16 +217,16 @@ async def get_user_from_id(ce_id : str) -> CE_User | None :
 
 
 
-async def get_game_from_id(ce_id : str) -> CE_Game :
-    """Takes in a String `ce_id` and grabs its :class:`CE_Game` 
+async def get_game_from_id(ce_id : str) -> CEGame :
+    """Takes in a String `ce_id` and grabs its :class:`CEGame` 
     object from the MongoDB database."""
 
 
 
-async def dump_users(users : list[CE_User]) -> None :
-    """Takes in a list of :class:`CE_User`'s and dumps it back to the MongoDB database."""
+async def dump_users(users : list[CEUser]) -> None :
+    """Takes in a list of :class:`CEUser`'s and dumps it back to the MongoDB database."""
 
 
 
-async def dump_games(games : list[CE_Game]) -> None :
-    """Takes in a list of :class:`CE_Game`'s and dumps it back to the MongoDB database."""
+async def dump_games(games : list[CEGame]) -> None :
+    """Takes in a list of :class:`CEGame`'s and dumps it back to the MongoDB database."""
