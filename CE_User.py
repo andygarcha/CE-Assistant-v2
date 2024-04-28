@@ -1,5 +1,5 @@
 from CE_Cooldown import CECooldown
-from CERoll import CERoll, _roll_event_names
+from CE_Roll import CERoll, _roll_event_names
 from CE_Game import CEGame
 from CE_User_Game import CEUserGame
 import CEAPIReader
