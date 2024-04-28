@@ -6,11 +6,13 @@ class CE_User_Objective:
                  ce_id : str,
                  game_ce_id : str,
                  is_community : bool,
-                 user_points : int):
+                 user_points : int,
+                 name : str = ""):
         self._is_community = is_community
         self._ce_id = ce_id
         self._game_ce_id = game_ce_id
         self._user_points = user_points
+        self._name = name
     
     # -------- getters ----------
 
@@ -29,6 +31,16 @@ class CE_User_Objective:
     def get_game_ce_id(self) -> str :
         """Returns the Challenge Enthusiast ID related to the game this objective belongs to."""
         return self._game_ce_id
+    
+    def get_name(self) -> str :
+        """Returns the name of this objective."""
+        return self._name
+    
+    # ---------- setters -------------
+    
+    def set_name(self, name : str) -> None :
+        """Sets the name of this objective to `name`."""
+        self._name = name
 
     
     # --------- other methods ---------

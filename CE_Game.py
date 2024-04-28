@@ -58,19 +58,38 @@ class CE_Game:
         """Returns the array of CE_Objectives that are Primary."""
         return self._primary_objectives
     
+    def get_primary_objective(self, ce_id : str) -> CE_Objective | None :
+        """Returns the :class:`CE_Objective` object associated
+        with `ce_id`, or `None` if none exist."""
+        for objective in self.get_primary_objectives() :
+            if objective.get_ce_id() == ce_id : return objective
+        return None
+    
     def get_community_objectives(self) -> list[CE_Objective] :
         """Returns the array of CE_Objectives that are Community."""
         return self._community_objectives
+    
+    def get_community_objective(self, ce_id : str) -> CE_Objective | None:
+        """Returns the :class:`CE_Objective` object associated
+        with `ce_id`, or `None` if none exist."""
+        for objective in self.get_community_objectives() :
+            if objective.get_ce_id() == ce_id : return objective
+        return None
     
     def get_last_updated(self) -> int :
         """Returns the unix timestamp of the last time this game was updated."""
         return self._last_updated
     
     # ----------- setters -----------
+
     def add_objective(self, type : Literal["Primary", "Community"], objective : CE_Objective) :
         """Adds an objective to the game's objective arrays."""
         if type == "Primary" : self._primary_objectives.append(objective)
         elif type == "Community" : self._community_objectives.append(objective)
+
+    def set_last_updated(self, last_updated : int) -> None :
+        """Sets the last updated value to `last_updated`."""
+        self._last_updated = last_updated
     
 
     # --------- helper functions ------------

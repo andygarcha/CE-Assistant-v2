@@ -7,8 +7,8 @@ class CE_Objective:
                  point_value : int,
                  name : str,
                  game_ce_id : str,
-                 requirements : str = None,
-                 achievement_ce_ids : list[str] = None,
+                 requirements : str | None = None,
+                 achievement_ce_ids : list[str] | None = None,
                  point_value_partial : int = 0):
         self._ce_id = ce_id
         self._is_community = is_community
@@ -75,6 +75,10 @@ class CE_Objective:
     def has_partial(self) -> bool :
         """Returns true if this game has partial points, false if not."""
         return self._point_value_partial != None and self._point_value_partial != 0
+    
+    def is_uncleared(self) -> bool :
+        """Returns true if this game is UNCLEARED."""
+        return self._point_value == 1
 
     def to_dict(self) -> dict :
         """Returns this objective as a :class:`dict` for storage purposes."""
@@ -90,3 +94,4 @@ class CE_Objective:
             objective_dict[self.get_ce_id()]['Achievements'] = self.get_achievement_ce_ids()
         if self.get_requirements() != None :
             objective_dict[self.get_ce_id()]['Requirements'] = self.get_requirements()
+        return objective_dict

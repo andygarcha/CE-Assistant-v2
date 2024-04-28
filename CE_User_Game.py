@@ -59,13 +59,18 @@ class CE_User_Game():
         }
         ```
         """
-        objective_dict : list[dict] = []
+        primary_objective_dict : dict = {}
         for objective in self.get_user_primary_objectives() :
-            objective_dict.append(objective.to_dict())
+            primary_objective_dict.update(objective.to_dict())
+        community_objective_dict : dict = {}
+        for objective in self.get_user_community_objectives() :
+            community_objective_dict.update(objective.to_dict())
 
         game_dict = {}
 
-        if len(objective_dict) != 0 :
-            game_dict['Primary Objectives'] = objective_dict
+        if len(primary_objective_dict) != 0 :
+            game_dict['Primary Objectives'] = primary_objective_dict
+        if len(community_objective_dict) != 0 :
+            game_dict['Community Objectives'] = community_objective_dict
 
         return {self.get_ce_id() : game_dict}

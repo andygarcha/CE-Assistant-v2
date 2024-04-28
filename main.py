@@ -11,8 +11,10 @@ from CE_User_Game import CE_User_Game
 from CE_User_Objective import CE_Objective
 from CE_Game import CE_Game
 from CE_Objective import CE_Objective
-from CE_Roll import CE_Roll
+from CE_Roll import CE_Roll, _roll_event_names
 import CE_API_Reader
+import Mongo_Reader
+from FailedScrapeException import FailedScrapeException
 
 
 
@@ -49,7 +51,50 @@ guild = discord.Object(id=guild_id)
 @app_commands.describe(ce_id = "The link to your Challenge Enthusiasts profile!")
 async def register(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
+
+    # format correctly
+    ce_id = ce_id.replace("https://","").replace("www.","").replace("cedb.me", "").replace("/","").replace("games","").replace("user","")
+    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-") :
+        return await interaction.followup.send("An incorrect link was sent. Please try again.")
+
+    # try and get database_user
+    try :
+        users = await Mongo_Reader.get_mongo_users()
+    except FailedScrapeException :
+        return await interaction.followup.send("There was an issue with the Challenge " 
+                                               + "Enthusiast API. Please try again later.")
     
+    # make sure they're not already registered
+    for user in users :
+        if user.get_discord_id() == interaction.user.id :
+            return await interaction.followup.send("You are already registered in the " +
+                                                   "CE Assistant database!")
+        if user.get_ce_id() == ce_id : 
+            return await interaction.followup.send("This Challenge Enthusiast page is " +
+                                                   "already connected to another account!")
+    
+    # grab their data from CE
+    ce_user : CE_User = CE_API_Reader.get_api_page_data("user", ce_id)
+    if ce_user == None :
+        return await interaction.followup.send("Your Challenge Enthusiast page was not found. " + 
+                                               "Please try again later or contact andy.")
+    ce_user.set_discord_id(interaction.user.id)
+
+    # grab the user's pre-existing rolls
+    challenge_enthusiast_game = (
+        ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
+    if (challenge_enthusiast_game != None) :
+        for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
+            if objective.get_name() in _roll_event_names :
+                ce_user.add_completed_roll(CE_Roll(objective.get_name(), None, None, None, None, None, None, None))
+
+    # add the user to users and dump it
+    users.append(ce_user)
+    await Mongo_Reader.dump_users(users)
+
+        
+
+
 
 # on ready function
 @client.event

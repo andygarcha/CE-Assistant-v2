@@ -1,6 +1,8 @@
-from CE_Roll import CE_Roll
+from CE_Cooldown import CE_Cooldown
+from CE_Roll import CE_Roll, _roll_event_names
 from CE_Game import CE_Game
 from CE_User_Game import CE_User_Game
+import CE_API_Reader
 
 class CE_User:
     """Class for the Challenge Enthusiast user."""
@@ -59,25 +61,100 @@ class CE_User:
     def get_owned_games(self):
         """Returns a list of :class:`CE_User_Game`s that this user owns."""
         return self._owned_games
+    
+    def get_owned_game(self, ce_id : str) -> CE_User_Game | None :
+        """Returns the :class:`CE_User_Game` object associated 
+        `ce_id`, or `None` if this user doesn't own it."""
+        for game in self.get_owned_games() :
+            if game.get_ce_id() == ce_id : return game
+        return None
 
     def get_completed_games(self) -> list[CE_User_Game] :
         """Returns a list of :class:`CE_User_Game`s that this user has completed."""
         completed_games : list[CE_User_Game] = []
 
         for game in self._owned_games :
-            if game.get_total_points() == game.get_user_points() : completed_games.append(game)
+            if game.get_regular_game().get_total_points() == game.get_user_points() : 
+                completed_games.append(game)
         
         return completed_games
     
+    def get_current_rolls(self) -> list[CE_Roll] :
+        """Returns an array of :class:`CE_Roll`'s 
+        that this user is currently participating in."""
+        return self._current_rolls
+
+    def get_completed_rolls(self) -> list[CE_Roll] :
+        """Returns an array of :class:`CE_Roll`'s
+        that this user has previously completed."""
+        return self._completed_rolls
+    
+    def get_cooldowns(self) -> list[CE_Cooldown] :
+        """Returns an array of :class:`CE_Cooldown`'s
+        that this user currently has."""
+        return self._cooldowns
+    
+    def get_pending_rolls(self) -> list[CE_Cooldown] :
+        """Returns an array of :class:`cE_Cooldown`'s
+        that this user stores in their Pending Rolls section."""
+        return self._pending_rolls
+    
 
     # ----------- setters -----------
+
     def set_discord_id(self, input : int) -> None :
         """Sets this object's Discord ID according to `input`."""
         self._discord_id = input
+
+    def add_current_roll(self, roll : CE_Roll) -> None :
+        """Adds `roll` to this user's Current Rolls section."""
+        self._current_rolls.append(roll)
+    
+    def add_completed_roll(self, roll : CE_Roll) -> None :
+        """Adds `roll` to this user's Completed Rolls section."""
+        self._completed_rolls.append(roll)
+    
+    def add_cooldown(self, cooldown : CE_Cooldown) -> None :
+        """Adds `cooldown` to this user's Cooldowns section."""
+        self._cooldowns.append(cooldown)
+
+    def add_pending(self, pending : CE_Cooldown) -> None :
+        """Adds `pending` to this user's Pending section."""
+        self._pending_rolls.append(pending)
     
 
     # ----------- other methods ------------
+
+    def has_completed_roll(self, roll_name : _roll_event_names) -> bool :
+        """Returns true if this user has completed `roll_name`."""
+        for event in self.get_completed_rolls() :
+            if event.get_roll_name() == roll_name : return True
+        return False
     
+
+    def owns_game(self, game_id : str) -> bool :
+        """Returns true if this user owns the game with 
+        Challenge Enthusiast ID `game_id`."""
+        for game in self.get_owned_games() :
+            if game.get_ce_id() == game_id : return True
+        return False
+    
+    
+    def update(self, json_response : dict | CE_User = None) -> list[tuple] :
+        """Checks if the game has been updated and returns a :class:`list` 
+        of :class:`tuple`'s detailing the update or `None` if none.\n
+        The tuples will have an x value of 'casino' or 'log',
+        and a y value of the message to be sent."""
+        if json_response == None : 
+            json_response = CE_API_Reader.get_api_page_data('user', self.get_ce_id)
+        elif type(json_response) == dict :
+            json_response = CE_API_Reader._ce_to_game(json_response)
+        return NotImplemented
+        
+        
+        
+    
+
     def to_dict(self) -> dict :
         """Returns this user as a dictionary as used in the MongoDB database."""
         owned_games_array : list[dict] = []
