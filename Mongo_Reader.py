@@ -31,8 +31,8 @@ _mongo_ids = {
     "steamhunters" : ObjectId('65f64af8ba6efd911038594c')
 }
 """The :class:`ObjectID` values stored under the `_id` value in each document."""
-_uri = "mongodb+srv://andrewgarcha:KUTo7dCtGRy4Nrhd@ce-cluster.inrqkb3.mongodb.net/" 
-+ "?retryWrites=true&w=majority"
+_uri = ("mongodb+srv://andrewgarcha:KUTo7dCtGRy4Nrhd@ce-cluster.inrqkb3.mongodb.net/" 
+    + "?retryWrites=true&w=majority")
 _mongo_client = AsyncIOMotorClient(_uri)
 _mongo_database = _mongo_client['database_name']
 collection = _mongo_client['database_name']['ce-collection']

@@ -2,7 +2,7 @@ from typing import Literal
 from CE_Objective import CEObjective
 from CE_User_Objective import CEUserObjective
 from CE_Game import CEGame
-import CEAPIReader
+
 
 class CEUserGame():
     """A game that a user owns. This class extends the :class:`CEGame` class."""
@@ -45,6 +45,7 @@ class CEUserGame():
     # ----------- other methods ------------
 
     def get_regular_game(self) -> CEGame :
+        import CEAPIReader
         """Returns the regular :class:`CEGame` object associated with this game."""
         return CEAPIReader.get_api_page_data("game", self.get_ce_id())
     

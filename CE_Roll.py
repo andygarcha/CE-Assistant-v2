@@ -1,23 +1,13 @@
 import datetime
 from typing import Literal
 from CE_Game import CEGame
-_roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
-                        "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
-                        "Triple Threat", "Let Fate Decide", "Fourward Thinking", "Russian Roulette",
-                        "Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
-                        "Game Theory"]
-
-def _get_current_unix() -> int :
-    dt = datetime.datetime.now(datetime.timezone.utc)
-
-    dt = dt.replace(tzinfo=datetime.timezone.utc)
-    return dt.timestamp()
+import hm
 
 class CERoll:
     """Roll event."""
 
     def __init__(self,
-                 roll_name : _roll_event_names,
+                 roll_name : hm.roll_event_names,
                  init_time : int,
                  due_time : int,
                  completed_time : int,
@@ -88,4 +78,4 @@ class CERoll:
 
     # ------ other methods ------
     def is_expired(self) -> bool :
-        return self.get_due_time() < _get_current_unix()
+        return self.get_due_time() < hm.get_current_unix()

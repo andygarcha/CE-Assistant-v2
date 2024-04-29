@@ -1,8 +1,9 @@
 from CE_Cooldown import CECooldown
-from CE_Roll import CERoll, _roll_event_names
+from CE_Roll import CERoll
 from CE_Game import CEGame
 from CE_User_Game import CEUserGame
-import CEAPIReader
+import hm
+
 
 class CEUser:
     """Class for the Challenge Enthusiast user."""
@@ -125,7 +126,7 @@ class CEUser:
 
     # ----------- other methods ------------
 
-    def has_completed_roll(self, roll_name : _roll_event_names) -> bool :
+    def has_completed_roll(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user has completed `roll_name`."""
         for event in self.get_completed_rolls() :
             if event.get_roll_name() == roll_name : return True
@@ -140,7 +141,8 @@ class CEUser:
         return False
     
     
-    def update(self, json_response : dict | 'CEUser' = None) -> list[tuple] :
+    def update(self, json_response : 'CEUser' = None) -> list[tuple] :
+        import CEAPIReader
         """Checks if the game has been updated and returns a :class:`list` 
         of :class:`tuple`'s detailing the update or `None` if none.\n
         The tuples will have an x value of 'casino' or 'log',

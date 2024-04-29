@@ -11,8 +11,9 @@ from CE_User_Game import CEUserGame
 from CE_User_Objective import CEObjective
 from CE_Game import CEGame
 from CE_Objective import CEObjective
-from CE_Roll import CERoll, _roll_event_names
+from CE_Roll import CERoll
 import CEAPIReader
+import hm
 import Mongo_Reader
 from FailedScrapeException import FailedScrapeException
 
@@ -45,6 +46,8 @@ with open('Jasons/secret_info.json') as f :
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
+
+
 
 # register command
 @tree.command(name = "register", description = "Register with CE Assistant to unlock all features!", guild = guild)
@@ -85,7 +88,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
         ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
     if (challenge_enthusiast_game != None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.get_name() in _roll_event_names :
+            if objective.get_name() in hm.roll_event_names :
                 ce_user.add_completed_roll(CERoll(objective.get_name(), None, None, None, None, None, None, None))
 
     # add the user to users and dump it

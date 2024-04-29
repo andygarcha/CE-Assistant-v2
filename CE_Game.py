@@ -3,7 +3,7 @@ from typing import Literal
 
 import requests
 from CE_Objective import CEObjective
-import CEAPIReader
+import hm
 
 class CEGame:
     """A game that's on Challenge Enthusiasts."""
@@ -137,7 +137,9 @@ class CEGame:
             return None
         
 
-    def update(self, json_response : 'CEGame' | dict = None) -> str :
+    def update(self, json_response : 'CEGame' = None) -> str | None :
+        import CEAPIReader
+        json_response : dict | 'CEGame'
         """Takes in either a :class:`CEGame` or a :class:`dict`
         and uses that data to update this object.\n
         This method will return a :class:`str` that is to be sent
@@ -151,6 +153,12 @@ class CEGame:
 
         if self.get_last_updated() >= other.get_last_updated() : 
             return None
+        
+        update_str = ""
+        if self.get_total_points() != other.get_total_points() :
+            update_str += (f"\n- {self.get_total_points()} <:CE_points:1128420207329816597> " +
+            f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
+            f"<:CE_points:1128420207329816597>")
 
 
 
