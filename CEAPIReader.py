@@ -43,7 +43,7 @@ def _ce_to_game(json_response : dict) -> CEGame :
         # Step 2: iterate through all the objective requirements and sort those as well.
         requirements : str | None = None
         achievement_ids : list[str] | None = []
-        for requirement in objective :
+        for requirement in objective['objectiveRequirements'] :
             if requirement['type'] == "achievement" : 
                 achievement_ids.append(requirement['id'])
             elif requirement['type'] == "custom" : 
@@ -53,20 +53,41 @@ def _ce_to_game(json_response : dict) -> CEGame :
         if achievement_ids == [] : achievement_ids = None
 
         # make the actual objective object...
-        ce_objective = CEObjective(objective['id'], objective['community'], 
-                                    objective['description'], objective['points'], 
-                                    objective['name'], json_response['id'], requirements, 
-                                    achievement_ids, objective['pointsPartial'])
+        ce_objective = CEObjective(
+            ce_id=objective['id'],
+            is_community=objective['community'],
+            description=objective['description'],
+            point_value=objective['points'],
+            name=objective['name'],
+            game_ce_id=json_response['id'],
+            requirements=requirements,
+            achievement_ce_ids=achievement_ids,
+            point_value_partial=objective['pointsPartial']
+        )
         
         # ...and assign it to the correct array.
         if ce_objective.is_community() : all_community_objectives.append(ce_objective)
         else : all_primary_objectives.append(ce_objective)
 
+    last_updated = _timestamp_to_unix(json_response['updatedAt'])
+    for objective in json_response['objectives'] :
+        if _timestamp_to_unix(objective['updatedAt']) > last_updated:
+            last_updated = _timestamp_to_unix(objective['updatedAt'])
+        for objreq in objective['objectiveRequirements'] :
+            if _timestamp_to_unix(objreq['updatedAt']) > last_updated :
+                last_updated = _timestamp_to_unix(objreq['updatedAt'])
+
     # now that we have all objectives, we can make the object...
-    ce_game = CEGame(json_response['id'], json_response['name'], json_response['platform'], 
-                      json_response['platformId'], json_response['genre'], 
-                      all_primary_objectives, all_community_objectives, 
-                      _timestamp_to_unix(json_response['updatedAt']))
+    ce_game = CEGame(
+        ce_id=json_response['id'],
+        game_name=json_response['name'],
+        platform=json_response['platform'],
+        platform_id=json_response['platformId'],
+        category=json_response['genre']['name'],
+        primary_objectives=all_primary_objectives,
+        community_objectives=all_community_objectives,
+        last_updated=last_updated
+    )
     
     # ... and return it.
     return ce_game

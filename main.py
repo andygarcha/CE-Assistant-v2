@@ -4,6 +4,7 @@ from discord import app_commands
 
 # -------- json imports ----------
 import json
+from typing import Literal, get_args
 
 # --------- local class imports --------
 from CE_User import CEUser
@@ -49,7 +50,9 @@ guild = discord.Object(id=guild_id)
 
 
 # register command
-@tree.command(name = "register", description = "Register with CE Assistant to unlock all features!", guild = guild)
+@tree.command(name = "register", 
+              description = "Register with CE Assistant to unlock all features!", 
+              guild = guild)
 @app_commands.describe(ce_id = "The link to your Challenge Enthusiasts profile!")
 async def register(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
@@ -87,20 +90,34 @@ async def register(interaction : discord.Interaction, ce_id : str) :
         ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
     if (challenge_enthusiast_game != None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.get_name() in hm.roll_event_names :
-                ce_user.add_completed_roll(CERoll(objective.get_name(), None, None, None, None, None, None, None))
+            if objective.get_name() in get_args(hm.roll_event_names) :
+                ce_user.add_completed_roll(CERoll(
+                    roll_name=objective.get_name(),
+                    user_ce_id=ce_user.get_ce_id(),
+                    games=None,
+                    partner_ce_id=None,
+                    cooldown_days=None,
+                    init_time=None,
+                    due_time=None,
+                    completed_time=None,
+                    rerolls=None
+                ))
 
     # add the user to users and dump it
     users.append(ce_user)
     await Mongo_Reader.dump_users(users)
+
+    print(ce_user)
+
+    return await interaction.followup.send("You've been successfully registered!")
 
         
 @tree.command(name='pull-my-data', description='fjd',
               guild=guild)
 async def pull(interaction : discord.Interaction) :
     await interaction.response.send_message('you are done')
-    data = CEAPIReader.get_api_page_data('user',
-                       'd7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
+    data = CEAPIReader.get_api_page_data('game',
+                       '1e866995-6fec-452e-81ba-1e8f8594f4ea')
     print(data.to_dict())
 
 

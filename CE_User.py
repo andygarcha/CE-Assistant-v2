@@ -176,16 +176,14 @@ class CEUser:
             pendings_array.append(pending.to_dict())
 
         user_dict = {
-            {
-                "CE ID" : self.get_ce_id(),
-                "Discord ID" : self.get_discord_id(),
-                "Casino Score" : self.get_casino_score(),
-                "Owned Games" : owned_games_array,
-                "Current Rolls" : current_rolls_array,
-                "Completed Rolls" : completed_rolls_array,
-                "Cooldowns" : cooldowns_array,
-                "Pending Rolls" : pendings_array
-            }
+            "CE ID" : self.get_ce_id(),
+            "Discord ID" : self.get_discord_id(),
+            "Casino Score" : self.get_casino_score(),
+            "Owned Games" : owned_games_array,
+            "Current Rolls" : current_rolls_array,
+            "Completed Rolls" : completed_rolls_array,
+            "Cooldowns" : cooldowns_array,
+            "Pending Rolls" : pendings_array
         }
 
         return user_dict

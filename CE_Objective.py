@@ -83,15 +83,16 @@ class CEObjective:
     def to_dict(self) -> dict :
         """Returns this objective as a :class:`dict` for storage purposes."""
         objective_dict = {
-            self.get_ce_id() : {
-                "Name" : self.get_name(),
-                "Point Value" : self.get_point_value(),
-                "Description" : self.get_description(),
-                "CE ID" : self.get_ce_id()
-            }
+            "Name" : self.get_name(),
+            "Point Value" : self.get_point_value(),
+            "Description" : self.get_description(),
+            "CE ID" : self.get_ce_id(),
+            'Community' : self.is_community()
         }
         if self.get_achievement_ce_ids() != None : 
-            objective_dict[self.get_ce_id()]['Achievements'] = self.get_achievement_ce_ids()
+            objective_dict['Achievements'] = self.get_achievement_ce_ids()
         if self.get_requirements() != None :
-            objective_dict[self.get_ce_id()]['Requirements'] = self.get_requirements()
+            objective_dict['Requirements'] = self.get_requirements()
+        if self.has_partial() :
+            objective_dict['Partial Points'] = self.get_partial_points()
         return objective_dict

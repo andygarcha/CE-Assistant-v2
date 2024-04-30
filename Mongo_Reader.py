@@ -162,7 +162,7 @@ def _mongo_to_user(user : dict) -> CEUser :
     current_rolls : list[CERoll] = []
     for roll in user['Current Rolls'] :
         current_rolls.append(_mongo_to_user_roll(roll))
-        
+
     completed_rolls : list[CERoll] = []
     for roll in user['Completed Rolls'] :
         completed_rolls.append(_mongo_to_user_roll(roll))
@@ -249,20 +249,21 @@ def _mongo_to_game(game : dict) -> CEGame :
 
 async def get_mongo_users() -> list[CEUser] :
     """Returns a list of :class:`CEUser`'s pulled directly from the MongoDB database."""
-    users = list[CEUser] = []
+    users : list[CEUser] = []
     database_user = await get_mongo("user")
+    print(database_user['data'])
     for user in database_user['data'] :
-        users.append(_mongo_to_user(database_user[user]))
+        users.append(_mongo_to_user(user))
     return users
 
 
 
 async def get_mongo_games() -> list[CEGame] :
     """Returns a list of :class:`CEGame`'s pulled directly from the MongoDB database."""
-    games = list[CEGame] = []
+    games : list[CEGame] = []
     database_name = await get_mongo('name')
     for game in database_name['data'] :
-        games.append(_mongo_to_game(database_name[game]))
+        games.append(_mongo_to_game(game))
     return games
 
 

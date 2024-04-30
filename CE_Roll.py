@@ -21,16 +21,25 @@ class CERoll:
                  roll_name : hm.roll_event_names,
                  user_ce_id : str,
                  games : list[str],
-                 partner_ce_id : str,
+                 partner_ce_id : str = None,
                  cooldown_days = None,
                  init_time = None,
                  due_time = None,
                  completed_time = None,
-                 rerolls = None):
+                 rerolls = None,
+                 is_current : bool = None):
         self._roll_name : str = roll_name
         self._user_ce_id : str = user_ce_id
         self._games : list[str] = games
         self._partner_ce_id : str = partner_ce_id
+
+        if not is_current : 
+            self._cooldown_days = None
+            self._init_time = None
+            self._due_time = None
+            self._completed_time = None
+            self._rerolls = None
+            return
 
         if cooldown_days == None:
             self._cooldown_days = roll_cooldowns[self._roll_name]

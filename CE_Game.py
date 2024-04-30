@@ -179,14 +179,12 @@ class CEGame:
             else :
                 primary_objective_dict.append(objective.to_dict())
         return {
-            self.get_ce_id() : {
-                "Name" : self.get_game_name(),
-                "CE ID" : self.get_ce_id(),
-                "Platform" : self.get_platform(),
-                "Platform ID" : self.get_platform_id(),
-                "Category" : self.get_category(),
-                "Primary Objectives" : primary_objective_dict,
-                "Community Objectives" : community_objective_dict,
-                "Last Updated" : self.get_last_updated()
-            }
+            "Name" : self.get_game_name(),
+            "CE ID" : self.get_ce_id(),
+            "Platform" : self.get_platform(),
+            "Platform ID" : self.get_platform_id(),
+            "Category" : self.get_category(),
+            "Primary Objectives" : primary_objective_dict,
+            "Community Objectives" : community_objective_dict,
+            "Last Updated" : self.get_last_updated()
         }
