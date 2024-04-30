@@ -132,7 +132,8 @@ def get_api_users_all() -> list[CEUser] | None :
 
 
 def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEGame | None :
-    """Returns either a :class:`CEUser` or a :class:`CEGame` from `ce_id` depending on `type`."""
+    """Returns either a :class:`CEUser` or a :class:`CEGame` 
+    from `ce_id` depending on `type`."""
     # if type is user
     if type == "user" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/user/{ce_id}")).text)
@@ -141,11 +142,29 @@ def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | C
         # Go through all of their games and make CEUserGame's out of them.
         user_games : list[CEUserGame] = []
         for game in json_response['userGames'] :
-            user_games.append(CEUserGame(game['game']['id'], [], []))
+            user_games.append(
+                CEUserGame(
+                    ce_id=game['game']['id'],
+                    user_primary_objectives=[],
+                    user_community_objectives=[],
+                    name=game['game']['name']
+                )
+            )
             
         # Now go through all their objectives and make CEUserObjective's out of them.
         for objective in json_response['userObjectives'] :
-            user_points = objective['objective']['points'] if not objective['partial'] else objective['objective']['pointsPartial']
+            if not objective['partial'] :
+                user_points = objective['objective']['points']
+            else :
+                user_points = objective['objective']['pointsPartial']
+            
+            new_objective = CEUserObjective(
+                ce_id = objective['objective']['id'],
+                game_ce_id=objective['objective']['gameId'],
+                is_community=objective['objective']['community'],
+                user_points=user_points,
+                name=objective['objective']['name']
+            )
             new_objective = CEUserObjective(objective['objective']['id'], 
                                               objective['objective']['gameId'], 
                                               objective['objective']['community'], 

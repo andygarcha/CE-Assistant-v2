@@ -162,13 +162,29 @@ class CEUser:
         owned_games_array : list[dict] = []
         for game in self.get_owned_games() :
             owned_games_array.append(game.to_dict())
+        current_rolls_array : list[CERoll] = []
+        for roll in self.get_current_rolls() :
+            current_rolls_array.append(roll.to_dict())
+        completed_rolls_array : list[CERoll] = []
+        for roll in self.get_completed_rolls() :
+            completed_rolls_array.append(roll.to_dict())
+        cooldowns_array : list[CECooldown] = []
+        for cooldown in self.get_cooldowns() :
+            cooldowns_array.append(cooldown.to_dict())
+        pendings_array : list[CECooldown] = []
+        for pending in self.get_pending_rolls() :
+            pendings_array.append(pending.to_dict())
 
         user_dict = {
-            self.get_ce_id : {
+            {
                 "CE ID" : self.get_ce_id(),
                 "Discord ID" : self.get_discord_id(),
                 "Casino Score" : self.get_casino_score(),
-                "Owned Games" : owned_games_array
+                "Owned Games" : owned_games_array,
+                "Current Rolls" : current_rolls_array,
+                "Completed Rolls" : completed_rolls_array,
+                "Cooldowns" : cooldowns_array,
+                "Pending Rolls" : pendings_array
             }
         }
 

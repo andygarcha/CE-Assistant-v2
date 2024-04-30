@@ -1,8 +1,6 @@
 import datetime
 from typing import Literal
-from CE_Game import CEGame
-from CE_User import CEUser
-import Mongo_Reader
+
 import hm
 
 roll_cooldowns = {
@@ -187,7 +185,21 @@ class CERoll:
         
 
     def to_dict(self) -> dict :
+        """Turns this object into a dictionary for storage purposes."""
         d = {}
         if self.get_roll_name() != None : d['Event Name'] = self.get_roll_name()
         if self.get_due_time() != None : d['Due Time'] = self.get_due_time()
-        #TODO: finish this
+        if self.get_games() != None : d['Games'] = self.get_games()
+        if self.get_partner_ce_id() != None : 
+            d['Partner ID'] = self.get_partner_ce_id()
+        if self.get_user_ce_id() != None :
+            d['User ID'] = self.get_user_ce_id()
+        if self.get_cooldown_days() != None : 
+            d['Cooldown Days'] = self.get_cooldown_days()
+        if self.get_init_time() != None :
+            d['Init Time'] = self.get_init_time()
+        if self.get_completed_time() != None :
+            d['Completed Time'] = self.get_completed_time()
+        if self.get_rerolls() != None :
+            d['Rerolls'] = self.get_rerolls()
+        return d

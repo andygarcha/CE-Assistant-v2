@@ -9,10 +9,13 @@ class CEUserGame():
     def __init__(self,
                  ce_id : str,
                  user_primary_objectives : list[CEUserObjective],
-                 user_community_objectives : list[CEUserObjective] = []):
+                 user_community_objectives : list[CEUserObjective],
+                 name : str
+                ):
         self._ce_id = ce_id
         self._user_primary_objectives = user_primary_objectives
         self._user_community_objectives = user_community_objectives
+        self._name = name
 
     # ----------- getters -----------
     
@@ -28,19 +31,27 @@ class CEUserGame():
         return self._ce_id
     
     def get_user_primary_objectives(self) :
-        """Returns the array of Primary :class:`CEUserObjective`'s associated with this game."""
+        """Returns the array of Primary :class:`CEUserObjective`'s 
+        associated with this game."""
         return self._user_primary_objectives
     
     def get_user_community_objectives(self) :
-        """Returns the array of Community :class:`CEUserObjective`'s associated with this game."""
+        """Returns the array of Community :class:`CEUserObjective`'s 
+        associated with this game."""
         return self._user_community_objectives
+    
+    def get_name(self) :
+        """Returns the name of this game."""
+        return self._name
     
     # --------- setters -----------
 
     def add_user_objective(self, objective : CEUserObjective) :
         """Adds a user objective to the object's user_objective's array."""
-        if not objective.is_community() : self._user_primary_objectives.append(objective)
-        elif objective.is_community() : self._user_community_objectives.append(objective)
+        if not objective.is_community() : 
+            self._user_primary_objectives.append(objective)
+        elif objective.is_community() : 
+            self._user_community_objectives.append(objective)
         
     # ----------- other methods ------------
 
@@ -61,25 +72,38 @@ class CEUserGame():
         """Returns this game as a dictionary as used in the MongoDB database.
         Example:
         ```
-        "1e866995-6fec-452e-81ba-1e8f8594f4ea" : {
-            "Primary Objectives" : {
-                "d1c48bd5-14cb-444e-9301-09574dfbe86a" : 20
-            }
+        {
+            "Name" : "Neon White",
+            "CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+            "Primary Objectives" : [
+                {
+                    "Name" : "I just keep getting better and better.",
+                    "CE ID" : "a351dce1-ee51-4b55-a05b-38a74854a8be",
+                    "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+                    "Community" : False,
+                    "User Points" : 20
+                },
+                {
+                    "Name" : "Demon Exterminator",
+                    "CE ID" : "2a7ad593-4afd-4470-b709-f5ac6b4487e5",
+                    "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+                    "Community" : False,
+                    "User Points" : 35
+                }
+            ],
+            "Community Objectives" : []
         }
         ```
         """
-        primary_objective_dict : dict = {}
+        primary_objective_array : list[dict] = []
         for objective in self.get_user_primary_objectives() :
-            primary_objective_dict.update(objective.to_dict())
-        community_objective_dict : dict = {}
+            primary_objective_array.append(objective.to_dict())
+        community_objective_array : list[dict] = []
         for objective in self.get_user_community_objectives() :
-            community_objective_dict.update(objective.to_dict())
-
-        game_dict = {}
-
-        if len(primary_objective_dict) != 0 :
-            game_dict['Primary Objectives'] = primary_objective_dict
-        if len(community_objective_dict) != 0 :
-            game_dict['Community Objectives'] = community_objective_dict
-
-        return {self.get_ce_id() : game_dict}
+            community_objective_array.append(objective.to_dict())
+        return {
+            'Name' : self.get_name(),
+            'CE ID' : self.get_ce_id(),
+            'Primary Objectives' : primary_objective_array,
+            'Community Objectives' : community_objective_array,
+        }

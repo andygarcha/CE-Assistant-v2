@@ -49,9 +49,17 @@ class CEUserObjective:
         Example: 
         ```
         {
-            "d1c48bd5-14cb-444e-9301-09574dfbe86a" : 20
+            "Name" : "I just keep getting better and better.",
+            "CE ID" : "a351dce1-ee51-4b55-a05b-38a74854a8be",
+            "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+            "Community" : False,
+            "User Points" : 20
         }"""
-        dict = {
-            self.get_ce_id() : self.get_user_points()
+        d = {
+            'Name' : self.get_name(),
+            'CE ID' : self.get_ce_id(),
+            'Game CE ID' : self.get_game_ce_id(),
+            'Community' : self.is_community(),
+            'User Points' : self.get_user_points()
         }
-        return dict
+        return d

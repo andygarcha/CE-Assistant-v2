@@ -33,20 +33,19 @@ in_ce : bool = False
 
 
 # open secret_info.json
-with open('Jasons/secret_info.json') as f :
+with open('secret_info.json') as f :
     local_json_data = json.load(f)
     if in_ce :
         discord_token = local_json_data['discord_token']
         guild_id = local_json_data['ce_guild_ID']
     else :
         discord_token = local_json_data['third_discord_token']
-        guild_id = local_json_data['test_guild_id']
+        guild_id = local_json_data['test_guild_ID']
 
 # set up client
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
-
 
 
 # register command
@@ -96,12 +95,20 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     await Mongo_Reader.dump_users(users)
 
         
-
+@tree.command(name='pull-my-data', description='fjd',
+              guild=guild)
+async def pull(interaction : discord.Interaction) :
+    await interaction.response.send_message('you are done')
+    data = CEAPIReader.get_api_page_data('user',
+                       'd7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
+    print(data.to_dict())
 
 
 # on ready function
 @client.event
 async def on_ready() :
     await tree.sync(guild = guild)
-    log_channel = client.get_channel(1)
-    await log_channel.send("The bot has now been restarted.")
+    log_channel = client.get_channel(788158122907926611)
+    await log_channel.send("version 2 babyyyyy")
+
+client.run(discord_token)
