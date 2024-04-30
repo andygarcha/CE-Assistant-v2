@@ -95,6 +95,11 @@ class CEGame:
 
     # --------- helper functions ------------
 
+    def is_special(self) -> bool :
+        """Returns true if the game is a 'Special' game,
+        like -Challenge Enthusiasts- or Puzzle Games."""
+        #TODO: finish this function
+
     def is_t0(self) -> bool :
         """Returns true if the game is a Tier 0."""
         return self.get_total_points() == 0

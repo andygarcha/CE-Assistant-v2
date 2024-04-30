@@ -4,7 +4,9 @@ will house a bunch of random pieces of data that need to be accessed
 across multiple files.
 """
 
+import calendar
 import datetime
+import time
 from typing import Literal
 
 
@@ -89,3 +91,51 @@ def get_grammar_str(input : list) -> str :
     contents grammatically correct.\n
     Example: [a, b, c] --> 'a, b, and c'\n
     Example: [a] --> 'a'"""
+    #TODO: finish this function
+
+def get_categories() -> list[str] :
+    """Returns the list of current categories."""
+    return ['Action', 'Arcade', 'Bullet Hell', 'First-Person',
+            'Platformer', 'Strategy']
+
+def get_item_from_list(ce_id, list) :
+    """Return the object who's Challenge Enthusiast
+    ID is provided by `ce_id`."""
+    for item in list :
+        if item.get_ce_id() == ce_id : return item
+    return None
+
+def months_to_days(num_months : int) -> int:
+    """Takes in a number of months `num_months` and returns 
+    the number of days between today and `num_months` months away."""
+    # purpose -- determine number of days to 'x' months away. 
+    #Required as duration will be different depending on 
+    #point in the year, and get_rollable_game requires day inputs
+    # function input = number of months
+    # function output = number of days between now and input months away 
+    now = datetime.datetime.now()
+    end_year = now.year + (now.month + num_months - 1) // 12
+    end_month = (now.month + num_months - 1) % 12 + 1
+    end_date = datetime.date(end_year, end_month, min(calendar.monthrange(end_year, end_month)[1], now.day))
+    date_delta = end_date - datetime.date(now.year, now.month, now.day)
+
+    return date_delta.days
+
+def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
+    """Returns a unix timestamp for `days` days (or `minutes` minutes, or `months` months) from the current time.
+    \nAdditionally, `old_unix` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that unix."""
+    # -- old unix passed --
+    if(old_unix != -1) :
+        if (minutes != -1) : return int(minutes * 60) + old_unix
+        elif (months != -1) : return (months_to_days(months))*(86400) + old_unix
+        else : return days * 86400 + old_unix
+
+    # -- old unix NOT passed --
+    # return right now
+    if(days == "now") : return int(time.mktime((datetime.datetime.now()).timetuple()))
+    # return minutes
+    elif (minutes != -1) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
+    # return months
+    elif (months != -1) : return get_unix(months_to_days(months))
+    # return days
+    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))

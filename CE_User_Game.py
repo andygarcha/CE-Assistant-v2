@@ -45,9 +45,17 @@ class CEUserGame():
     # ----------- other methods ------------
 
     def get_regular_game(self) -> CEGame :
-        import CEAPIReader
         """Returns the regular :class:`CEGame` object associated with this game."""
+        import CEAPIReader
         return CEAPIReader.get_api_page_data("game", self.get_ce_id())
+    
+    def is_completed(self) -> bool :
+        """Returns true if this game has been completed, false if not."""
+        #TODO: finish this function!
+
+    def get_category(self) -> str :
+        """Returns the category of this game."""
+        return self.get_regular_game().get_category()
     
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.

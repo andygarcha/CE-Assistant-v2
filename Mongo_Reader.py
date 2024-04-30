@@ -208,24 +208,27 @@ async def get_mongo_games() -> list[CEGame] :
 
 
 
-async def get_user_from_id(ce_id : str) -> CEUser | None :
-    """Takes in a String `ce_id` and grabs its :class:`CEUser` 
-    object from the MongoDB database."""
-    for user in await get_mongo_users() :
-        if user.get_ce_id() == ce_id : return user
-    return None
+#async def get_user_from_id(ce_id : str) -> CEUser | None :
+#    """Takes in a String `ce_id` and grabs its :class:`CEUser` 
+#    object from the MongoDB database."""
+#    for user in await get_mongo_users() :
+#        if user.get_ce_id() == ce_id : return user
+#    return None
 
 
 
-async def get_game_from_id(ce_id : str) -> CEGame :
-    """Takes in a String `ce_id` and grabs its :class:`CEGame` 
-    object from the MongoDB database."""
+#async def get_game_from_id(ce_id : str) -> CEGame :
+#    """Takes in a String `ce_id` and grabs its :class:`CEGame` 
+#    object from the MongoDB database."""
 
 
 
 async def dump_users(users : list[CEUser]) -> None :
     """Takes in a list of :class:`CEUser`'s and dumps it back to the MongoDB database."""
-
+    dictionary = []
+    for user in users :
+        dictionary.append(user.to_dict())
+    await dump_mongo('user', dictionary)
 
 
 async def dump_games(games : list[CEGame]) -> None :
