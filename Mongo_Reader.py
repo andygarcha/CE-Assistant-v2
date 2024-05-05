@@ -59,7 +59,7 @@ def _mongo_to_game_objective(objective : dict) -> CEObjective :
     
     return CEObjective(
         ce_id=objective['CE ID'],
-        is_community=objective['Community'],
+        objective_type=objective['Type'],
         description=objective['Description'],
         point_value=objective['Point Value'],
         name=objective['Name'],
@@ -108,7 +108,7 @@ def _mongo_to_user_objective(objective : dict) -> CEUserObjective :
     return CEUserObjective(
         ce_id=objective['CE ID'],
         game_ce_id=objective['Game CE ID'],
-        is_community=objective['Community'],
+        type=objective['Type'],
         user_points=objective['User Points'],
         name=objective['Name']
     )
@@ -119,32 +119,37 @@ def _mongo_to_user_game(game : dict) -> CEUserGame :
     into a :class:`CEUserGame` object.
     Game is sent over as such:
     ```
-    { 
-        "1e866995-6fec-452e-81ba-1e8f8594f4ea" : {
-            "Primary Objectives" : {
-                "d1c48bd5-14cb-444e-9301-09574dfbe86a" : 20,      
-                "eb1bf5f9-4c82-4758-b6bb-a822e8bd97cb" : 150
+    {
+        "Name" : "Neon White",
+        "CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+        "Objectives" : [
+            {
+                "Name" : "I just keep getting better and better.",
+                "CE ID" : "a351dce1-ee51-4b55-a05b-38a74854a8be",
+                "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+                "Type" : 'Primary',
+                "User Points" : 20
             },
-            "Community Objectives" : {
-                "138df16d-c56a-4df4-8055-5176bd172a6b" : true
+            {
+                "Name" : "Demon Exterminator",
+                "CE ID" : "2a7ad593-4afd-4470-b709-f5ac6b4487e5",
+                "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
+                "Type" : "Badge",
+                "User Points" : 35
             }
-        }
+        ]
     }
     ```
     """
-    primary_objectives : list[CEUserObjective] = []
-    community_objectives : list[CEUserObjective] = []
+    objectives : list[CEUserObjective] = []
 
-    for objective in game['Primary Objectives'] :
-        primary_objectives.append(_mongo_to_user_objective(objective))
-    for objective in game['Community Objectives'] :
-        primary_objectives.append(_mongo_to_user_objective(objective))
+    for objective in game['Objectives'] :
+        objectives.append(_mongo_to_user_objective(objective))
 
     return CEUserGame(
         ce_id=game['CE ID'],
-        user_primary_objectives=primary_objectives,
-        user_community_objectives=community_objectives,
-        name=game['Name']
+        name=game['Name'],
+        user_objectives=objectives
     )
 
 
@@ -202,36 +207,30 @@ def _mongo_to_game(game : dict) -> CEGame :
         "Platform" : platform,
         "Platform ID" : platform_id,
         "Category" : category,
-        "Primary Objectives" : {
-            "hfjksdlafhjkldas" : datadatadata,
-            "j;ofjdaioslfal;o" : datadatamoredata
-        },
-        "Community Objectives" : {},
+        "Objectives" : [
+            {
+                "bla" : "blah",
+                "fhjdsalk" : "fhjkdslahfjkdl"
+            },
+            {
+                "hfjkdls", "p9owqs",
+                "plpfsdq", "ol,cvx"
+            }
+        ]
         "Last Updated" : 1689078932
     }
     ```
-    
     """
 
     # go through objectives first!
-    game_primary_objectives : list[CEObjective] = []
-    game_community_objectives : list[CEObjective] = []
-    if 'Primary Objectives' in game :
+    game_objectives : list[CEObjective] = []
+    if 'Objectives' in game :
         for objective in game :
             game_objective = _mongo_to_game_objective(
-                game['Primary Objectives'][objective]
+                objective
             )
-            game_objective.set_community(False)
             game_objective.set_game_id(game['CE ID'])
-            game_primary_objectives.append(game_objective)
-    if 'Community Objectives' in game :
-        for objective in game :
-            game_objective = _mongo_to_game_objective(
-                game['Community Objectives'][objective]
-            )
-            game_objective.set_community(True)
-            game_objective.set_game_id(game['CE ID'])
-            game_community_objectives.append(game_objective)
+            game_objectives.append(game_objective)
 
     return CEGame(
         ce_id=game['CE ID'],
@@ -239,11 +238,10 @@ def _mongo_to_game(game : dict) -> CEGame :
         platform=game['Platform'],
         platform_id=game['Platform ID'],
         category=game['Category'],
-        primary_objectives=game_primary_objectives,
-        community_objectives=game_community_objectives,
+        objectives=game_objectives,
         last_updated=game['Last Updated']
     )
-            
+
 
 
 
@@ -251,7 +249,6 @@ async def get_mongo_users() -> list[CEUser] :
     """Returns a list of :class:`CEUser`'s pulled directly from the MongoDB database."""
     users : list[CEUser] = []
     database_user = await get_mongo("user")
-    print(database_user['data'])
     for user in database_user['data'] :
         users.append(_mongo_to_user(user))
     return users
@@ -265,21 +262,6 @@ async def get_mongo_games() -> list[CEGame] :
     for game in database_name['data'] :
         games.append(_mongo_to_game(game))
     return games
-
-
-
-#async def get_user_from_id(ce_id : str) -> CEUser | None :
-#    """Takes in a String `ce_id` and grabs its :class:`CEUser` 
-#    object from the MongoDB database."""
-#    for user in await get_mongo_users() :
-#        if user.get_ce_id() == ce_id : return user
-#    return None
-
-
-
-#async def get_game_from_id(ce_id : str) -> CEGame :
-#    """Takes in a String `ce_id` and grabs its :class:`CEGame` 
-#    object from the MongoDB database."""
 
 
 

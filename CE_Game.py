@@ -13,16 +13,14 @@ class CEGame:
                  platform : str,
                  platform_id : str,
                  category : str,
-                 primary_objectives : list[CEObjective],
-                 community_objectives : list[CEObjective],
+                 objectives : list[CEObjective],
                  last_updated : int):
         self._ce_id = ce_id
         self._game_name = game_name
         self._platform = platform
         self._platform_id = platform_id
         self._category = category
-        self._primary_objectives = primary_objectives
-        self._community_objectives = community_objectives
+        self._objectives = objectives
         self._last_updated = last_updated
 
     # ----------- getters -------------
@@ -30,7 +28,7 @@ class CEGame:
     def get_total_points(self) -> int :
         """Returns the total number of points this game has."""
         total_points = 0
-        for objective in self._primary_objectives :
+        for objective in self.get_primary_objectives() :
             total_points += objective.get_point_value()
         
         return total_points
@@ -55,9 +53,17 @@ class CEGame:
         """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
         return self._category
     
+    def get_all_objectives(self) -> list[CEObjective] :
+        """Returns the array of all CEObjectives in this game."""
+        return self._objectives
+    
     def get_primary_objectives(self) -> list[CEObjective] : 
-        """Returns the array of CE_Objectives that are Primary."""
-        return self._primary_objectives
+        """Returns the array of CEObjectives that are Primary."""
+        p = []
+        for objective in self.get_all_objectives() :
+            if objective.get_type() == "Primary" :
+                p.append(objective)
+        return p
     
     def get_primary_objective(self, ce_id : str) -> CEObjective | None :
         """Returns the :class:`CEObjective` object associated
@@ -67,8 +73,12 @@ class CEGame:
         return None
     
     def get_community_objectives(self) -> list[CEObjective] :
-        """Returns the array of CE_Objectives that are Community."""
-        return self._community_objectives
+        """Returns the array of CEObjectives that are Community."""
+        p = []
+        for objective in self.get_all_objectives() :
+            if objective.get_type() == "Community" :
+                p.append(objective)
+        return p
     
     def get_community_objective(self, ce_id : str) -> CEObjective | None:
         """Returns the :class:`CEObjective` object associated
@@ -83,10 +93,10 @@ class CEGame:
     
     # ----------- setters -----------
 
-    def add_objective(self, type : Literal["Primary", "Community"], objective : CEObjective) :
+    def add_objective(self, objective : CEObjective) :
         """Adds an objective to the game's objective arrays."""
-        if type == "Primary" : self._primary_objectives.append(objective)
-        elif type == "Community" : self._community_objectives.append(objective)
+        self._objectives.append(objective)
+        
 
     def set_last_updated(self, last_updated : int) -> None :
         """Sets the last updated value to `last_updated`."""
@@ -164,6 +174,7 @@ class CEGame:
             update_str += (f"\n- {self.get_total_points()} <:CE_points:1128420207329816597> " +
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
             f"<:CE_points:1128420207329816597>")
+        #TODO: finish this function
 
 
 
@@ -171,20 +182,15 @@ class CEGame:
     
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
-        primary_objective_dict = []
-        community_objective_dict = []
-        for objective in self.get_primary_objectives() :
-            if objective.is_community() :
-                community_objective_dict.append(objective.to_dict)
-            else :
-                primary_objective_dict.append(objective.to_dict())
+        objectives = []
+        for objective in self.get_all_objectives() :
+            objectives.append(objective.to_dict())
         return {
             "Name" : self.get_game_name(),
             "CE ID" : self.get_ce_id(),
             "Platform" : self.get_platform(),
             "Platform ID" : self.get_platform_id(),
             "Category" : self.get_category(),
-            "Primary Objectives" : primary_objective_dict,
-            "Community Objectives" : community_objective_dict,
+            "Objectives" : objectives,
             "Last Updated" : self.get_last_updated()
         }

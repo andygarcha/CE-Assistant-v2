@@ -36,8 +36,7 @@ def _ce_to_game(json_response : dict) -> CEGame :
     and returns a :class:`CEGame` object from it."""
 
     # Step 1: iterate through all of the objectives and make two separate arrays.
-    all_primary_objectives : list[CEObjective] = []
-    all_community_objectives : list[CEObjective] = []
+    all_objectives : list[CEObjective] = []
     for objective in json_response['objectives'] :
 
         # Step 2: iterate through all the objective requirements and sort those as well.
@@ -55,7 +54,8 @@ def _ce_to_game(json_response : dict) -> CEGame :
         # make the actual objective object...
         ce_objective = CEObjective(
             ce_id=objective['id'],
-            is_community=objective['community'],
+            objective_type='Community' if objective['community'] else 'Primary', 
+            #NOTE: ^^ this will need to be changed when `type` is added.
             description=objective['description'],
             point_value=objective['points'],
             name=objective['name'],
@@ -65,9 +65,8 @@ def _ce_to_game(json_response : dict) -> CEGame :
             point_value_partial=objective['pointsPartial']
         )
         
-        # ...and assign it to the correct array.
-        if ce_objective.is_community() : all_community_objectives.append(ce_objective)
-        else : all_primary_objectives.append(ce_objective)
+        # ...and assign it to the array.
+        all_objectives.append(ce_objective)
 
     last_updated = _timestamp_to_unix(json_response['updatedAt'])
     for objective in json_response['objectives'] :
@@ -84,8 +83,7 @@ def _ce_to_game(json_response : dict) -> CEGame :
         platform=json_response['platform'],
         platform_id=json_response['platformId'],
         category=json_response['genre']['name'],
-        primary_objectives=all_primary_objectives,
-        community_objectives=all_community_objectives,
+        objectives=all_objectives,
         last_updated=last_updated
     )
     
@@ -148,6 +146,7 @@ def get_api_users_all() -> list[CEUser] | None :
     except : 
         raise FailedScrapeException("Failed scraping from api/users/all/ for users "
                                     + f"on users {(i-1)*100} through {i*100-1}")
+    #TODO: finish this function
 
 
 
@@ -178,19 +177,14 @@ def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | C
                 user_points = objective['objective']['points']
             else :
                 user_points = objective['objective']['pointsPartial']
-            
+
             new_objective = CEUserObjective(
                 ce_id = objective['objective']['id'],
                 game_ce_id=objective['objective']['gameId'],
-                is_community=objective['objective']['community'],
+                type='Community' if objective['objective']['community'] else 'Primary',
                 user_points=user_points,
                 name=objective['objective']['name']
             )
-            new_objective = CEUserObjective(objective['objective']['id'], 
-                                              objective['objective']['gameId'], 
-                                              objective['objective']['community'], 
-                                              user_points,
-                                              name=objective['objective']['name'])
 
             # now that we have the objective
             # we need to assign it to the correct games
@@ -199,8 +193,18 @@ def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | C
                     ce_game.add_user_objective(new_objective)
                     break
 
-        return CEUser(0, json_response['id'], 0, user_games, [], [], [], [])
+        return CEUser(
+            discord_id=0,
+            ce_id = json_response['id'],
+            casino_score = 0,
+            owned_games = user_games,
+            current_rolls = [],
+            completed_rolls = [],
+            pending_rolls = [],
+            cooldowns = []
+        )
 
     elif type == "game" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/game/{ce_id}")).text)
+        if len(json_response) == 0 : return None
         return _ce_to_game(json_response)

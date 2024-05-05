@@ -75,6 +75,8 @@ roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell 
                         "Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
 
+objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
+
 def get_current_unix() -> int :
     """Gets the current time in unix timestamp."""
     dt = datetime.datetime.now(datetime.timezone.utc)
