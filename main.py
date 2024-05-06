@@ -120,6 +120,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 @app_commands.describe(event_name = "The event you'd like to roll.")
 async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll_event_names) :
     await interaction.response.defer()
+    view = discord.ui.View(timeout=600)
 
     # pull mongo database
     database_user = await Mongo_Reader.get_mongo_users()
@@ -154,6 +155,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
 
     match(event_name) :
         case "One Hell of a Day" :
+            # -- grab games --
             rolled_game = hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=10,
@@ -162,15 +164,105 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                 user=user
             )
 
+            # -- create roll object --
             roll = CERoll(
                 roll_name='One Hell of a Day',
                 user_ce_id=user.get_ce_id(),
                 games=[rolled_game],
                 is_current=True
             )
+            user.add_current_roll(roll)
 
-            embeds = Discord_Helper.get_roll_embeds(roll)
+            # -- create embeds --
+            embeds = Discord_Helper.get_roll_embeds(
+                roll=roll,
+                database_name=database_name,
+                database_user=database_user
+            )
+        
+        case "One Hell of a Week" :
+            # -- if the user hasn't done day, return --
+            if not user.has_completed_roll('One Hell of a Day') :
+                return await interaction.followup.send(
+                    f"You need to complete One Hell of a Day before rolling {event_name}!"
+                )
+            
+            # -- grab games --
+            rolled_games : list[str] = []
+            valid_categories = hm.get_categories()
+            for i in range(5) :
+                rolled_games.append(hm.get_rollable_game(
+                    database_name=database_name,
+                    completion_limit=10,
+                    price_limit=10,
+                    tier_number=1,
+                    user=user,
+                    category=valid_categories,
+                    already_rolled_games=rolled_games
+                ))
+                valid_categories.remove(
+                    hm.get_item_from_list(rolled_games[i], database_name).get_category()
+                )
 
+            # -- make roll object --
+            roll = CERoll(
+                roll_name='One Hell of a Week',
+                user_ce_id=user.get_ce_id(),
+                games=rolled_games,
+                is_current=True
+            )
+            user.add_current_roll(roll)
+            
+            # -- get embeds --
+            embeds = Discord_Helper.get_roll_embeds(
+                roll=roll,
+                database_name=database_name,
+                database_user=database_user
+            )
+
+        case "One Hell of a Month" :
+            # -- if user doesn't have week, return --
+            if not user.has_completed_roll('One Hell of a Week') :
+                return await interaction.followup.send(
+                    f"You need to complete One Hell of a Week before rolling {event_name}!"
+                )
+            
+            # -- grab games --
+            rolled_games : list[str] = []
+            valid_categories = hm.get_categories()
+            for i in range(5) :
+                selected_category = random.choice(valid_categories)
+                for j in range(j) :
+                    rolled_games.append(hm.get_rollable_game(
+                        database_name=database_name,
+                        completion_limit=10,
+                        price_limit=10,
+                        tier_number=1,
+                        user=user,
+                        category=selected_category,
+                        already_rolled_games=rolled_games
+                    ))
+                valid_categories.remove(selected_category)
+            
+            # -- create roll object --
+            roll = CERoll(
+                roll_name="One Hell of a Month",
+                user_ce_id=user.get_ce_id(),
+                games=rolled_games,
+                is_current=True
+            )
+            user.add_current_roll(roll)
+
+            # -- create embeds --
+            embeds = Discord_Helper.get_roll_embeds(
+                roll=roll,
+                database_name=database_name,
+                database_user=database_user
+            )
+
+    await Discord_Helper.get_buttons(view=view, embeds=embeds)
+    await Mongo_Reader.dump_user(user=user)
+    return await interaction.followup.send(embed=embeds[0], view=view)
 
 # on ready function
 @client.event

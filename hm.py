@@ -115,7 +115,18 @@ banned_games = [
     "Elasto Mania Remastered"
 ]
 
+# ------------- image icons -------------
+ce_mountain_icon = "https://i.imgur.com/4PPsX4o.jpg"
+"""The mountain icon used most commonly by CE."""
+ce_hex_icon = "https://i.imgur.com/FLq0rFQ.png"
+"""The hex icon used by CE's banner."""
+ce_james_icon = "https://i.imgur.com/fcdHTvx.png"
+"""The icon made by James that was previously used."""
+final_ce_icon = "https://i.imgur.com/O9J7fg2.png"
+"""The icon made by @crappy for CE Assistant."""
+
 objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
+platform_names = Literal['steam']
 
 def get_current_unix() -> int :
     """Gets the current time in unix timestamp."""

@@ -10,7 +10,7 @@ class CEGame:
     def __init__(self,
                  ce_id : str,
                  game_name : str,
-                 platform : str,
+                 platform : hm.platform_names,
                  platform_id : str,
                  category : str,
                  objectives : list[CEObjective],
@@ -41,7 +41,7 @@ class CEGame:
         """Returns the name of this game."""
         return self._game_name
     
-    def get_platform(self) -> str :
+    def get_platform(self) -> hm.platform_names :
         """Returns the platform this game is hosted on."""
         return self._platform
     
@@ -151,6 +151,24 @@ class CEGame:
         else :
             return None
         
+    def get_steam_data(self) -> dict | None : 
+        """Returns the steam data for this game."""
+        if self.get_platform() != 'steam' : return None
+        try :
+            payload = {'appids' : self.get_platform_id(), 'cc' : 'US'}
+            response = requests.get("https://store.steampowered.com/api/appdetails?", 
+                                    params = payload)
+            return json.loads(response.text)
+        except :
+            return None
+        
+    def get_completion_data(self) -> dict :
+        """Returns the completion data for this game."""
+        #NOTE: this is dumb and terrible. please get laura or folkius to fix this
+        all_games = json.loads(requests.get('https://cedb.me/api/games').text)
+        for game in all_games :
+            if game['id'] == self.get_ce_id() : return game['completion']
+        return None
 
     def update(self, json_response : 'CEGame' = None) -> str | None :
         import CEAPIReader
