@@ -16,7 +16,11 @@ from CE_Roll import CERoll
 import CEAPIReader
 import hm
 import Mongo_Reader
+import Discord_Helper
 from FailedScrapeException import FailedScrapeException
+
+# ----------- to-be-sorted imports -------------
+import random
 
 
 
@@ -107,18 +111,65 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     users.append(ce_user)
     await Mongo_Reader.dump_users(users)
 
-    print(ce_user)
-
     return await interaction.followup.send("You've been successfully registered!")
 
         
-@tree.command(name='pull-my-data', description='fjd',
-              guild=guild)
-async def pull(interaction : discord.Interaction) :
-    await interaction.response.send_message('you are done')
-    data = CEAPIReader.get_api_page_data('game',
-                       '1e866995-6fec-452e-81ba-1e8f8594f4ea')
-    print(data.to_dict())
+@tree.command(name = "solo-roll",
+              description = "Roll a solo event with CE Assistant!",
+              guild = guild)
+@app_commands.describe(event_name = "The event you'd like to roll.")
+async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll_event_names) :
+    await interaction.response.defer()
+
+    # pull mongo database
+    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    user = None
+    user_index = -1
+    for i, u in enumerate(database_user) :
+        if u.get_discord_id() == interaction.user.id :
+            user = u
+            user_index = i
+            break
+
+    if user == None :
+        return await interaction.followup.send(
+            "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
+        )
+    if user.has_cooldown(event_name) :
+        return await interaction.followup.send(
+            f"You are currently on cooldown for {event_name} until {user.get_cooldown_time(event_name)}. "
+        )
+    if user.has_current_roll(event_name) :
+        return await interaction.followup.send(
+            f"You're currently attempting {event_name}! Please finish this instance before rerolling."
+        )
+    if user.has_pending(event_name) :
+        return await interaction.followup.send(
+            f"You just tried rolling this event. Please wait about 10 minutes before trying again."
+        )
+    
+    if random.randint(0, 99) : "" #TODO: send a message to the log channel saying they've won jarvis's random thing
+
+    match(event_name) :
+        case "One Hell of a Day" :
+            rolled_game = hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=10,
+                price_limit=10,
+                tier_number=1,
+                user=user
+            )
+
+            roll = CERoll(
+                roll_name='One Hell of a Day',
+                user_ce_id=user.get_ce_id(),
+                games=[rolled_game],
+                is_current=True
+            )
+
+            embeds = Discord_Helper.get_roll_embeds(roll)
 
 
 # on ready function

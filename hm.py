@@ -8,6 +8,7 @@ import calendar
 import datetime
 import time
 from typing import Literal
+import random
 
 
 __icons = {
@@ -74,6 +75,45 @@ roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell 
                         "Triple Threat", "Let Fate Decide", "Fourward Thinking", "Russian Roulette",
                         "Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
+solo_roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
+                        "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
+                        "Triple Threat", "Let Fate Decide", "Fourward Thinking"]
+coop_roll_event_names = Literal["Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
+                        "Game Theory"]
+
+banned_games = [
+    "Serious Sam HD: The Second Encounter", 
+    "Infinite Air with Mark McMorris", 
+    "A Bastard's Tale",
+    "A Most Extraordinary Gnome",
+    "Bot Vice",
+    "Curvatron",
+    "Dark Souls III",
+    "Destructivator 2",
+    "DSY",
+    "Geballer",
+    "Gravity Den",
+    "Gridform",
+    "Heck Deck",
+    "ITTA",
+    "Just Arms",
+    "LaserBoy",
+    "Little Nightmares",
+    "MO:Astray",
+    "MOONPONG",
+    "Mortal Shell",
+    "Overture",
+    "Project Rhombus",
+    "Satryn Deluxe",
+    "SEUM",
+    "Squidlit",
+    "Super Cable Boy",
+    "The King's Bird",
+    "you have to win the game",
+    "Heavy Bullets",
+    "Barrier X",
+    "Elasto Mania Remastered"
+]
 
 objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
 
@@ -107,9 +147,24 @@ def get_item_from_list(ce_id, list) :
         if item.get_ce_id() == ce_id : return item
     return None
 
+def get_index_from_list(ce_id, list) :
+    """Returns the index of the object provided by `ce_id`."""
+    for i in range(len(list)) :
+        if list[i].get_ce_id() == ce_id : return i
+    return -1
+
+def replace_item_in_list(ce_id, item, list) -> list :
+    """Replaces the object who's Challenge Enthusiast
+    ID is provided by `ce_id`."""
+    for i in range(len(list)) :
+        if list[i].get_ce_id() == ce_id :
+            list[i] = item
+    return list
+
 def months_to_days(num_months : int) -> int:
     """Takes in a number of months `num_months` and returns 
-    the number of days between today and `num_months` months away."""
+    the number of days between today and `num_months` months away.
+    \nWritten by Schmole (thank you schmole!!)"""
     # purpose -- determine number of days to 'x' months away. 
     #Required as duration will be different depending on 
     #point in the year, and get_rollable_game requires day inputs
@@ -141,3 +196,68 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
     elif (months != -1) : return get_unix(months_to_days(months))
     # return days
     else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))
+
+
+
+def get_rollable_game(
+        database_name : list,
+        completion_limit : int,
+        price_limit : int,
+        tier_number : int,
+        user,
+        category : str | list[str] = None,
+        already_rolled_games : list = [],
+):
+    """Takes in a slew of parameters and returns a list of `CEGame`'s that match the criteria."""
+    from CE_Game import CEGame
+    from CE_User import CEUser
+
+    # avoid circular imports
+    database_name : list[CEGame] = database_name
+    user : CEUser = user
+
+    # randomize database_name :
+    random.shuffle(database_name)
+
+    # if only one category was sent, put it in an array so we can use `in`.
+    if type(category) == str :
+        category = [category]
+
+    # ---- iterate through all the games ----
+    for game in database_name :
+        if category != None and game.get_category() not in category :
+            "Incorrect category."
+            continue
+
+        if game.get_tier() != f"Tier {tier_number}" :
+            "Incorrect tier."
+            continue
+
+        if (user.owns_game(game.get_ce_id()) 
+            and user.get_owned_game(game.get_ce_id()).is_completed()) :
+            "User has completed game already."
+            continue
+
+        if game.get_ce_id() in already_rolled_games :
+            "This game has already been rolled."
+            continue
+
+        if game.has_an_uncleared() :
+            "This game has an uncleared objective."
+            continue
+
+        if game.get_price() > price_limit :
+            "The price is too high."
+            continue
+
+        if game.get_steamhunters_data() > completion_limit :
+            "The SteamHunters median-completion-time is too high."
+            continue
+
+        if game.get_game_name() in banned_games :
+            "This game is in the Banned Games section."
+            continue
+
+        return game.get_ce_id()
+    
+    return None

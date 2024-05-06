@@ -96,7 +96,7 @@ class CEUser:
         return self._cooldowns
     
     def get_pending_rolls(self) -> list[CECooldown] :
-        """Returns an array of :class:`cE_Cooldown`'s
+        """Returns an array of :class:`CECooldown`'s
         that this user stores in their Pending Rolls section."""
         return self._pending_rolls
     
@@ -132,6 +132,31 @@ class CEUser:
             if event.get_roll_name() == roll_name : return True
         return False
     
+    def has_current_roll(self, roll_name : hm.roll_event_names) -> bool :
+        """Returns true if this user is currently working on `roll_name`."""
+        for event in self.get_current_rolls() :
+            if event.get_roll_name() == roll_name : return True
+        return False
+    
+    def has_cooldown(self, roll_name : hm.roll_event_names) -> bool :
+        """Returns true if this user is currently on cooldown for `roll_name`."""
+        for cooldown in self.get_cooldowns() :
+            if cooldown.get_roll_name() == roll_name : return True
+        return False
+    
+    def get_cooldown_time(self, roll_name : hm.roll_event_names) -> int :
+        """Returns the unix timestamp of the date `roll_name`'s cooldown ends
+        (or `None` if not applicable.)"""
+        for cooldown in self.get_cooldowns() :
+            if cooldown.get_roll_name() == roll_name : return cooldown.get_end_time()
+        return None
+    
+    def has_pending(self, roll_name : hm.roll_event_names) -> bool :
+        """Returns true if this user is currently on pending for `roll_name`."""
+        for pending in self.get_pending_rolls() :
+            if pending.get_roll_name() == roll_name : return True
+        return False
+    
 
     def owns_game(self, game_id : str) -> bool :
         """Returns true if this user owns the game with 
@@ -152,6 +177,7 @@ class CEUser:
         elif type(json_response) == dict :
             json_response = CEAPIReader._ce_to_game(json_response)
         return NotImplemented
+        #TODO: finish this function
         
         
         

@@ -279,3 +279,19 @@ async def dump_games(games : list[CEGame]) -> None :
     for game in games :
         dictionary.append(game.to_dict())
     await dump_mongo('name', {'data' : dictionary})
+
+async def dump_user(user : CEUser | list[CEUser]) -> None :
+    """Takes in one (or more) `CEUser`'s and dumps them."""
+    if type(user) == CEUser : 
+        user : list[CEUser] = [user]
+    else :
+        user : list[CEUser] = user
+
+    database_user = await get_mongo_users()
+
+    for i, u in enumerate(database_user) :
+        for b in user :
+            if u.get_ce_id() == b.get_ce_id() :
+                database_user[i] = b
+
+    await dump_users(database_user)

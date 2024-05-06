@@ -5,9 +5,25 @@ import hm
 
 roll_cooldowns = {
     'Destiny Alignment' : hm.months_to_days(1),
+    'Soul Mates' : {
+        1 : 7*10,
+        2 : 7*8,
+        3 : 7*6,
+        4 : 7*4,
+        5 : 7*2
+    },
+    'Teamwork Makes the Dream Work' : hm.months_to_days(3),
+    'Winner Takes All' : hm.months_to_days(3),
     'Game Theory' : hm.months_to_days(1),
-    'Soul Mates' : hm
-    #TODO: finish this
+    'One Hell of a Day' : 14,
+    'One Hell of a Week' : hm.months_to_days(1),
+    'One Hell of a Month' : hm.months_to_days(3),
+    'Two Week T2 Streak' : None,
+    'Two "Two Week T2 Streak" Streak' : 7, #NOTE: this cant be right
+    'Never Lucky' : hm.months_to_days(1),
+    'Triple Threat' : hm.months_to_days(3),
+    'Let Fate Decide' : hm.months_to_days(3),
+    'Fourward Thinking' : 0 #NOTE: what the fuck do i do here
 }
 
 roll_due_times = {
@@ -15,48 +31,96 @@ roll_due_times = {
 }
 
 class CERoll:
-    """Roll event."""
+    """Roll event.
+    
+    Parameters 
+    ----------
+    roll_name : `str | hm.roll_event_names`
+        The name of the roll event.
+
+    user_ce_id : `str`
+        The Challenge Enthusiasts ID of the
+        user that initiated the roll.
+
+    games : `list[str]`
+        A list of Challenge Enthusiast IDs 
+        assigned to the rolled games.
+
+    partner_ce_id : `str` (optional)
+        The Challenge Enthusiast ID of the
+        partner for a co-op roll.
+
+    cooldown_date : `int` (only for storage purposes)
+        Do not use this when instantiating a new roll.\n
+        Only to be used when storing and grabbing
+        this roll from the MongoDB database.
+
+    init_time : `int`
+        The unix timestamp of the time this
+        roll was initiated.
+
+    due_time : `int` or `None`
+        The unix timestamp of the time this
+        roll is due.
+
+    completed_time : `int` or `None`
+        The unix timestamp of the time this
+        roll was completed.
+
+    rerolls : `int` or `None`
+        The number of rerolls allowed (or `None`
+        if no rerolls are allowed.)
+
+    is_current : `bool`
+        Set this to true if you're declaring a
+        new current roll.
+    """
 
     def __init__(self,
                  roll_name : hm.roll_event_names,
                  user_ce_id : str,
                  games : list[str],
                  partner_ce_id : str = None,
-                 cooldown_days = None,
-                 init_time = None,
+                 init_time : int = None,
                  due_time = None,
                  completed_time = None,
                  rerolls = None,
-                 is_current : bool = None):
+                 is_current : bool = False):
         self._roll_name : str = roll_name
         self._user_ce_id : str = user_ce_id
         self._games : list[str] = games
         self._partner_ce_id : str = partner_ce_id
 
+        # if the roll isn't being created right now
+        # (and therefore is probably being read from MongoDB)
+        # don't reset all the variables
         if not is_current : 
-            self._cooldown_days = None
             self._init_time = None
             self._due_time = None
             self._completed_time = None
             self._rerolls = None
             return
 
-        if cooldown_days == None:
-            self._cooldown_days = roll_cooldowns[self._roll_name]
-        else :
-            self._cooldown_days = cooldown_days
+        # if the roll is being created right now...
+        # set init_time to right now
         if init_time == None :
             self._init_time = hm.get_unix('now')
         else :
             self._init_time = init_time
+
+        # set the due time to the correct time
         if due_time == None :
             self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
         else :
             self._due_time = due_time
+
+        # and set completed time to non-existent
+        # (is this redundant code? am i stupid?)
         if completed_time == None :
             self._completed_time = None
         else :
             self._completed_time = completed_time
+
         if rerolls == None :
             self._rerolls = None
         else :
@@ -64,17 +128,13 @@ class CERoll:
 
     # ------- getters -------
 
-    def get_roll_name(self):
+    def get_roll_name(self) -> hm.roll_event_names :
         """Get the name of the roll event."""
         return self._roll_name
     
     def get_user_ce_id(self) -> str :
         """Get the Challenge Enthusiast ID of the roller."""
         return self._user_ce_id
-    
-    #async def get_user_object(self) -> CEUser :
-    #    """Returns the :class:`CEUser` object."""
-    #    return Mongo_Reader.get_user_from_id(self.get_user_ce_id())
     
     def get_init_time(self):
         """Get the unix timestamp of the time the roll was, well, rolled."""
@@ -98,24 +158,11 @@ class CERoll:
         (if one exists)."""
         return self._partner_ce_id
     
-    #async def get_partner_object(self) -> CEUser :
-    #    """Returns the :class:`CEUser` object."""
-    #    return Mongo_Reader.get_user_from_id(self.get_partner_ce_id())
-    
-    def get_cooldown_days(self) :
-        """Get the number of cooldown days associated with this roll event."""
-        return self._cooldown_days
-    
     def get_rerolls(self) :
         """If applicable, get the number of rerolls allowed for this roll event."""
         return self._rerolls
     
     # ------ setters -------
-
-    def increase_cooldown_days(self, increase : int) -> None :
-        """Increase the number of cooldown days for this roll event 
-        given by `increase`."""
-        self._cooldown_days += increase
 
     def increase_rerolls(self, increase : int) -> None :
         """Increase the number of rerolls allowed for this roll event 
@@ -132,33 +179,52 @@ class CERoll:
         by `increase_in_seconds` seconds."""
         self._due_time += increase_in_seconds
 
-    def is_co_op(self) -> bool :
-        """Returns true if this roll is co-op."""
-        return self.get_partner_ce_id() != None and self.get_partner_ce_id != ""
+
 
     # ------ other methods ------
 
+    def is_co_op(self) -> bool :
+        """Returns true if this roll is co-op."""
+        return self.get_partner_ce_id() != None and self.get_partner_ce_id != ""
+    
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
         return self.get_due_time() < hm.get_current_unix()
     
-    def get_win_message(self) -> str :
-        """Returns a string to send to #casino if this roll has won."""
-        #TODO: finish this function
-
     def ends(self) -> bool :
-        """Returns true if this roll has a due date, false if not."""
+        """Returns true if the roll can end."""
+        return self.get_due_time() != None
+    
+    def get_win_message(self) -> str :
+        """Returns a string to send to #casino-log if this roll is won."""
         #TODO: finish this function
+        return NotImplemented
 
-    def is_won(self) -> bool :
+    def get_fail_message(self) -> str :
+        """Returns a string to send to #casino if this roll is failed."""
+        #TODO: finish this function
+        return NotImplemented
+    
+    def calculate_cooldown_date(self) -> int | None :
+        """Calculates the date of which the cooldown should be set
+        (or `None` if not applicable.)"""
+        if self.get_roll_name() == "Fourward Thinking" :
+            return NotImplemented   #TODO: finish this !
+        elif self.get_roll_name() == "Soul Mates" :
+            return NotImplemented   #TODO : finish this too!
+        
+        return roll_cooldowns[self.get_roll_name()]
+
+    async def is_won(self) -> bool :
         """Returns true if this roll instance has been won."""
         from CE_User import CEUser
+        import Mongo_Reader
         if (self.is_expired()) : return False
-        main_player : CEUser = self.get_user_object()
-        
-        if (self.is_co_op()) :
-            partner_player : CEUser = self.get_partner_object()
-            
+        users = await Mongo_Reader.get_mongo_users()
+        user = hm.get_item_from_list(self.get_user_ce_id(), users)
+
+        return NotImplemented
+        """
         # one hell of a month
         if(self.get_roll_name() == "One Hell of a Month") :
             categories : dict[str, int] = {}
@@ -192,6 +258,9 @@ class CERoll:
                            and partner_player.get_owned_game(game).is_completed())
             return main_won or partner_won
         
+        #TODO: finish this function
+        """
+        
 
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
@@ -203,8 +272,6 @@ class CERoll:
             d['Partner ID'] = self.get_partner_ce_id()
         if self.get_user_ce_id() != None :
             d['User ID'] = self.get_user_ce_id()
-        if self.get_cooldown_days() != None : 
-            d['Cooldown Days'] = self.get_cooldown_days()
         if self.get_init_time() != None :
             d['Init Time'] = self.get_init_time()
         if self.get_completed_time() != None :

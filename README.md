@@ -3,9 +3,13 @@ Object-based version of andykasen13/CE-Assistant
 
 ## little notes
 - consider having `CEGame` hold an array of just `CEObjectives` instead of two different ones for `Primary` and `Community`. Keep the `get_primary_objectives()` and `get_community_objectives()` and it'll sort it within the class (wait im so smart!)
+- look into schmole's idea of rerolling a specific game in a roll in the event of country-lock. Example:
+  - admin runs /change-roll-game(event_name : str, user : discord.User)
+  - spits out a dropdown of all currently rolled games and admin selects the game to reroll
+  - manually change this game to a newly rerolled game.
 
 ## Classes
-### CE-User
+### CEUser
 ```
 - private int discord_id
 - private String ce_id
@@ -16,7 +20,7 @@ Object-based version of andykasen13/CE-Assistant
 - private CE-Roll[] cooldowns
 ```
 
-### CE-Roll
+### CERoll
 ```
 - private String roll_name
 - private String init_time
@@ -27,7 +31,7 @@ Object-based version of andykasen13/CE-Assistant
 - private int rerolls
 ```
 
-### CE-Game
+### CEGame
 ```
 - private String ce_id
 - private String game_name
@@ -40,13 +44,13 @@ Object-based version of andykasen13/CE-Assistant
 - private int last_updated
 ```
 
-### CE-User-Game extends CE-Game
+### CEUserGame
 ```
 - private int user_points
 - private CE-User-Objective[] user_objective
 ```
 
-### CE-Objective
+### CEObjective
 ```
 - private String ce_id
 - private boolean is_community
@@ -58,7 +62,7 @@ Object-based version of andykasen13/CE-Assistant
 - private String[] achievement_ce_ids // this will just be an array of ce-ids
 ```
 
-### CE-User-Objective extends CE-Objective
+### CEUserObjective
 ```
 - private int user_points
 ```

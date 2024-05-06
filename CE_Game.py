@@ -177,7 +177,11 @@ class CEGame:
         #TODO: finish this function
 
 
-
+    def has_an_uncleared(self) -> bool :
+        """Returns true if this game has an uncleared objective."""
+        for objective in self.get_primary_objectives() :
+            if objective.is_uncleared() : return True
+        return False
 
     
     def to_dict(self) -> dict :
