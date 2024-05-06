@@ -153,32 +153,19 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
     
     if random.randint(0, 99) : "" #TODO: send a message to the log channel saying they've won jarvis's random thing
 
+    # -- set up vars --
+    rolled_games : list[str] = []
+
     match(event_name) :
         case "One Hell of a Day" :
             # -- grab games --
-            rolled_game = hm.get_rollable_game(
+            rolled_games = [hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=10,
                 price_limit=10,
                 tier_number=1,
                 user=user
-            )
-
-            # -- create roll object --
-            roll = CERoll(
-                roll_name='One Hell of a Day',
-                user_ce_id=user.get_ce_id(),
-                games=[rolled_game],
-                is_current=True
-            )
-            user.add_current_roll(roll)
-
-            # -- create embeds --
-            embeds = Discord_Helper.get_roll_embeds(
-                roll=roll,
-                database_name=database_name,
-                database_user=database_user
-            )
+            )]
         
         case "One Hell of a Week" :
             # -- if the user hasn't done day, return --
@@ -204,22 +191,6 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                     hm.get_item_from_list(rolled_games[i], database_name).get_category()
                 )
 
-            # -- make roll object --
-            roll = CERoll(
-                roll_name='One Hell of a Week',
-                user_ce_id=user.get_ce_id(),
-                games=rolled_games,
-                is_current=True
-            )
-            user.add_current_roll(roll)
-            
-            # -- get embeds --
-            embeds = Discord_Helper.get_roll_embeds(
-                roll=roll,
-                database_name=database_name,
-                database_user=database_user
-            )
-
         case "One Hell of a Month" :
             # -- if user doesn't have week, return --
             if not user.has_completed_roll('One Hell of a Week') :
@@ -243,22 +214,60 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                         already_rolled_games=rolled_games
                     ))
                 valid_categories.remove(selected_category)
-            
-            # -- create roll object --
-            roll = CERoll(
-                roll_name="One Hell of a Month",
-                user_ce_id=user.get_ce_id(),
-                games=rolled_games,
-                is_current=True
-            )
-            user.add_current_roll(roll)
+    
+        case "Two Week T2 Streak" :
+            if user.has_current_roll('Two Week T2 Streak') :
+                "If user's current roll is ready for next stage, roll it for them."
+                past_roll : CERoll
+                past_roll_index : int
+                for i, r in enumerate(user.get_current_rolls()) :
+                    if r.get_roll_name() == event_name : 
+                        past_roll = r
+                        past_roll_index = i
+                        break
+                if past_roll.ready_for_next() :
+                    past_roll.add_game(hm.get_rollable_game(
+                        database_name=database_name,
+                        completion_limit=40,
+                        price_limit=20,
+                        tier_number=2,
+                        user=user,
+                        already_rolled_games=r.get_games()
+                    ))
+                    
+                
+                "If not, spit back out 'You need to finish this one first!"
+            else :
+                rolled_games = [hm.get_rollable_game(
+                    database_name=database_name,
+                    completion_limit=20,
+                    price_limit=20,
+                    tier_number = 2,
+                    user=user
+                )]
 
-            # -- create embeds --
-            embeds = Discord_Helper.get_roll_embeds(
-                roll=roll,
-                database_name=database_name,
-                database_user=database_user
-            )
+    # -- check to make sure there were enough rollable games --
+    if None in rolled_games :
+        return await interaction.followup.send(
+            "There weren't enough rollable games that matched this event's criteria." 
+            + " Please try again later (and contact andy!)."
+        )
+
+    # -- create roll object --
+    roll = CERoll(
+        roll_name=event_name,
+        user_ce_id=user.get_ce_id(),
+        games=rolled_games,
+        is_current=True
+    )
+    user.add_current_roll(roll)
+
+    # -- create embeds --
+    embeds = Discord_Helper.get_roll_embeds(
+        roll=roll,
+        database_name=database_name,
+        database_user=database_user
+    )
 
     await Discord_Helper.get_buttons(view=view, embeds=embeds)
     await Mongo_Reader.dump_user(user=user)

@@ -219,7 +219,8 @@ def get_rollable_game(
         category : str | list[str] = None,
         already_rolled_games : list = [],
 ):
-    """Takes in a slew of parameters and returns a list of `CEGame`'s that match the criteria."""
+    """Takes in a slew of parameters and returns a `str` of 
+    Challenge Enthusiast ID that match the criteria."""
     from CE_Game import CEGame
     from CE_User import CEUser
 

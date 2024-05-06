@@ -179,13 +179,22 @@ class CERoll:
         by `increase_in_seconds` seconds."""
         self._due_time += increase_in_seconds
 
+    def set_due_time(self, days : int) -> None :
+        """Sets the due time for `days` days from now."""
+        self._due_time = hm.get_unix(days=days)
+
+    def add_game(self, game : str) -> None :
+        """Adds the Challenge Enthusiast ID given by `game`
+        to this roll's games array."""
+        self._games.append(game)
+
 
 
     # ------ other methods ------
 
     def is_co_op(self) -> bool :
         """Returns true if this roll is co-op."""
-        return self.get_partner_ce_id() != None and self.get_partner_ce_id != ""
+        return self.get_partner_ce_id() != None and self.get_partner_ce_id() != ""
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
@@ -194,6 +203,16 @@ class CERoll:
     def ends(self) -> bool :
         """Returns true if the roll can end."""
         return self.get_due_time() != None
+    
+    def ready_for_next(self) -> bool :
+        """Returns true if this game is ready for the next game."""
+        if self.get_roll_name() not in [
+            "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Fourward Thinking"
+        ] :
+            return False
+        
+        return self.get_due_time() == None or self.get_due_time() == 0
+        
     
     def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
