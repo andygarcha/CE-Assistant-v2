@@ -52,8 +52,15 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
 
+@tree.command(name='test', description='test',guild=guild)
+async def test(interaction : discord.Interaction) :
+    await interaction.response.defer()
+    import Reformatter
+    b= await Reformatter.reformat_database_name()
+    await interaction.followup.send("silly finished!")
 
-# register command
+
+# ---- register command ----
 @tree.command(name = "register", 
               description = "Register with CE Assistant to unlock all features!", 
               guild = guild)
@@ -113,7 +120,9 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 
     return await interaction.followup.send("You've been successfully registered!")
 
-        
+
+
+# ---- solo roll command ----
 @tree.command(name = "solo-roll",
               description = "Roll a solo event with CE Assistant!",
               guild = guild)
@@ -273,7 +282,10 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
     await Mongo_Reader.dump_user(user=user)
     return await interaction.followup.send(embed=embeds[0], view=view)
 
-# on ready function
+
+
+
+# ---- on ready function ----
 @client.event
 async def on_ready() :
     await tree.sync(guild = guild)
