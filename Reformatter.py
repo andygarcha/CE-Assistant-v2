@@ -72,7 +72,6 @@ def reformat_game(dict) -> CEGame :
     "Total Owners" : 256
     """
 
-    print(dict)
 
     objectives : list[CEObjective] = []
     for p in dict['Primary Objectives'] :

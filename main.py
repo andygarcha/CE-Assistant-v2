@@ -55,8 +55,10 @@ guild = discord.Object(id=guild_id)
 @tree.command(name='test', description='test',guild=guild)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
-    import Reformatter
-    b= await Reformatter.reformat_database_name()
+    
+    games = await Mongo_Reader.get_mongo_games()
+    print(games[0].to_dict())
+
     await interaction.followup.send("silly finished!")
 
 

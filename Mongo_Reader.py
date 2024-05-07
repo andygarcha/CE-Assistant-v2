@@ -225,7 +225,7 @@ def _mongo_to_game(game : dict) -> CEGame :
     # go through objectives first!
     game_objectives : list[CEObjective] = []
     if 'Objectives' in game :
-        for objective in game :
+        for objective in game['Objectives'] :
             game_objective = _mongo_to_game_objective(
                 objective
             )
