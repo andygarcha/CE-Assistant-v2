@@ -3,31 +3,53 @@ from typing import Literal
 
 import hm
 
+multi_stage_rolls = Literal["Two Week T2 Streak", 
+                            "Two \"Two Week T2 Streak\" Streak", 
+                            "Fourward Thinking"]
+
 roll_cooldowns = {
     'Destiny Alignment' : hm.months_to_days(1),
     'Soul Mates' : {
-        1 : 7*10,
-        2 : 7*8,
-        3 : 7*6,
-        4 : 7*4,
-        5 : 7*2
+        'Tier 1' : 7*10,
+        'Tier 2' : 7*8,
+        'Tier 3' : 7*6,
+        'Tier 4' : 7*4,
+        'Tier 5' : 7*2
     },
     'Teamwork Makes the Dream Work' : hm.months_to_days(3),
     'Winner Takes All' : hm.months_to_days(3),
     'Game Theory' : hm.months_to_days(1),
+
     'One Hell of a Day' : 14,
     'One Hell of a Week' : hm.months_to_days(1),
     'One Hell of a Month' : hm.months_to_days(3),
     'Two Week T2 Streak' : None,
-    'Two "Two Week T2 Streak" Streak' : 7, #NOTE: this cant be right
+    'Two "Two Week T2 Streak" Streak' : None,
     'Never Lucky' : hm.months_to_days(1),
     'Triple Threat' : hm.months_to_days(3),
     'Let Fate Decide' : hm.months_to_days(3),
-    'Fourward Thinking' : 0 #NOTE: what the fuck do i do here
+    'Fourward Thinking' : None
 }
 
 roll_due_times = {
+    'One Hell of a Day' : 1,
+    'One Hell of a Week' : 7,
+    'One Hell of a Month' : hm.months_to_days(1),
+    'Two Week T2 Streak' : 7,
+    'Two "Two Week T2 Streak" Streak' : 7,
+    'Never Lucky' : None,
+    'Triple Threat' : hm.months_to_days(1),
+    'Let Fate Decide' : None,
+    'Fourward Thinking' : 7, #NOTE: this is dynamically updated later
 
+    'Destiny Alignment' : None,
+    'Soul Mates' : {
+        'Tier 1' : 2,
+        'Tier 2' : 10,
+        'Tier 3' : hm.months_to_days(1),
+        'Tier 4' : hm.months_to_days(2),
+        'Tier 5' : None
+    }
 }
 
 class CERoll:
@@ -49,11 +71,6 @@ class CERoll:
     partner_ce_id : `str` (optional)
         The Challenge Enthusiast ID of the
         partner for a co-op roll.
-
-    cooldown_date : `int` (only for storage purposes)
-        Do not use this when instantiating a new roll.\n
-        Only to be used when storing and grabbing
-        this roll from the MongoDB database.
 
     init_time : `int`
         The unix timestamp of the time this
@@ -121,6 +138,7 @@ class CERoll:
         else :
             self._completed_time = completed_time
 
+        # set the rerolls to the correct amount
         if rerolls == None :
             self._rerolls = None
         else :
@@ -188,6 +206,21 @@ class CERoll:
         to this roll's games array."""
         self._games.append(game)
 
+    def initiate_next_stage(self) -> None :
+        """Resets this roll's' variables for the next
+        stage for a multi-stage roll."""
+        if self.get_roll_name() not in multi_stage_rolls : return
+
+        if self.get_roll_name() == "Two Week T2 Streak" :
+            self._due_time = hm.get_unix(days=7)
+        elif self.get_roll_name() == "Two \"Two Week T2 Streak\" Streak" :
+            self._due_time = hm.get_unix(days=7)
+        elif self.get_roll_name() == "Fourward Thinking" :
+            self._due_time = hm.get_unix(
+                days=len(self.get_games()*7)
+            )
+
+
 
 
     # ------ other methods ------
@@ -206,13 +239,9 @@ class CERoll:
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if self.get_roll_name() not in [
-            "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Fourward Thinking"
-        ] :
-            return False
+        if self.get_roll_name() not in multi_stage_rolls : return False
         
         return self.get_due_time() == None or self.get_due_time() == 0
-        
     
     def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
@@ -243,7 +272,7 @@ class CERoll:
         user = hm.get_item_from_list(self.get_user_ce_id(), users)
 
         return NotImplemented
-        """
+        
         # one hell of a month
         if(self.get_roll_name() == "One Hell of a Month") :
             categories : dict[str, int] = {}
@@ -278,7 +307,7 @@ class CERoll:
             return main_won or partner_won
         
         #TODO: finish this function
-        """
+        
         
 
     def to_dict(self) -> dict :

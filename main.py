@@ -109,7 +109,6 @@ async def register(interaction : discord.Interaction, ce_id : str) :
                     user_ce_id=ce_user.get_ce_id(),
                     games=None,
                     partner_ce_id=None,
-                    cooldown_days=None,
                     init_time=None,
                     due_time=None,
                     completed_time=None,

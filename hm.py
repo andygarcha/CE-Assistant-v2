@@ -81,6 +81,7 @@ solo_roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One 
 coop_roll_event_names = Literal["Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
 
+
 banned_games = [
     "Serious Sam HD: The Second Encounter", 
     "Infinite Air with Mark McMorris", 
@@ -126,7 +127,7 @@ final_ce_icon = "https://i.imgur.com/O9J7fg2.png"
 """The icon made by @crappy for CE Assistant."""
 
 objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
-platform_names = Literal['steam']
+platform_names = Literal['steam', 'retroachievements']
 
 def get_current_unix() -> int :
     """Gets the current time in unix timestamp."""
@@ -239,6 +240,14 @@ def get_rollable_game(
     for game in database_name :
         if category != None and game.get_category() not in category :
             "Incorrect category."
+            continue
+
+        if game.get_platform() != "steam" :
+            "Non-steam game."
+            continue
+
+        if game.is_unfinished() :
+            "Game is currently under construction."
             continue
 
         if game.get_tier() != f"Tier {tier_number}" :

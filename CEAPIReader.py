@@ -110,6 +110,14 @@ def get_api_games_full() -> list[CEGame] | None :
     except : 
         raise FailedScrapeException(f"Scraping failed from api/games/full " 
                                     + f"on games {(i-1)*100} through {i*100-1}.")
+    
+
+
+    """"
+    BIG ASS FUCKING NOTE
+    you are going to have to skip some of the games if they're not `isFinished`
+    the bot should effectively freeze the game in place. just copy it over from when it existed last.
+    """
 
     # Step 2: iterate through the new json and construct an array of CEGame's.
     all_games : list[CEGame] = []
@@ -150,6 +158,62 @@ def get_api_users_all() -> list[CEUser] | None :
 
 
 
+def _ce_to_user(json_response : dict) -> CEUser :
+    # Go through all of their games and make CEUserGame's out of them.
+    user_games : list[CEUserGame] = []
+    for game in json_response['userGames'] :
+        user_games.append(
+            CEUserGame(
+                ce_id=game['game']['id'],
+                user_objectives=[],
+                name=game['game']['name']
+            )
+        )
+
+
+    """ok
+    ok now yal
+    if a game turns not `isFinished`
+    then copy the game over from mongo if it's there
+    same thing with the objectives
+    that's just the way it is now
+    if it doesn't exist there anywya then skip!
+    """
+        
+    # Now go through all their objectives and make CEUserObjective's out of them.
+    for objective in json_response['userObjectives'] :
+        if not objective['partial'] :
+            user_points = objective['objective']['points']
+        else :
+            user_points = objective['objective']['pointsPartial']
+
+        new_objective = CEUserObjective(
+            ce_id = objective['objective']['id'],
+            game_ce_id=objective['objective']['gameId'],
+            type='Community' if objective['objective']['community'] else 'Primary',
+            user_points=user_points,
+            name=objective['objective']['name']
+        )
+
+        # now that we have the objective
+        # we need to assign it to the correct games
+        for ce_game in user_games :
+            if ce_game.get_ce_id() == new_objective.get_game_ce_id() : 
+                ce_game.add_user_objective(new_objective)
+                break
+
+    return CEUser(
+        discord_id=0,
+        ce_id = json_response['id'],
+        casino_score = 0,
+        owned_games = user_games,
+        current_rolls = [],
+        completed_rolls = [],
+        pending_rolls = [],
+        cooldowns = []
+    )
+
+
 
 def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEGame | None :
     """Returns either a :class:`CEUser` or a :class:`CEGame` 
@@ -158,53 +222,9 @@ def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | C
     if type == "user" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/user/{ce_id}")).text)
         if len(json_response) == 0 : return None
-
-        # Go through all of their games and make CEUserGame's out of them.
-        user_games : list[CEUserGame] = []
-        for game in json_response['userGames'] :
-            user_games.append(
-                CEUserGame(
-                    ce_id=game['game']['id'],
-                    user_primary_objectives=[],
-                    user_community_objectives=[],
-                    name=game['game']['name']
-                )
-            )
-            
-        # Now go through all their objectives and make CEUserObjective's out of them.
-        for objective in json_response['userObjectives'] :
-            if not objective['partial'] :
-                user_points = objective['objective']['points']
-            else :
-                user_points = objective['objective']['pointsPartial']
-
-            new_objective = CEUserObjective(
-                ce_id = objective['objective']['id'],
-                game_ce_id=objective['objective']['gameId'],
-                type='Community' if objective['objective']['community'] else 'Primary',
-                user_points=user_points,
-                name=objective['objective']['name']
-            )
-
-            # now that we have the objective
-            # we need to assign it to the correct games
-            for ce_game in user_games :
-                if ce_game.get_ce_id() == new_objective.get_game_ce_id() : 
-                    ce_game.add_user_objective(new_objective)
-                    break
-
-        return CEUser(
-            discord_id=0,
-            ce_id = json_response['id'],
-            casino_score = 0,
-            owned_games = user_games,
-            current_rolls = [],
-            completed_rolls = [],
-            pending_rolls = [],
-            cooldowns = []
-        )
+        return _ce_to_user(json_response=json_response)
 
     elif type == "game" :
         json_response = json.loads((requests.get(f"https://cedb.me/api/game/{ce_id}")).text)
         if len(json_response) == 0 : return None
-        return _ce_to_game(json_response)
+        return _ce_to_game(json_response=json_response)

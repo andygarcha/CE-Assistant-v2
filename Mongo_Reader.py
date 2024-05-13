@@ -77,7 +77,7 @@ def _mongo_to_user_roll(roll : dict) -> CERoll :
     """Turns the MongoDB dictionary for a roll event 
     into a :class:`CERoll` object."""
     event_name, partner, games, init_time, due_time = (None,)*5
-    completed_time, cooldown_days, rerolls, user_id = (None,)*4
+    completed_time, rerolls, user_id = (None,)*3
     if 'Event Name' in roll : event_name = roll['Event Name']
     if 'User ID' in roll : user_id = roll['User ID']
     if 'Partner ID' in roll : partner = roll['Partner']
@@ -85,7 +85,6 @@ def _mongo_to_user_roll(roll : dict) -> CERoll :
     if 'Init Time' in roll : init_time = roll['Init Time']
     if 'Due Time' in roll : due_time = roll['Due Time']
     if 'Completed Time' in roll : completed_time = roll['Completed Time']
-    if 'Cooldown Days' in roll : cooldown_days = roll['Cooldown Days']
     if 'Rerolls' in roll : rerolls = roll['Rerolls']
 
     return CERoll(
@@ -93,7 +92,6 @@ def _mongo_to_user_roll(roll : dict) -> CERoll :
         user_ce_id=user_id,
         games=games,
         partner_ce_id=partner,
-        cooldown_days=cooldown_days,
         init_time=init_time,
         due_time=due_time,
         completed_time=completed_time,

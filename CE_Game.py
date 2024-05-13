@@ -91,6 +91,10 @@ class CEGame:
         """Returns the unix timestamp of the last time this game was updated."""
         return self._last_updated
     
+    def get_raw_ce_data(self) -> dict :
+        "Returns the raw CE data."
+        return json.loads(requests.get(f'https://cedb.me/api/game/{self.get_ce_id()}').text)
+    
     # ----------- setters -----------
 
     def add_objective(self, objective : CEObjective) :
@@ -105,18 +109,19 @@ class CEGame:
 
     # --------- helper functions ------------
 
-    def is_special(self) -> bool :
-        """Returns true if the game is a 'Special' game,
-        like -Challenge Enthusiasts- or Puzzle Games."""
-        #TODO: finish this function
-
     def is_t0(self) -> bool :
         """Returns true if the game is a Tier 0."""
         return self.get_total_points() == 0
     
+    def is_unfinished(self) -> bool :
+        "Returns true if `isFinished` is listed as `false` on the site."
+        return not self.get_raw_ce_data()['isFinished']
+    
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
         total_points = self.get_total_points()
+        # if total_points >= 1000 : return "Tier 7"
+        # if total_points >= 500 : return "Tier 6"
         if total_points >= 200 : return "Tier 5"
         elif total_points >= 80 : return "Tier 4"
         elif total_points >= 40 : return "Tier 3"
@@ -139,6 +144,7 @@ class CEGame:
                 return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
             else :
                 return None
+        return None
             
     def get_steamhunters_data(self) -> int | None :
         """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
@@ -147,7 +153,7 @@ class CEGame:
         json_response = json.loads(api_response.text)
 
         if 'medianCompletionTime' in json_response :
-            return int(json_response['medianCompletionTime'] / 60)
+            return int(int(json_response['medianCompletionTime']) / 60)
         else :
             return None
         
@@ -164,11 +170,20 @@ class CEGame:
         
     def get_completion_data(self) -> dict :
         """Returns the completion data for this game."""
-        #NOTE: this is dumb and terrible. please get laura or folkius to fix this
-        all_games = json.loads(requests.get('https://cedb.me/api/games').text)
-        for game in all_games :
-            if game['id'] == self.get_ce_id() : return game['completion']
-        return None
+        json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.get_ce_id()}/leaderboard').text)
+        completions, started, owners = (0,)*3
+
+        total_points = self.get_total_points()
+        for user in json_response :
+            if user['points'] == total_points : completions += 1
+            elif user['points'] != 0 : started += 1
+            owners += 1
+        
+        return {
+            'completed' : completions,
+            'started' : started,
+            'total' : owners
+        }
 
     def update(self, json_response : 'CEGame' = None) -> str | None :
         import CEAPIReader
@@ -193,6 +208,7 @@ class CEGame:
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
             f"<:CE_points:1128420207329816597>")
         #TODO: finish this function
+        return NotImplemented
 
 
     def has_an_uncleared(self) -> bool :
