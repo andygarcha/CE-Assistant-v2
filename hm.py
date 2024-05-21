@@ -202,11 +202,11 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
     # -- old unix NOT passed --
     # return right now
     if(days == "now") : return int(time.mktime((datetime.datetime.now()).timetuple()))
-    # return minutes
+    # return the minutes
     elif (minutes != -1) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
-    # return months
+    # return the months
     elif (months != -1) : return get_unix(months_to_days(months))
-    # return days
+    # return the days
     else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))
 
 
