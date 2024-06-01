@@ -242,7 +242,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                         price_limit=20,
                         tier_number=2,
                         user=user,
-                        already_rolled_games=r.get_games()
+                        already_rolled_games=r.games
                     ))
                     
                 

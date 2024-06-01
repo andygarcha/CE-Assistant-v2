@@ -27,14 +27,14 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
         color = 0x000000
     )
     embeds[0].set_footer(
-        text = f'Page 1 of {str(len(roll.get_games()) + 1)}',
+        text = f'Page 1 of {str(len(roll.games) + 1)}',
         icon_url = hm.final_ce_icon
     )
     embeds[0].set_author(name="Challenge Enthusiasts")
 
     # -- set up description --
     description = "__Rolled Games__\n"
-    for i, id in roll.get_games() :
+    for i, id in roll.games :
         game : CEGame = hm.get_item_from_list(id, database_name)
         description += f"{i + 1}. {game.get_game_name()}\n"
     
@@ -50,10 +50,10 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
     embeds[0].description = description
 
     # -- now grab all the other embeds --
-    for i, id in enumerate(roll.get_games()) :
+    for i, id in enumerate(roll.games) :
         embeds.append(get_game_embed(id))
         embeds[i+1].set_footer(
-            text=f"Page {i+2} of {len(roll.get_games()) + 1}",
+            text=f"Page {i+2} of {len(roll.games) + 1}",
             icon_url = hm.final_ce_icon
         )
 

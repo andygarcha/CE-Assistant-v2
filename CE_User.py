@@ -27,15 +27,18 @@ class CEUser:
 
     # ------------ getters -------------
 
-    def get_ce_id(self) :
+    @property
+    def ce_id(self) :
         """Returns the Challenge Enthusiasts ID associated with this user."""
         return self._ce_id
     
-    def get_discord_id(self) :
+    @property
+    def discord_id(self) :
         """Returns the Discord ID associated with this user."""
         return self._discord_id
     
-    def get_casino_score(self) :
+    @property
+    def casino_score(self) :
         """Returns the casino score associated with this user."""
         return self._casino_score
 
@@ -59,15 +62,16 @@ class CEUser:
         elif total_points >= 50 : return "D Rank"
         else : return "E Rank"
 
-    def get_owned_games(self):
+    @property
+    def owned_games(self):
         """Returns a list of :class:`CEUserGame`s that this user owns."""
         return self._owned_games
     
     def get_owned_game(self, ce_id : str) -> CEUserGame | None :
         """Returns the :class:`CEUserGame` object associated 
         `ce_id`, or `None` if this user doesn't own it."""
-        for game in self.get_owned_games() :
-            if game.get_ce_id() == ce_id : return game
+        for game in self.owned_games :
+            if game.ce_id == ce_id : return game
         return None
 
     def get_completed_games(self) -> list[CEUserGame] :
@@ -75,27 +79,42 @@ class CEUser:
         completed_games : list[CEUserGame] = []
 
         for game in self._owned_games :
-            if game.get_regular_game().get_total_points() == game.get_user_points() : 
+            if game.get_regular_game().total_points == game.get_user_points() : 
                 completed_games.append(game)
         
         return completed_games
     
-    def get_current_rolls(self) -> list[CERoll] :
+    def get_completed_games_2(self, database_name : list[CEGame]) -> list[str] :
+        """Returns a list of :class:`CEGame`s that this user has completed."""
+        completed_games : list[CEGame] = []
+        for game in database_name :
+            for user_game in self.owned_games :
+                if game.ce_id == user_game.ce_id and game.total_points == user_game.get_user_points() :
+                    completed_games.append(game)
+        return completed_games
+            
+    
+    
+    @property
+    def current_rolls(self) -> list[CERoll] :
         """Returns an array of :class:`CERoll`'s 
         that this user is currently participating in."""
         return self._current_rolls
 
-    def get_completed_rolls(self) -> list[CERoll] :
+    @property
+    def completed_rolls(self) -> list[CERoll] :
         """Returns an array of :class:`CERoll`'s
         that this user has previously completed."""
         return self._completed_rolls
     
-    def get_cooldowns(self) -> list[CECooldown] :
+    @property
+    def cooldowns(self) -> list[CECooldown] :
         """Returns an array of :class:`CECooldown`'s
         that this user currently has."""
         return self._cooldowns
     
-    def get_pending_rolls(self) -> list[CECooldown] :
+    @property
+    def pending_rolls(self) -> list[CECooldown] :
         """Returns an array of :class:`CECooldown`'s
         that this user stores in their Pending Rolls section."""
         return self._pending_rolls
@@ -103,6 +122,7 @@ class CEUser:
 
     # ----------- setters -----------
 
+    @discord_id.setter
     def set_discord_id(self, input : int) -> None :
         """Sets this object's Discord ID according to `input`."""
         self._discord_id = input
@@ -128,41 +148,41 @@ class CEUser:
 
     def has_completed_roll(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user has completed `roll_name`."""
-        for event in self.get_completed_rolls() :
-            if event.get_roll_name() == roll_name : return True
+        for event in self.completed_rolls :
+            if event.roll_name == roll_name : return True
         return False
     
     def has_current_roll(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user is currently working on `roll_name`."""
-        for event in self.get_current_rolls() :
-            if event.get_roll_name() == roll_name : return True
+        for event in self.current_rolls :
+            if event.roll_name == roll_name : return True
         return False
     
     def has_cooldown(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user is currently on cooldown for `roll_name`."""
-        for cooldown in self.get_cooldowns() :
-            if cooldown.get_roll_name() == roll_name : return True
+        for cooldown in self.cooldowns :
+            if cooldown.roll_name == roll_name : return True
         return False
     
     def get_cooldown_time(self, roll_name : hm.roll_event_names) -> int :
         """Returns the unix timestamp of the date `roll_name`'s cooldown ends
         (or `None` if not applicable.)"""
-        for cooldown in self.get_cooldowns() :
-            if cooldown.get_roll_name() == roll_name : return cooldown.get_end_time()
+        for cooldown in self.cooldowns :
+            if cooldown.roll_name == roll_name : return cooldown.end_time
         return None
     
     def has_pending(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user is currently on pending for `roll_name`."""
-        for pending in self.get_pending_rolls() :
-            if pending.get_roll_name() == roll_name : return True
+        for pending in self.pending_rolls :
+            if pending.roll_name == roll_name : return True
         return False
     
 
     def owns_game(self, game_id : str) -> bool :
         """Returns true if this user owns the game with 
         Challenge Enthusiast ID `game_id`."""
-        for game in self.get_owned_games() :
-            if game.get_ce_id() == game_id : return True
+        for game in self.owned_games :
+            if game.ce_id == game_id : return True
         return False
     
     
@@ -173,7 +193,7 @@ class CEUser:
         The tuples will have an x value of 'casino' or 'log',
         and a y value of the message to be sent."""
         if json_response == None : 
-            json_response = CEAPIReader.get_api_page_data('user', self.get_ce_id)
+            json_response = CEAPIReader.get_api_page_data('user', self.ce_id)
         elif type(json_response) == dict :
             json_response = CEAPIReader._ce_to_game(json_response)
         return NotImplemented
@@ -186,25 +206,25 @@ class CEUser:
     def to_dict(self) -> dict :
         """Returns this user as a dictionary as used in the MongoDB database."""
         owned_games_array : list[dict] = []
-        for game in self.get_owned_games() :
+        for game in self.owned_games :
             owned_games_array.append(game.to_dict())
         current_rolls_array : list[CERoll] = []
-        for roll in self.get_current_rolls() :
+        for roll in self.current_rolls :
             current_rolls_array.append(roll.to_dict())
         completed_rolls_array : list[CERoll] = []
-        for roll in self.get_completed_rolls() :
+        for roll in self.completed_rolls :
             completed_rolls_array.append(roll.to_dict())
         cooldowns_array : list[CECooldown] = []
-        for cooldown in self.get_cooldowns() :
+        for cooldown in self.cooldowns :
             cooldowns_array.append(cooldown.to_dict())
         pendings_array : list[CECooldown] = []
-        for pending in self.get_pending_rolls() :
+        for pending in self.pending_rolls :
             pendings_array.append(pending.to_dict())
 
         user_dict = {
-            "CE ID" : self.get_ce_id(),
-            "Discord ID" : self.get_discord_id(),
-            "Casino Score" : self.get_casino_score(),
+            "CE ID" : self.ce_id,
+            "Discord ID" : self.discord_id,
+            "Casino Score" : self.casino_score,
             "Owned Games" : owned_games_array,
             "Current Rolls" : current_rolls_array,
             "Completed Rolls" : completed_rolls_array,
@@ -213,3 +233,34 @@ class CEUser:
         }
 
         return user_dict
+    
+    def __str__(self) :
+        "Returns the string representation about this CEUser."
+
+        owned_games_array : list[dict] = []
+        for game in self.owned_games :
+            owned_games_array.append(game.to_dict())
+        current_rolls_array : list[CERoll] = []
+        for roll in self.current_rolls :
+            current_rolls_array.append(roll.to_dict())
+        completed_rolls_array : list[CERoll] = []
+        for roll in self.completed_rolls :
+            completed_rolls_array.append(roll.to_dict())
+        cooldowns_array : list[CECooldown] = []
+        for cooldown in self.cooldowns :
+            cooldowns_array.append(cooldown.to_dict())
+        pendings_array : list[CECooldown] = []
+        for pending in self.pending_rolls :
+            pendings_array.append(pending.to_dict())
+
+        return (
+            "-- CEUser --" +
+            "\nCE ID: " + self.ce_id +
+            "\nDiscord ID: " + self.discord_id +
+            "\nCasino Score: " + self.casino_score +
+            "\nOwned Games: " + str(owned_games_array) +
+            "\nCurrent Rolls: " + str(current_rolls_array) +
+            "\nCompleted Rolls: " + str(completed_rolls_array) +
+            "\nCooldowns: " + str(cooldowns_array) +
+            "\nPendings: " + str(pendings_array)
+        )

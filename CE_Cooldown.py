@@ -1,4 +1,3 @@
-from CE_Roll import CERoll
 import hm
 class CECooldown :
     """An object that represents a Challenge Enthusiast roll cooldown."""
@@ -10,11 +9,13 @@ class CECooldown :
 
     # ---------- getters ----------
 
-    def get_roll_name(self) -> str :
+    @property
+    def roll_name(self) -> str :
         """Returns the event name for this cooldown."""
         return self._roll_name
     
-    def get_end_time(self) -> int :
+    @property
+    def end_time(self) -> int :
         """Returns the end time for this cooldown as a unix timestamp."""
         return self._end_time
     
@@ -22,11 +23,19 @@ class CECooldown :
 
     def is_expired(self) -> bool :
         """Returns true if this cooldown is ready to be lifted."""
-        return self.get_end_time() < hm.get_current_unix()
+        return self.end_time < hm.get_current_unix()
     
     def to_dict(self) -> dict :
         """Returns this object as a dictionary."""
         return {
-            'Event Name' : self.get_roll_name(),
-            'End Time' : self.get_end_time()
+            'Event Name' : self.roll_name,
+            'End Time' : self.end_time
         }
+    
+    def __str__(self) :
+        "Returns the string representation of this CECooldown."
+        return (
+            "-- CECooldown --" +
+            "\nCooldown Name: " + self.roll_name +
+            "\nEnd Time: " + self.end_time
+        )

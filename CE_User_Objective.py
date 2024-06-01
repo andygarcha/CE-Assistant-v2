@@ -17,28 +17,34 @@ class CEUserObjective:
     
     # -------- getters ----------
 
-    def get_user_points(self) -> int :
+    @property
+    def user_points(self) -> int :
         """Returns the number of points this user has for this objective."""
         return self._user_points
     
-    def get_ce_id(self) -> str :
+    @property
+    def ce_id(self) -> str :
         """Returns the Challenge Enthusiast ID related to this objective."""
         return self._ce_id
     
-    def get_type(self) -> hm.objective_types :
+    @property
+    def type(self) -> hm.objective_types :
         """Returns the type of this Objective (e.g. Community, Primary)."""
         return self._type
     
-    def get_game_ce_id(self) -> str :
+    @property
+    def game_ce_id(self) -> str :
         """Returns the Challenge Enthusiast ID related to the game this objective belongs to."""
         return self._game_ce_id
     
-    def get_name(self) -> str :
+    @property
+    def name(self) -> str :
         """Returns the name of this objective."""
         return self._name
     
     # ---------- setters -------------
     
+    @name.setter
     def set_name(self, name : str) -> None :
         """Sets the name of this objective to `name`."""
         self._name = name
@@ -56,10 +62,20 @@ class CEUserObjective:
             "User Points" : 20
         }"""
         d = {
-            'Name' : self.get_name(),
-            'CE ID' : self.get_ce_id(),
-            'Game CE ID' : self.get_game_ce_id(),
-            'Type' : self.get_type(),
-            'User Points' : self.get_user_points()
+            'Name' : self.name,
+            'CE ID' : self.ce_id,
+            'Game CE ID' : self.game_ce_id,
+            'Type' : self.type,
+            'User Points' : self.user_points
         }
         return d
+    
+    def __str__(self) :
+        return (
+            "-- CEUserObjective --" +
+            "\nObjective Name: " + self.name +
+            "\nObjective CE ID: " + self.ce_id +
+            "\nGame CE ID: " + self.game_ce_id +
+            "\nObjective Type: " + self.type +
+            "\nUser Points: " + self.user_points
+        )

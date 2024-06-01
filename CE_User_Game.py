@@ -21,14 +21,16 @@ class CEUserGame():
         """Returns the total number of points this user has in this game."""
         total_points = 0
         for objective in self.get_user_primary_objectives() :
-            total_points += objective.get_user_points()
+            total_points += objective.user_points
         return total_points
     
-    def get_ce_id(self) :
+    @property
+    def ce_id(self) :
         """Returns the Challenge Enthusiast ID associated with this game."""
         return self._ce_id
     
-    def get_user_objectives(self) :
+    @property
+    def user_objectives(self) :
         """Returns all user Objectives in this game."""
         return self._user_objectives
     
@@ -36,8 +38,8 @@ class CEUserGame():
         """Returns the array of Primary :class:`CEUserObjective`'s 
         associated with this game."""
         p = []
-        for obj in self.get_user_objectives() :
-            if obj.get_type() == "Primary" :
+        for obj in self.user_objectives :
+            if obj.type == "Primary" :
                 p.append(obj)
         return p
     
@@ -45,12 +47,13 @@ class CEUserGame():
         """Returns the array of Community :class:`CEUserObjective`'s 
         associated with this game."""
         p = []
-        for obj in self.get_user_objectives() :
-            if obj.get_type() == "Community" :
+        for obj in self.user_objectives :
+            if obj.type == "Community" :
                 p.append(obj)
         return p
     
-    def get_name(self) :
+    @property
+    def name(self) :
         """Returns the name of this game."""
         return self._name
     
@@ -65,7 +68,7 @@ class CEUserGame():
     def get_regular_game(self) -> CEGame :
         """Returns the regular :class:`CEGame` object associated with this game."""
         import CEAPIReader
-        return CEAPIReader.get_api_page_data("game", self.get_ce_id())
+        return CEAPIReader.get_api_page_data("game", self.ce_id)
     
     def is_completed(self) -> bool :
         """Returns true if this game has been completed, false if not."""
@@ -73,7 +76,7 @@ class CEUserGame():
 
     def get_category(self) -> str :
         """Returns the category of this game."""
-        return self.get_regular_game().get_category()
+        return self.get_regular_game().category
     
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.
@@ -102,10 +105,19 @@ class CEUserGame():
         ```
         """
         objectives : list[dict] = []
-        for objective in self.get_user_objectives() :
+        for objective in self.user_objectives :
             objectives.append(objective.to_dict())
         return {
-            'Name' : self.get_name(),
-            'CE ID' : self.get_ce_id(),
+            'Name' : self.name,
+            'CE ID' : self.ce_id,
             'Objectives' : objectives
         }
+    
+    def __str__(self) :
+        "Returns a string version of this CEUserGame."
+        return (
+            "-- CEUserGame --" +
+            "\nName: " + self.name +
+            "\nGame CE ID: " + self.ce_id +
+            "\nObjectives: [" + ("\n" + str(obj)) for obj in self.user_objectives + "]"
+        )

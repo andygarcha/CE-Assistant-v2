@@ -146,37 +146,45 @@ class CERoll:
 
     # ------- getters -------
 
-    def get_roll_name(self) -> hm.roll_event_names :
+    @property
+    def roll_name(self) -> hm.roll_event_names :
         """Get the name of the roll event."""
         return self._roll_name
     
-    def get_user_ce_id(self) -> str :
+    @property
+    def user_ce_id(self) -> str :
         """Get the Challenge Enthusiast ID of the roller."""
         return self._user_ce_id
     
-    def get_init_time(self):
+    @property
+    def init_time(self):
         """Get the unix timestamp of the time the roll was, well, rolled."""
         return self._init_time
     
-    def get_due_time(self):
+    @property
+    def due_time(self):
         """Get the unix timestamp of the time the roll will end."""
         return self._due_time
     
-    def get_completed_time(self):
+    @property
+    def completed_time(self):
         """Get the unix timestamp of the time the roll was completed 
         (will be `None` if active)."""
         return self._completed_time
     
-    def get_games(self) :
+    @property
+    def games(self) :
         """Get the list of games as an array of their Challenge Enthusiast IDs."""
         return self._games
     
-    def get_partner_ce_id(self) :
+    @property
+    def partner_ce_id(self) :
         """Get the Challenge Enthusiast ID of the partner in this roll 
         (if one exists)."""
         return self._partner_ce_id
     
-    def get_rerolls(self) :
+    @property
+    def rerolls(self) :
         """If applicable, get the number of rerolls allowed for this roll event."""
         return self._rerolls
     
@@ -187,7 +195,8 @@ class CERoll:
         given by `increase`."""
         self._rerolls += increase
 
-    def set_completed_time(self, current_time : int) -> None :
+    @completed_time.setter
+    def completed_time(self, current_time : int) -> None :
         """Sets the time of completion for this roll event
         given by `current_time`."""
         self._completed_time = current_time
@@ -197,7 +206,8 @@ class CERoll:
         by `increase_in_seconds` seconds."""
         self._due_time += increase_in_seconds
 
-    def set_due_time(self, days : int) -> None :
+    @due_time.setter
+    def due_time(self, days : int) -> None :
         """Sets the due time for `days` days from now."""
         self._due_time = hm.get_unix(days=days)
 
@@ -209,15 +219,15 @@ class CERoll:
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
-        if self.get_roll_name() not in multi_stage_rolls : return
+        if self.roll_name not in multi_stage_rolls : return
 
-        if self.get_roll_name() == "Two Week T2 Streak" :
-            self._due_time = hm.get_unix(days=7)
-        elif self.get_roll_name() == "Two \"Two Week T2 Streak\" Streak" :
-            self._due_time = hm.get_unix(days=7)
-        elif self.get_roll_name() == "Fourward Thinking" :
-            self._due_time = hm.get_unix(
-                days=len(self.get_games()*7)
+        if self.roll_name == "Two Week T2 Streak" :
+            self.due_time = hm.get_unix(days=7)
+        elif self.roll_name == "Two \"Two Week T2 Streak\" Streak" :
+            self.due_time = hm.get_unix(days=7)
+        elif self.roll_name == "Fourward Thinking" :
+            self.due_time = hm.get_unix(
+                days= len(self.games)*7
             )
 
 
@@ -227,25 +237,59 @@ class CERoll:
 
     def is_co_op(self) -> bool :
         """Returns true if this roll is co-op."""
-        return self.get_partner_ce_id() != None and self.get_partner_ce_id() != ""
+        return self.partner_ce_id != None and self.partner_ce_id != ""
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
-        return self.get_due_time() < hm.get_current_unix()
+        return self.due_time < hm.get_current_unix()
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
-        return self.get_due_time() != None
+        return self.due_time != None
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if self.get_roll_name() not in multi_stage_rolls : return False
+        if self.roll_name not in multi_stage_rolls : return False
         
-        return self.get_due_time() == None or self.get_due_time() == 0
+        return self.due_time == None or self.due_time == 0
     
-    def get_win_message(self) -> str :
+    async def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
         #TODO: finish this function
+        import Mongo_Reader
+        from CE_User import CEUser
+        from CE_Game import CEGame
+
+        # pull the databases
+        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+
+        # and grab the objects
+        user : CEUser = hm.get_item_from_list(self.user_ce_id, database_user)
+        if self.is_co_op() : 
+            partner : CEUser = hm.get_item_from_list(self.partner_ce_id, database_user)
+        else :
+            partner = None
+        
+        if self.roll_name == "Destiny Alignment" :
+            return (
+                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
+                "You have both completed Destiny Alignment together." +
+                ("\n- " + hm.get_item_from_list(game, database_name).game_name for game in self.games)
+            )
+        elif self.roll_name == "Soul Mates" :
+            return (
+                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
+                "You have both completed Soul Mates together." +
+                ("\n- " + hm.get_item_from_list(self.games[0], database_name).game_name) 
+            )
+        elif self.roll_name == "Teamwork Makes the Dream Work" :
+            # get game objects
+            game_objects = [game for game in database_name if game.ce_id in self.games]
+            user_wins = []
+            return (
+
+            )
         return NotImplemented
 
     def get_fail_message(self) -> str :
@@ -256,12 +300,12 @@ class CERoll:
     def calculate_cooldown_date(self) -> int | None :
         """Calculates the date of which the cooldown should be set
         (or `None` if not applicable.)"""
-        if self.get_roll_name() == "Fourward Thinking" :
+        if self.roll_name == "Fourward Thinking" :
             return NotImplemented   #TODO: finish this !
-        elif self.get_roll_name() == "Soul Mates" :
+        elif self.roll_name == "Soul Mates" :
             return NotImplemented   #TODO : finish this too!
         
-        return roll_cooldowns[self.get_roll_name()]
+        return roll_cooldowns[self.roll_name]
 
     async def is_won(self) -> bool :
         """Returns true if this roll instance has been won."""
@@ -269,7 +313,7 @@ class CERoll:
         import Mongo_Reader
         if (self.is_expired()) : return False
         users = await Mongo_Reader.get_mongo_users()
-        user = hm.get_item_from_list(self.get_user_ce_id(), users)
+        user = hm.get_item_from_list(self.user_ce_id, users)
 
         return NotImplemented
         
@@ -279,7 +323,7 @@ class CERoll:
             for category in hm.get_categories() :
                 categories[category] = 0
             for game in main_player.get_owned_games() :
-                if (game.get_ce_id() in self.get_games()
+                if (game.get_ce_id() in self.games
                     and game.is_completed()) :
                     categories[game.get_category()] += 1
             completed_categories = 0
@@ -289,7 +333,7 @@ class CERoll:
 
         # teamwork makes the dream work
         if(self.get_roll_name() == "Teamwork Makes the Dream Work") :
-            for game in self.get_games() :
+            for game in self.games :
                 if ((main_player.get_owned_game(game) == None
                     or not main_player.get_owned_game(game).is_completed())
                     and partner_player.get_owned_game(game) == None
@@ -299,7 +343,7 @@ class CERoll:
 
         # winner takes all
         if(self.get_roll_name() == "Winner Takes All") :
-            game = self.get_games()[0]
+            game = self.games[0]
             main_won = (main_player.get_owned_game(game) != None
                         and main_player.get_owned_game(game).is_completed())
             partner_won = (partner_player.get_owned_game(game) != None
@@ -313,17 +357,18 @@ class CERoll:
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
         d = {}
-        if self.get_roll_name() != None : d['Event Name'] = self.get_roll_name()
-        if self.get_due_time() != None : d['Due Time'] = self.get_due_time()
-        if self.get_games() != None : d['Games'] = self.get_games()
-        if self.get_partner_ce_id() != None : 
-            d['Partner ID'] = self.get_partner_ce_id()
-        if self.get_user_ce_id() != None :
-            d['User ID'] = self.get_user_ce_id()
-        if self.get_init_time() != None :
-            d['Init Time'] = self.get_init_time()
-        if self.get_completed_time() != None :
-            d['Completed Time'] = self.get_completed_time()
-        if self.get_rerolls() != None :
-            d['Rerolls'] = self.get_rerolls()
+        if self.roll_name != None : d['Event Name'] = self.roll_name
+        if self.due_time != None : d['Due Time'] = self.due_time
+        if self.games != None : d['Games'] = self.games
+        if self.partner_ce_id != None : 
+            d['Partner ID'] = self.partner_ce_id
+        if self.user_ce_id != None :
+            d['User ID'] = self.user_ce_id
+        if self.init_time != None :
+            d['Init Time'] = self.init_time
+        if self.completed_time != None :
+            d['Completed Time'] = self.completed_time
+        if self.rerolls != None :
+            d['Rerolls'] = self.rerolls
         return d
+    

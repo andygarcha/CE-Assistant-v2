@@ -156,20 +156,20 @@ def get_item_from_list(ce_id, list) :
     """Return the object who's Challenge Enthusiast
     ID is provided by `ce_id`."""
     for item in list :
-        if item.get_ce_id() == ce_id : return item
+        if item.ce_id == ce_id : return item
     return None
 
 def get_index_from_list(ce_id, list) :
     """Returns the index of the object provided by `ce_id`."""
     for i in range(len(list)) :
-        if list[i].get_ce_id() == ce_id : return i
+        if list[i].ce_id == ce_id : return i
     return -1
 
 def replace_item_in_list(ce_id, item, list) -> list :
     """Replaces the object who's Challenge Enthusiast
     ID is provided by `ce_id`."""
     for i in range(len(list)) :
-        if list[i].get_ce_id() == ce_id :
+        if list[i].ce_id == ce_id :
             list[i] = item
     return list
 
@@ -221,7 +221,8 @@ def get_rollable_game(
         already_rolled_games : list = [],
 ):
     """Takes in a slew of parameters and returns a `str` of 
-    Challenge Enthusiast ID that match the criteria."""
+    Challenge Enthusiast ID that match the criteria.
+    """
     from CE_Game import CEGame
     from CE_User import CEUser
 
@@ -238,11 +239,11 @@ def get_rollable_game(
 
     # ---- iterate through all the games ----
     for game in database_name :
-        if category != None and game.get_category() not in category :
+        if category != None and game.category not in category :
             "Incorrect category."
             continue
 
-        if game.get_platform() != "steam" :
+        if game.platform != "steam" :
             "Non-steam game."
             continue
 
@@ -254,12 +255,12 @@ def get_rollable_game(
             "Incorrect tier."
             continue
 
-        if (user.owns_game(game.get_ce_id()) 
-            and user.get_owned_game(game.get_ce_id()).is_completed()) :
+        if (user.owns_game(game.ce_id) 
+            and user.get_owned_game(game.ce_id).is_completed()) :
             "User has completed game already."
             continue
 
-        if game.get_ce_id() in already_rolled_games :
+        if game.ce_id in already_rolled_games :
             "This game has already been rolled."
             continue
 
@@ -275,10 +276,10 @@ def get_rollable_game(
             "The SteamHunters median-completion-time is too high."
             continue
 
-        if game.get_game_name() in banned_games :
+        if game.game_name in banned_games :
             "This game is in the Banned Games section."
             continue
 
-        return game.get_ce_id()
+        return game.ce_id
     
     return None

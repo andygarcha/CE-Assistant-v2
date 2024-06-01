@@ -33,46 +33,61 @@ class CEObjective:
     
     # -------------- getters -----------------
 
-    def get_point_value(self) -> int :
+    @property
+    def point_value(self) -> int :
         """Returns the total point value of this objective."""
         return self._point_value
         
-    def get_partial_points(self) -> int :
+    @property
+    def partial_points(self) -> int :
         """Returns the number of partial points this game has (`0` or `None` if there are none)."""
         return self._point_value_partial
     
-    def get_ce_id(self) -> str :
+    @property
+    def ce_id(self) -> str :
         """Returns the Challenge Enthusiast ID related to this objective."""
         return self._ce_id
     
-    def get_type(self) -> hm.objective_types:
+    @property
+    def type(self) -> hm.objective_types:
         """Returns the type of objective."""
         return self._objective_type
     
-    def get_description(self) -> str:
+    @property
+    def description(self) -> str:
         """Returns the description associated with this objective."""
         return self._description
     
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Returns the name of this objective."""
         return self._name
     
-    def get_requirements(self) -> str | None:
+    @property
+    def requirements(self) -> str | None:
         """Returns the requirements associated with this objective 
         (or `None` if none exists)."""
         return self._requirements
     
-    def get_achievement_ce_ids(self) -> list[str] | None:
+    @property
+    def achievement_ce_ids(self) -> list[str] | None:
         """Returns a list of Challenge Enthusiast IDs associated 
         with the achievements (or `None` if no achievements exist)."""
         return self._achievement_ce_ids
     
+    @property
+    def game_ce_id(self) -> str :
+        """The Challenge Enthusiast ID associated with this objective's game."""
+        return self._game_ce_id
+    
     # -------------- setters ----------------
 
+    @type.setter
     def set_type(self, type : hm.objective_types) :
         """Takes in the type and sets the objective's type to it."""
         self._objective_type = type
 
+    @game_ce_id.setter
     def set_game_id(self, game_id : str) -> None :
         """Takes in a string `game_id` and sets the local value to such."""
         self._game_ce_id = game_id
@@ -103,16 +118,30 @@ class CEObjective:
             "Partial Points" : 10
         }"""
         objective_dict = {
-            "Name" : self.get_name(),
-            "Point Value" : self.get_point_value(),
-            "Description" : self.get_description(),
-            "CE ID" : self.get_ce_id(),
-            'Type' : self.get_type()
+            "Name" : self.name,
+            "Point Value" : self.point_value,
+            "Description" : self.description,
+            "CE ID" : self.ce_id,
+            'Type' : self.type
         }
-        if self.get_achievement_ce_ids() != None : 
-            objective_dict['Achievements'] = self.get_achievement_ce_ids()
-        if self.get_requirements() != None :
-            objective_dict['Requirements'] = self.get_requirements()
+        if self.achievement_ce_ids != None : 
+            objective_dict['Achievements'] = self.achievement_ce_ids
+        if self.requirements != None :
+            objective_dict['Requirements'] = self.requirements
         if self.has_partial() :
-            objective_dict['Partial Points'] = self.get_partial_points()
+            objective_dict['Partial Points'] = self.partial_points
         return objective_dict
+    
+    def __str__(self) :
+        """String representation of this objective."""
+        return (
+            "--- CEObjective ---" +
+            "\nObjective Name: " + self.name +
+            "\nPoint Value: " + self.point_value +
+            "\nPartial Point Value: " + self.partial_points +
+            "\nObjective CE ID: " + self.ce_id +
+            "\nGame's CE ID: " + self.game_ce_id +
+            "\nObjective Type: " + self.type +
+            "\nAchievements: " + self.achievement_ce_ids +
+            "\nRequirements: " + self.requirements 
+        )

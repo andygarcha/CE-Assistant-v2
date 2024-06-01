@@ -25,7 +25,8 @@ class CEGame:
 
     # ----------- getters -------------
     
-    def get_total_points(self) -> int :
+    @property
+    def total_points(self) -> int :
         """Returns the total number of points this game has."""
         total_points = 0
         for objective in self.get_primary_objectives() :
@@ -33,34 +34,40 @@ class CEGame:
         
         return total_points
     
-    def get_ce_id(self) -> str :
+    @property
+    def ce_id(self) -> str :
         """Returns the Challenge Enthusiasts ID associated with this game."""
         return self._ce_id
     
-    def get_game_name(self) -> str :
+    @property
+    def game_name(self) -> str :
         """Returns the name of this game."""
         return self._game_name
     
-    def get_platform(self) -> hm.platform_names :
+    @property
+    def platform(self) -> hm.platform_names :
         """Returns the platform this game is hosted on."""
         return self._platform
     
-    def get_platform_id(self) -> str :
+    @property
+    def platform_id(self) -> str :
         """Returns the ID value of this game on its platform."""
         return self._platform_id
     
-    def get_category(self) -> str :
+    @property
+    def category(self) -> str :
         """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
         return self._category
     
-    def get_all_objectives(self) -> list[CEObjective] :
-        """Returns the array of all CEObjectives in this game."""
+    @property
+    def all_objectives(self) -> list[CEObjective] :
+        """Returns the array of all `CEObjectives` in this game."""
         return self._objectives
     
     def get_primary_objectives(self) -> list[CEObjective] : 
         """Returns the array of CEObjectives that are Primary."""
         p = []
-        for objective in self.get_all_objectives() :
+        for objective in self.all_objectives :
             if objective.get_type() == "Primary" :
                 p.append(objective)
         return p
@@ -87,7 +94,8 @@ class CEGame:
             if objective.get_ce_id() == ce_id : return objective
         return None
     
-    def get_last_updated(self) -> int :
+    @property
+    def last_updated(self) -> int :
         """Returns the unix timestamp of the last time this game was updated."""
         return self._last_updated
     
@@ -101,7 +109,7 @@ class CEGame:
         """Adds an objective to the game's objective arrays."""
         self._objectives.append(objective)
         
-
+    @last_updated.setter
     def set_last_updated(self, last_updated : int) -> None :
         """Sets the last updated value to `last_updated`."""
         self._last_updated = last_updated
@@ -221,14 +229,14 @@ class CEGame:
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
         objectives = []
-        for objective in self.get_all_objectives() :
+        for objective in self.all_objectives :
             objectives.append(objective.to_dict())
         return {
-            "Name" : self.get_game_name(),
-            "CE ID" : self.get_ce_id(),
-            "Platform" : self.get_platform(),
-            "Platform ID" : self.get_platform_id(),
-            "Category" : self.get_category(),
+            "Name" : self.game_name,
+            "CE ID" : self.ce_id,
+            "Platform" : self.platform,
+            "Platform ID" : self.platform_id,
+            "Category" : self.category,
             "Objectives" : objectives,
-            "Last Updated" : self.get_last_updated()
+            "Last Updated" : self.last_updated
         }
