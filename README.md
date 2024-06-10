@@ -66,3 +66,7 @@ Object-based version of andykasen13/CE-Assistant
 ```
 - private int user_points
 ```
+
+### ideas
+- "other classes" - steamdata, completiondata
+- "other exceptions" - FailedUserUpdateException, FailedGameUpdateException

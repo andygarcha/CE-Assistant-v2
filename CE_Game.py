@@ -25,12 +25,11 @@ class CEGame:
 
     # ----------- getters -------------
     
-    @property
-    def total_points(self) -> int :
+    def get_total_points(self) -> int :
         """Returns the total number of points this game has."""
         total_points = 0
         for objective in self.get_primary_objectives() :
-            total_points += objective.get_point_value()
+            total_points += objective.point_value
         
         return total_points
     
@@ -68,7 +67,7 @@ class CEGame:
         """Returns the array of CEObjectives that are Primary."""
         p = []
         for objective in self.all_objectives :
-            if objective.get_type() == "Primary" :
+            if objective.type == "Primary" :
                 p.append(objective)
         return p
     
@@ -76,14 +75,14 @@ class CEGame:
         """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
         for objective in self.get_primary_objectives() :
-            if objective.get_ce_id() == ce_id : return objective
+            if objective.ce_id == ce_id : return objective
         return None
     
     def get_community_objectives(self) -> list[CEObjective] :
         """Returns the array of CEObjectives that are Community."""
         p = []
-        for objective in self.get_all_objectives() :
-            if objective.get_type() == "Community" :
+        for objective in self.all_objectives :
+            if objective.type == "Community" :
                 p.append(objective)
         return p
     
@@ -91,7 +90,7 @@ class CEGame:
         """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
         for objective in self.get_community_objectives() :
-            if objective.get_ce_id() == ce_id : return objective
+            if objective.ce_id == ce_id : return objective
         return None
     
     @property
@@ -101,7 +100,7 @@ class CEGame:
     
     def get_raw_ce_data(self) -> dict :
         "Returns the raw CE data."
-        return json.loads(requests.get(f'https://cedb.me/api/game/{self.get_ce_id()}').text)
+        return json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}').text)
     
     # ----------- setters -----------
 
@@ -139,12 +138,12 @@ class CEGame:
 
     def get_price(self) -> float :
         """Returns the current price (in USD) on the platform of choice."""
-        if self.get_platform() == "steam" :
+        if self.platform == "steam" :
             api_response = requests.get("https://store.steampowered.com/api/appdetails?",
-                                        params = {'appids' : self.get_platform_id(), 'cc' : 'US'})
+                                        params = {'appids' : self.platform_id, 'cc' : 'US'})
             json_response = json.loads(api_response.text)
 
-            steam_id = str(self.get_platform_id())
+            steam_id = str(self.platform_id)
 
             if json_response[steam_id]['data']['is_free'] : 
                 return 0
@@ -155,10 +154,12 @@ class CEGame:
         return None
             
     def get_steamhunters_data(self) -> int | None :
+        print('fhjks')
         """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
-        if self.get_platform() != "steam" : return None
-        api_response = requests.get(f"https://steamhunters.com/api/apps/{self.get_platform_id()}")
+        if self.platform != "steam" : return None
+        api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
         json_response = json.loads(api_response.text)
+        print('heehee')
 
         if 'medianCompletionTime' in json_response :
             return int(int(json_response['medianCompletionTime']) / 60)
@@ -167,9 +168,9 @@ class CEGame:
         
     def get_steam_data(self) -> dict | None : 
         """Returns the steam data for this game."""
-        if self.get_platform() != 'steam' : return None
+        if self.platform != 'steam' : return None
         try :
-            payload = {'appids' : self.get_platform_id(), 'cc' : 'US'}
+            payload = {'appids' : self.platform_id, 'cc' : 'US'}
             response = requests.get("https://store.steampowered.com/api/appdetails?", 
                                     params = payload)
             return json.loads(response.text)
@@ -178,8 +179,10 @@ class CEGame:
         
     def get_completion_data(self) -> dict :
         """Returns the completion data for this game."""
-        json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.get_ce_id()}/leaderboard').text)
+        print('a')
+        json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard').text)
         completions, started, owners = (0,)*3
+        print('f')
 
         total_points = self.get_total_points()
         for user in json_response :
@@ -192,8 +195,23 @@ class CEGame:
             'started' : started,
             'total' : owners
         }
+    
+    # --- emojis ---
+    
+    def get_category_emoji(self) -> str :
+        "Returns the category emoji for this game."
+        return "" + hm.get_emoji(self.category)
+    
+    def get_tier_emoji(self) -> str :
+        "Returns the tier emoji for this game."
+        return "" + hm.get_emoji(self.get_tier())
+        
+    def get_emojis(self) -> str :
+        "Returns the tier and category emojis for this game."
+        return self.get_tier_emoji() + self.get_category_emoji()
 
     def update(self, json_response : 'CEGame' = None) -> str | None :
+        return NotImplemented
         import CEAPIReader
         json_response : dict | 'CEGame'
         """Takes in either a :class:`CEGame` or a :class:`dict`
@@ -203,11 +221,11 @@ class CEGame:
         if type(json_response) == dict :
             other = CEAPIReader._ce_to_game(json_response)
         elif json_response == None :
-            other = CEAPIReader.get_api_page_data('game', self.get_ce_id())
+            other = CEAPIReader.get_api_page_data('game', self.ce_id)
         else :
             other = json_response
 
-        if self.get_last_updated() >= other.get_last_updated() : 
+        if self.last_updated >= other.last_updated : 
             return None
         
         update_str = ""
@@ -216,7 +234,6 @@ class CEGame:
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
             f"<:CE_points:1128420207329816597>")
         #TODO: finish this function
-        return NotImplemented
 
 
     def has_an_uncleared(self) -> bool :
@@ -240,3 +257,17 @@ class CEGame:
             "Objectives" : objectives,
             "Last Updated" : self.last_updated
         }
+    
+    def __str__(self) :
+        "Returns the string representation of this object."
+        return (
+            "-- CEGame --" +
+            "\nGame Name: " + self.game_name +
+            "\nGame CE ID: " + self.ce_id +
+            "\nTotal Points: " + self.get_total_points() +
+            "\nPlatform: " + self.platform +
+            "\nPlatform ID: " + self.platform_id +
+            "\nCategory: " + self.category +
+            "\nObjectives: " + self.all_objectives +
+            "\nLast Updated: " + self.last_updated
+        )

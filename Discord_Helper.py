@@ -15,6 +15,7 @@ import CEAPIReader
 import hm
 
 def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
+    """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from CE_Game import CEGame
 
     # -- set up the array --
@@ -22,7 +23,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
     # -- set up the intro embed --
     embeds[0] = discord.Embed(
-        title=roll.get_roll_name(),
+        title=roll.roll_name,
         timestamp=datetime.datetime.now(),
         color = 0x000000
     )
@@ -36,15 +37,15 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
     description = "__Rolled Games__\n"
     for i, id in roll.games :
         game : CEGame = hm.get_item_from_list(id, database_name)
-        description += f"{i + 1}. {game.get_game_name()}\n"
+        description += f"{i + 1}. {game.game_name}\n"
     
     # -- set up roll info --
     description += "__Roll Info__\n"
     if roll.ends() :
-        description += f"You must complete {roll.get_roll_name()} by <t:{roll.get_due_time()}>.\n"
+        description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
         description += f"If you fail, you will have a cooldown until {roll.calculate_cooldown_date()}.\n"
     else :
-        description += f"{roll.get_roll_name()} has no time limit. You can reroll on {roll.calculate_cooldown_date()}.\n"
+        description += f"{roll.roll_name} has no time limit. You can reroll on {roll.calculate_cooldown_date()}.\n"
 
     # -- set the description --
     embeds[0].description = description
@@ -63,16 +64,19 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
 
 
-def get_game_embed(game_id : str) -> discord.Embed :
+async def get_game_embed(game_id : str) -> discord.Embed :
+    """This function returns a `discord.Embed` that holds all information about a game."""
     from CE_Game import CEGame
-
+    print('a')
     # -- get the api data --
-    game : CEGame = CEAPIReader.get_api_page_data('game', game_id)
+    database_name = await Mongo_Reader.get_mongo_games()
+    game : CEGame = hm.get_item_from_list(game_id, database_name)
     if game == None : return None
-
+    print('2')
     # -- instantiate the embed --
     embed = discord.Embed(
-        title = f"[{game.get_game_name()}](https://cedb.me/game/{game_id})",
+        title = game.game_name,
+        url=f"https://cedb.me/game/{game_id}",
         description = "To be determined.",
         color = 0x000000,
         timestamp = datetime.datetime.now()
@@ -81,20 +85,23 @@ def get_game_embed(game_id : str) -> discord.Embed :
 
     # -- get steam data and set image and description --
     steam_data = game.get_steam_data()
-    embed.set_image(steam_data[game.get_platform_id()]['data']['header_image'])
+    embed.set_image(url=steam_data[game.platform_id]['data']['header_image'])
     embed.description = (
-        f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.get_category())}" +
+        f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
+    print('bum')
+
     # -- set up price --
-    if steam_data[game.get_platform_id()]['data']['is_free'] :
+    if steam_data[game.platform_id]['data']['is_free'] :
         embed.description += "- Price: Free\n"
-    elif 'price_overview' in steam_data[game.get_platform_id()]['data'] :
-        embed.description += (f"- Price: {steam_data[game.get_platform_id()]['data']['price_overview']['final_formatted']}\n")
+    elif 'price_overview' in steam_data[game.platform_id]['data'] :
+        embed.description += (f"- Price: {steam_data[game.platform_id]['data']['price_overview']['final_formatted']}\n")
     else :
         embed.description += "- Price unavailable.\n"
 
+    print('b')
     # -- add steamhunters data --
     embed.description += f"- SteamHunters Median Completion Time: {game.get_steamhunters_data()}\n"
     
@@ -103,9 +110,11 @@ def get_game_embed(game_id : str) -> discord.Embed :
     embed.description += f"- Total Owners: {completion_data['total']}\n"
     embed.description += f"- Full Completions: {completion_data['completed']}"
     if completion_data['total'] != 0 :
-        embed.description += f"({(completion_data['completed'] / completion_data['total']) * 100}%)\n"
+        embed.description += f" ({round((completion_data['completed'] / completion_data['total']) * 100, 2)}%)\n"
     else :
         embed.description += "N/A%\n"
+
+    print('bah")')
 
     return embed
 

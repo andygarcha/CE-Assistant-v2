@@ -225,9 +225,9 @@ def _mongo_to_game(game : dict) -> CEGame :
     if 'Objectives' in game :
         for objective in game['Objectives'] :
             game_objective = _mongo_to_game_objective(
-                objective
+                objective=objective
             )
-            game_objective.set_game_id(game['CE ID'])
+            game_objective.game_ce_id = game['CE ID']
             game_objectives.append(game_objective)
 
     return CEGame(

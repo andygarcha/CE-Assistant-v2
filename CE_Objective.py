@@ -83,12 +83,12 @@ class CEObjective:
     # -------------- setters ----------------
 
     @type.setter
-    def set_type(self, type : hm.objective_types) :
+    def type(self, type : hm.objective_types) :
         """Takes in the type and sets the objective's type to it."""
         self._objective_type = type
 
     @game_ce_id.setter
-    def set_game_id(self, game_id : str) -> None :
+    def game_ce_id(self, game_id : str) :
         """Takes in a string `game_id` and sets the local value to such."""
         self._game_ce_id = game_id
     
@@ -114,7 +114,7 @@ class CEObjective:
             "Game CE ID" : "23dfa792-591a-4f55-99ae-1c34180b22c8",
             "Type" : "Badge",
             "Achievements" : ["a351dce1-ee51-4b55-a05b-38a74854a8be"],
-            "Requirements" : "Send proof to #proof-submission",
+            "Requirements" : "Send proof to #proof-submission.",
             "Partial Points" : 10
         }"""
         objective_dict = {

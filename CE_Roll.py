@@ -144,7 +144,7 @@ class CERoll:
         else :
             self._rerolls = rerolls
 
-    # ------- getters -------
+    # ------- properties -------
 
     @property
     def roll_name(self) -> hm.roll_event_names :
@@ -207,9 +207,14 @@ class CERoll:
         self._due_time += increase_in_seconds
 
     @due_time.setter
-    def due_time(self, days : int) -> None :
-        """Sets the due time for `days` days from now."""
-        self._due_time = hm.get_unix(days=days)
+    def due_time(self, days : int, reset : bool) -> None :
+        """Sets the due time for `days` days from now. 
+        Additionally, you can reset the due time to `None`
+        with `reset`."""
+        if reset :
+            self._due_time = None
+        else :
+            self._due_time = hm.get_unix(days=days)
 
     def add_game(self, game : str) -> None :
         """Adds the Challenge Enthusiast ID given by `game`
@@ -237,7 +242,10 @@ class CERoll:
 
     def is_co_op(self) -> bool :
         """Returns true if this roll is co-op."""
-        return self.partner_ce_id != None and self.partner_ce_id != ""
+        return (
+            (self.partner_ce_id != None and self.partner_ce_id != "")
+            or self.roll_name in hm.coop_roll_event_names
+        )
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
@@ -275,21 +283,124 @@ class CERoll:
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
                 "You have both completed Destiny Alignment together." +
-                ("\n- " + hm.get_item_from_list(game, database_name).game_name for game in self.games)
+                f"\n- <@{user.discord_id}> - {hm.get_item_from_list(self.games[0], database_name).game_name}" +
+                f"\n- <@{partner.discord_id}> - {hm.get_item_from_list(self.games[1], database_name).game_name}"
             )
         elif self.roll_name == "Soul Mates" :
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
                 "You have both completed Soul Mates together." +
-                ("\n- " + hm.get_item_from_list(self.games[0], database_name).game_name) 
+                "\n- " + hm.get_item_from_list(self.games[0], database_name).game_name
             )
         elif self.roll_name == "Teamwork Makes the Dream Work" :
-            # get game objects
-            game_objects = [game for game in database_name if game.ce_id in self.games]
-            user_wins = []
-            return (
+            # get all completed games by both users
+            user_completions = user.get_completed_games_2(database_name)
+            partner_completions = partner.get_completed_games_2(database_name)
 
+            # go through each of them and decide if they were rolled in this game
+            user_wins, partner_wins = [], []
+            for compl in user_completions :
+                if compl.ce_id in self.games : user_wins.append(compl.ce_id)
+            for compl in partner_completions :
+                if compl.ce_id in self.games : partner_wins.append(compl.ce_id)
+
+            # and now make the actual string
+            return_str = (
+                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
+                "You have both completed Teamwork Makes the Dream Work.\n"
             )
+
+            # go through each game and determine which game was completed by who
+            for game in self.games :
+                game_name = hm.get_item_from_list(game, database_name).game_name
+                return_str += "- " + game_name
+                if game in user_wins and game in partner_wins :
+                    return_str += f" - <@{user.discord_id}> and <@{partner.discord_id}>\n"
+                elif game not in user_wins and game in partner_wins :
+                    return_str += f" - <@{partner.discord_id}>\n"
+                elif game in user_wins and game not in partner_wins :
+                    return_str += f" - <@{user.discord_id}>\n"
+                else :
+                    return_str += f"\n"
+            return return_str
+        elif self.roll_name == "Winner Takes All" :
+            # determine winner
+            user_wins = False
+            partner_wins = False
+            for game in user.get_completed_games_2(database_name) :
+                if game.ce_id in self.games : user_wins = True
+            for game in user.get_completed_games_2(database_name) :
+                if game.ce_id in self.games : partner_wins = True
+            
+            # send corresponding message
+            game_name = hm.get_item_from_list(self.games[0], database_name).game_name
+            if user_wins and not partner_wins :
+                return f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Winner Takes All!\n- {game_name}"
+            elif user_wins and partner_wins :
+                return (f"<@{user.discord_id}> <@{partner.discord_id}> yall both won winner takes all?" + 
+                        " i'm confused someone ping andy pls")
+            elif not user_wins and partner_wins :
+                return f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Winner Takes All!\n- {game_name}"
+            else :
+                print(self)
+                return "something's gone wrong with winner takes all. please ping andy!"
+        elif self.roll_name == "Game Theory" :
+            # determine winner
+            user_wins, partner_wins = False, False
+            user_game = self.games[0]
+            partner_game = hm.get_item_from_list(self.partner_ce_id, database_user).get_current_roll(self.roll_name).games[0]
+            for game in user.get_completed_games_2(database_name) :
+                if game.ce_id == user_game : user_wins = True
+            for game in user.get_completed_games_2(database_name) :
+                if game.ce_id == partner_game : partner_wins = True
+
+            # send corresponding message
+            user_game_name = hm.get_item_from_list(user_game, database_name).game_name
+            partner_game_name = hm.get_item_from_list(partner_game, database_name).game_name
+            if user_wins and not partner_wins :
+                return (
+                    f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Game Theory!" +
+                    f"\n- <@{user.discord_id}> - {user_game_name}" +
+                    f"\n- <@{partner.discord_id}> - {partner_game_name}"
+                )
+            elif user_wins and partner_wins :
+                return (
+                    f"<@{user.discord_id}> <@{partner.discord_id}>, yall both won game theory?" +
+                    " i'm confused someone please ping andy"
+                )
+            elif not user_wins and partner_wins :
+                return (
+                    f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Game Theory!" +
+                    f"\n- <@{partner.discord_id}> - {partner_game_name}" +
+                    f"\n- <@{user.discord_id}> - {user_game_name}"
+                )
+            else :
+                print(self)
+                return "something's gone wrong with game theory. please ping andy!"
+        
+        elif self.roll_name == "One Hell of a Month" :
+            return_str = f"Congratulations <@{user.discord_id}>! You have beaten One Hell of a Month!"
+
+            # get completions and their ids
+            user_completions = user.get_completed_games_2(database_name)
+            user_wins = []
+            for game in user_completions :
+                if game.ce_id in self.games : user_wins.append(game.ce_id)
+            for game_id in self.games :
+                if game_id not in user_wins : 
+                    continue
+                game = hm.get_item_from_list(game_id, database_name)
+                if game_id not in user_wins :
+                    return_str += "\n- " + game.game_name + " 🟥"
+                return_str += "\n- " + game.game_name + " " + game.get_category_emoji()
+            return return_str
+
+        else :
+            s = f"Congratulations <@{user.discord_id}>! You have beaten {self.roll_name}."
+            for game in self.games :
+                game_name = hm.get_item_from_list(game, database_name)
+                s += f"\n- {game_name}"
+            
         return NotImplemented
 
     def get_fail_message(self) -> str :
@@ -299,7 +410,7 @@ class CERoll:
     
     def calculate_cooldown_date(self) -> int | None :
         """Calculates the date of which the cooldown should be set
-        (or `None` if not applicable.)"""
+        (or `None` if not applicable)."""
         if self.roll_name == "Fourward Thinking" :
             return NotImplemented   #TODO: finish this !
         elif self.roll_name == "Soul Mates" :
@@ -372,3 +483,16 @@ class CERoll:
             d['Rerolls'] = self.rerolls
         return d
     
+    def __str__(self) -> str :
+        "Turns this object into a string representation."
+        return (
+            "-- CERoll --" +
+            "\nEvent Name: " + self.roll_name +
+            "\nDue Time: " + self.due_time +
+            "\nGames: " + self.games +
+            "\nUser CE ID: " + self.user_ce_id + 
+            "\nPartner CE ID" + self.partner_ce_id +
+            "\nInit Time: " + self.init_time +
+            "\nCompleted Time: " + self.completed_time +
+            "\nRerolls: " + self.rerolls
+        )

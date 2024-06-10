@@ -136,7 +136,7 @@ def get_api_games_full() -> list[CEGame] | None :
 
 
 
-def get_api_users_all() -> list[CEUser] | None :
+def get_api_users_all() -> list[CEUser]:
     """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all"""
 
     # Step 1: get the big json intact.
@@ -152,9 +152,13 @@ def get_api_users_all() -> list[CEUser] | None :
             done_fetching = len(j) == 0
             i += 1
     except : 
-        raise FailedScrapeException("Failed scraping from api/users/all/ for users "
+        raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*100} through {i*100-1}")
-    #TODO: finish this function
+    all_users : list[CEUser] = []
+    for user in json_response :
+        all_users.append(_ce_to_user(user))
+
+    return all_users
 
 
 

@@ -22,7 +22,7 @@ __icons = {
     "Tier 6" : '<:tier6:1126268408116285541>',
     "Tier 7" : '<:tier7:1126268411220074547>',
 
-    # genres
+    # categories
     "Action" : '<:CE_action:1126326215356198942>',
     "Arcade" : '<:CE_arcade:1126326209983291473>',
     "Bullet Hell" : '<:CE_bullethell:1126326205642190848>',
@@ -128,6 +128,33 @@ final_ce_icon = "https://i.imgur.com/O9J7fg2.png"
 
 objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
 platform_names = Literal['steam', 'retroachievements']
+
+# ------------- discord channel numbers -------------
+_in_ce = False
+# ce ids
+_ce_log_old_id = 1208259110638985246         # old log
+_ce_log_id = 1218980203209035938             # current log
+_ce_casino_test_id = 1208259878381031485     # fake casino
+_ce_casino_id = 1080137628604694629          # real casino
+_ce_game_additions_id = 949482536726298666   # game additions
+_ce_private_log_id = 1208259110638985246     # private log
+# bot test ids
+_test_log_id = 1141886539157221457
+_test_casino_id = 811286469251039333
+_test_game_additions_id = 1128742486416834570
+# go-to channels 
+# NOTE: replace these with the ids as needed
+if _in_ce:
+    game_additions_id = _ce_game_additions_id
+    casino_id = _ce_casino_id
+    log_id = _ce_log_id
+    private_log_id = _ce_private_log_id
+else :
+    game_additions_id = _test_game_additions_id
+    casino_id = _test_casino_id
+    log_id = _test_log_id
+    private_log_id = _test_log_id
+
 
 def get_current_unix() -> int :
     """Gets the current time in unix timestamp."""

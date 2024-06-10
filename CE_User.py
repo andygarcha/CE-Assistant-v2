@@ -75,25 +75,24 @@ class CEUser:
         return None
 
     def get_completed_games(self) -> list[CEUserGame] :
-        """Returns a list of :class:`CEUserGame`s that this user has completed."""
+        """Returns a list of :class:`CEUserGame`'s that this user has completed.
+        This is so fucking inefficient. Please don't use this."""
         completed_games : list[CEUserGame] = []
 
         for game in self._owned_games :
-            if game.get_regular_game().total_points == game.get_user_points() : 
+            if game.get_regular_game().get_total_points() == game.get_user_points() : 
                 completed_games.append(game)
         
         return completed_games
     
-    def get_completed_games_2(self, database_name : list[CEGame]) -> list[str] :
-        """Returns a list of :class:`CEGame`s that this user has completed."""
+    def get_completed_games_2(self, database_name : list[CEGame]) -> list[CEGame] :
+        """Returns a list of :class:`CEGame`'s that this user has completed."""
         completed_games : list[CEGame] = []
         for game in database_name :
             for user_game in self.owned_games :
-                if game.ce_id == user_game.ce_id and game.total_points == user_game.get_user_points() :
+                if game.ce_id == user_game.ce_id and game.get_total_points() == user_game.get_user_points() :
                     completed_games.append(game)
         return completed_games
-            
-    
     
     @property
     def current_rolls(self) -> list[CERoll] :
@@ -152,11 +151,23 @@ class CEUser:
             if event.roll_name == roll_name : return True
         return False
     
+    def get_completed_roll(self, roll_name : hm.roll_event_names) -> CERoll :
+        """Returns the `CERoll` associated with `roll_name`."""
+        for event in self.completed_rolls :
+            if event.roll_name ==roll_name : return event
+        return None
+    
     def has_current_roll(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user is currently working on `roll_name`."""
         for event in self.current_rolls :
             if event.roll_name == roll_name : return True
         return False
+    
+    def get_current_roll(self, roll_name : hm.roll_event_names) -> CERoll :
+        "REturns the `CERoll` associated with `roll_name`."
+        for event in self.current_rolls :
+            if event.roll_name == roll_name : return event
+        return None
     
     def has_cooldown(self, roll_name : hm.roll_event_names) -> bool :
         """Returns true if this user is currently on cooldown for `roll_name`."""

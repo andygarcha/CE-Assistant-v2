@@ -33,14 +33,11 @@ intents.members = True
 intents.guilds = True
 intents.message_content = True
 
-# parameters for me to change at any time
-in_ce : bool = False
-
 
 # open secret_info.json
 with open('secret_info.json') as f :
     local_json_data = json.load(f)
-    if in_ce :
+    if hm._in_ce :
         discord_token = local_json_data['discord_token']
         guild_id = local_json_data['ce_guild_ID']
     else :
@@ -55,6 +52,10 @@ guild = discord.Object(id=guild_id)
 @tree.command(name='test', description='test',guild=guild)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
+
+    embed = await Discord_Helper.get_game_embed("1e866995-6fec-452e-81ba-1e8f8594f4ea")
+
+    return await interaction.followup.send(embed=embed)
     
     games = await Mongo_Reader.get_mongo_games()
     print(games[0].to_dict())
@@ -84,10 +85,10 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     
     # make sure they're not already registered
     for user in users :
-        if user.get_discord_id() == interaction.user.id :
+        if user.discord_id == interaction.user.id :
             return await interaction.followup.send("You are already registered in the " +
                                                    "CE Assistant database!")
-        if user.get_ce_id() == ce_id : 
+        if user.ce_id == ce_id : 
             return await interaction.followup.send("This Challenge Enthusiast page is " +
                                                    "already connected to another account!")
     
@@ -103,10 +104,10 @@ async def register(interaction : discord.Interaction, ce_id : str) :
         ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
     if (challenge_enthusiast_game != None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.get_name() in get_args(hm.roll_event_names) :
+            if objective.name in get_args(hm.roll_event_names) :
                 ce_user.add_completed_roll(CERoll(
-                    roll_name=objective.get_name(),
-                    user_ce_id=ce_user.get_ce_id(),
+                    roll_name=objective.name,
+                    user_ce_id=ce_user.ce_id,
                     games=None,
                     partner_ce_id=None,
                     init_time=None,
@@ -136,10 +137,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
     database_user = await Mongo_Reader.get_mongo_users()
     database_name = await Mongo_Reader.get_mongo_games()
 
+    # get channels
+    log_channel = client.get_channel(hm.log_id)
+
     user = None
     user_index = -1
     for i, u in enumerate(database_user) :
-        if u.get_discord_id() == interaction.user.id :
+        if u.discord_id == interaction.user.id :
             user = u
             user_index = i
             break
@@ -161,8 +165,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
             f"You just tried rolling this event. Please wait about 10 minutes before trying again."
         )
     
-    if random.randint(0, 99) : "" #TODO: send a message to the log channel saying they've won jarvis's random thing
-
+    #TODO: send a message to the log channel saying they've won jarvis's random thing
+    if random.randint(0, 99) == 0 : 
+        log_channel.send(
+            f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +
+            "Please DM him for your prize :)"
+        )
+        
     # -- set up vars --
     rolled_games : list[str] = []
 
@@ -198,7 +207,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                     already_rolled_games=rolled_games
                 ))
                 valid_categories.remove(
-                    hm.get_item_from_list(rolled_games[i], database_name).get_category()
+                    hm.get_item_from_list(rolled_games[i], database_name).category
                 )
 
         case "One Hell of a Month" :
@@ -230,8 +239,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll
                 past_roll_index : int
-                for i, r in enumerate(user.get_current_rolls()) :
-                    if r.get_roll_name() == event_name : 
+                for i, r in enumerate(user.current_rolls) :
+                    if r.roll_name == event_name : 
                         past_roll = r
                         past_roll_index = i
                         break
@@ -244,9 +253,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                         user=user,
                         already_rolled_games=r.games
                     ))
-                    
+                    user.current_rolls[past_roll_index] = past_roll
+                    database_user[user_index] = user
+                else :
+                    return await interaction.followup.send(
+                        "You need to finish the first half of Two Week T2 Streak first!"
+                    )
                 
-                "If not, spit back out 'You need to finish this one first!"
             else :
                 rolled_games = [hm.get_rollable_game(
                     database_name=database_name,
@@ -255,6 +268,31 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
                     tier_number = 2,
                     user=user
                 )]
+        case "Two \"Two Week T2 Streak\" Streak" :
+            if not user.has_completed_roll("Two Week T2 Streak") :
+                return await interaction.followup.send(
+                    f"You need to complete Two Week T2 Steak before rolling {event_name}!"
+                )
+            if user.has_current_roll("Two \"Two Week T2 Streak\" Streak") :
+                # if the user is currently working 
+                past_roll : CERoll
+                past_roll_index : int
+                for i, r in enumerate(user.current_rolls) :
+                    if r.roll_name == event_name :
+                        past_roll = r
+                        past_roll_index = i
+                        break
+                if past_roll.ready_for_next() :
+                    past_roll.add_game(hm.get_rollable_game(
+                        database_name=database_name,
+                        completion_limit=40,
+                        price_limit=20,
+                        tier_number=2,
+                        user=user,
+                        already_rolled_games=r.games
+                    ))
+                    user.current_rolls[past_roll_index] = past_roll
+                    database_user[user_index] = user
 
     # -- check to make sure there were enough rollable games --
     if None in rolled_games :
@@ -263,10 +301,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
             + " Please try again later (and contact andy!)."
         )
 
+
     # -- create roll object --
     roll = CERoll(
         roll_name=event_name,
-        user_ce_id=user.get_ce_id(),
+        user_ce_id=user.ce_id,
         games=rolled_games,
         is_current=True
     )
