@@ -13,7 +13,7 @@ When a game is updated, the bot gives a run down of everything that was changed.
 
 <img src="https://imgur.com/ME18Ja5.png" width="450">
 
-When a game has a longer amount of objectives (five or more), the bot will screenshot just the specific objective that was changed.
+When a game has a longer amount of objectives (seven or more), the bot will screenshot just the specific objective that was changed.
 
 <img src="https://imgur.com/pbDCyJ1.png" width="450">
 
