@@ -70,3 +70,6 @@ Object-based version of andykasen13/CE-Assistant
 ### ideas
 - "other classes" - steamdata, completiondata
 - "other exceptions" - FailedUserUpdateException, FailedGameUpdateException
+- do we want to have it update users stuff once a day (like have one big message per day outlining what happened that day) or do it every 30 minutes with casino
+- /show-rolls (or something) to see all available rolls 
+  - maybe /see-available-rolls?

@@ -53,6 +53,10 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    return await interaction.followup.send("got")
+
     embed = await Discord_Helper.get_game_embed("1e866995-6fec-452e-81ba-1e8f8594f4ea")
 
     return await interaction.followup.send(embed=embed)

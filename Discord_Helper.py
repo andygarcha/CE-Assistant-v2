@@ -67,12 +67,11 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 async def get_game_embed(game_id : str) -> discord.Embed :
     """This function returns a `discord.Embed` that holds all information about a game."""
     from CE_Game import CEGame
-    print('a')
     # -- get the api data --
     database_name = await Mongo_Reader.get_mongo_games()
     game : CEGame = hm.get_item_from_list(game_id, database_name)
     if game == None : return None
-    print('2')
+
     # -- instantiate the embed --
     embed = discord.Embed(
         title = game.game_name,
@@ -91,8 +90,6 @@ async def get_game_embed(game_id : str) -> discord.Embed :
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
-    print('bum')
-
     # -- set up price --
     if steam_data[game.platform_id]['data']['is_free'] :
         embed.description += "- Price: Free\n"
@@ -101,20 +98,20 @@ async def get_game_embed(game_id : str) -> discord.Embed :
     else :
         embed.description += "- Price unavailable.\n"
 
-    print('b')
     # -- add steamhunters data --
-    embed.description += f"- SteamHunters Median Completion Time: {game.get_steamhunters_data()}\n"
+    sh_data = game.get_steamhunters_data()
+    if sh_data == None : sh_data = "N/A"
+    embed.description += f"- SteamHunters Median Completion Time: {sh_data} hours\n"
     
     # -- get ce data --
     completion_data = game.get_completion_data()
-    embed.description += f"- Total Owners: {completion_data['total']}\n"
-    embed.description += f"- Full Completions: {completion_data['completed']}"
+    embed.description += f"- Full CE Completions: {completion_data['completed']}"
     if completion_data['total'] != 0 :
-        embed.description += f" ({round((completion_data['completed'] / completion_data['total']) * 100, 2)}%)\n"
+        embed.description += f" ({round((completion_data['completed'] / completion_data['total']) * 100, 2)}%\n"
+        embed.description += f" of {completion_data['total']} owners)"
     else :
-        embed.description += "N/A%\n"
+        embed.description += " (Percentage N/A)\n"
 
-    print('bah")')
 
     return embed
 

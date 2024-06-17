@@ -127,14 +127,19 @@ class CEGame:
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
         total_points = self.get_total_points()
-        # if total_points >= 1000 : return "Tier 7"
-        # if total_points >= 500 : return "Tier 6"
+        if total_points >= 1000 : return "Tier 7"
+        if total_points >= 500 : return "Tier 6"
         if total_points >= 200 : return "Tier 5"
         elif total_points >= 80 : return "Tier 4"
         elif total_points >= 40 : return "Tier 3"
         elif total_points >= 20 : return "Tier 2"
         elif total_points > 0 : return "Tier 1"
         else : return "Tier 0"
+    
+    def is_t5plus(self) -> bool :
+        "Returns true if this game is Tier 5 or above."
+        #          tier num            > 4
+        return int(self.get_tier()[5]) > 4
 
     def get_price(self) -> float :
         """Returns the current price (in USD) on the platform of choice."""
@@ -154,12 +159,12 @@ class CEGame:
         return None
             
     def get_steamhunters_data(self) -> int | None :
-        print('fhjks')
         """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
         if self.platform != "steam" : return None
         api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
+        if api_response.text == "null" or api_response.text == None :
+            return None
         json_response = json.loads(api_response.text)
-        print('heehee')
 
         if 'medianCompletionTime' in json_response :
             return int(int(json_response['medianCompletionTime']) / 60)
@@ -230,6 +235,7 @@ class CEGame:
         
         update_str = ""
         if self.get_total_points() != other.get_total_points() :
+            # use hm.get_emoji("Points")
             update_str += (f"\n- {self.get_total_points()} <:CE_points:1128420207329816597> " +
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
             f"<:CE_points:1128420207329816597>")

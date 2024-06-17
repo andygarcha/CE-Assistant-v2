@@ -4,6 +4,7 @@ Handles all MongoDB-related interactions for CE Assistant v2.
 
 
 # imports
+import json
 from typing import Literal
 from bson import ObjectId
 from CE_Cooldown import CECooldown
@@ -24,9 +25,12 @@ mongo_ids = {
     'name' : ObjectId('66303f21918c91e3b67b33df'),
     'user' : ObjectId('66303f66918c91e3b67b33e0')
 }
-"""The :class:`ObjectID` values stored under the `_id` value in each document."""
-_uri = ("mongodb+srv://andrewgarcha:KUTo7dCtGRy4Nrhd@ce-cluster.inrqkb3.mongodb.net/" 
-    + "?retryWrites=true&w=majority")
+
+# open secret_info.json
+with open('secret_info.json') as f :
+    """The :class:`ObjectID` values stored under the `_id` value in each document."""
+    local_json_data = json.load(f)
+    _uri = local_json_data['mongo_uri']
 _mongo_client = AsyncIOMotorClient(_uri)
 _collection = _mongo_client['database_name']['ce-assistant-v2']
 _mongo_names = Literal['name', 'user']

@@ -299,7 +299,8 @@ def get_rollable_game(
             "The price is too high."
             continue
 
-        if game.get_steamhunters_data() > completion_limit :
+        sh_data = game.get_steamhunters_data()
+        if sh_data == None or sh_data > completion_limit :
             "The SteamHunters median-completion-time is too high."
             continue
 
