@@ -7,20 +7,20 @@ Challenge Enthusiasts is an online community made to curate and categorize video
 ## Purpose 1: Game Updates
 This bot will send detailed updates to the [Discord server](https://discord.gg/spKdVZTZ6c) whenever a game on the site is added, updated, or removed.
 
-![Screenshot of a game, Battletoads, being added to Challenge Enthusiasts](https://imgur.com/rXGjnuc.png)
+<img src="https://imgur.com/rXGjnuc.png" width="450">
 
 When a game is updated, the bot gives a run down of everything that was changed.
 
-![Screenshot of a game, Terra Ferminarium, being updated on Challenge Enthusiasts](https://imgur.com/ME18Ja5.png)
+<img src="https://imgur.com/ME18Ja5.png" width="450">
 
 When a game has a longer amount of objectives (five or more), the bot will screenshot just the specific objective that was changed.
 
-![Screenshot of the 'Challenge Enthusiasts' game on the Challenge Enthusiasts site, used for keeping track of badges, having a singular objective update.](https://imgur.com/pbDCyJ1.png)
+<img src="https://imgur.com/pbDCyJ1.png" width="450">
 
 ## Purpose 2: Casino
 This bot allows users in the [Discord server](https://discord.gg/spKdVZTZ6c) to participate in roll events. Users who participate in these will have a set number of games that fit certain parameters (difficulty, category, etc.) randomly selected for them, depending on the event. Once they complete these events (usually within a time limit, but some events go on forever), they're awarded a badge on the site, and the bot sends an update to the server.
 
-![Screenshot of a user, Kyara, completing the roll event 'Never Lucky'.](https://imgur.com/XNCDYDn.png)
+<img src="https://imgur.com/XNCDYDn.png" width="450">
 
 The bot keeps track of all previously completed rolls as well, so anyone can view their previous accomplishments.
 
