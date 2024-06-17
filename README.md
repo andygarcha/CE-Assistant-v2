@@ -1,75 +1,29 @@
-# CE-Assistant-v2
-Object-based version of andykasen13/CE-Assistant
+# CE-Assistant (v2)
+An object oriented version of [CE-Assistant](https://github.com/andykasen13/CE-Assistant), a discord bot coded using `discord.py`. This bot serves two main purposes for the online community [Challenge Enthusiasts](https://cedb.me).
 
-## little notes
-- consider having `CEGame` hold an array of just `CEObjectives` instead of two different ones for `Primary` and `Community`. Keep the `get_primary_objectives()` and `get_community_objectives()` and it'll sort it within the class (wait im so smart!)
-- look into schmole's idea of rerolling a specific game in a roll in the event of country-lock. Example:
-  - admin runs /change-roll-game(event_name : str, user : discord.User)
-  - spits out a dropdown of all currently rolled games and admin selects the game to reroll
-  - manually change this game to a newly rerolled game.
+### Challenge Enthusiasts
+Challenge Enthusiasts is an online community made to curate and categorize video games in a point-based system. Each game is given certain "objectives" based on tasks to be completed in the game.
 
-## Classes
-### CEUser
-```
-- private int discord_id
-- private String ce_id
-- private int casino_score
-- private CE-Roll[] current_rolls
-- private CE-Roll[] completed_rolls
-- private CE-Roll[] pending_rolls
-- private CE-Roll[] cooldowns
-```
+## Purpose 1: Game Updates
+This bot will send detailed updates to the [Discord server](https://discord.gg/spKdVZTZ6c) whenever a game on the site is added, updated, or removed.
 
-### CERoll
-```
-- private String roll_name
-- private String init_time
-- private String end_time
-- private CE-Game[] games
-- private String partner_id
-- private int cooldown_days
-- private int rerolls
-```
+![Screenshot of a game, Battletoads, being added to Challenge Enthusiasts](https://imgur.com/rXGjnuc)
 
-### CEGame
-```
-- private String ce_id
-- private String game_name
-- private String platform
-- private String platform_id
-- private String point_value
-- private boolean is_special // denotes whether the game is a special T0 or not
-- private CE-Objective[] primary_objectives
-- private CE-Objective[] community_objectives
-- private int last_updated
-```
+When a game is updated, the bot gives a run down of everything that was changed.
 
-### CEUserGame
-```
-- private int user_points
-- private CE-User-Objective[] user_objective
-```
+![Screenshot of a game, Terra Ferminarium, being updated on Challenge Enthusiasts](https://imgur.com/ME18Ja5)
 
-### CEObjective
-```
-- private String ce_id
-- private boolean is_community
-- private String description
-- private int point_value
-- private int point_value_partial
-- private String name
-- private String requirements
-- private String[] achievement_ce_ids // this will just be an array of ce-ids
-```
+When a game has a longer amount of objectives (five or more), the bot will screenshot just the specific objective that was changed.
 
-### CEUserObjective
-```
-- private int user_points
-```
+![Screenshot of the 'Challenge Enthusiasts' game on the Challenge Enthusiasts site, used for keeping track of badges, having a singular objective update.](https://imgur.com/pbDCyJ1)
 
-### ideas
-- "other classes" - steamdata, completiondata
-- "other exceptions" - FailedUserUpdateException, FailedGameUpdateException
-- do we want to have it update users stuff once a day (like have one big message per day outlining what happened that day) or do it every 30 minutes with casino
-- /show-rolls (or something) to see all available rolls 
-  - maybe /see-available-rolls?
+## Purpose 2: Casino
+This bot allows users in the [Discord server](https://discord.gg/spKdVZTZ6c) to participate in roll events. Users who participate in these will have a set number of games that fit certain parameters (difficulty, category, etc.) randomly selected for them, depending on the event. Once they complete these events (usually within a time limit, but some events go on forever), they're awarded a badge on the site, and the bot sends an update to the server.
+
+![Screenshot of a user, Kyara, completing the roll event 'Never Lucky'.](https://imgur.com/XNCDYDn)
+
+The bot keeps track of all previously completed rolls as well, so anyone can view their previous accomplishments.
+
+This gets a lot trickier, as some rolls are Co-Op or PvP. You can view a spreadsheet with all of the roll events [here](https://docs.google.com/spreadsheets/d/1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M/edit?usp=sharing).
+
+## How this gets done
