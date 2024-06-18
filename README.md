@@ -69,6 +69,12 @@ In the event that something happens with a roll event, administrators can manual
 ## How this gets done (for nerd losers)
 The previous version of this code, [CE-Assistant](https://github.com/andykasen13/CE-Assistant), was not object-oriented. While it also used `discord.py`, it held all of its data in `.json` files and simply edited them raw. This became a huge issue whenever we, the developers, had to go back in and fix something, because as time went on, dealing with just the raw data got more and more confusing. In this version, we made classes for every type of object we were working with.
 
+This bot utilizes the APIs for [Steam](https://store.steampowered.com), [RetroAchievements](https://retroachievements.org), [SteamHunters](https://steamhunters.com), and [Challenge Enthusiasts](https://cedb.me). It stores its information using [MongoDB](https://mongodb.com).
+
+The module [Mongo_Reader](./Modules/Mongo_Reader.py) contains all of the functions used for getting and dumping information straight from MongoDB. Similarly, the module [CEAPIReader](./Modules/CEAPIReader.py) contains all of the functions used for scraping information from Challenge Enthusiasts' own backend.
+
+For screenshotting, we use Selenium WebDrivers to access the internet and re-worked the screenshot functions in `PIL`. It uses the locations of specific objects on the pages to get the exact screen needed, and saves it until it can be sent.
+
 ## Credits
 Credits to [Andy](https://github.com/andykasen13) and [Theron](https://github.com/TheronBoozer) for being the main developers of both versions.
 
