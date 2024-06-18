@@ -1,5 +1,5 @@
 # CE-Assistant (v2)
-An object oriented version of [CE-Assistant](https://github.com/andykasen13/CE-Assistant), a discord bot coded using `discord.py`. This bot serves two main purposes for the online community [Challenge Enthusiasts](https://cedb.me).
+An object oriented version of [CE-Assistant-v1](https://github.com/andykasen13/CE-Assistant), a discord bot coded using `discord.py`. This bot serves two main purposes for the online community [Challenge Enthusiasts](https://cedb.me).
 
 ### Challenge Enthusiasts
 Challenge Enthusiasts is an online community made to curate and categorize video games in a point-based system. Each game is given certain "objectives" based on tasks to be completed in the game.
