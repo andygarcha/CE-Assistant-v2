@@ -9,6 +9,8 @@ import datetime
 import time
 from typing import Literal
 import random
+import requests
+import json
 
 
 __icons = {
@@ -311,3 +313,25 @@ def get_rollable_game(
         return game.ce_id
     
     return None
+
+
+async def name_to_steamid(name : str) -> str :
+    "Takes in the name of a game and returns the Steam App ID associated with it."
+
+    # -- check CE first --
+    import Modules.Mongo_Reader as Mongo_Reader
+    database_name = await Mongo_Reader.get_mongo_games()
+    for game in database_name :
+        if game.game_name.lower() == name.lower() and game.platform == "steam" : return game.platform_id
+    
+    # -- now check steam instead --
+    payload = {"term" : name, "cc" : "US"}
+    response = requests.get("https://store.steampowered.com/api/storesearch/?", params=payload)
+    json_response = json.load(response)
+
+    # look through all the games
+    for item in json_response['items'] :
+        if item['name'].lower() == name.lower() : return item['id']
+    
+    # if no exact match is found, return the first one
+    return json_response['items'][0]['id']
