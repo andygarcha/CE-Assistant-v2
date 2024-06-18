@@ -7,6 +7,7 @@ Object-based version of andykasen13/CE-Assistant
   - admin runs /change-roll-game(event_name : str, user : discord.User)
   - spits out a dropdown of all currently rolled games and admin selects the game to reroll
   - manually change this game to a newly rerolled game.
+- show role if a game uses one
 
 ## Classes
 ### CEUser

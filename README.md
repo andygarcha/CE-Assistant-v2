@@ -51,7 +51,7 @@ Challenge Enthusiast users are awarded ranks based on how many points they have.
 > INSERT IMAGE
 
 ### 6. Get SteamHunters information
-One Challenge Enthusiasts user, @Schmoley2, runs a script once a month and collects information on all the games and users on Challenge Enthusiasts and dumps it on [this spreadsheet](https://docs.google.com/spreadsheets/d/1oAUw5dZdqZa1FWqrBV9MQQTr8Eq8g33zwEb49vk3hrk/edit?usp=sharing). This bot can access this spreadsheet and save specific data from it, specifically the 'Median Completion Time' from SteamHunters. So, rather than scrape the SteamHunters API every time a game is checked, the bot just accesses its local copy of this spreadsheet.
+One Challenge Enthusiasts user, Schmole, runs a script once a month and collects information on all the games and users on Challenge Enthusiasts and dumps it on [this spreadsheet](https://docs.google.com/spreadsheets/d/1oAUw5dZdqZa1FWqrBV9MQQTr8Eq8g33zwEb49vk3hrk/edit?usp=sharing). This bot can access this spreadsheet and save specific data from it, specifically the 'Median Completion Time' from SteamHunters. So, rather than scrape the SteamHunters API every time a game is checked, the bot just accesses its local copy of this spreadsheet.
 
 ### 7. Help/FAQ
 As is standard with any Discord bot, users can use `/help` to get a menu with frequently asked questions and access to other help.
@@ -67,15 +67,15 @@ Administrators have the option to add notes to any game update message, in case 
 In the event that something happens with a roll event, administrators can manually remove a roll from a user (without initiating a cooldown) so that they can re-roll.
 
 ## How this gets done (for nerd losers)
-The previous version of this code, [CE-Assistant](https://github.com/andykasen13/CE-Assistant), was not object-oriented. While it also used `discord.py`, it held all of its data in `.json` files and simply edited them raw. This became a huge issue whenever we, the developers, had to go back in and fix something, because as time went on, it just dealing with the raw data got more and more confusing. In this version, we made classes for every type of object we were working with.
+The previous version of this code, [CE-Assistant](https://github.com/andykasen13/CE-Assistant), was not object-oriented. While it also used `discord.py`, it held all of its data in `.json` files and simply edited them raw. This became a huge issue whenever we, the developers, had to go back in and fix something, because as time went on, dealing with just the raw data got more and more confusing. In this version, we made classes for every type of object we were working with.
 
 ## Credits
-Credits to @crappy for making both the icons for Challenge Enthusiasts emojis and the icon for CE-Assistant.
+Credits to [Andy](https://github.com/andykasen13) and [Theron](https://github.com/TheronBoozer) for being the main developers of both versions.
+
+Credits to [Folkius](https://github.com/Folkius) and Jarvis, the main administrators of Challenge Enthusiasts who helped us with direction and ideas quite a lot, and to [Laura](https://github.com/lauriys) for writing the entire backend for the site and several custom API endpoints for the bot to use.
+
+Credits to [apollo](https://github.com/apollohm) and [Schmole](https://github.com/Schmoley2) for writing small amounts of code and for general inspiration.
+
+Credits to crappy for making both the icons for Challenge Enthusiasts emojis and the icon for CE-Assistant (seen below).
 
 <img src="https://imgur.com/O9J7fg2.png" width="125" alt="The final icon used by CE-Assistant.">
-
-Credits to Folkius and Jarvis, the main administrators of Challenge Enthusiasts and who helped us with direction and ideas quite a lot.
-
-Credits to @apollohm and @Schmoley2 for writing small amounts of code and for general inspiration.
-
-Credits to @andykasen13 and @TheronBoozer for being the main developers of both versions.
