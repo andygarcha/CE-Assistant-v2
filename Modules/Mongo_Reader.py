@@ -7,17 +7,21 @@ Handles all MongoDB-related interactions for CE Assistant v2.
 import json
 from typing import Literal
 from bson import ObjectId
-from CE_Cooldown import CECooldown
-from CE_Game import CEGame
-from CE_Objective import CEObjective
-from CE_Roll import CERoll
-from CE_User import CEUser
+
+# -- local --
+from Classes.CE_Cooldown import CECooldown
+from Classes.CE_Game import CEGame
+from Classes.CE_Objective import CEObjective
+from Classes.CE_Roll import CERoll
+from Classes.CE_User import CEUser
+from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEUserObjective
+
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from CE_User_Game import CEUserGame
-from CE_User_Objective import CEUserObjective
+
 
 
 # ----------------------------- mongo helpers --------------------------------

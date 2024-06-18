@@ -1,4 +1,4 @@
-import hm
+import Modules.hm as hm
 class CECooldown :
     """An object that represents a Challenge Enthusiast roll cooldown."""
     def __init__(self,

@@ -1,5 +1,5 @@
-from CE_Objective import CEObjective
-import hm
+from Classes.CE_Objective import CEObjective
+import Modules.hm as hm
 
 class CEUserObjective:
     """A class for an objective held by a user. Extends the :class:`CEObjective` class."""

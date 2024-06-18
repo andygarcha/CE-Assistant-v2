@@ -7,17 +7,17 @@ import json
 from typing import Literal, get_args
 
 # --------- local class imports --------
-from CE_User import CEUser
-from CE_User_Game import CEUserGame
-from CE_User_Objective import CEObjective
-from CE_Game import CEGame
-from CE_Objective import CEObjective
-from CE_Roll import CERoll
-import CEAPIReader
-import hm
-import Mongo_Reader
-import Discord_Helper
-from FailedScrapeException import FailedScrapeException
+from Classes.CE_User import CEUser
+from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEObjective
+from Classes.CE_Game import CEGame
+from Classes.CE_Objective import CEObjective
+from Classes.CE_Roll import CERoll
+import Modules.CEAPIReader as CEAPIReader
+import Modules.hm as hm
+import Modules.Mongo_Reader as Mongo_Reader
+import Modules.Discord_Helper as Discord_Helper
+from Exceptions.FailedScrapeException import FailedScrapeException
 
 # ----------- to-be-sorted imports -------------
 import random

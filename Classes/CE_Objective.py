@@ -1,5 +1,5 @@
 from typing import Literal
-import hm
+import Modules.hm as hm
 
 class CEObjective:
     """An objective tied to any game on Challenge Enthusiasts."""

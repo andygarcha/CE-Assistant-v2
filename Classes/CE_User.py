@@ -1,8 +1,8 @@
-from CE_Cooldown import CECooldown
-from CE_Roll import CERoll
-from CE_Game import CEGame
-from CE_User_Game import CEUserGame
-import hm
+from Classes.CE_Cooldown import CECooldown
+from Classes.CE_Roll import CERoll
+from Classes.CE_Game import CEGame
+from Classes.CE_User_Game import CEUserGame
+import Modules.hm as hm
 
 
 class CEUser:
@@ -198,7 +198,7 @@ class CEUser:
     
     
     def update(self, json_response : 'CEUser' = None) -> list[tuple] :
-        import CEAPIReader
+        import Modules.CEAPIReader as CEAPIReader
         """Checks if the game has been updated and returns a :class:`list` 
         of :class:`tuple`'s detailing the update or `None` if none.\n
         The tuples will have an x value of 'casino' or 'log',

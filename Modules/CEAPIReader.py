@@ -11,13 +11,17 @@ To pull data from all users on the site, use `get_api_users_all()`.
 import datetime
 import time
 from typing import Literal
-from CE_Game import CEGame
-from CE_Objective import CEObjective
-from CE_User_Objective import CEUserObjective
-from CE_User import CEUser
-from CE_User_Game import CEUserGame
-from CE_Cooldown import CECooldown
-from FailedScrapeException import FailedScrapeException
+
+# -- local --
+from Classes.CE_Game import CEGame
+from Classes.CE_Objective import CEObjective
+from Classes.CE_User_Objective import CEUserObjective
+from Classes.CE_User import CEUser
+from Classes.CE_User_Game import CEUserGame
+from Classes.CE_Cooldown import CECooldown
+from Exceptions.FailedScrapeException import FailedScrapeException
+
+# -- other --
 import requests
 import json
 

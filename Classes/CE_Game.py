@@ -2,8 +2,8 @@ import json
 from typing import Literal
 
 import requests
-from CE_Objective import CEObjective
-import hm
+from Classes.CE_Objective import CEObjective
+import Modules.hm as hm
 
 class CEGame:
     """A game that's on Challenge Enthusiasts."""

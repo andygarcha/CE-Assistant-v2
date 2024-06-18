@@ -1,7 +1,7 @@
 import datetime
 from typing import Literal
 
-import hm
+import Modules.hm as hm
 
 multi_stage_rolls = Literal["Two Week T2 Streak", 
                             "Two \"Two Week T2 Streak\" Streak", 
@@ -264,9 +264,9 @@ class CERoll:
     async def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
         #TODO: finish this function
-        import Mongo_Reader
-        from CE_User import CEUser
-        from CE_Game import CEGame
+        import Modules.Mongo_Reader as Mongo_Reader
+        from Classes.CE_User import CEUser
+        from Classes.CE_Game import CEGame
 
         # pull the databases
         database_name = await Mongo_Reader.get_mongo_games()
@@ -420,8 +420,8 @@ class CERoll:
 
     async def is_won(self) -> bool :
         """Returns true if this roll instance has been won."""
-        from CE_User import CEUser
-        import Mongo_Reader
+        from Classes.CE_User import CEUser
+        import Modules.Mongo_Reader as Mongo_Reader
         if (self.is_expired()) : return False
         users = await Mongo_Reader.get_mongo_users()
         user = hm.get_item_from_list(self.user_ce_id, users)

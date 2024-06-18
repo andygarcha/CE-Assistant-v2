@@ -2,11 +2,11 @@
 This module simply exists to move over the existing database_user 
 to the new database_user. It will take in the old database,
 """
-from CE_Game import CEGame
-from CE_Objective import CEObjective
-from CE_User import CEUser
-from CE_User_Game import CEUserGame
-from CE_User_Objective import CEUserObjective
+from Classes.CE_Game import CEGame
+from Classes.CE_Objective import CEObjective
+from Classes.CE_User import CEUser
+from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEUserObjective
 
 def reformat_objective(dict, ce_id, is_community, game_ce_id) -> CEObjective :
     """Takes in a dict of an objective and returns a CEObjective object."""

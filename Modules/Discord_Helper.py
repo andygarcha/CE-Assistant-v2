@@ -6,17 +6,18 @@ It will:
 """
 import datetime
 import json
-
 import requests
-from CE_Roll import CERoll
 import discord
-import Mongo_Reader
-import CEAPIReader
-import hm
+
+# -- local --
+from Classes.CE_Roll import CERoll
+import Modules.Mongo_Reader as Mongo_Reader
+import Modules.CEAPIReader as CEAPIReader
+import Modules.hm as hm
 
 def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
-    from CE_Game import CEGame
+    from Classes.CE_Game import CEGame
 
     # -- set up the array --
     embeds : list[discord.Embed] = []
@@ -66,7 +67,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
 async def get_game_embed(game_id : str) -> discord.Embed :
     """This function returns a `discord.Embed` that holds all information about a game."""
-    from CE_Game import CEGame
+    from Classes.CE_Game import CEGame
     # -- get the api data --
     database_name = await Mongo_Reader.get_mongo_games()
     game : CEGame = hm.get_item_from_list(game_id, database_name)

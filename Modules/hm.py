@@ -250,8 +250,8 @@ def get_rollable_game(
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
     """
-    from CE_Game import CEGame
-    from CE_User import CEUser
+    from Classes.CE_Game import CEGame
+    from Classes.CE_User import CEUser
 
     # avoid circular imports
     database_name : list[CEGame] = database_name

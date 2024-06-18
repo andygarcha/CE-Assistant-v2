@@ -1,7 +1,9 @@
 from typing import Literal
-from CE_Objective import CEObjective
-from CE_User_Objective import CEUserObjective
-from CE_Game import CEGame
+
+# -- local --
+from Classes.CE_Objective import CEObjective
+from Classes.CE_User_Objective import CEUserObjective
+from Classes.CE_Game import CEGame
 
 
 class CEUserGame():
@@ -68,7 +70,7 @@ class CEUserGame():
     def get_regular_game(self) -> CEGame :
         """Returns the regular :class:`CEGame` object associated with this game.
         \n**NOTE**: uses bad method"""
-        import CEAPIReader
+        import Modules.CEAPIReader as CEAPIReader
         return CEAPIReader.get_api_page_data("game", self.ce_id)
     
     def is_completed(self) -> bool :
