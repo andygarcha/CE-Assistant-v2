@@ -74,7 +74,7 @@ Credits to [Andy](https://github.com/andykasen13) and [Theron](https://github.co
 
 Credits to [Folkius](https://github.com/Folkius) and Jarvis, the main administrators of Challenge Enthusiasts who helped us with direction and ideas quite a lot, and to [Laura](https://github.com/lauriys) for writing the entire backend for the site and several custom API endpoints for the bot to use.
 
-Credits to [apollo](https://github.com/apollohm) and [Schmole](https://github.com/Schmoley2) for writing small amounts of code and for general inspiration.
+Credits to [apollo](https://github.com/apollohm) and [Schmole](https://github.com/Schmoley2) for writing code intermittenly and for general inspiration.
 
 Credits to crappy for making both the icons for Challenge Enthusiasts emojis and the icon for CE-Assistant (seen below).
 
