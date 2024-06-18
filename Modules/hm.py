@@ -327,7 +327,7 @@ async def name_to_steamid(name : str) -> str :
     # -- now check steam instead --
     payload = {"term" : name, "cc" : "US"}
     response = requests.get("https://store.steampowered.com/api/storesearch/?", params=payload)
-    json_response = json.load(response)
+    json_response = json.loads(response)
 
     # look through all the games
     for item in json_response['items'] :

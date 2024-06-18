@@ -1,3 +1,19 @@
+class GameData() :
+    """This is a superclass for SteamData, RAData, and any other game types that may be added later."""
+    #TODO: make this actually work as a superclass
+    @property
+    def raw_data(self) -> dict :
+        "Returns the raw dict data."
+
+    @property
+    def name(self) -> str :
+        "Returns the name of this game."
+    
+    @property
+    def app_id(self) -> str :
+        "Returns the App ID for this game."
+
+
 class SteamData() :
     """This class houses the data pulled from a Steam App ID page, so we don't have to work with the raw .json data again."""
     def __init__(self, data : dict) :
