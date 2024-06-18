@@ -29,7 +29,7 @@ This gets a lot trickier, as some rolls are Co-Op or PvP. You can view a spreads
 ## Smaller Capabilities
 While CE-Assistant has its own main purposes, it also can do a lot of smaller stuff.
 
-### 1. Request user information
+### 1. Return user information
 Users can use `/profile`, with an optional parameter of another `discord.User`, and the bot will return information about this user.
 > Insert image
 

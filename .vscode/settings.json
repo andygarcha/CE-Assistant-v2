@@ -1,4 +1,9 @@
 {
     "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": false
+    "python.analysis.autoImportCompletions": false,
+    "python.analysis.extraPaths": [
+        "./Classes",
+        "./Modules",
+        "./Exceptions"
+    ]
 }
