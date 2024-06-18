@@ -3,6 +3,7 @@ from typing import Literal
 
 import requests
 from Classes.CE_Objective import CEObjective
+from Classes.OtherClasses import CECompletion, SteamData
 import Modules.hm as hm
 
 class CEGame:
@@ -171,35 +172,35 @@ class CEGame:
         else :
             return None
         
-    def get_steam_data(self) -> dict | None : 
+    def get_steam_data(self) -> SteamData | None : 
         """Returns the steam data for this game."""
         if self.platform != 'steam' : return None
         try :
             payload = {'appids' : self.platform_id, 'cc' : 'US'}
             response = requests.get("https://store.steampowered.com/api/appdetails?", 
                                     params = payload)
-            return json.loads(response.text)
+            return SteamData(json.loads(response.text))
         except :
             return None
         
-    def get_completion_data(self) -> dict :
+    def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
-        print('a')
         json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard').text)
         completions, started, owners = (0,)*3
-        print('f')
 
         total_points = self.get_total_points()
         for user in json_response :
             if user['points'] == total_points : completions += 1
             elif user['points'] != 0 : started += 1
             owners += 1
-        
-        return {
-            'completed' : completions,
-            'started' : started,
-            'total' : owners
-        }
+
+        return CECompletion(
+            {
+                'completed' : completions,
+                'started' : started,
+                'total' : owners
+            }
+        )
     
     # --- emojis ---
     

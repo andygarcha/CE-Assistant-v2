@@ -1,6 +1,6 @@
-class FailedScrapeException(Exception) :
+class FailedUserUpdateException(Exception) :
     """An exception for CE Assistant v2 to denote
-    an issue scraping games from the Challenge Enthusiasts API."""
+    an issue updating users from the Challenge Enthusiasts API."""
     def __init__(self, message : str) :
         self._message = message
     

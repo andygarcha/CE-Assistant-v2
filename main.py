@@ -13,6 +13,7 @@ from Classes.CE_User_Objective import CEObjective
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
+from Classes.OtherClasses import SteamData, CECompletion, RAData
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
 import Modules.Mongo_Reader as Mongo_Reader
@@ -49,6 +50,16 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
 
+# set up channels
+log_channel = client.get_channel(id=hm.log_id)
+casino_channel = client.get_channel(id=hm.casino_id)
+game_additions_channel = client.get_channel(id=hm.game_additions_id)
+private_log_channel = client.get_channel(id=hm.private_log_id)
+
+
+# ------------------------------ commands -------------------------------------
+
+# ---- test command ----
 @tree.command(name='test', description='test',guild=guild)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
@@ -65,6 +76,7 @@ async def test(interaction : discord.Interaction) :
     print(games[0].to_dict())
 
     await interaction.followup.send("silly finished!")
+
 
 
 # ---- register command ----
@@ -128,6 +140,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 
 
 
+
 # ---- solo roll command ----
 @tree.command(name = "solo-roll",
               description = "Roll a solo event with CE Assistant!",
@@ -135,15 +148,13 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 @app_commands.describe(event_name = "The event you'd like to roll.")
 async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll_event_names) :
     await interaction.response.defer()
-    view = discord.ui.View(timeout=600)
+    view = discord.ui.View()
 
     # pull mongo database
     database_user = await Mongo_Reader.get_mongo_users()
     database_name = await Mongo_Reader.get_mongo_games()
 
-    # get channels
-    log_channel = client.get_channel(hm.log_id)
-
+    # grab the user
     user = None
     user_index = -1
     for i, u in enumerate(database_user) :
@@ -152,24 +163,30 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
             user_index = i
             break
 
+    # user doesn't exist
     if user == None :
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
+    # user has cooldown
     if user.has_cooldown(event_name) :
         return await interaction.followup.send(
             f"You are currently on cooldown for {event_name} until {user.get_cooldown_time(event_name)}. "
         )
-    if user.has_current_roll(event_name) :
+    # user currently rolled
+    if user.has_current_roll(event_name) and event_name not in ["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak"
+                                                                , "Fourward Thinking"] :
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
         )
+    # user has pending
     if user.has_pending(event_name) :
         return await interaction.followup.send(
-            f"You just tried rolling this event. Please wait about 10 minutes before trying again."
+            f"You just tried rolling this event. Please wait about 10 minutes before trying again." +
+            " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
     
-    #TODO: send a message to the log channel saying they've won jarvis's random thing
+    # jarvis's random event!
     if random.randint(0, 99) == 0 : 
         log_channel.send(
             f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +

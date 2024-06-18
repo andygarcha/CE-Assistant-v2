@@ -85,19 +85,17 @@ async def get_game_embed(game_id : str) -> discord.Embed :
 
     # -- get steam data and set image and description --
     steam_data = game.get_steam_data()
-    embed.set_image(url=steam_data[game.platform_id]['data']['header_image'])
+    embed.set_image(url=steam_data.header_image)
     embed.description = (
         f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
     # -- set up price --
-    if steam_data[game.platform_id]['data']['is_free'] :
-        embed.description += "- Price: Free\n"
-    elif 'price_overview' in steam_data[game.platform_id]['data'] :
-        embed.description += (f"- Price: {steam_data[game.platform_id]['data']['price_overview']['final_formatted']}\n")
+    if steam_data.is_free :
+        embed.description += "- Price: Free!\n"
     else :
-        embed.description += "- Price unavailable.\n"
+        embed.description += (f"- Price: {steam_data.current_price_formatted}\n")
 
     # -- add steamhunters data --
     sh_data = game.get_steamhunters_data()
@@ -106,13 +104,7 @@ async def get_game_embed(game_id : str) -> discord.Embed :
     
     # -- get ce data --
     completion_data = game.get_completion_data()
-    embed.description += f"- Full CE Completions: {completion_data['completed']}"
-    if completion_data['total'] != 0 :
-        embed.description += f" ({round((completion_data['completed'] / completion_data['total']) * 100, 2)}%\n"
-        embed.description += f" of {completion_data['total']} owners)"
-    else :
-        embed.description += " (Percentage N/A)\n"
-
+    embed.description += f"- {completion_data.description()}\n"
 
     return embed
 
@@ -155,4 +147,4 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
             button.disabled = True
         print("disabled")
 
-    #view.on_timeout = await disable()
+    #view.on_timeout = disable
