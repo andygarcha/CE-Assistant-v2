@@ -112,10 +112,10 @@ class CERoll:
         # (and therefore is probably being read from MongoDB)
         # don't reset all the variables
         if not is_current : 
-            self._init_time = None
-            self._due_time = None
-            self._completed_time = None
-            self._rerolls = None
+            self._init_time = init_time
+            self._due_time = due_time
+            self._completed_time = completed_time
+            self._rerolls = rerolls
             return
 
         # if the roll is being created right now...
@@ -423,19 +423,18 @@ class CERoll:
         from Classes.CE_User import CEUser
         import Modules.Mongo_Reader as Mongo_Reader
         if (self.is_expired()) : return False
-        users = await Mongo_Reader.get_mongo_users()
-        user = hm.get_item_from_list(self.user_ce_id, users)
-
-        return NotImplemented
+        database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
+        user = hm.get_item_from_list(self.user_ce_id, database_user)
+        if self.is_co_op() : partner = hm.get_item_from_list(self.partner_ce_id, database_user)
         
         # one hell of a month
-        if(self.get_roll_name() == "One Hell of a Month") :
+        if(self.roll_name == "One Hell of a Month") :
             categories : dict[str, int] = {}
             for category in hm.get_categories() :
                 categories[category] = 0
-            for game in main_player.get_owned_games() :
-                if (game.get_ce_id() in self.games
-                    and game.is_completed()) :
+            for game in user.owned_games :
+                if (game.ce_id in self.games and game.is_completed()) :
                     categories[game.get_category()] += 1
             completed_categories = 0
             for category in categories :
@@ -443,25 +442,22 @@ class CERoll:
             return completed_categories >= 5
 
         # teamwork makes the dream work
-        if(self.get_roll_name() == "Teamwork Makes the Dream Work") :
+        if(self.roll_name == "Teamwork Makes the Dream Work") :
             for game in self.games :
-                if ((main_player.get_owned_game(game) == None
-                    or not main_player.get_owned_game(game).is_completed())
-                    and partner_player.get_owned_game(game) == None
-                    or not partner_player.get_owned_game(game).is_completed()) :
-                    return False
+                if (not user.has_completed_game(game, database_name)
+                    and not partner.has_completed_game(game, database_name)) :
+                        return False
             return True
 
         # winner takes all
-        if(self.get_roll_name() == "Winner Takes All") :
+        if(self.roll_name == "Winner Takes All") :
             game = self.games[0]
-            main_won = (main_player.get_owned_game(game) != None
-                        and main_player.get_owned_game(game).is_completed())
-            partner_won = (partner_player.get_owned_game(game) != None
-                           and partner_player.get_owned_game(game).is_completed())
+            main_won = (user.has_completed_game(game, database_name))
+            partner_won = (partner.has_completed_game(game, database_name))
             return main_won or partner_won
         
         #TODO: finish this function
+        return NotImplemented
         
         
 

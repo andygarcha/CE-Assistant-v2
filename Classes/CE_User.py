@@ -122,9 +122,14 @@ class CEUser:
     # ----------- setters -----------
 
     @discord_id.setter
-    def set_discord_id(self, input : int) -> None :
+    def discord_id(self, input : int) -> None :
         """Sets this object's Discord ID according to `input`."""
         self._discord_id = input
+
+    @owned_games.setter
+    def owned_games(self, games) :
+        """Sets the 'owned games' to `games`."""
+        self._owned_games = games
 
     def add_current_roll(self, roll : CERoll) -> None :
         """Adds `roll` to this user's Current Rolls section."""
@@ -188,12 +193,25 @@ class CEUser:
             if pending.roll_name == roll_name : return True
         return False
     
+    def has_completed_game(self, game_id : str , database_name : list[CEGame]) :
+        "Returns true if this user has completed this game, returns false otherwise."
+        for user_game in self.owned_games :
+            if user_game.ce_id == game_id :
+                for game in database_name :
+                    if game.ce_id == user_game.ce_id : return game.get_total_points() == user_game.get_user_points()
+        return False
 
     def owns_game(self, game_id : str) -> bool :
         """Returns true if this user owns the game with 
         Challenge Enthusiast ID `game_id`."""
         for game in self.owned_games :
             if game.ce_id == game_id : return True
+        return False
+    
+    def has_points(self, game_id : str) -> bool :
+        """Returns true if this user has points in this game."""
+        for game in self.owned_games :
+            if game.ce_id == game_id : return game.get_user_points() != 0
         return False
     
     

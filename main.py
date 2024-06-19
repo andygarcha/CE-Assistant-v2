@@ -50,13 +50,6 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
 
-# set up channels
-log_channel = client.get_channel(id=hm.log_id)
-casino_channel = client.get_channel(id=hm.casino_id)
-game_additions_channel = client.get_channel(id=hm.game_additions_id)
-private_log_channel = client.get_channel(id=hm.private_log_id)
-
-
 # ------------------------------ commands -------------------------------------
 
 # ---- test command ----
@@ -64,18 +57,13 @@ private_log_channel = client.get_channel(id=hm.private_log_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    database_name = await Mongo_Reader.get_mongo_games()
+    await interaction.followup.send("<@413427677522034727> hiiiii")
 
-    return await interaction.followup.send("got")
+    await interaction.channel.send("this should ping you now <@413427677522034727> did it ping you i hope it did")
 
-    embed = await Discord_Helper.get_game_embed("1e866995-6fec-452e-81ba-1e8f8594f4ea")
+    await interaction.channel.send("but no pingy this time... <@413427677522034727> hehehe", allowed_mentions=discord.AllowedMentions.none())
 
-    return await interaction.followup.send(embed=embed)
-    
-    games = await Mongo_Reader.get_mongo_games()
-    print(games[0].to_dict())
-
-    await interaction.followup.send("silly finished!")
+    return
 
 
 
@@ -153,6 +141,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
     # pull mongo database
     database_user = await Mongo_Reader.get_mongo_users()
     database_name = await Mongo_Reader.get_mongo_games()
+
+    # define channel
+    log_channel = client.get_channel(hm.log_id)
 
     # grab the user
     user = None
@@ -349,8 +340,16 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
 # ---- on ready function ----
 @client.event
 async def on_ready() :
+    # sync commands
     await tree.sync(guild = guild)
-    log_channel = client.get_channel(788158122907926611)
+
+    # set up channels
+    log_channel = client.get_channel(hm.log_id)
+    casino_channel = client.get_channel(hm.casino_id)
+    game_additions_channel = client.get_channel(hm.game_additions_id)
+    private_log_channel = client.get_channel(hm.private_log_id)
+
+    # send online update
     await log_channel.send("version 2 babyyyyy")
 
 client.run(discord_token)

@@ -1,12 +1,17 @@
 """
 This module simply exists to move over the existing database_user 
 to the new database_user. It will take in the old database,
+make CEUser objects out of them, and then dump that into the new 
+MongoDB databases.
 """
+import bson.objectid
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
+from Classes.CE_Cooldown import CECooldown
+from Classes.CE_Roll import CERoll
 
 def reformat_objective(dict, ce_id, is_community, game_ce_id) -> CEObjective :
     """Takes in a dict of an objective and returns a CEObjective object."""
@@ -93,7 +98,7 @@ async def reformat_database_name() :
     import pymongo
     import bson
     from motor.motor_asyncio import AsyncIOMotorClient
-    import Mongo_Reader
+    import Modules.Mongo_Reader as Mongo_Reader
 
     client = AsyncIOMotorClient("mongodb+srv://andrewgarcha:KUTo7dCtGRy4Nrhd@ce-cluster.inrqkb3.mongodb.net/?retryWrites=true&w=majority")
     collection = client['database_name']['ce-collection']
@@ -105,4 +110,150 @@ async def reformat_database_name() :
     for game in database_name :
         game_objects.append(reformat_game(database_name[game]))
 
-    await Mongo_Reader.dump_games(game_objects)
+    return await Mongo_Reader.dump_games(game_objects)
+
+
+async def reformat_database_user() :
+    import Modules.Mongo_Reader as Mongo_Reader
+    import bson
+    client = Mongo_Reader._mongo_client
+    collection = client['database_name']['ce-collection']
+
+    database_user = await collection.find_one({'_id' : bson.ObjectId('64f8bd1b094bdbfc3f7d0051')})
+    del database_user['_id']
+
+    user_objects : list[CEUser] = []
+    for user in database_user :
+        user_objects.append(reformat_user(database_user[user]))
+    
+    return await Mongo_Reader.dump_users(user_objects)
+
+def reformat_user(user : dict) -> CEUser :
+    """Reformats the user that follows the old structure.\n
+    Example: 
+    ```
+    {
+        CE ID: "82117366-ed79-4c76-aa11-1c0cc0b03150",
+        Discord ID: 948841388617912382,
+        Rank: "A Rank", 
+        Reroll Tickets: 0,
+        Casino Score: 1, 
+        Owned Games : {},
+        Cooldowns : {},
+        Current Rolls : [],
+        Completed Rolls : [],
+        Pending Rolls : {}
+    }
+    ```
+    """
+    print(user)
+
+    games : list[CEUserGame] = []
+    cooldowns : list[CECooldown] = []
+    currentrolls : list[CERoll] = []
+    completedrolls : list[CERoll] = []
+    pendings : list[CECooldown] = []
+
+    for id in user['Owned Games'] :
+        games.append(reformat_user_game(user["Owned Games"][id], id))
+    for roll in user["Current Rolls"] :
+        currentrolls.append(reformat_roll(roll, user["CE ID"], True))
+    for roll in user["Completed Rolls"] :
+        completedrolls.append(reformat_roll(roll, user['CE ID'], False))
+    for cooldown in user['Cooldowns'] :
+        cooldowns.append(CECooldown(
+            cooldown, user['Cooldowns'][cooldown]
+        ))
+    for pending in user['Pending Rolls'] :
+        pendings.append(CECooldown(
+            pending, user['Pending Rolls'][pending]
+        ))
+
+
+    return CEUser(
+        discord_id=user['Discord ID'],
+        ce_id = user['CE ID'],
+        casino_score=user['Casino Score'],
+        owned_games=games,
+        current_rolls=currentrolls,
+        completed_rolls=completedrolls,
+        pending_rolls=pendings,
+        cooldowns=cooldowns
+    )
+
+
+def reformat_user_game(game : dict, game_ce_id : str) -> CEUserGame :
+    """Reformats the user game that follows the old structure.\n
+    Example:
+    ```
+    {
+        d28e20d0-b092-45c6-8c5b-25e448b09215 : {
+            Primary Objectives : {
+                38613933-5280-4e52-b742-36f3608aa345 : 475,
+                0a1f2de6-8a66-4ecb-8266-4796e057ee9e : 75,
+                672d79a5-8cda-4aa9-8a74-fcfcb7422fdd : 60,
+                03482217-5ccf-4580-b798-959f3aa135ac : 25,
+                067b678c-cf9e-4ce0-9e61-f15757b2eec0 : 15
+            },
+            Community Objectives {
+                5da196f8-f65f-4028-8ff1-0194167df5c2 : True
+            }
+        }
+    }
+    """
+    all_objectives : list[CEUserObjective] = []
+    if 'Primary Objectives' in game :
+        for id in game['Primary Objectives'] :
+            all_objectives.append(
+                CEUserObjective(
+                    ce_id=id,
+                    game_ce_id = game_ce_id,
+                    type="Primary",
+                    user_points=game['Primary Objectives'][id],
+                    name="N/A"
+                )
+            )
+    if 'Community Objectives' in game :
+        for id in game['Community Objectives'] :
+            all_objectives.append(
+                CEUserObjective(
+                    ce_id=id,
+                    game_ce_id=game_ce_id,
+                    type="Community",
+                    user_points=game['Community Objectives'][id],
+                    name="N/A"
+                )
+            )
+
+    return CEUserGame(
+        ce_id=game_ce_id,
+        user_objectives=all_objectives,
+        name="N/A"
+    )
+
+def reformat_roll(roll : dict, user_ce_id : str, current : bool) -> CERoll :
+    """Reformats the old version of a roll to the current method. 
+    
+    Example:
+    ```
+    {
+        "Event Name" : "One Hell of a Day",
+        "Games" : [],
+        "End Time" : 499163793,
+        "Partner" : "eebbf608-18b4-4f40-9bbb-1c49b9c64fe0",
+        "Rerolls" : 2
+    }
+    ```
+    
+    """
+    return CERoll(
+        roll_name=roll["Event Name"],
+        user_ce_id=user_ce_id,
+        games=roll["Games"] if "Games" in roll else None,
+        partner_ce_id=roll["Partner"] if "Partner" in roll else None,
+        init_time=0,
+        due_time=roll["End Time"] if ("End Time" in roll and current) else None,
+        completed_time=roll["End Time"] if ("End TIme" in roll and not current) else None,
+        rerolls=roll["Rerolls"] if "Rerolls" in roll else None,
+        is_current=False
+    )

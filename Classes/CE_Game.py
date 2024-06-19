@@ -136,11 +136,15 @@ class CEGame:
         elif total_points >= 20 : return "Tier 2"
         elif total_points > 0 : return "Tier 1"
         else : return "Tier 0"
+
+    def get_tier_num(self) -> int :
+        "Returns the int value for the tier."
+        return int(self.get_tier()[5])
     
     def is_t5plus(self) -> bool :
         "Returns true if this game is Tier 5 or above."
-        #          tier num            > 4
-        return int(self.get_tier()[5]) > 4
+        #          tier num        >= 5
+        return self.get_tier_num() >= 5
 
     def get_price(self) -> float :
         """Returns the current price (in USD) on the platform of choice."""

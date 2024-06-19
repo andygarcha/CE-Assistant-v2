@@ -1,3 +1,6 @@
+from typing import Literal
+
+
 class GameData() :
     """This is a superclass for SteamData, RAData, and any other game types that may be added later."""
     #TODO: make this actually work as a superclass
@@ -208,3 +211,26 @@ class RAData() :
     def num_players(self) -> int :
         "The number of distinct players of this game."
         return self.raw_data['NumDistinctPlayers']
+    
+
+updatemessage_locations = Literal["casino", "log", "privatelog", "gameadditions"]
+
+class UpdateMessage() :
+    """A class to hold messages that need to be sent after updating users."""
+
+    def __init__(self,
+                 location : updatemessage_locations,
+                 message : str
+                 ) :
+        self.__location = location
+        self.__message = message
+
+    @property
+    def location(self) -> updatemessage_locations :
+        "The location to send this message."
+        return self.__location
+    
+    @property
+    def message(self) -> str :
+        "The message to be sent."
+        return self.__message
