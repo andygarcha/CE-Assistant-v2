@@ -30,7 +30,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
     )
     embeds[0].set_footer(
         text = f'Page 1 of {str(len(roll.games) + 1)}',
-        icon_url = hm.final_ce_icon
+        icon_url = hm.FINAL_CE_ICON
     )
     embeds[0].set_author(name="Challenge Enthusiasts")
 
@@ -56,7 +56,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
         embeds.append(get_game_embed(id))
         embeds[i+1].set_footer(
             text=f"Page {i+2} of {len(roll.games) + 1}",
-            icon_url = hm.final_ce_icon
+            icon_url = hm.FINAL_CE_ICON
         )
 
     return embeds
@@ -81,7 +81,7 @@ async def get_game_embed(game_id : str) -> discord.Embed :
         color = 0x000000,
         timestamp = datetime.datetime.now()
     )
-    embed.set_author(name='Challenge Enthusiasts', icon_url=hm.ce_mountain_icon)
+    embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
 
     # -- get steam data and set image and description --
     steam_data = game.get_steam_data()

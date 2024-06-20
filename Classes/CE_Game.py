@@ -11,7 +11,7 @@ class CEGame:
     def __init__(self,
                  ce_id : str,
                  game_name : str,
-                 platform : hm.platform_names,
+                 platform : hm.PLATFORM_NAMES,
                  platform_id : str,
                  category : str,
                  objectives : list[CEObjective],
@@ -45,7 +45,7 @@ class CEGame:
         return self._game_name
     
     @property
-    def platform(self) -> hm.platform_names :
+    def platform(self) -> hm.PLATFORM_NAMES :
         """Returns the platform this game is hosted on."""
         return self._platform
     

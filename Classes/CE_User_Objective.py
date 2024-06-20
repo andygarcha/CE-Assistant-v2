@@ -6,7 +6,7 @@ class CEUserObjective:
     def __init__(self,
                  ce_id : str,
                  game_ce_id : str,
-                 type : hm.objective_types,
+                 type : hm.OBJECTIVE_TYPES,
                  user_points : int,
                  name : str = ""):
         self._type = type
@@ -28,7 +28,7 @@ class CEUserObjective:
         return self._ce_id
     
     @property
-    def type(self) -> hm.objective_types :
+    def type(self) -> hm.OBJECTIVE_TYPES :
         """Returns the type of this Objective (e.g. Community, Primary)."""
         return self._type
     

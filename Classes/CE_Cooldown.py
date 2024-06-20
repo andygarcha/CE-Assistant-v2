@@ -2,7 +2,7 @@ import Modules.hm as hm
 class CECooldown :
     """An object that represents a Challenge Enthusiast roll cooldown."""
     def __init__(self,
-                 roll_name : hm.roll_event_names,
+                 roll_name : hm.ALL_ROLL_EVENT_NAMES,
                  end_time : int) :
         self._roll_name = roll_name
         self._end_time = end_time

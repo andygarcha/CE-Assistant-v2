@@ -90,7 +90,7 @@ class CERoll:
     """
 
     def __init__(self,
-                 roll_name : hm.roll_event_names,
+                 roll_name : hm.ALL_ROLL_EVENT_NAMES,
                  user_ce_id : str,
                  games : list[str],
                  partner_ce_id : str = None,
@@ -143,7 +143,7 @@ class CERoll:
     # ------- properties -------
 
     @property
-    def roll_name(self) -> hm.roll_event_names :
+    def roll_name(self) -> hm.ALL_ROLL_EVENT_NAMES :
         """Get the name of the roll event."""
         return self._roll_name
     
@@ -220,7 +220,7 @@ class CERoll:
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
-        if self.roll_name not in hm.multi_stage_rolls : return
+        if self.roll_name not in hm.MULTI_STAGE_ROLLS : return
 
         if self.roll_name == "Two Week T2 Streak" :
             self.due_time = hm.get_unix(days=7)
@@ -240,7 +240,7 @@ class CERoll:
         """Returns true if this roll is co-op."""
         return (
             (self.partner_ce_id != None and self.partner_ce_id != "")
-            or self.roll_name in hm.coop_roll_event_names
+            or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
         )
     
     def is_expired(self) -> bool :
@@ -253,13 +253,13 @@ class CERoll:
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if self.roll_name not in hm.multi_stage_rolls : return False
+        if not self.is_multi_stage() : return False
         
         return self.due_time == None or self.due_time == 0
     
     def is_multi_stage(self) -> bool :
         "Returns true if this game is multi-stage."
-        return self.roll_name in hm.multi_stage_rolls
+        return self.roll_name in hm.MULTI_STAGE_ROLLS
     
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."

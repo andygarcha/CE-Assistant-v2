@@ -62,7 +62,7 @@ __icons = {
     "Safety" : '<:safety:802615322858487838>'
 }
 
-__icon_keys = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3', 
+__ICON_KEYS = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3', 
              'Tier 4', 'Tier 5', 'Tier 6', 'Tier 7', 
              'Action', 'Arcade', 'Bullet Hell', 'First-Person', 
              'Platformer', 'Strategy', 'Points', 'Arrow', 
@@ -72,17 +72,17 @@ __icon_keys = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3',
              'Hexagon', 'Site Dev', 'Shake', 'Safety']
 
 
-roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
+ALL_ROLL_EVENT_NAMES = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
                         "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
                         "Triple Threat", "Let Fate Decide", "Fourward Thinking", "Russian Roulette",
                         "Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
-solo_roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
+SOLO_ROLL_EVENT_NAMES = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
                         "Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Never Lucky",
                         "Triple Threat", "Let Fate Decide", "Fourward Thinking"]
-coop_roll_event_names = Literal["Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
+COOP_ROLL_EVENT_NAMES = Literal["Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
-multi_stage_rolls = Literal["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Fourward Thinking"]
+MULTI_STAGE_ROLLS = Literal["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Fourward Thinking"]
 
 
 banned_games = [
@@ -120,43 +120,43 @@ banned_games = [
 ]
 
 # ------------- image icons -------------
-ce_mountain_icon = "https://i.imgur.com/4PPsX4o.jpg"
+CE_MOUNTAIN_ICON = "https://i.imgur.com/4PPsX4o.jpg"
 """The mountain icon used most commonly by CE."""
-ce_hex_icon = "https://i.imgur.com/FLq0rFQ.png"
+CE_HEX_ICON = "https://i.imgur.com/FLq0rFQ.png"
 """The hex icon used by CE's banner."""
-ce_james_icon = "https://i.imgur.com/fcdHTvx.png"
+CE_JAMES_ICON = "https://i.imgur.com/fcdHTvx.png"
 """The icon made by James that was previously used."""
-final_ce_icon = "https://i.imgur.com/O9J7fg2.png"
+FINAL_CE_ICON = "https://i.imgur.com/O9J7fg2.png"
 """The icon made by @crappy for CE Assistant."""
 
-objective_types = Literal["Primary", "Secondary", "Badge", "Community"]
-platform_names = Literal['steam', 'retroachievements']
+OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
+PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-_in_ce = False
+IN_CE = True
 # ce ids
-_ce_log_old_id = 1208259110638985246         # old log
-_ce_log_id = 1218980203209035938             # current log
-_ce_casino_test_id = 1208259878381031485     # fake casino
-_ce_casino_id = 1080137628604694629          # real casino
-_ce_game_additions_id = 949482536726298666   # game additions
-_ce_private_log_id = 1208259110638985246     # private log
+__CE_OLD_LOG_ID = 1208259110638985246         # old log
+__CE_LOG_ID = 1218980203209035938             # current log
+__CE_CASINO_TEST_ID = 1208259878381031485     # fake casino
+__CE_CASINO_ID = 1080137628604694629          # real casino
+__CE_GAME_ADDITIONS_ID = 949482536726298666   # game additions
+__CE_PRIVATE_LOG_ID = 1208259110638985246     # private log
 # bot test ids
-_test_log_id = 1141886539157221457
-_test_casino_id = 811286469251039333
-_test_game_additions_id = 1128742486416834570
+__TEST_LOG_ID = 1141886539157221457
+__TEST_CASINO_ID = 811286469251039333
+__TEST_GAME_ADDITIONS_ID = 1128742486416834570
 # go-to channels 
 # NOTE: replace these with the ids as needed
-if _in_ce:
-    game_additions_id = _ce_game_additions_id
-    casino_id = _ce_casino_id
-    log_id = _ce_log_id
-    private_log_id = _ce_private_log_id
+if IN_CE:
+    GAME_ADDITIONS_ID = __CE_GAME_ADDITIONS_ID
+    CASINO_ID = __CE_CASINO_ID
+    LOG_ID = __CE_LOG_ID
+    PRIVATE_LOG_ID = __CE_PRIVATE_LOG_ID
 else :
-    game_additions_id = _test_game_additions_id
-    casino_id = _test_casino_id
-    log_id = _test_log_id
-    private_log_id = _test_log_id
+    GAME_ADDITIONS_ID = __TEST_GAME_ADDITIONS_ID
+    CASINO_ID = __TEST_CASINO_ID
+    LOG_ID = __TEST_LOG_ID
+    PRIVATE_LOG_ID = __TEST_LOG_ID
 
 
 def get_current_unix() -> int :
@@ -166,7 +166,7 @@ def get_current_unix() -> int :
     dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.timestamp()
 
-def get_emoji(input : __icon_keys) -> str :
+def get_emoji(input : __ICON_KEYS) -> str :
     """Returns the emoji related to `input`."""
     return __icons[input]
 

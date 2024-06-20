@@ -150,44 +150,44 @@ class CEUser:
 
     # ----------- other methods ------------
 
-    def has_completed_roll(self, roll_name : hm.roll_event_names) -> bool :
+    def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user has completed `roll_name`."""
         for event in self.completed_rolls :
             if event.roll_name == roll_name : return True
         return False
     
-    def get_completed_roll(self, roll_name : hm.roll_event_names) -> CERoll :
+    def get_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll :
         """Returns the `CERoll` associated with `roll_name`."""
         for event in self.completed_rolls :
             if event.roll_name ==roll_name : return event
         return None
     
-    def has_current_roll(self, roll_name : hm.roll_event_names) -> bool :
+    def has_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently working on `roll_name`."""
         for event in self.current_rolls :
             if event.roll_name == roll_name : return True
         return False
     
-    def get_current_roll(self, roll_name : hm.roll_event_names) -> CERoll :
+    def get_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll :
         "REturns the `CERoll` associated with `roll_name`."
         for event in self.current_rolls :
             if event.roll_name == roll_name : return event
         return None
     
-    def has_cooldown(self, roll_name : hm.roll_event_names) -> bool :
+    def has_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently on cooldown for `roll_name`."""
         for cooldown in self.cooldowns :
             if cooldown.roll_name == roll_name : return True
         return False
     
-    def get_cooldown_time(self, roll_name : hm.roll_event_names) -> int :
+    def get_cooldown_time(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> int :
         """Returns the unix timestamp of the date `roll_name`'s cooldown ends
         (or `None` if not applicable.)"""
         for cooldown in self.cooldowns :
             if cooldown.roll_name == roll_name : return cooldown.end_time
         return None
     
-    def has_pending(self, roll_name : hm.roll_event_names) -> bool :
+    def has_pending(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently on pending for `roll_name`."""
         for pending in self.pending_rolls :
             if pending.roll_name == roll_name : return True

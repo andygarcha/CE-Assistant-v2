@@ -5,7 +5,7 @@ class CEObjective:
     """An objective tied to any game on Challenge Enthusiasts."""
     def __init__(self,
                  ce_id : str,
-                 objective_type : hm.objective_types,
+                 objective_type : hm.OBJECTIVE_TYPES,
                  description : str,
                  point_value : int,
                  name : str,
@@ -49,7 +49,7 @@ class CEObjective:
         return self._ce_id
     
     @property
-    def type(self) -> hm.objective_types:
+    def type(self) -> hm.OBJECTIVE_TYPES:
         """Returns the type of objective."""
         return self._objective_type
     
@@ -83,7 +83,7 @@ class CEObjective:
     # -------------- setters ----------------
 
     @type.setter
-    def type(self, type : hm.objective_types) :
+    def type(self, type : hm.OBJECTIVE_TYPES) :
         """Takes in the type and sets the objective's type to it."""
         self._objective_type = type
 

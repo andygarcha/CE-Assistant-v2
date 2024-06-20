@@ -38,7 +38,7 @@ intents.message_content = True
 # open secret_info.json
 with open('secret_info.json') as f :
     local_json_data = json.load(f)
-    if hm._in_ce :
+    if hm.IN_CE :
         discord_token = local_json_data['discord_token']
         guild_id = local_json_data['ce_guild_ID']
     else :
@@ -108,7 +108,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
         ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
     if (challenge_enthusiast_game != None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.name in get_args(hm.roll_event_names) :
+            if objective.name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
                 ce_user.add_completed_roll(CERoll(
                     roll_name=objective.name,
                     user_ce_id=ce_user.ce_id,
@@ -134,7 +134,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
               description = "Roll a solo event with CE Assistant!",
               guild = guild)
 @app_commands.describe(event_name = "The event you'd like to roll.")
-async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll_event_names) :
+async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES) :
     await interaction.response.defer()
     view = discord.ui.View()
 
@@ -143,7 +143,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.solo_roll
     database_name = await Mongo_Reader.get_mongo_games()
 
     # define channel
-    log_channel = client.get_channel(hm.log_id)
+    log_channel = client.get_channel(hm.LOG_ID)
 
     # grab the user
     user = None
@@ -344,10 +344,10 @@ async def on_ready() :
     await tree.sync(guild = guild)
 
     # set up channels
-    log_channel = client.get_channel(hm.log_id)
-    casino_channel = client.get_channel(hm.casino_id)
-    game_additions_channel = client.get_channel(hm.game_additions_id)
-    private_log_channel = client.get_channel(hm.private_log_id)
+    log_channel = client.get_channel(hm.LOG_ID)
+    casino_channel = client.get_channel(hm.CASINO_ID)
+    game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
 
     # send online update
     await log_channel.send("version 2 babyyyyy")
