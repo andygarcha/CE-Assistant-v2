@@ -82,6 +82,7 @@ solo_roll_event_names = Literal["One Hell of a Day", "One Hell of a Week", "One 
                         "Triple Threat", "Let Fate Decide", "Fourward Thinking"]
 coop_roll_event_names = Literal["Destiny Alignment", "Soul Mates", "Teamwork Makes the Dream Work", "Winner Takes All",
                         "Game Theory"]
+multi_stage_rolls = Literal["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak", "Fourward Thinking"]
 
 
 banned_games = [

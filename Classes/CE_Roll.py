@@ -3,10 +3,6 @@ from typing import Literal
 
 import Modules.hm as hm
 
-multi_stage_rolls = Literal["Two Week T2 Streak", 
-                            "Two \"Two Week T2 Streak\" Streak", 
-                            "Fourward Thinking"]
-
 roll_cooldowns = {
     'Destiny Alignment' : hm.months_to_days(1),
     'Soul Mates' : {
@@ -224,7 +220,7 @@ class CERoll:
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
-        if self.roll_name not in multi_stage_rolls : return
+        if self.roll_name not in hm.multi_stage_rolls : return
 
         if self.roll_name == "Two Week T2 Streak" :
             self.due_time = hm.get_unix(days=7)
@@ -257,9 +253,20 @@ class CERoll:
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if self.roll_name not in multi_stage_rolls : return False
+        if self.roll_name not in hm.multi_stage_rolls : return False
         
         return self.due_time == None or self.due_time == 0
+    
+    def is_multi_stage(self) -> bool :
+        "Returns true if this game is multi-stage."
+        return self.roll_name in hm.multi_stage_rolls
+    
+    def in_final_stage(self) -> bool :
+        "If this roll is multi-stage, this will return true if this event is in its final stage."
+        if not self.is_multi_stage() : return False
+        if self.roll_name == "Two Week T2 Streak" : return len(self.games) == 2
+        if self.roll_name == "Two \"Two Week T2 Streak\" Streak" : return len(self.games) == 4
+        if self.roll_name == "Fourward Thinking" : return len(self.games) == 4
     
     async def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
@@ -442,7 +449,7 @@ class CERoll:
             return completed_categories >= 5
 
         # teamwork makes the dream work
-        if(self.roll_name == "Teamwork Makes the Dream Work") :
+        elif(self.roll_name == "Teamwork Makes the Dream Work") :
             for game in self.games :
                 if (not user.has_completed_game(game, database_name)
                     and not partner.has_completed_game(game, database_name)) :
@@ -450,7 +457,7 @@ class CERoll:
             return True
 
         # winner takes all
-        if(self.roll_name == "Winner Takes All") :
+        elif(self.roll_name == "Winner Takes All") :
             game = self.games[0]
             main_won = (user.has_completed_game(game, database_name))
             partner_won = (partner.has_completed_game(game, database_name))

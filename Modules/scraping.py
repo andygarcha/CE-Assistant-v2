@@ -47,5 +47,13 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame])
 
     # check rolls
     for roll in user.current_rolls :
+        # step 0: check multistage rolls
+        # if the roll is multi stage AND its not in the final stage...
+        # note: skip this if we're in the final stage because
+        #       if it's in its final stage we can finish it out,
+        #       this if statement just preps for the next one.
+        if roll.is_multi_stage() :
+            ''
+
         if roll.is_won() :
             ""

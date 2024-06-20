@@ -58,8 +58,8 @@ def _ce_to_game(json_response : dict) -> CEGame :
         # make the actual objective object...
         ce_objective = CEObjective(
             ce_id=objective['id'],
+            # NOTE: OBJECTIVE TYPE FIX
             objective_type='Community' if objective['community'] else 'Primary', 
-            #NOTE: ^^ this will need to be changed when `type` is added.
             description=objective['description'],
             point_value=objective['points'],
             name=objective['name'],
@@ -198,6 +198,7 @@ def _ce_to_user(json_response : dict) -> CEUser :
         new_objective = CEUserObjective(
             ce_id = objective['objective']['id'],
             game_ce_id=objective['objective']['gameId'],
+            # NOTE: OBJECTIVE TYPE FIX
             type='Community' if objective['objective']['community'] else 'Primary',
             user_points=user_points,
             name=objective['objective']['name']
@@ -206,7 +207,7 @@ def _ce_to_user(json_response : dict) -> CEUser :
         # now that we have the objective
         # we need to assign it to the correct games
         for ce_game in user_games :
-            if ce_game.get_ce_id() == new_objective.get_game_ce_id() : 
+            if ce_game.ce_id == new_objective.game_ce_id : 
                 ce_game.add_user_objective(new_objective)
                 break
 
