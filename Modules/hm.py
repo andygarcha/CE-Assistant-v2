@@ -133,7 +133,7 @@ OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
 PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-IN_CE = True
+IN_CE = False
 # ce ids
 __CE_OLD_LOG_ID = 1208259110638985246         # old log
 __CE_LOG_ID = 1218980203209035938             # current log

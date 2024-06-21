@@ -8,9 +8,12 @@ To pull data from all games on the site, use `get_api_games_full()`.
 To pull data from all users on the site, use `get_api_users_all()`.
 """
 
+import asyncio
 import datetime
+import functools
 import time
 from typing import Literal
+import typing
 
 # -- local --
 from Classes.CE_Game import CEGame
@@ -27,6 +30,12 @@ import json
 
 
 # ---------------------- module for ce-api maintenance -----------------------
+
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
 
 def _timestamp_to_unix(input : str) :
     """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`) 
@@ -96,8 +105,8 @@ def _ce_to_game(json_response : dict) -> CEGame :
 
 
 
-
-def get_api_games_full() -> list[CEGame] | None :
+@to_thread
+def get_api_games_full() -> list[CEGame] :
     """Returns an array of :class:`CEGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
     json_response = []
@@ -105,6 +114,7 @@ def get_api_games_full() -> list[CEGame] | None :
     i = 1
     try:
         while (not done_fetching) :
+            print(f"fetching games {(i-1)*100} through {i*100-1}...")
             api_response = requests.get("https://cedb.me/api/games/full?limit=100&" 
                                         + f"offset={(i-1)*100}")
             j = json.loads(api_response.text)
@@ -115,7 +125,7 @@ def get_api_games_full() -> list[CEGame] | None :
         raise FailedScrapeException(f"Scraping failed from api/games/full " 
                                     + f"on games {(i-1)*100} through {i*100-1}.")
     
-
+    print("done fetching games!")
 
     """"
     BIG ASS FUCKING NOTE
@@ -139,7 +149,7 @@ def get_api_games_full() -> list[CEGame] | None :
 
 
 
-
+@to_thread
 def get_api_users_all() -> list[CEUser]:
     """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all"""
 
@@ -149,8 +159,9 @@ def get_api_users_all() -> list[CEUser]:
     i = 1
     try :
         while (not done_fetching) :
-            api_response = requests.get(f"https://cedb.me/api/users/all?limit=100" 
-                                        + f"&offset={(i-1)*100}")
+            print(f"fetching users {(i-1)*50} through {i*50-1}")
+            api_response = requests.get(f"https://cedb.me/api/users/all?limit=50" 
+                                        + f"&offset={(i-1)*50}")
             j = json.loads(api_response.text)
             json_response += j
             done_fetching = len(j) == 0
@@ -158,6 +169,7 @@ def get_api_users_all() -> list[CEUser]:
     except : 
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*100} through {i*100-1}")
+    print("done fetching users!")
     all_users : list[CEUser] = []
     for user in json_response :
         all_users.append(_ce_to_user(user))

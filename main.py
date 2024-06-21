@@ -65,6 +65,28 @@ async def test(interaction : discord.Interaction) :
 
     return
 
+@tree.command(name="prove", description="proive", guild=guild)
+async def prove(interaction : discord.Interaction) :
+    await interaction.response.defer()
+
+    database_name : list[CEGame] = await CEAPIReader.get_api_games_full()
+
+    proven_games : list[str] = []
+    proven_game_ids : list[str] = []
+    for game in database_name :
+        for objective in game.all_objectives :
+            if objective.description.lower() == "prove yourself" or objective.description.lower() == "prove yourself." :
+                proven_games.append(
+                    f"Game: {game.game_name}\nObjective: {objective.name}"
+                )
+                proven_game_ids.append(game.ce_id)
+    
+    for game in proven_game_ids :
+        await interaction.channel.send(game)
+    
+    for message in proven_games :
+        await interaction.channel.send(message)
+
 
 
 # ---- register command ----
