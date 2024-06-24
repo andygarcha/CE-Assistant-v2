@@ -69,23 +69,22 @@ async def test(interaction : discord.Interaction) :
 async def prove(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    database_name : list[CEGame] = await CEAPIReader.get_api_games_full()
+    d = {}
 
-    proven_games : list[str] = []
-    proven_game_ids : list[str] = []
+    database_name = await Mongo_Reader.get_mongo_games()
     for game in database_name :
-        for objective in game.all_objectives :
-            if objective.description.lower() == "prove yourself" or objective.description.lower() == "prove yourself." :
-                proven_games.append(
-                    f"Game: {game.game_name}\nObjective: {objective.name}"
-                )
-                proven_game_ids.append(game.ce_id)
+        letter = game.game_name[0].lower()
+        if letter not in d :
+            d[letter] = 1
+        else :
+            d[letter] += 1
+
+    string = ""
+    for letter in d :
+        string += f"{letter}: {d[letter]} entries\n"
     
-    for game in proven_game_ids :
-        await interaction.channel.send(game)
-    
-    for message in proven_games :
-        await interaction.channel.send(message)
+    return await interaction.followup.send(string)
+
 
 
 
@@ -94,7 +93,7 @@ async def prove(interaction : discord.Interaction) :
               description = "Register with CE Assistant to unlock all features!", 
               guild = guild)
 @app_commands.describe(ce_id = "The link to your Challenge Enthusiasts profile!")
-async def register(interaction : discord.Interaction, ce_id : str) :
+async def register(interaction : discord.Interaction, ce_id : str) : 
     await interaction.response.defer()
 
     # format correctly

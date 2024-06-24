@@ -214,19 +214,9 @@ class CEUser:
             if game.ce_id == game_id : return game.get_user_points() != 0
         return False
     
-    
-    def update(self, json_response : 'CEUser' = None) -> list[tuple] :
-        import Modules.CEAPIReader as CEAPIReader
-        """Checks if the game has been updated and returns a :class:`list` 
-        of :class:`tuple`'s detailing the update or `None` if none.\n
-        The tuples will have an x value of 'casino' or 'log',
-        and a y value of the message to be sent."""
-        if json_response == None : 
-            json_response = CEAPIReader.get_api_page_data('user', self.ce_id)
-        elif type(json_response) == dict :
-            json_response = CEAPIReader._ce_to_game(json_response)
-        return NotImplemented
-        #TODO: finish this function
+    def get_ce_link(self) -> str :
+        "Returns the link to this user's Challenge Enthusiasts page."
+        return f"https://cedb.me/user/{self.ce_id}"
         
         
         

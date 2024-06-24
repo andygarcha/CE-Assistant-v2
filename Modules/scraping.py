@@ -24,12 +24,15 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame])
 
         # if game is too low anyway, skip it
         TIER_MINIMUM = 4
+        """The minimum tier for a game to be reported."""
+        
         if not game.get_tier_num() >= TIER_MINIMUM : continue
 
         # check to see if it was completed before
         for old_game in original_completed_games :
-            # it was completed before
-            if game.ce_id == old_game.ce_id : continue
+            # it was completed before, so skip this
+            if game.ce_id == old_game.ce_id : 
+                continue
         
         updates.append(UpdateMessage(
             location="log",

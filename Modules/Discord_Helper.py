@@ -148,3 +148,6 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
         print("disabled")
 
     #view.on_timeout = disable
+
+async def get_user_embed() -> discord.Embed :
+    """Returns a `discord.Embed` that represents this user.""" 

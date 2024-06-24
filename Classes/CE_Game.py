@@ -206,6 +206,16 @@ class CEGame:
             }
         )
     
+    def has_an_uncleared(self) -> bool :
+        """Returns true if this game has an uncleared objective."""
+        for objective in self.get_primary_objectives() :
+            if objective.is_uncleared() : return True
+        return False
+    
+    def get_ce_link(self) -> str :
+        "Returns the link to the Challenge Enthusiasts page."
+        return f"https://cedb.me/game/{self.ce_id}"
+    
     # --- emojis ---
     
     def get_category_emoji(self) -> str :
@@ -245,13 +255,6 @@ class CEGame:
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
             f"<:CE_points:1128420207329816597>")
         #TODO: finish this function
-
-
-    def has_an_uncleared(self) -> bool :
-        """Returns true if this game has an uncleared objective."""
-        for objective in self.get_primary_objectives() :
-            if objective.is_uncleared() : return True
-        return False
 
     
     def to_dict(self) -> dict :
