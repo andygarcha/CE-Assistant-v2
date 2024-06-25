@@ -161,3 +161,4 @@ cython_debug/
 
 # personal stuff
 secret_info.json
+token.json

@@ -103,7 +103,8 @@ def _mongo_to_user_roll(roll : dict) -> CERoll :
         init_time=init_time,
         due_time=due_time,
         completed_time=completed_time,
-        rerolls=rerolls
+        rerolls=rerolls,
+        is_current=False
     )
 
 

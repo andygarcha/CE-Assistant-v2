@@ -203,11 +203,11 @@ class CERoll:
         self._due_time += increase_in_seconds
 
     @due_time.setter
-    def due_time(self, days : int, reset : bool) -> None :
+    def due_time(self, days : int | None) -> None :
         """Sets the due time for `days` days from now. 
         Additionally, you can reset the due time to `None`
-        with `reset`."""
-        if reset :
+        by passing `None`."""
+        if days == None :
             self._due_time = None
         else :
             self._due_time = hm.get_unix(days=days)
@@ -245,7 +245,7 @@ class CERoll:
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
-        return self.due_time < hm.get_current_unix()
+        return self.due_time < hm.get_unix('now')
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
@@ -407,9 +407,8 @@ class CERoll:
             for game in self.games :
                 game_name = hm.get_item_from_list(game, database_name)
                 s += f"\n- {game_name}"
+            return s
             
-        return NotImplemented
-
     def get_fail_message(self) -> str :
         """Returns a string to send to #casino if this roll is failed."""
         #TODO: finish this function
@@ -463,6 +462,24 @@ class CERoll:
             partner_won = (partner.has_completed_game(game, database_name))
             return main_won or partner_won
         
+        # destiny alignment
+        elif(self.roll_name == "Destiny Alignment") :
+            return NotImplemented
+        
+        # soul mates
+        elif(self.roll_name == "Soul Mates") :
+            return NotImplemented
+        
+        # game theory
+        elif(self.roll_name == "Game Theory") :
+            return NotImplemented
+        
+        # all other rolls
+        else :
+            for game in self.games :
+                if not user.has_completed_game(game, database_name) : return False
+            return True
+        
         #TODO: finish this function
         return NotImplemented
         
@@ -470,21 +487,16 @@ class CERoll:
 
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
-        d = {}
-        if self.roll_name != None : d['Event Name'] = self.roll_name
-        if self.due_time != None : d['Due Time'] = self.due_time
-        if self.games != None : d['Games'] = self.games
-        if self.partner_ce_id != None : 
-            d['Partner ID'] = self.partner_ce_id
-        if self.user_ce_id != None :
-            d['User ID'] = self.user_ce_id
-        if self.init_time != None :
-            d['Init Time'] = self.init_time
-        if self.completed_time != None :
-            d['Completed Time'] = self.completed_time
-        if self.rerolls != None :
-            d['Rerolls'] = self.rerolls
-        return d
+        return {
+            "Event Name" : self.roll_name,
+            "Due Time" : self.due_time,
+            "Games" : self.games,
+            "User ID" : self.user_ce_id,
+            "Partner ID" : self.partner_ce_id,
+            "Init Time" : self.init_time,
+            "Completed Time" : self.completed_time,
+            "Rerolls" : self.rerolls
+        }
     
     def __str__(self) -> str :
         "Turns this object into a string representation."

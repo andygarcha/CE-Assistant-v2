@@ -179,9 +179,7 @@ def get_grammar_str(input : list) -> str :
     Example: [a] --> 'a'"""
     #TODO: finish this function
 
-def get_categories() -> list[str] :
-    """Returns the list of current categories."""
-    return ['Action', 'Arcade', 'Bullet Hell', 'First-Person',
+CATEGORIES = Literal['Action', 'Arcade', 'Bullet Hell', 'First-Person',
             'Platformer', 'Strategy']
 
 def get_item_from_list(ce_id, list) :

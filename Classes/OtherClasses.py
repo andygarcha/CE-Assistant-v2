@@ -1,5 +1,7 @@
 from typing import Literal
 
+from Exceptions.ItemNotFoundException import ItemNotFoundException
+
 
 class GameData() :
     """This is a superclass for SteamData, RAData, and any other game types that may be added later."""
@@ -213,20 +215,20 @@ class RAData() :
         return self.raw_data['NumDistinctPlayers']
     
 
-updatemessage_locations = Literal["casino", "log", "privatelog", "gameadditions"]
+UPDATEMESSAGE_LOCATIONS = Literal["casino", "log", "privatelog", "gameadditions"]
 
 class UpdateMessage() :
     """A class to hold messages that need to be sent after updating users."""
 
     def __init__(self,
-                 location : updatemessage_locations,
+                 location : UPDATEMESSAGE_LOCATIONS,
                  message : str
                  ) :
         self.__location = location
         self.__message = message
 
     @property
-    def location(self) -> updatemessage_locations :
+    def location(self) -> UPDATEMESSAGE_LOCATIONS :
         "The location to send this message."
         return self.__location
     
@@ -234,3 +236,28 @@ class UpdateMessage() :
     def message(self) -> str :
         "The message to be sent."
         return self.__message
+    
+class CEList() :
+    from Classes.CE_Game import CEGame
+    from Classes.CE_User import CEUser
+    from Exceptions.ItemNotFoundException import ItemNotFoundException
+    def __init__(self, items : list[CEGame] | list[CEUser]) :
+        self.__items = items
+
+    @property
+    def name(self) -> Literal["database_name", "database_user"] :
+        "Returns the type of database this CEList is."
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+
+        if type(self.items) == list[CEGame] : return "database_name"
+        if type(self.items) == list[CEUser] : return "database_user"
+
+    @property
+    def items(self)  :
+        return self.__items
+
+    def get_item(self, ce_id) :
+        for item in self.items :
+            if ce_id == item.ce_id : return item
+        raise ItemNotFoundException(f"Could not find item {ce_id} in ")

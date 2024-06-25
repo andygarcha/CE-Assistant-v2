@@ -55,7 +55,7 @@ class CEGame:
         return self._platform_id
     
     @property
-    def category(self) -> str :
+    def category(self) -> hm.CATEGORIES :
         """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
         return self._category
     

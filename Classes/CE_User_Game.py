@@ -73,10 +73,12 @@ class CEUserGame():
         import Modules.CEAPIReader as CEAPIReader
         return CEAPIReader.get_api_page_data("game", self.ce_id)
     
-    def is_completed(self) -> bool :
+    def is_completed(self, database_name : list[CEGame]) -> bool :
         """Returns true if this game has been completed, false if not."""
-        #TODO: finish this function!
-        return NotImplemented
+        for game in database_name :
+            if game.ce_id == self.ce_id :
+                return game.get_total_points() == self.get_user_points()
+        return False
 
     def get_category(self) -> str :
         """Returns the category of this game.\n**NOTE**: uses bad method"""

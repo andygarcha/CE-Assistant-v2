@@ -6,6 +6,21 @@ Used Schmole's code to learn how to push to Google Sheets.
 import re
 import pandas
 
+import os.path
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+# ----------------------------- writing -----------------------------
+
+
+
+
+# ----------------------------- reading -----------------------------
+
 async def __get_sheet_url(url : str) -> str :
     """Takes in the link to a Google Sheet and returns the .csv link."""
     # Regular expression to match and capture the necessary part of the URL
