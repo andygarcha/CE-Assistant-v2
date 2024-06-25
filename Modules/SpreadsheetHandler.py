@@ -14,11 +14,41 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+import pickle
+
 # ----------------------------- writing -----------------------------
+PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
+ROLL_INFO_GID = 1263165737
+ROLL_INTO_RANGE_NAME = "Roll Info!A1:D"
+PROVE_YOURSELF_GID = 1523840581
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 
 
+def work() :
+    creds = None
+    if os.path.exists("token.json") :
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if not creds or not creds.valid :
+        if creds and creds.expired and creds.refresh_token :
+            creds.refresh(Request())
+        else :
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES
+            )
+            creds = flow.run_local_server(port=3000)
+        with open('token.json', 'w') as token :
+            token.write(creds.to_json())
+        
+    try :
+        service = build('sheets', 'v4', credentials=creds)
 
+        sheet = service.spreadsheets()
+    except HttpError as err :
+        print(err)
+
+work()
 # ----------------------------- reading -----------------------------
 
 async def __get_sheet_url(url : str) -> str :

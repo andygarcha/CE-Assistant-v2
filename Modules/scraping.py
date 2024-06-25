@@ -173,3 +173,4 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
                     await roll.get_win_message()
                 )
             ))
+            roll.due_time = hm.get_unix("now")
