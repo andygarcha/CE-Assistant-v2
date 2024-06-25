@@ -159,12 +159,14 @@ else :
     PRIVATE_LOG_ID = __TEST_LOG_ID
 
 
+"""
 def get_current_unix() -> int :
-    """Gets the current time in unix timestamp."""
+    "Gets the current time in unix timestamp."
     dt = datetime.datetime.now(datetime.timezone.utc)
 
     dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.timestamp()
+"""
 
 def get_emoji(input : __ICON_KEYS) -> str :
     """Returns the emoji related to `input`."""
