@@ -93,15 +93,14 @@ Scroll down to 'Authorized redirect URLs', and click 'Add url'. Type in `http://
 
 ![gif4-authorizeurl](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/aefb162b-61aa-43de-b6e2-705a9d2ce80b)
 
-## Step 6: Get your token
+## Step 6: Get your token file.
 Now you'll be getting your token for accessing the Google Sheets API. Run the code you just set up. 
 
 This will take you to your web browser, where you'll choose an account. **Click the one you used to set up the project**, which should be the same one you added as a 'Test User' in Step 2.
 
-It will take you to another page, where it asks whether or not you trust the app. Click 'Continue'. If it works, you should see a "The authentication flow has completed. You may close this window."
+It will take you to another page, where it asks whether or not you trust the app. Click 'Continue'. If it works, you should see a "The authentication flow has completed. You may close this window." Close the window.
 
 ![ezgif-4-96100f0e43](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/cabf86c4-1e67-4fbd-9dac-688ad77a3cf6)
-
 
 ## Final Check
 Just to be sure it worked, check the directory your Python script and `credentials.json` exist in. If `token.json` is there, you're all set!!
@@ -118,4 +117,4 @@ To use the function, uncomment the lines we commented out. Pass the data you wan
 would be passed as
 `[["Month", "Savings"], ["January", "$250"], ["February", "$80"], ["March", "$420"]]`.
 
-To set tab you want to send the data to, pass in `range_name` as "[Sheet Name]![Sheet Range]" (e.g. "Sheet7!A1:E").
+To set tab you want to send the data to, pass in `range_name` as "[Sheet Name]![Sheet Range]" (e.g. `"Sheet7!A1:E"`).
