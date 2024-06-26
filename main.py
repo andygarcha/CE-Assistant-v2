@@ -18,6 +18,7 @@ import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.Discord_Helper as Discord_Helper
+import Modules.SpreadsheetHandler as SpreadsheetHandler
 from Exceptions.FailedScrapeException import FailedScrapeException
 
 # ----------- to-be-sorted imports -------------
@@ -68,23 +69,8 @@ async def test(interaction : discord.Interaction) :
 @tree.command(name="prove", description="proive", guild=guild)
 async def prove(interaction : discord.Interaction) :
     await interaction.response.defer()
-
-    d = {}
-
-    database_name = await Mongo_Reader.get_mongo_games()
-    for game in database_name :
-        letter = game.game_name[0].lower()
-        if letter not in d :
-            d[letter] = 1
-        else :
-            d[letter] += 1
-
-    string = ""
-    for letter in d :
-        string += f"{letter}: {d[letter]} entries\n"
-    
-    return await interaction.followup.send(string)
-
+    await SpreadsheetHandler.dump_prove_yourselves()
+    print('done"')
 
 
 

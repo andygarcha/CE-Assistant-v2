@@ -14,6 +14,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+import Modules.CEAPIReader as CEAPIReader
+
 import pickle
 import asyncio
 
@@ -27,14 +29,13 @@ PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 
-
 async def dump_prove_yourselves() :
-    import CEAPIReader
+    
 
     listy : list[list] = []
 
     # get the games
-    database_name : list[CEGame] = await CEAPIReader.get_api_games_full()
+    database_name = await CEAPIReader.get_api_games_full()
 
     for game in database_name :
         for obj in game.all_objectives :

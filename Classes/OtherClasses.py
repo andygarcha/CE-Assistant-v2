@@ -237,7 +237,10 @@ class UpdateMessage() :
         "The message to be sent."
         return self.__message
     
+
+"""
 class CEList() :
+    
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
     from Exceptions.ItemNotFoundException import ItemNotFoundException
@@ -264,3 +267,4 @@ class DatabaseName(CEList) :
         super.__init__(self, items)
     
 
+"""
