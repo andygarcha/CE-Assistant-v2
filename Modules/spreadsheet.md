@@ -26,7 +26,7 @@ We need to get credentials for our script to actually use. Go to [this page](htt
 2. For Application Type, select 'Web application'. Leave the name as whatever it says, and scroll down to select 'Create'. (side note: you may be able to skip step 5 by adding `http://localhost:3000/` to 'Authorized redirect URLs', but I cannot confirm this.)
 3. **Wait!** Don't click away yet. Click the 'Download JSON' button, and save it to your Downloads folder.
 
-![ezgif-1-83cddfe12d](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/3cc353f8-d8f6-4d52-9f6d-5ade5076321e)
+![gif2-setcredentials](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/3cc353f8-d8f6-4d52-9f6d-5ade5076321e)
 
 ## Step 4: Add credentials to project.
 We need to add the credentials to the local folder for your Python script. Move the file you just downloaded to same folder as your current Python code. Rename this credentials file `credentials.json`. 
@@ -82,3 +82,38 @@ def dump_to_sheet(valueData : list[list], range_name : str) :
 dump_to_sheet('','')
 ```
 
+## Step 5: Set localhost:3000
+(If you tried the additional instruction in Step 3, you may be able to skip this step, but I'm not sure.)
+
+Go back to the [credentials page](https://console.cloud.google.com/apis/credentials). Navigate to the OAuth 2.0 Client IDs table, and click on the ID you set up earlier (I left it as the default 'Web client 1', but you may have changed it).
+
+Scroll down to 'Authorized redirect URLs', and click 'Add url'. Type in `http://localhost:3000/`, and hit enter. This should send you back to the main credentials page.
+
+![gif4-authorizeurl](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/aefb162b-61aa-43de-b6e2-705a9d2ce80b)
+
+## Step 6: Get your token
+Now you'll be getting your token for accessing the Google Sheets API. Run the code you just set up. 
+
+This will take you to your web browser, where you'll choose an account. **Click the one you used to set up the project**, which should be the same one you added as a 'Test User' in Step 2.
+
+It will take you to another page, where it asks whether or not you trust the app. Click 'Continue'. If it works, you should see a "The authentication flow has completed. You may close this window."
+
+![ezgif-4-96100f0e43](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/cabf86c4-1e67-4fbd-9dac-688ad77a3cf6)
+
+
+## Final Check
+Just to be sure it worked, check the directory your Python script and `credentials.json` exist in. If `token.json` is there, you're all set!!
+
+# Actually using the function
+To use the function, uncomment the lines we commented out. Pass the data you want to push to the sheet as a 2D array (each inner array is a row, each value within the inner array exists in order of the columns). For example,
+
+| Month    | Savings |
+| -------- | ------- |
+| January  | $250    |
+| February | $80     |
+| March    | $420    |
+
+would be passed as
+`[["Month", "Savings"], ["January", "$250"], ["February", "$80"], ["March", "$420"]]`.
+
+To set tab you want to send the data to, pass in `range_name` as "[Sheet Name]![Sheet Range]" (e.g. "Sheet7!A1:E").
