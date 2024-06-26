@@ -58,13 +58,7 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    await interaction.followup.send("<@413427677522034727> hiiiii")
-
-    await interaction.channel.send("this should ping you now <@413427677522034727> did it ping you i hope it did")
-
-    await interaction.channel.send("but no pingy this time... <@413427677522034727> hehehe", allowed_mentions=discord.AllowedMentions.none())
-
-    return
+    return await interaction.followup.send('test done')
 
 @tree.command(name="prove", description="proive", guild=guild)
 async def prove(interaction : discord.Interaction) :

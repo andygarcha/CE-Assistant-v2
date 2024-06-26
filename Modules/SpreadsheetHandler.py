@@ -23,11 +23,11 @@ from Modules import CEAPIReader
 
 # ----------------------------- data -----------------------------
 PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
-CE_SHEET_ID = "11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4"
-ROLL_INFO_GID = 1263165737
+CE_PROVE_YOURSELF_SHEET_ID = "11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4"
+CE_SHEET_ID = "1AedUaaZr_O83P0Hv6I47UgMzKQyOhxH2giGrro-uFOY"
 ROLL_INFO_RANGE_NAME = "Roll Info!A1:E"
-PROVE_YOURSELF_GID = 1523840581
 PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
+CE_SHEET_BANNED_GAMES_RANGE = "Banned Games!A1:C"
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -113,8 +113,6 @@ async def dump_prove_yourselves() :
                 listy.append(c)
     
     dump_to_sheet(listy, "Prove Yourself!A1:E", CE_SHEET_ID)
-
-asyncio.run(dump_prove_yourselves())
 
 
 

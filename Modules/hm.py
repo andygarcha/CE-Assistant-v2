@@ -11,6 +11,7 @@ from typing import Literal
 import random
 import requests
 import json
+import Modules.SpreadsheetHandler as SpreadsheetHandler
 
 
 __icons = {
@@ -86,39 +87,6 @@ MULTI_STAGE_ROLLS = Literal["Two Week T2 Streak", "Two \"Two Week T2 Streak\" St
 PVP_ROLL_EVENT_NAMES = Literal["Winner Takes All", "Game Theory"]
 
 
-banned_games = [
-    "Serious Sam HD: The Second Encounter", 
-    "Infinite Air with Mark McMorris", 
-    "A Bastard's Tale",
-    "A Most Extraordinary Gnome",
-    "Bot Vice",
-    "Curvatron",
-    "Dark Souls III",
-    "Destructivator 2",
-    "DSY",
-    "Geballer",
-    "Gravity Den",
-    "Gridform",
-    "Heck Deck",
-    "ITTA",
-    "Just Arms",
-    "LaserBoy",
-    "Little Nightmares",
-    "MO:Astray",
-    "MOONPONG",
-    "Mortal Shell",
-    "Overture",
-    "Project Rhombus",
-    "Satryn Deluxe",
-    "SEUM",
-    "Squidlit",
-    "Super Cable Boy",
-    "The King's Bird",
-    "you have to win the game",
-    "Heavy Bullets",
-    "Barrier X",
-    "Elasto Mania Remastered"
-]
 
 # ------------- image icons -------------
 CE_MOUNTAIN_ICON = "https://i.imgur.com/4PPsX4o.jpg"
@@ -241,6 +209,16 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
     else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))
 
 
+def get_banned_games() -> list[str] :
+    "Returns the list of CE IDs of banned rollable games."
+    banned_games = SpreadsheetHandler.get_sheet_data(SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, 
+                                                     SpreadsheetHandler.CE_SHEET_ID)
+    "Returns as [CE ID, Game Name, Reason]"
+    banned_games_ids = []
+
+    for item in banned_games :
+        banned_games_ids.append(item[0])
+    return banned_games_ids
 
 def get_rollable_game(
         database_name : list,
@@ -264,6 +242,9 @@ def get_rollable_game(
     # randomize database_name :
     random.shuffle(database_name)
 
+    # get banned games
+    banned_games = get_banned_games()
+
     # if only one category was sent, put it in an array so we can use `in`.
     if type(category) == str :
         category = [category]
@@ -286,8 +267,7 @@ def get_rollable_game(
             "Incorrect tier."
             continue
 
-        if (user.owns_game(game.ce_id) 
-            and user.get_owned_game(game.ce_id).is_completed()) :
+        if (user.has_completed_game(game.ce_id, database_name)) :
             "User has completed game already."
             continue
 
@@ -308,7 +288,7 @@ def get_rollable_game(
             "The SteamHunters median-completion-time is too high."
             continue
 
-        if game.game_name in banned_games :
+        if game.ce_id in banned_games :
             "This game is in the Banned Games section."
             continue
 

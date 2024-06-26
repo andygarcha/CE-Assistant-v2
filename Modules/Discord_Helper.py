@@ -15,7 +15,7 @@ import Modules.Mongo_Reader as Mongo_Reader
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
 
-def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
+async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from Classes.CE_Game import CEGame
 
@@ -53,7 +53,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
     # -- now grab all the other embeds --
     for i, id in enumerate(roll.games) :
-        embeds.append(get_game_embed(id))
+        embeds.append(await get_game_embed(id))
         embeds[i+1].set_footer(
             text=f"Page {i+2} of {len(roll.games) + 1}",
             icon_url = hm.FINAL_CE_ICON
@@ -151,3 +151,65 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
 
 async def get_user_embed() -> discord.Embed :
     """Returns a `discord.Embed` that represents this user.""" 
+    return NotImplemented
+
+
+async def game_additions_updates(old_games : list, new_games : list) -> list[discord.Embed] :
+    "Returns a list of `discord.Embed`s to send to #game-additions."
+
+    # import and type casting
+    from Classes.CE_Game import CEGame
+    old_games : list[CEGame] = old_games
+    new_games : list[CEGame] = new_games
+
+    # selenium and beautiful soup stuff
+    from bs4 import BeautifulSoup
+    from selenium import webdriver
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+
+    # pictures
+    # TODO: import screenshot function
+
+    # variables
+    SELENIUM_ENABLE = True
+    ON_RASPBERRY_PI = False
+    ON_WINDOWS_MACHINE = True
+
+    if ON_RASPBERRY_PI :
+        import chromedriver_binary
+
+    # set selenium driver and preferences
+    if SELENIUM_ENABLE :
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('log-level=3')
+
+        if ON_RASPBERRY_PI :
+            service = Service('/usr/lib/chromium-browser/chromedriver')
+            driver = webdriver.Chrome(service=service, options=options)
+        elif ON_WINDOWS_MACHINE :
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+        else :
+            return "No valid machine option available."
+        
+        # grab the first game to get color on the rest of them
+        CELESTE_CE_URL = "https://cedb.me/game/1e866995-6fec-452e-81ba-1e8f8594f4ea"
+        driver.get(CELESTE_CE_URL)
+
+    # get a list of the old ones, so we know if a game was removed or not
+    old_ce_ids : list[str] = []
+    for old_game in old_games :
+        old_ce_ids.append(old_game.ce_id)
+
+    for new_game in new_games :
+        # remove the ce id from old_ce_ids
+        if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
+        else :
+            # the game is new!
+            ''
