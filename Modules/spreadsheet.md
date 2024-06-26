@@ -10,7 +10,9 @@ Also make sure you've set up a separate project just for this. I called mine CE-
 ![cesheets-0-gif](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/ac347904-9cbe-489e-aa2a-ee030545c3fe)
 
 ## Step 2: Set up your OAuth 2.0 Screen
-Now you need to make your OAuth Screen. Unfortunately, the video I took was too long, but you can find it here (REMEMBER TO PUT IT HERE). Go to [this page](https://console.cloud.google.com/apis/credentials/consent) (make sure you're on the right account and on the right project). This will ask you to set up the OAuth Screen. 
+Now you need to make your OAuth Screen. Unfortunately, the video I took was too long, but you can find it [here](https://youtu.be/tyl_PCsl3kU). NOTE: In this video, I start with [this link](https://console.cloud.google.com/apis/credentials), but the link below will get you to the same screen.
+
+Go to [this page](https://console.cloud.google.com/apis/credentials/consent) (make sure you're on the right account and on the right project). This will ask you to set up the OAuth Screen. 
 
 1. Select External on the first page and hit 'Create'.
 2. For the 'App Name', pick whatever you want. I chose 'Web Client 1'. For the user support email, choose your email (it should already be an option). Ignore 'App Logo' and 'App Domain', and scroll to 'Developer contact information'. Put in your email address again. Click 'Save and continue'.
