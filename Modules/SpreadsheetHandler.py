@@ -19,6 +19,18 @@ from googleapiclient.errors import HttpError
 import pickle
 import asyncio
 
+from Modules import CEAPIReader
+
+# ----------------------------- data -----------------------------
+PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
+CE_SHEET_ID = "11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4"
+ROLL_INFO_GID = 1263165737
+ROLL_INFO_RANGE_NAME = "Roll Info!A1:E"
+PROVE_YOURSELF_GID = 1523840581
+PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+
 # ----------------------------- credentials -----------------------------
 def validate_credentials() :
     """Makes sure the token is still intact. Returns `creds`."""
@@ -38,34 +50,6 @@ def validate_credentials() :
     return creds
 
 # ----------------------------- writing -----------------------------
-PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
-ROLL_INFO_GID = 1263165737
-ROLL_INFO_RANGE_NAME = "Roll Info!A1:E"
-PROVE_YOURSELF_GID = 1523840581
-PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
-"""
-async def dump_prove_yourselves() :
-    
-
-    listy : list[list] = []
-
-    # get the games
-    database_name = await CEAPIReader.get_api_games_full()
-
-    for game in database_name :
-        for obj in game.all_objectives :
-            if 'prove yourself' in obj.description.lower() :
-                c = [
-                    game.game_name, game.ce_id, f"https://cedb.me/game/{game.ce_id}", obj.name, obj.description
-                ]
-                listy.append(c)
-    
-    dump_to_sheet(listy, "Prove Yourself (Fixed)!A2:E")
-"""
-
 def dump_to_sheet(valueData : list[list], range_name : str, sheet_id : str) :
     """Dumps the data from `valueData` onto the sheet range by `range_name`."""
     creds = validate_credentials()
@@ -86,10 +70,9 @@ def dump_to_sheet(valueData : list[list], range_name : str, sheet_id : str) :
 
 
 # ----------------------------- reading -----------------------------
-
 def get_sheet_data(range_name : str, sheet_id : str) :
     creds = validate_credentials()
-    
+
     try:
         service = build("sheets", "v4", credentials=creds)
 
@@ -104,20 +87,34 @@ def get_sheet_data(range_name : str, sheet_id : str) :
 
         if not values:
             print("No data found.")
-            return
+            return None
+    
+        return values
 
-        print("Name, Major:")
-        for row in values:
-            # Print columns A and E, which correspond to indices 0 and 4.
-            print(f"{row[0]}, {row[4]}")
-
-        print("total values:")
-        print(values)
     except HttpError as err:
         print(err)
+    
 
-get_sheet_data("Sheet1!A1:E","11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4")
+# my stuff
+async def dump_prove_yourselves() :
+    listy : list[list] = []
 
+    # get the games
+    database_name = await CEAPIReader.get_api_games_full()
+
+    listy.append(["Game Name", "CE ID", "CE Link", "Objective Name", "Description"])
+
+    for game in database_name :
+        for obj in game.all_objectives :
+            if 'prove yourself' in obj.description.lower() :
+                c = [
+                    game.game_name, game.ce_id, f"https://cedb.me/game/{game.ce_id}", obj.name, obj.description
+                ]
+                listy.append(c)
+    
+    dump_to_sheet(listy, "Prove Yourself!A1:E", CE_SHEET_ID)
+
+asyncio.run(dump_prove_yourselves())
 
 
 
