@@ -1,5 +1,5 @@
 # How to enable Python Sheets API.
-This is a tutorial on how to enable the Google Sheets API for Python. You can pull data without this API, but to push data, you'll need to use this.
+This is a tutorial on how to enable the Google Sheets API for Python. You can pull data without this API, but to push data, you'll need to use this. Thank you to [Schmole](https://github.com/Schmoley2) for showing me how to do this!
 
 ## Step 1: Enable the API in the console.
 
