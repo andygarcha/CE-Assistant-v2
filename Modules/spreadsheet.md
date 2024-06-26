@@ -118,3 +118,60 @@ would be passed as
 `[["Month", "Savings"], ["January", "$250"], ["February", "$80"], ["March", "$420"]]`.
 
 To set tab you want to send the data to, pass in `range_name` as "[Sheet Name]![Sheet Range]" (e.g. `"Sheet7!A1:E"`).
+
+# Reading data from Google Sheets
+We previously used `pandas` to grab the data from a Google Sheet, but this method is much quicker and much clearer. Like dumping, retrieving data this way will return a 2D array, with all values being strings and empty values being empty strings.
+
+I personally took the first half of the write function and made it its own function, called `validate_credentials()`, that returns the credentials if `token.json` exists, and `None` otherwise. Here's my code.
+
+```
+def validate_credentials() :
+    """Makes sure the token is still intact. Returns `creds`."""
+    creds = None
+    if os.path.exists("token.json") :
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if not creds or not creds.valid :
+        if creds and creds.expired and creds.refresh_token :
+            creds.refresh(Request())
+        else :
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES
+            )
+            creds = flow.run_local_server(port=3000)
+        with open('token.json', 'w') as token :
+            token.write(creds.to_json())
+    return creds
+```
+
+## Reading function
+I took most of this straight from [Google's own guide](https://developers.google.com/sheets/api/quickstart/python). However, I made it a function that takes in a `range_name` (see above for syntax) and the `sheet_id`. I personally recommend keeping your sheet IDs as constants in your Python file (constants are denoted as variables in all caps). 
+
+As I said above, the Sheet ID is the string after "https://docs.google.com/spreadsheets/d/" in your Google Sheet link. For example, in "https://docs.google.com/spreadsheets/d/11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4/edit?gid=0#gid=0", "11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4" is my Sheet ID.
+
+This function returns a 2D array of values within the range specified. You should note that if you set your sheet range to include all rows (e.g. Sheet1!A1:D), it will stop returning values once there is no more data left. Meaning, if you have 11 rows of data, you will only get 11 arrays - not 1000.
+
+```
+def get_sheet_data(range_name : str, sheet_id : str) :
+    creds = validate_credentials()
+
+    try:
+        service = build("sheets", "v4", credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = (
+            sheet.values()
+            .get(spreadsheetId=sheet_id, range=range_name)
+            .execute()
+        )
+        values = result.get("values", [])
+
+        if not values:
+            print("No data found.")
+            return None
+    
+        return values
+
+    except HttpError as err:
+        print(err)
+```
