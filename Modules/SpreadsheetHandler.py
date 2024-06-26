@@ -14,10 +14,28 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-import Modules.CEAPIReader as CEAPIReader
+#import Modules.CEAPIReader as CEAPIReader
 
 import pickle
 import asyncio
+
+# ----------------------------- credentials -----------------------------
+def validate_credentials() :
+    """Makes sure the token is still intact. Returns `creds`."""
+    creds = None
+    if os.path.exists("token.json") :
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if not creds or not creds.valid :
+        if creds and creds.expired and creds.refresh_token :
+            creds.refresh(Request())
+        else :
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES
+            )
+            creds = flow.run_local_server(port=3000)
+        with open('token.json', 'w') as token :
+            token.write(creds.to_json())
+    return creds
 
 # ----------------------------- writing -----------------------------
 PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
@@ -28,7 +46,7 @@ PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-
+"""
 async def dump_prove_yourselves() :
     
 
@@ -46,23 +64,11 @@ async def dump_prove_yourselves() :
                 listy.append(c)
     
     dump_to_sheet(listy, "Prove Yourself (Fixed)!A2:E")
+"""
 
-
-def dump_to_sheet(valueData : list[list], range_name : str) :
+def dump_to_sheet(valueData : list[list], range_name : str, sheet_id : str) :
     """Dumps the data from `valueData` onto the sheet range by `range_name`."""
-    creds = None
-    if os.path.exists("token.json") :
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid :
-        if creds and creds.expired and creds.refresh_token :
-            creds.refresh(Request())
-        else :
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES
-            )
-            creds = flow.run_local_server(port=3000)
-        with open('token.json', 'w') as token :
-            token.write(creds.to_json())
+    creds = validate_credentials()
         
     try :
         # service
@@ -70,17 +76,52 @@ def dump_to_sheet(valueData : list[list], range_name : str) :
 
         # put it in
         sheet = service.spreadsheets()
-        result = sheet.values().update(spreadsheetId=PERSONAL_SHEET_ID,
+        result = sheet.values().update(spreadsheetId=sheet_id,
                                        range=range_name,
                                        valueInputOption="USER_ENTERED",
                                        body={"values" : valueData}
                                        ).execute()
-
     except HttpError as err :
         print(err)
 
-asyncio.run(dump_prove_yourselves())
+
 # ----------------------------- reading -----------------------------
+
+def get_sheet_data(range_name : str, sheet_id : str) :
+    creds = validate_credentials()
+    
+    try:
+        service = build("sheets", "v4", credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = (
+            sheet.values()
+            .get(spreadsheetId=sheet_id, range=range_name)
+            .execute()
+        )
+        values = result.get("values", [])
+
+        if not values:
+            print("No data found.")
+            return
+
+        print("Name, Major:")
+        for row in values:
+            # Print columns A and E, which correspond to indices 0 and 4.
+            print(f"{row[0]}, {row[4]}")
+
+        print("total values:")
+        print(values)
+    except HttpError as err:
+        print(err)
+
+get_sheet_data("Sheet1!A1:E","11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4")
+
+
+
+
+# ----------------------------- old methods (sorry theron) -----------------------------
 
 async def __get_sheet_url(url : str) -> str :
     """Takes in the link to a Google Sheet and returns the .csv link."""
