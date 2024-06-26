@@ -117,7 +117,7 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
 
         # if game is too low anyway, skip it
         TIER_MINIMUM = 4
-        """The minimum tier for a game to be reported."""
+        """int: The minimum tier for a game to be reported."""
         
         if not game.get_tier_num() >= TIER_MINIMUM : continue
 
@@ -164,7 +164,6 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
             # and kill the due time
             roll.due_time = None
 
-
         elif roll.is_won() :
             # add the update message
             updates.append(UpdateMessage(
@@ -173,4 +172,22 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
                     await roll.get_win_message()
                 )
             ))
-            roll.due_time = hm.get_unix("now")
+            # set the completed time to now
+            roll.completed_time = hm.get_unix("now")
+
+            # add the object to completed rolls, and
+            # remove it from current
+            user.add_completed_roll(roll)
+            del user.current_rolls[index]
+        
+        elif roll.is_expired() :
+            # add the update message
+            updates.append(UpdateMessage(
+                location="casino",
+                message=(
+                    await roll.get_fail_message()
+                )
+            ))
+            
+            # remove this roll from current rolls
+            del user.current_rolls[index]

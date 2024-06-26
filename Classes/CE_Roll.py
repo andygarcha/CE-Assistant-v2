@@ -84,6 +84,10 @@ class CERoll:
         The number of rerolls allowed (or `None`
         if no rerolls are allowed.)
 
+    winner : `bool` or `None`
+        The winner of this event, if it's PvP.
+        True if this user, False if partner.
+
     is_current : `bool`
         Set this to true if you're declaring a
         new current roll.
@@ -98,11 +102,13 @@ class CERoll:
                  due_time = None,
                  completed_time = None,
                  rerolls = None,
+                 winner = None,
                  is_current : bool = False):
         self._roll_name : str = roll_name
         self._user_ce_id : str = user_ce_id
         self._games : list[str] = games
         self._partner_ce_id : str = partner_ce_id
+        self._winner : bool = winner
 
         # if the roll isn't being created right now
         # (and therefore is probably being read from MongoDB)
@@ -184,6 +190,11 @@ class CERoll:
         """If applicable, get the number of rerolls allowed for this roll event."""
         return self._rerolls
     
+    @property
+    def winner(self) -> bool :
+        "Returns true if this person won the co-op, false if their partner won."
+        return self._winner
+    
     # ------ setters -------
 
     def increase_rerolls(self, increase : int) -> None :
@@ -228,20 +239,27 @@ class CERoll:
             self.due_time = hm.get_unix(days=7)
         elif self.roll_name == "Fourward Thinking" :
             self.due_time = hm.get_unix(
-                days= len(self.games)*7
+                days=len(self.games)*7
             )
 
-
+    @winner.setter
+    def winner(self, new_winner : bool) :
+        "Sets the winner."
+        self._winner = new_winner
 
 
     # ------ other methods ------
 
     def is_co_op(self) -> bool :
-        """Returns true if this roll is co-op."""
+        """Returns true if this roll is co-op or pvp."""
         return (
             (self.partner_ce_id != None and self.partner_ce_id != "")
             or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
         )
+    
+    def is_pvp(self) -> bool :
+        "Returns true if this roll is PvP."
+        return self.roll_name in hm.PVP_ROLL_EVENT_NAMES
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
@@ -261,6 +279,7 @@ class CERoll:
         "Returns true if this game is multi-stage."
         return self.roll_name in hm.MULTI_STAGE_ROLLS
     
+    
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."
         if not self.is_multi_stage() : return False
@@ -270,7 +289,6 @@ class CERoll:
     
     async def get_win_message(self) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
-        #TODO: finish this function
         import Modules.Mongo_Reader as Mongo_Reader
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
@@ -342,11 +360,13 @@ class CERoll:
             # send corresponding message
             game_name = hm.get_item_from_list(self.games[0], database_name).game_name
             if user_wins and not partner_wins :
+                self._winner = True
                 return f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Winner Takes All!\n- {game_name}"
             elif user_wins and partner_wins :
                 return (f"<@{user.discord_id}> <@{partner.discord_id}> yall both won winner takes all?" + 
                         " i'm confused someone ping andy pls")
             elif not user_wins and partner_wins :
+                self._winner = False
                 return f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Winner Takes All!\n- {game_name}"
             else :
                 print(self)
@@ -365,6 +385,7 @@ class CERoll:
             user_game_name = hm.get_item_from_list(user_game, database_name).game_name
             partner_game_name = hm.get_item_from_list(partner_game, database_name).game_name
             if user_wins and not partner_wins :
+                self._winner = True
                 return (
                     f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Game Theory!" +
                     f"\n- <@{user.discord_id}> - {user_game_name}" +
@@ -376,6 +397,7 @@ class CERoll:
                     " i'm confused someone please ping andy"
                 )
             elif not user_wins and partner_wins :
+                self._winner = False
                 return (
                     f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Game Theory!" +
                     f"\n- <@{partner.discord_id}> - {partner_game_name}" +
@@ -408,6 +430,7 @@ class CERoll:
                 game_name = hm.get_item_from_list(game, database_name)
                 s += f"\n- {game_name}"
             return s
+
             
     def get_fail_message(self) -> str :
         """Returns a string to send to #casino if this roll is failed."""
@@ -495,7 +518,8 @@ class CERoll:
             "Partner ID" : self.partner_ce_id,
             "Init Time" : self.init_time,
             "Completed Time" : self.completed_time,
-            "Rerolls" : self.rerolls
+            "Rerolls" : self.rerolls,
+            "Winner" : self.winner
         }
     
     def __str__(self) -> str :

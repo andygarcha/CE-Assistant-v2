@@ -247,11 +247,6 @@ class CEList() :
     @property
     def name(self) -> Literal["database_name", "database_user"] :
         "Returns the type of database this CEList is."
-        from Classes.CE_Game import CEGame
-        from Classes.CE_User import CEUser
-
-        if type(self.items) == list[CEGame] : return "database_name"
-        if type(self.items) == list[CEUser] : return "database_user"
 
     @property
     def items(self)  :
@@ -260,4 +255,12 @@ class CEList() :
     def get_item(self, ce_id) :
         for item in self.items :
             if ce_id == item.ce_id : return item
-        raise ItemNotFoundException(f"Could not find item {ce_id} in ")
+        raise ItemNotFoundException(f"Could not find item {ce_id} in {self.name}.")
+    
+class DatabaseName(CEList) :
+    from Classes.CE_Game import CEGame
+
+    def __init__(self, items : list[CEGame]) :
+        super.__init__(self, items)
+    
+

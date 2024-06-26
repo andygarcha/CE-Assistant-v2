@@ -1,4 +1,4 @@
-class FailedScrapeException(Exception) :
+class ItemNotFoundException(Exception) :
     """An exception for CE Assistant v2 to denote
     an item not being found in a `CEList`."""
     def __init__(self, message : str) :

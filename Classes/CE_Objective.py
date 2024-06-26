@@ -122,14 +122,12 @@ class CEObjective:
             "Point Value" : self.point_value,
             "Description" : self.description,
             "CE ID" : self.ce_id,
-            'Type' : self.type
+            "Game CE ID" : self.game_ce_id,
+            'Type' : self.type,
+            "Achievements" : self.achievement_ce_ids,
+            "Requirements" : self.requirements,
+            "Partial Points" : self.partial_points
         }
-        if self.achievement_ce_ids != None : 
-            objective_dict['Achievements'] = self.achievement_ce_ids
-        if self.requirements != None :
-            objective_dict['Requirements'] = self.requirements
-        if self.has_partial() :
-            objective_dict['Partial Points'] = self.partial_points
         return objective_dict
     
     def __str__(self) :

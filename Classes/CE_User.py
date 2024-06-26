@@ -146,6 +146,13 @@ class CEUser:
     def add_pending(self, pending : CECooldown) -> None :
         """Adds `pending` to this user's Pending section."""
         self._pending_rolls.append(pending)
+
+    def remove_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
+        "Removes `roll_name` from this user."
+        for i, roll in enumerate(self.current_rolls) :
+            if roll.roll_name == roll_name : 
+                del self.current_rolls[i]
+                return
     
 
     # ----------- other methods ------------
