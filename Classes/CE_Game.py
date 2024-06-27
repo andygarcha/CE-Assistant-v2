@@ -28,12 +28,28 @@ class CEGame:
     
     def get_total_points(self) -> int :
         """Returns the total number of points this game has.\n
-        NOTE: This does not include uncleared points!"""
+        NOTE: This does not include uncleared points, but includes Primary and Secondary!"""
+        total_points = 0
+        for objective in self.all_objectives :
+            if objective.is_uncleared() : continue
+            total_points += objective.point_value
+        
+        return total_points
+    
+    def get_po_points(self) -> int :
+        "The total number of points in Primary Objectives."
         total_points = 0
         for objective in self.get_primary_objectives() :
             if objective.is_uncleared() : continue
             total_points += objective.point_value
-        
+        return total_points
+
+    def get_so_points(self) -> int :
+        "The total number of points in Secondary Objectives."
+        total_points = 0
+        for objective in self.get_secondary_objectives() :
+            if objective.is_uncleared() : continue
+            total_points += objective.point_value
         return total_points
     
     @property

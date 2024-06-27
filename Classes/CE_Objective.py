@@ -101,6 +101,19 @@ class CEObjective:
     def is_uncleared(self) -> bool :
         """Returns true if this game is UNCLEARED."""
         return self._point_value == 1
+    
+    def equals(self, new_objective : 'CEObjective') -> bool :
+        "Returns true if the two objectives have the same values."
+        return (
+            self.point_value == new_objective.point_value and
+            self.type == new_objective.type and
+            self.description == new_objective.description and
+            self.requirements == new_objective.requirements and
+            self.ce_id == new_objective.ce_id and
+            self.partial_points == new_objective.partial_points and
+            self.name == new_objective.name and 
+            set(self.achievement_ce_ids) == set(new_objective.achievement_ce_ids)
+        )
 
     def to_dict(self) -> dict :
         """Returns this objective as a :class:`dict` for storage purposes.

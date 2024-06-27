@@ -230,8 +230,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
             continue
 
+        # --- the game is new ---
         if new_game.ce_id not in old_ce_ids : 
-            "The game is new!"
 
             # set up the embed
             embed = discord.Embed(
@@ -249,7 +249,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                 num_pos = len(new_game.get_primary_objectives())
                 embed.description += (
                         f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} " +
-                        f"worth {new_game.get_total_points()} points {hm.get_emoji("Points")}"
+                        f"worth {new_game.get_po_points()} {hm.get_emoji("Points")}"
                     )
             if len(new_game.get_uncleared_objectives()) != 0 :
                 num_uncleareds = len(new_game.get_uncleared_objectives())
@@ -259,7 +259,10 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                 embed.description += (f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''}")
             if len(new_game.get_secondary_objectives()) != 0 :
                 num_sos = len(new_game.get_secondary_objectives())
-                embed.description += f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}"
+                embed.description += (
+                        f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}" +
+                        f"worth {new_game.get_so_points()} {hm.get_emoji('Points')}"
+                    )
             if len(new_game.get_badge_objectives()) != 0 :
                 num_bos = len(new_game.get_badge_objectives())
                 embed.description += f"\n- {num_bos} Badge Objective{'s' if num_bos != 1 else ''}"
@@ -274,13 +277,95 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             messages.append(EmbedMessage(embed=embed, file=discord.File(image, filename="image.png")))
             continue
 
+        # --- the game is updated ---
+
+        # remove the ce id from old_ce_ids
+        old_ce_ids.remove(new_game.ce_id)
+
+        # get the old game
+        old_game = hm.get_item_from_list(new_game.ce_id, old_games)
+
+        # if the game hasn't been updated since last time, continue
+        if old_game.last_updated <= new_game.last_updated : continue
+
+        # set up embed
+        embed = discord.Embed(
+            title=f"__{new_game.game_name}__ updated on the site:",
+            color=0xefd839,
+            timestamp=datetime.datetime.now(),
+            description="",
+            url=f"https://cedb.me/game/{new_game.ce_id}/"
+        )
+        embed.set_image(url="attachment://image.png")
+        embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
+        embed.set_footer(name='CE Assistant', icon_url=hm.FINAL_CE_ICON)
+
+        # ----- actual update -----
+        # point/tier changes
+        if old_game.get_total_points() != new_game.get_total_points() :
+            embed.description += (
+                f"\n- {old_game.get_total_points()} {hm.get_emoji('Points')} " +                            # 75 points
+                f"{old_game.get_tier_emoji() if old_game.get_tier() != new_game.get_tier() else ''} " +     # tier 3 if tiers are different
+                f"{hm.get_emoji('Arrow')} " +                                                               # -->
+                f"{new_game.get_total_points()} {hm.get_emoji('Points')} " +                                # 220 points
+                f"{new_game.get_tier_emoji() if old_game.get_tier() != new_game.get_tier() else ''}"        # tier 5 if tiers are different
+            )
         else :
-            "The game is updated!"
-            # remove the ce id from old_ce_ids
-            old_ce_ids.remove(new_game.ce_id)
+            embed.description += "\n- Total points unchanged"
 
-            # get the old game
-            old_game = hm.get_item_from_list(new_game.ce_id, old_games)
+        # category changes
+        if old_game.category != new_game.category :
+            embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Points')} {new_game.get_category_emoji()}"
 
-            # if the game hasn't been updated since last time, continue
-            if old_game.last_updated <= new_game.last_updated : continue
+        # objective changes...
+        old_objective_ce_ids = [old_objective.ce_id for old_objective in old_game.all_objectives]
+        for new_objective in new_game.all_objectives :
+
+            # if objective is new
+            if new_objective.ce_id not in old_objective_ce_ids :
+                "Objective is new!"
+                embed.description += (
+                    f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
+                )
+                if new_objective.type == "Primary" or new_objective.type == "Secondary" :
+                    embed.description += f"\n\t- {new_objective.point_value} {hm.get_emoji('Points')}"
+                embed.description += f"\n\t- {new_objective.description}"
+                continue
+            
+            # update objective tracker and get the old objective
+            old_objective_ce_ids.remove(new_objective.ce_id)
+            old_objective = hm.get_item_from_list(new_objective.ce_id, old_game.all_objectives)
+            
+            # if objective is updated
+            if not new_objective.equals(old_objective) :
+                "Objective is updated."
+                # if the points have changed
+                if old_objective.point_value > new_objective.point_value :
+                    embed.description += (f"\n- '**{new_objective.name}**' decreased from {old_objective.point_value} {hm.get_emoji('Points')} " + 
+                                        f"to {new_objective.point_value} {hm.get_emoji('Points')}:")
+                elif old_objective.point_value < new_objective.point_value :
+                    embed.description += (f"\n- '**{new_objective.name}**' increased from {old_objective.point_value} {hm.get_emoji('Points')} " + 
+                                        f"to {new_objective.point_value} {hm.get_emoji('Points')}:")
+                else :
+                    embed.description += (f"\n- '**{new_objective.name}**' updated:")
+                
+                # if the type has changed
+                if old_objective.type != new_objective.type :
+                    embed.description += (f"\n\t- Type changed from {old_objective.type} to {new_objective.type}")
+
+                # if the description was updated
+                if old_objective.description != new_objective.description :
+                    embed.description += f"\n\t- Description updated"
+                
+                # if the requirements were updated
+                if old_objective.requirements != new_objective.requirements :
+                    embed.description += "\n\t- Requirements updated"
+            
+                # if the achievements were updated
+                if set(old_objective.achievement_ce_ids) != set(new_objective.achievement_ce_ids) :
+                    embed.description += "\n\t- Achievements updated"
+
+                # if the partial points were updated
+                if old_objective.partial_points != new_objective.partial_points :
+                    embed.description += (f"\n\t- Partial points changed from {old_objective.partial_points} {hm.get_emoji('Points')} " +
+                                            f"to {new_objective.partial_points} {hm.get_emoji('Points')}")
