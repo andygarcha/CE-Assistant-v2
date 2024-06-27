@@ -11,9 +11,20 @@ import discord
 
 # -- local --
 from Classes.CE_Roll import CERoll
+from Classes.OtherClasses import EmbedMessage
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
+
+
+# selenium and beautiful soup stuff
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+import io
 
 async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
@@ -153,25 +164,31 @@ async def get_user_embed() -> discord.Embed :
     """Returns a `discord.Embed` that represents this user.""" 
     return NotImplemented
 
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
+    "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
-async def game_additions_updates(old_games : list, new_games : list) -> list[discord.Embed] :
+    # set type hinting
+    from Classes.CE_Game import CEGame, CEAPIGame
+    new_game : CEGame = new_game
+
+    OBJECTIVE_LIMIT = 7
+    "The maximum amount of objectives to be screenshot before cropping." 
+
+
+def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMessage] :
     "Returns a list of `discord.Embed`s to send to #game-additions."
 
     # import and type casting
-    from Classes.CE_Game import CEGame
+    from Classes.CE_Game import CEGame, CEAPIGame
     old_games : list[CEGame] = old_games
-    new_games : list[CEGame] = new_games
+    new_games : list[CEAPIGame] = new_games
+    import Modules.Screenshot as Screenshot
 
-    # selenium and beautiful soup stuff
-    from bs4 import BeautifulSoup
-    from selenium import webdriver
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
+    # the list to be returned
+    messages : list[EmbedMessage] = []
 
     # pictures
-    # TODO: import screenshot function
+    
 
     # variables
     SELENIUM_ENABLE = True
@@ -208,8 +225,62 @@ async def game_additions_updates(old_games : list, new_games : list) -> list[dis
         old_ce_ids.append(old_game.ce_id)
 
     for new_game in new_games :
-        # remove the ce id from old_ce_ids
-        if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
+        # check if it's unfinished
+        if not new_game.is_finished :
+            if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
+            continue
+
+        if new_game.ce_id not in old_ce_ids : 
+            "The game is new!"
+
+            # set up the embed
+            embed = discord.Embed(
+                title=f"__{new_game.game_name}__ added to the site:",
+                color=0x48b474,
+                timestamp=datetime.datetime.now(),
+                description=(
+                    f"\n- {new_game.get_emojis()}"
+                ),
+                url=f"https://cedb.me/game/{new_game.ce_id}"
+            )
+
+            # set up embed description
+            if len(new_game.get_primary_objectives())!= 0 :
+                num_pos = len(new_game.get_primary_objectives())
+                embed.description += (
+                        f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} " +
+                        f"worth {new_game.get_total_points()} points {hm.get_emoji("Points")}"
+                    )
+            if len(new_game.get_uncleared_objectives()) != 0 :
+                num_uncleareds = len(new_game.get_uncleared_objectives())
+                embed.description += (f"\n- {num_uncleareds} Uncleared Objective{'s' if num_uncleareds != 1 else ''}")
+            if len(new_game.get_community_objectives()) != 0 :
+                num_cos = len(new_game.get_community_objectives())
+                embed.description += (f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''}")
+            if len(new_game.get_secondary_objectives()) != 0 :
+                num_sos = len(new_game.get_secondary_objectives())
+                embed.description += f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}"
+            if len(new_game.get_badge_objectives()) != 0 :
+                num_bos = len(new_game.get_badge_objectives())
+                embed.description += f"\n- {num_bos} Badge Objective{'s' if num_bos != 1 else ''}"
+
+            # other embed shit
+            embed.set_image(url="attachment://image.png")
+            embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
+            embed.set_footer(name='CE Assistant', icon_url=hm.FINAL_CE_ICON)
+
+            image = get_image(driver=driver, new_game=new_game)
+
+            messages.append(EmbedMessage(embed=embed, file=discord.File(image, filename="image.png")))
+            continue
+
         else :
-            # the game is new!
-            ''
+            "The game is updated!"
+            # remove the ce id from old_ce_ids
+            old_ce_ids.remove(new_game.ce_id)
+
+            # get the old game
+            old_game = hm.get_item_from_list(new_game.ce_id, old_games)
+
+            # if the game hasn't been updated since last time, continue
+            if old_game.last_updated <= new_game.last_updated : continue

@@ -27,9 +27,11 @@ class CEGame:
     # ----------- getters -------------
     
     def get_total_points(self) -> int :
-        """Returns the total number of points this game has."""
+        """Returns the total number of points this game has.\n
+        NOTE: This does not include uncleared points!"""
         total_points = 0
         for objective in self.get_primary_objectives() :
+            if objective.is_uncleared() : continue
             total_points += objective.point_value
         
         return total_points
@@ -65,19 +67,13 @@ class CEGame:
         return self._objectives
     
     def get_primary_objectives(self) -> list[CEObjective] : 
-        """Returns the array of CEObjectives that are Primary."""
+        """Returns the array of CEObjectives that are Primary.\n
+        NOTE: This does not return uncleared objectives!"""
         p = []
         for objective in self.all_objectives :
-            if objective.type == "Primary" :
+            if objective.type == "Primary" and not objective.is_uncleared() :
                 p.append(objective)
         return p
-    
-    def get_primary_objective(self, ce_id : str) -> CEObjective | None :
-        """Returns the :class:`CEObjective` object associated
-        with `ce_id`, or `None` if none exist."""
-        for objective in self.get_primary_objectives() :
-            if objective.ce_id == ce_id : return objective
-        return None
     
     def get_community_objectives(self) -> list[CEObjective] :
         """Returns the array of CEObjectives that are Community."""
@@ -87,10 +83,34 @@ class CEGame:
                 p.append(objective)
         return p
     
-    def get_community_objective(self, ce_id : str) -> CEObjective | None:
+    def get_uncleared_objectives(self) -> list[CEObjective] :
+        "Returns an array of all uncleared objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.is_uncleared() : 
+                o.append(objective)
+        return o
+    
+    def get_badge_objectives(self) -> list[CEObjective] :
+        "Returns an array of all badge objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.type == "Badge" :
+                o.append(objective)
+        return o
+    
+    def get_secondary_objectives(self) -> list[CEObjective] :
+        "Returns an array of all secondary objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.type == "Secondary" :
+                o.append(objective)
+        return o
+    
+    def get_objective(self, ce_id : str) -> CEObjective | None:
         """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
-        for objective in self.get_community_objectives() :
+        for objective in self.all_objectives :
             if objective.ce_id == ce_id : return objective
         return None
     
@@ -120,10 +140,6 @@ class CEGame:
     def is_t0(self) -> bool :
         """Returns true if the game is a Tier 0."""
         return self.get_total_points() == 0
-    
-    def is_unfinished(self) -> bool :
-        "Returns true if `isFinished` is listed as `false` on the site."
-        return not self.get_raw_ce_data()['isFinished']
     
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
@@ -285,3 +301,39 @@ class CEGame:
             "\nObjectives: " + self.all_objectives +
             "\nLast Updated: " + self.last_updated
         )
+    
+class CEAPIGame(CEGame) :
+    """A game that's been pulled from the CE API."""
+    def __init__(
+            self,
+            ce_id : str,
+            game_name : str,
+            platform : hm.PLATFORM_NAMES,
+            platform_id : str,
+            category : hm.CATEGORIES,
+            objectives : list[CEObjective],
+            last_updated : int,
+            full_data
+        ) :
+        super().__init__(ce_id, game_name, platform, platform_id, category, objectives, last_updated)
+        self.__full_data = full_data
+
+    @property
+    def full_data(self) :
+        "Return the full API data."
+        return self.__full_data
+    
+    @property
+    def icon(self) :
+        "The icon for this game."
+        return self.full_data['icon']
+    
+    @property
+    def is_finished(self) :
+        "The game is not `unfinished`."
+        return self.full_data['isFinished']
+    
+    @property
+    def information(self) :
+        "The information for this game."
+        return self.full_data['information']

@@ -16,7 +16,7 @@ from typing import Literal
 import typing
 
 # -- local --
-from Classes.CE_Game import CEGame
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_User import CEUser
@@ -44,9 +44,9 @@ def _timestamp_to_unix(input : str) :
 
 
 
-def _ce_to_game(json_response : dict) -> CEGame :
+def _ce_to_game(json_response : dict) -> CEAPIGame :
     """Takes in a :class:`dict` pulled from the Challenge Enthusiasts API
-    and returns a :class:`CEGame` object from it."""
+    and returns a :class:`CEAPIGame` object from it."""
 
     # Step 1: iterate through all of the objectives and make two separate arrays.
     all_objectives : list[CEObjective] = []
@@ -90,14 +90,15 @@ def _ce_to_game(json_response : dict) -> CEGame :
                 last_updated = _timestamp_to_unix(objreq['updatedAt'])
 
     # now that we have all objectives, we can make the object...
-    ce_game = CEGame(
+    ce_game = CEAPIGame(
         ce_id=json_response['id'],
         game_name=json_response['name'],
         platform=json_response['platform'],
         platform_id=json_response['platformId'],
         category=json_response['genre']['name'],
         objectives=all_objectives,
-        last_updated=last_updated
+        last_updated=last_updated,
+        full_data=json_response
     )
     
     # ... and return it.
@@ -106,8 +107,8 @@ def _ce_to_game(json_response : dict) -> CEGame :
 
 
 @to_thread
-def get_api_games_full() -> list[CEGame] :
-    """Returns an array of :class:`CEGame`'s grabbed from https://cedb.me/api/games/full"""
+def get_api_games_full() -> list[CEAPIGame] :
+    """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
     json_response = []
     done_fetching : bool = False
@@ -133,8 +134,8 @@ def get_api_games_full() -> list[CEGame] :
     the bot should effectively freeze the game in place. just copy it over from when it existed last.
     """
 
-    # Step 2: iterate through the new json and construct an array of CEGame's.
-    all_games : list[CEGame] = []
+    # Step 2: iterate through the new json and construct an array of CEAPIGame's.
+    all_games : list[CEAPIGame] = []
     for game in json_response :
 
         # if the game is unfinished, come back.
@@ -236,8 +237,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
 
 
 
-def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEGame | None :
-    """Returns either a :class:`CEUser` or a :class:`CEGame` 
+def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
+    """Returns either a :class:`CEUser` or a :class:`CEAPIGame` 
     from `ce_id` depending on `type`."""
     # if type is user
     if type == "user" :

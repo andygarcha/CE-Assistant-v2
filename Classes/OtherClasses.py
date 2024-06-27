@@ -1,5 +1,7 @@
 from typing import Literal
 
+import discord
+
 from Exceptions.ItemNotFoundException import ItemNotFoundException
 
 
@@ -236,7 +238,26 @@ class UpdateMessage() :
     def message(self) -> str :
         "The message to be sent."
         return self.__message
+
+class EmbedMessage() :
+    """A class to hold embeds and files."""
+    def __init__(
+            self,
+            embed : discord.Embed,
+            file : discord.File
+            ) :
+        self.__embed = embed
+        self.__file = file
+
+    @property
+    def embed(self) -> discord.Embed :
+        "The embed."
+        return self.__embed
     
+    @property
+    def file(self) -> discord.File :
+        "The file."
+        return self.__file
 
 """
 class CEList() :
