@@ -59,8 +59,8 @@ guild = discord.Object(id=guild_id)
 
 def x() :
     # iterate through categories
-    for category in get_args(hm.CATEGORIES) :
-        if category == "First-Person" : category = "First Person"
+    if True :
+        category = "Strategy"
 
         # get the result
         result = SpreadsheetHandler.get_hyperlink(f'{category}!A1:D', sheet_id=SpreadsheetHandler.POTENTIALS_SHEET_ID)
@@ -88,14 +88,19 @@ def x() :
             if json_data == None or type(json_data) == NoneType :
                 d = ['failed', steam_id, '', '', '', '']
                 print('fuck')
+            elif 'data' not in json_data[str(steam_id)] : d = ['game removed', steam_id, '', '', '', '']
             else:
                 json_data = json_data[str(steam_id)]['data']
 
                 if json_data['is_free'] : 
-                    d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", 'free', 'free', 'fere']
+                    d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", 'free', 'free', 'free']
+
+                elif 'price_overview' not in json_data :
+                    d = ['error', steam_id, '', '', '', '']
 
                 else :
                     d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", json_data['price_overview']['initial_formatted'], json_data['price_overview']['final_formatted'], f"{json_data['price_overview']['discount_percent']}%"]
+                    if d[3] == '' : d[3] = d[4]
             
             data.append(d)
 
