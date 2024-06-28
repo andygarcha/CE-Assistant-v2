@@ -57,11 +57,7 @@ guild = discord.Object(id=guild_id)
 
 # ------------------------------ commands -------------------------------------
 
-# ---- test command ----
-@tree.command(name='test', description='test',guild=guild)
-async def test(interaction : discord.Interaction) :
-    await interaction.response.defer()
-
+def x() :
     # iterate through categories
     for category in get_args(hm.CATEGORIES) :
         if category == "First-Person" : category = "First Person"
@@ -104,6 +100,15 @@ async def test(interaction : discord.Interaction) :
             data.append(d)
 
         SpreadsheetHandler.dump_to_sheet(data, f"{category}!A2:F", sheet_id='1SkSzQi0rvFblcJ9kwBNeIVm1Vq_G0PTpinBLBBkCujo')
+
+x()
+
+# ---- test command ----
+@tree.command(name='test', description='test',guild=guild)
+async def test(interaction : discord.Interaction) :
+    await interaction.response.defer()
+
+    
 
 
     return await interaction.followup.send('test done')
