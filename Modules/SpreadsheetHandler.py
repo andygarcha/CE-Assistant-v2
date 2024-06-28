@@ -22,13 +22,15 @@ import asyncio
 from Modules import CEAPIReader
 
 # ----------------------------- data -----------------------------
-PERSONAL_SHEET_ID = "1jvYRLshEu65s15NKLNmVxUeTFh-y73Ftd1Quy2uLs3M"
+LOCAL_POTENTIALS_SHEET_ID = "1SkSzQi0rvFblcJ9kwBNeIVm1Vq_G0PTpinBLBBkCujo"
 CE_PROVE_YOURSELF_SHEET_ID = "11v1hvHphBGW_26gCxM4-DttZSId5Hvz-RPretD3VHK4"
 CE_SHEET_ID = "1AedUaaZr_O83P0Hv6I47UgMzKQyOhxH2giGrro-uFOY"
+ZELDA_POTENTIALS_SHEET_ID = "1NeWYzeRi7NDrm9jvJKZgjrB6LLSjKskD3yNO0SYOVpk"
+
 ROLL_INFO_RANGE_NAME = "Roll Info!A1:E"
 PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
 CE_SHEET_BANNED_GAMES_RANGE = "Banned Games!A1:C"
-POTENTIALS_SHEET_ID = "1NeWYzeRi7NDrm9jvJKZgjrB6LLSjKskD3yNO0SYOVpk"
+
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
