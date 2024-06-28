@@ -57,6 +57,36 @@ guild = discord.Object(id=guild_id)
 
 # ------------------------------ commands -------------------------------------
 
+PERSONAL_POTENTIALS_SHEET_ID = "1SkSzQi0rvFblcJ9kwBNeIVm1Vq_G0PTpinBLBBkCujo"
+def y() :
+    for category in get_args(hm.CATEGORIES) :
+        if category == "First-Person" : category = "First Person"
+
+        result = SpreadsheetHandler.get_sheet_data(f'{category}!A2:D', sheet_id=SpreadsheetHandler.POTENTIALS_SHEET_ID)
+
+        d = []
+
+        home_result = SpreadsheetHandler.get_sheet_data(f'{category}!A2:H', sheet_id=PERSONAL_POTENTIALS_SHEET_ID)
+
+        for i, row in enumerate(result) :
+            print(row)
+            if row == [] : break
+            if len(row) < 4 : x = ""
+            else : x = row[3]
+            
+            home_item = home_result[i]
+            if len(home_item) < 3 :
+                for i in range(0,5) :
+                    home_item.append("")
+            new_item = [
+                home_item[0], home_item[1], home_item[2], home_item[3], home_item[4], home_item[5], row[1], x
+            ]
+            if new_item[3] == '' : new_item[3] = new_item[4]
+            d.append(new_item)
+        
+        SpreadsheetHandler.dump_to_sheet(d, f'{category}!A2:H', PERSONAL_POTENTIALS_SHEET_ID)
+
+
 def x() :
     # iterate through categories
     if True :
@@ -106,7 +136,7 @@ def x() :
 
         SpreadsheetHandler.dump_to_sheet(data, f"{category}!A2:F", sheet_id='1SkSzQi0rvFblcJ9kwBNeIVm1Vq_G0PTpinBLBBkCujo')
 
-x()
+y()
 
 # ---- test command ----
 @tree.command(name='test', description='test',guild=guild)
