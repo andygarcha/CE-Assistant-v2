@@ -1,5 +1,6 @@
 # -------- discord imports -----------
 import time
+from types import NoneType
 import discord
 from discord import app_commands
 
@@ -76,7 +77,6 @@ async def test(interaction : discord.Interaction) :
 
         # iterate through array
         for link in result :
-            print(link)
             if link == {} : continue
 
             link = link['values'][0]['hyperlink']
@@ -86,20 +86,20 @@ async def test(interaction : discord.Interaction) :
 
             print(steam_id)
             # get steam api
-
-            time.sleep(1)
             r = requests.get(f'https://store.steampowered.com/api/appdetails?', params={'cc' : 'US', 'appids' : steam_id})
-            print(r)
-            print(r.text)
             json_data = json.loads(r.text)
-            json_data = json_data[str(steam_id)]['data']
-            print(json_data)
+            time.sleep(1)
+            if json_data == None or type(json_data) == NoneType :
+                d = ['failed', steam_id, '', '', '', '']
+                print('fuck')
+            else:
+                json_data = json_data[str(steam_id)]['data']
 
-            if json_data['is_free'] : 
-                d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", 'free', 'free', 'fere']
+                if json_data['is_free'] : 
+                    d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", 'free', 'free', 'fere']
 
-            else :
-                d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", json_data['price_overview']['initial_formatted'], json_data['price_overview']['final_formatted'], f"{json_data['price_overview']['discount_percent']}%"]
+                else :
+                    d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", json_data['price_overview']['initial_formatted'], json_data['price_overview']['final_formatted'], f"{json_data['price_overview']['discount_percent']}%"]
             
             data.append(d)
 
