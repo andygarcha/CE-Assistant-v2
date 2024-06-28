@@ -28,6 +28,7 @@ CE_SHEET_ID = "1AedUaaZr_O83P0Hv6I47UgMzKQyOhxH2giGrro-uFOY"
 ROLL_INFO_RANGE_NAME = "Roll Info!A1:E"
 PROVE_YOURSELF_RANGE_NAME = "Prove Yourself (Fixed)!A2:E"
 CE_SHEET_BANNED_GAMES_RANGE = "Banned Games!A1:C"
+POTENTIALS_SHEET_ID = "1NeWYzeRi7NDrm9jvJKZgjrB6LLSjKskD3yNO0SYOVpk"
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -80,7 +81,10 @@ def get_sheet_data(range_name : str, sheet_id : str) :
         sheet = service.spreadsheets()
         result = (
             sheet.values()
-            .get(spreadsheetId=sheet_id, range=range_name)
+            .get(
+                spreadsheetId=sheet_id, 
+                range=range_name
+            )
             .execute()
         )
         values = result.get("values", [])
@@ -93,7 +97,37 @@ def get_sheet_data(range_name : str, sheet_id : str) :
 
     except HttpError as err:
         print(err)
+
+def get_hyperlink(range_name : str, sheet_id : str) :
+    creds = validate_credentials()
+
+    try:
+        service = build("sheets", "v4", credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = (
+            sheet.get(
+                spreadsheetId=sheet_id,
+                ranges=range_name,
+                fields="sheets/data/rowData/values/hyperlink"
+            )
+            .execute()
+        )
+        return result
+        print(result)
+        for i in range(0,20) :
+            print('----')
+        values = result.get("values", [])
+
+        if not values:
+            print("No data found.")
+            return None
     
+        return values
+
+    except HttpError as err:
+        print(err)
 
 # my stuff
 async def dump_prove_yourselves() :

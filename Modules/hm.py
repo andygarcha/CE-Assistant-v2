@@ -11,7 +11,6 @@ from typing import Literal
 import random
 import requests
 import json
-import Modules.SpreadsheetHandler as SpreadsheetHandler
 
 
 __icons = {
@@ -211,6 +210,7 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
 
 def get_banned_games() -> list[str] :
     "Returns the list of CE IDs of banned rollable games."
+    import Modules.SpreadsheetHandler as SpreadsheetHandler
     banned_games = SpreadsheetHandler.get_sheet_data(SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, 
                                                      SpreadsheetHandler.CE_SHEET_ID)
     "Returns as [CE ID, Game Name, Reason]"

@@ -369,3 +369,5 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                 if old_objective.partial_points != new_objective.partial_points :
                     embed.description += (f"\n\t- Partial points changed from {old_objective.partial_points} {hm.get_emoji('Points')} " +
                                             f"to {new_objective.partial_points} {hm.get_emoji('Points')}")
+        
+        # all objectives have been reflected

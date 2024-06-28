@@ -1,10 +1,13 @@
 # -------- discord imports -----------
+import time
 import discord
 from discord import app_commands
 
 # -------- json imports ----------
 import json
 from typing import Literal, get_args
+
+import requests
 
 # --------- local class imports --------
 from Classes.CE_User import CEUser
@@ -58,13 +61,59 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    # iterate through categories
+    for category in get_args(hm.CATEGORIES) :
+        if category == "First-Person" : category = "First Person"
+
+        # get the result
+        result = SpreadsheetHandler.get_hyperlink(f'{category}!A1:D', sheet_id=SpreadsheetHandler.POTENTIALS_SHEET_ID)
+
+        # get the array
+        result = result['sheets'][0]['data'][0]['rowData']
+
+        # set data to be dumped
+        data = []
+
+        # iterate through array
+        for link in result :
+            print(link)
+            if link == {} : continue
+
+            link = link['values'][0]['hyperlink']
+
+            # grab the steam id
+            steam_id = link.split('/')[4]
+
+            print(steam_id)
+            # get steam api
+
+            time.sleep(1)
+            r = requests.get(f'https://store.steampowered.com/api/appdetails?', params={'cc' : 'US', 'appids' : steam_id})
+            print(r)
+            print(r.text)
+            json_data = json.loads(r.text)
+            json_data = json_data[str(steam_id)]['data']
+            print(json_data)
+
+            if json_data['is_free'] : 
+                d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", 'free', 'free', 'fere']
+
+            else :
+                d = [json_data['name'], steam_id, f"https://store.steampowered.com/app/{steam_id}/", json_data['price_overview']['initial_formatted'], json_data['price_overview']['final_formatted'], f"{json_data['price_overview']['discount_percent']}%"]
+            
+            data.append(d)
+
+        SpreadsheetHandler.dump_to_sheet(data, f"{category}!A2:F", sheet_id='1SkSzQi0rvFblcJ9kwBNeIVm1Vq_G0PTpinBLBBkCujo')
+
+
     return await interaction.followup.send('test done')
 
 @tree.command(name="prove", description="proive", guild=guild)
 async def prove(interaction : discord.Interaction) :
     await interaction.response.defer()
-    await SpreadsheetHandler.dump_prove_yourselves()
+    #await SpreadsheetHandler.dump_prove_yourselves()
     print('done"')
+    return await interaction.followup.send('fjksda')
 
 
 
