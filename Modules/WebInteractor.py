@@ -3,7 +3,21 @@ from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEGame
 from Classes.OtherClasses import UpdateMessage
+from Modules.Screenshot import Screenshot
 import Modules.hm as hm
+
+
+# selenium and beautiful soup stuff
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+import io
+from PIL import Image
+
+
 
 def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGame],
                          database_name : list[CEGame], user : CEUser
@@ -191,3 +205,90 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
             
             # remove this roll from current rolls
             del user.current_rolls[index]
+
+
+
+
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
+    "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
+
+    # set type hinting
+    from Classes.CE_Game import CEGame, CEAPIGame
+    new_game : CEGame = new_game
+
+    OBJECTIVE_LIMIT = 7
+    "The maximum amount of objectives to be screenshot before cropping." 
+
+    # initiate selenium
+    url = f"https://cedb.me/game/{new_game.ce_id}/"
+    driver.get(url)
+    
+    # set up variables
+    start_time = hm.get_unix('now')
+    timeout = hm.get_unix('now') - start_time > 5
+    objective_list = []
+
+    # give it five seconds to load the elements.
+    while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
+        # run this to just fully load the page...
+        html_page = driver.execute_script("return document.documentElement.innerHTML;")
+        # ...and now get the list.
+        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+        timeout = hm.get_unix('now') - start_time > 5
+    
+    # if it took longer than 5 seconds, just return the image failed image.
+    if timeout : return "Assets/image_failed.png"
+
+    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
+    objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    title = driver.find_element(By.TAG_NAME, "h1")
+    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
+    title_size = title.size['width']
+    title_location = title.location['x']
+
+    bottom_right = objective_list[len(objective_list)-2].location
+    size = objective_list[len(objective_list)-2].size
+
+    objective_list[0]
+
+    header_elements = [
+        'bp4-navbar',
+        'tr-fadein',
+        'css-1ugviwv'
+    ]
+
+    BORDER_WIDTH = 15*2
+
+    #NOTE: i multiplied these by two. dk why it's working.
+    top_left_x = (top_left['x'])*2 - BORDER_WIDTH
+    top_left_y = (top_left['y'])*2 - BORDER_WIDTH
+    bottom_right_y = (bottom_right['y'] + size['height'])*2 + BORDER_WIDTH
+
+    if title_location + title_size > bottom_right['x'] + size['width']:
+        bottom_right_x = (title_location + title_size)*2 + BORDER_WIDTH
+    else:
+        bottom_right_x = (bottom_right['x'] + size['width'])*2 + BORDER_WIDTH
+
+    ob = Screenshot(bottom_right_y)
+    im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
+                            is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    im = io.BytesIO(im)
+    im_image = Image.open(im)
+
+    SAVE_FULL_IMAGE_LOCALLY = False
+    if SAVE_FULL_IMAGE_LOCALLY :
+        im_image.save('ss.png')
+
+    im_image = im_image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
+
+    imgByteArr = io.BytesIO()
+    im_image.save(imgByteArr, format='PNG')
+    final_im = imgByteArr.getvalue()
+    ss = io.BytesIO(final_im)
+
+    SAVE_CROPPED_IMAGE_LOCALLY = False
+
+    if SAVE_CROPPED_IMAGE_LOCALLY :
+        im_image.save('ss.png')
+
+    return ss

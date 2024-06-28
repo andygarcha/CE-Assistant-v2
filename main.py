@@ -71,34 +71,7 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    embed = discord.Embed(
-        title="Test",
-        color=0x00FF00,
-        description="heeeeheee"
-    )
 
-    database_name = await Mongo_Reader.get_mongo_games()
-
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('log-level=3')
-
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.set_window_size(width=1440, height=8000)
-
-    CELESTE_CE_URL = "https://cedb.me/game/1e866995-6fec-452e-81ba-1e8f8594f4ea"
-    driver.get(CELESTE_CE_URL)
-
-    game = hm.get_item_from_list('1e866995-6fec-452e-81ba-1e8f8594f4ea', database_name)
-
-    image = Discord_Helper.get_image(driver=driver, new_game=game)
-
-    embed.set_image(url="attachment://image.png")        
-
-    return await interaction.followup.send(file=discord.File(image, filename="image.png"))
 
     return await interaction.followup.send('test done')
 
@@ -386,13 +359,18 @@ async def scrape(interaction : discord.Interaction) :
     await interaction.response.defer()
 
     try :
-        database_name = CEAPIReader.get_api_games_full()
+        database_name = await CEAPIReader.get_api_games_full()
     except FailedScrapeException as e :
         return await interaction.followup.send(f"Error FailedScrapeException: {e.get_message()}")
 
     await Mongo_Reader.dump_games(database_name)
 
     return await interaction.followup.send("Database replaced.")
+
+
+
+
+
 
 
 # ---- on ready function ----
