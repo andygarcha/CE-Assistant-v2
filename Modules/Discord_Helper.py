@@ -15,6 +15,7 @@ from Classes.OtherClasses import EmbedMessage
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
+from Modules.Screenshot import Screenshot
 
 
 # selenium and beautiful soup stuff
@@ -25,6 +26,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import io
+from PIL import Image
 
 async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
@@ -164,6 +166,11 @@ async def get_user_embed() -> discord.Embed :
     """Returns a `discord.Embed` that represents this user.""" 
     return NotImplemented
 
+
+
+# ---------------------------------- game additions ----------------------------------
+
+
 def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
@@ -173,6 +180,97 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
 
     OBJECTIVE_LIMIT = 7
     "The maximum amount of objectives to be screenshot before cropping." 
+
+    # initiate selenium
+    url = f"https://cedb.me/game/{new_game.ce_id}/"
+    driver.get(url)
+    
+    # set up variables
+    start_time = hm.get_unix('now')
+    timeout = hm.get_unix('now') - start_time > 5
+    objective_list = []
+
+    # give it five seconds to load the elements.
+    while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
+        # run this to just fully load the page...
+        html_page = driver.execute_script("return document.documentElement.innerHTML;")
+        # ...and now get the list.
+        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+        timeout = hm.get_unix('now') - start_time > 5
+    
+    # if it took longer than 5 seconds, just return the image failed image.
+    if timeout : return "Assets/image_failed.png"
+
+    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
+    objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    title = driver.find_element(By.TAG_NAME, "h1")
+    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
+    title_size = title.size['width']
+    title_location = title.location['x']
+
+    bottom_right = objective_list[len(objective_list)-2].location
+    print(f"bottom right dict: {bottom_right}")
+    print('\n')
+    for i, objective in enumerate(objective_list) :
+        print(f"objective {i} location: {objective.location}\nobjective {i} size: {objective.size}\nobjective {i} text: {objective.text}")
+    print('\n')
+    size = objective_list[len(objective_list)-2].size
+    print(f'bottom right size dict: {size}')
+
+    print(f'objectivelist len: {len(objective_list)}')
+
+    objective_list[0]
+
+    header_elements = [
+        'bp4-navbar',
+        'tr-fadein',
+        'css-1ugviwv'
+    ]
+
+    BORDER_WIDTH = 15*2
+
+    #NOTE: i multiplied these by two. dk why it's working.
+    top_left_x = (top_left['x'])*2 - BORDER_WIDTH
+    top_left_y = (top_left['y'])*2 - BORDER_WIDTH
+    bottom_right_y = (bottom_right['y'] + size['height'])*2 + BORDER_WIDTH
+
+    if title_location + title_size > bottom_right['x'] + size['width']:
+        bottom_right_x = (title_location + title_size)*2 + BORDER_WIDTH
+        print('a')
+    else:
+        bottom_right_x = (bottom_right['x'] + size['width'])*2 + BORDER_WIDTH
+        print('b')
+    
+    print(f'x: {bottom_right_x}\ny: {bottom_right_y}')
+    
+
+    ob = Screenshot(bottom_right_y)
+    im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
+                            is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    im = io.BytesIO(im)
+    im_image = Image.open(im)
+
+    SAVE_FULL_IMAGE_LOCALLY = False
+    if SAVE_FULL_IMAGE_LOCALLY :
+        im_image.save('ss.png')
+
+    im_image = im_image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
+
+    imgByteArr = io.BytesIO()
+    im_image.save(imgByteArr, format='PNG')
+    final_im = imgByteArr.getvalue()
+    ss = io.BytesIO(final_im)
+
+    SAVE_CROPPED_IMAGE_LOCALLY = False
+
+    if SAVE_CROPPED_IMAGE_LOCALLY :
+        im_image.save('ss.png')
+
+    return ss
+
+    
+    
+
 
 
 def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMessage] :
@@ -186,9 +284,6 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
     # the list to be returned
     messages : list[EmbedMessage] = []
-
-    # pictures
-    
 
     # variables
     SELENIUM_ENABLE = True
@@ -214,8 +309,10 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             driver = webdriver.Chrome(service=service, options=options)
         else :
             return "No valid machine option available."
+        driver.set_window_size(width=1440, height=8000)
         
         # grab the first game to get color on the rest of them
+        # ----- variables -----
         CELESTE_CE_URL = "https://cedb.me/game/1e866995-6fec-452e-81ba-1e8f8594f4ea"
         driver.get(CELESTE_CE_URL)
 
@@ -225,12 +322,14 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         old_ce_ids.append(old_game.ce_id)
 
     for new_game in new_games :
-        # check if it's unfinished
+        # check if it's unfinished, skip if so
         if not new_game.is_finished :
             if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
             continue
 
         # --- the game is new ---
+
+
         if new_game.ce_id not in old_ce_ids : 
 
             # set up the embed
@@ -272,7 +371,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
             embed.set_footer(name='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
-            image = get_image(driver=driver, new_game=new_game)
+            if SELENIUM_ENABLE : image = get_image(driver=driver, new_game=new_game)
+            #TODO: fix this?
 
             messages.append(EmbedMessage(embed=embed, file=discord.File(image, filename="image.png")))
             continue
@@ -371,3 +471,30 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                                             f"to {new_objective.partial_points} {hm.get_emoji('Points')}")
         
         # all objectives have been reflected
+        description_test = embed.description
+        description_test = description_test.replace('\n','').replace('\t','').replace('- Total points unchanged','')
+
+        # if there wasn't any real change, ignore this embed
+        if description_test == "" : continue
+
+        messages.append(EmbedMessage(
+            embed=embed, file=discord.File(get_image(driver=driver,new_game=new_game), filename="image.png")
+        ))
+    
+    # --- all additions and updates have finished. check for removed games ---
+    for game in old_ce_ids :
+        game_object = hm.get_item_from_list(game, old_games)
+        embed = discord.Embed(
+            title=f"__{game_object.game_name}__ removed from the site.",
+            color=0xce4e2c,
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_image(url="Assets/removed.png")
+
+        messages.append(EmbedMessage(
+            embed=embed, file=discord.File("Web_Interaction/removed.png", filename="image.png")
+        ))
+
+    if SELENIUM_ENABLE : driver.close()
+    
+    return messages
