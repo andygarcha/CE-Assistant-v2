@@ -434,7 +434,7 @@ async def master_loop(client : discord.Client) :
             # send update messages
             for update_message in user_returns[0] :
                 match(update_message.location) :
-                    case "log" : await log_channel.send(update_message.message)
+                    case "log" : await log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none)
                     case "gameadditions" : await game_additions_channel.send(update_message.message)
                     case "casino" : await casino_channel.send(update_message.message)
                     case "privatelog" : await private_log_channel.send(update_message.message)
