@@ -156,6 +156,10 @@ class CEGame:
     def is_t0(self) -> bool :
         """Returns true if the game is a Tier 0."""
         return self.get_total_points() == 0
+
+    def is_role_t4(self) -> bool :
+        "Returns true if this game is a Role T4 (has a discord role associated with it)"
+        return self.get_tier_num() == 4 and self.get_total_points() >= 150
     
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""

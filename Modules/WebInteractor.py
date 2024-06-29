@@ -103,7 +103,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     # ----- actually check -----
     # categories
     for point_index, point_value in enumerate([500, 1000, 2000]) :
-        for i, category in enumerate(hm.CATEGORIES) :
+        for i, category in enumerate(list(typing.get_args(hm.CATEGORIES))) :
             if old_categories[i] < point_value and new_categories[i] >= point_value :
                 updates.append(UpdateMessage(
                     location="log",
@@ -157,10 +157,12 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
         if not game.get_tier_num() >= TIER_MINIMUM : continue
 
         # check to see if it was completed before
+        completed_before = False
         for old_game in original_completed_games :
             # it was completed before, so skip this
             if game.ce_id == old_game.ce_id : 
-                continue
+                completed_before = True
+        if completed_before : continue
         
         updates.append(UpdateMessage(
             location="log",
