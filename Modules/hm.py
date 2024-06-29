@@ -62,6 +62,25 @@ __icons = {
     "Safety" : '<:safety:802615322858487838>'
 }
 
+__test_icons = {
+    "Action" : "<:CE_action:1133558549990088734>",
+    "Arcade" : "<:CE_action:1133558549990088734>",
+    "Bullet Hell" : "<:CE_bullethell:1133558610530676757>",
+    "First-Person" : "<:CE_firstperson:1133558611898015855>",
+    "Platformer" : "<:CE_platformer:1133558613705769020>",
+    "Points" : "<:CE_points:1133558614867587162>",
+    "Strategy" : "<:CE_strategy:1133558616536915988>",
+
+    "Tier 0" : "<:tier0:1133560874464985139>",
+    "Tier 1" : "<:tier1:1133560876381773846>",
+    "Tier 2" : "<:tier2:1133560878294372432>",
+    "Tier 3" : "<:tier3:1133560879544291469>",
+    "Tier 4" : "<:tier4:1133560881356226650>",
+    "Tier 5" : "<:tier5:1133560882291548323>",
+    "Tier 6" : "<:tier6:1133540654983688324>",
+    "Tier 7" : "<:tier7:1133540655981920347>"
+}
+
 __ICON_KEYS = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3', 
              'Tier 4', 'Tier 5', 'Tier 6', 'Tier 7', 
              'Action', 'Arcade', 'Bullet Hell', 'First-Person', 
