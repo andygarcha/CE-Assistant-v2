@@ -434,7 +434,7 @@ class CERoll:
             s = f"Congratulations <@{user.discord_id}>! You have beaten {self.roll_name}."
             for game in self.games :
                 game_name = hm.get_item_from_list(game, database_name)
-                s += f"\n- {game_name}"
+                s += f"\n- {game_name.game_name}"
             return s
 
             

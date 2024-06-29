@@ -138,9 +138,6 @@ def get_api_games_full() -> list[CEAPIGame] :
     all_games : list[CEAPIGame] = []
     for game in json_response :
 
-        # if the game is unfinished, come back.
-        if not game['isFinished'] : continue
-
         # grab the object
         ce_game = _ce_to_game(game)
 
