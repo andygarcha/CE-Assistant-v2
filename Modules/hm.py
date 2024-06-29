@@ -157,6 +157,8 @@ def get_current_unix() -> int :
 
 def get_emoji(input : __ICON_KEYS) -> str :
     """Returns the emoji related to `input`."""
+    if not IN_CE and input in list(__test_icons.keys()) :
+        return __test_icons[input]
     return __icons[input]
 
 def get_grammar_str(input : list) -> str :
