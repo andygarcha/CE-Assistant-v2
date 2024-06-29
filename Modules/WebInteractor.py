@@ -1,8 +1,16 @@
+import asyncio
+import datetime
+import functools
+import typing
+from discord.ext import tasks
+import discord
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_Game import CEGame
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.OtherClasses import UpdateMessage
+from Exceptions.FailedScrapeException import FailedScrapeException
+from Modules import CEAPIReader, Discord_Helper, Mongo_Reader
 from Modules.Screenshot import Screenshot
 import Modules.hm as hm
 
@@ -17,6 +25,11 @@ from selenium.webdriver.chrome.service import Service
 import io
 from PIL import Image
 
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
 
 
 def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGame],
@@ -107,9 +120,12 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     return updates
 
 
-async def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame]) -> tuple[list[UpdateMessage], CEUser] :
+def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame], database_user : list[CEUser]) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
     """Takes in a user and updates it, and returns a list of things to send."""
     updates : list[UpdateMessage] = []
+    # if a partner needs to be returned, it'll be placed here
+    partners : list[CEUser] = []
+    
 
     original_points = user.get_total_points()
     original_completed_games = user.get_completed_games_2(database_name)
@@ -162,7 +178,8 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
         # note: skip this if we're in the final stage because
         #       if it's in its final stage we can finish it out,
         #       this if statement just preps for the next one.
-        if roll.is_multi_stage() and not roll.in_final_stage() and (await roll.is_won()) :
+        if (roll.is_multi_stage() and not roll.in_final_stage() and 
+            (roll.is_won(database_name=database_name, database_user=database_user))) :
             # if we've already hit this roll before, keep moving
             if roll.due_time == None : continue
 
@@ -178,12 +195,12 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
             # and kill the due time
             roll.due_time = None
 
-        elif roll.is_won() :
+        elif roll.is_won(database_name=database_name, database_user=database_user) :
             # add the update message
             updates.append(UpdateMessage(
                 location="log",
                 message=(
-                    await roll.get_win_message()
+                    roll.get_win_message(database_name=database_name, database_user=database_user)
                 )
             ))
             # set the completed time to now
@@ -193,18 +210,36 @@ async def user_update(user : CEUser, site_data : CEUser, database_name : list[CE
             # remove it from current
             user.add_completed_roll(roll)
             del user.current_rolls[index]
+
+            if roll.is_co_op() :
+                partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
+                partner_roll = partner.get_current_roll(roll.roll_name)
+                if roll.is_pvp() : partner_roll.winner = not roll.winner
+                partner.remove_current_roll(partner_roll.roll_name)
+                partner_roll.completed_time = hm.get_unix('now')
+                partner.add_completed_roll(partner_roll)
+                partners.append(partner)
+
         
         elif roll.is_expired() :
             # add the update message
             updates.append(UpdateMessage(
                 location="casino",
                 message=(
-                    await roll.get_fail_message()
+                    roll.get_fail_message(database_name=database_name, database_user=database_user)
                 )
             ))
             
             # remove this roll from current rolls
             del user.current_rolls[index]
+            if roll.is_co_op() :
+                partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
+                partner.remove_current_roll(roll.roll_name)
+                partners.append(partner)
+    
+    return (updates, user, partners)
+
+
 
 
 
@@ -292,3 +327,154 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
         im_image.save('ss.png')
 
     return ss
+
+
+utc = datetime.timezone.utc
+times = [
+  datetime.time(hour=0, minute=0, tzinfo=utc),
+  datetime.time(hour=0, minute=30, tzinfo=utc),
+  datetime.time(hour=1, minute=0, tzinfo=utc),
+  datetime.time(hour=1, minute=30, tzinfo=utc),
+  datetime.time(hour=2, minute=0, tzinfo=utc),
+  datetime.time(hour=2, minute=30, tzinfo=utc),
+  datetime.time(hour=3, minute=0, tzinfo=utc),
+  datetime.time(hour=3, minute=30, tzinfo=utc),
+  datetime.time(hour=4, minute=0, tzinfo=utc),
+  datetime.time(hour=4, minute=30, tzinfo=utc),
+  datetime.time(hour=5, minute=0, tzinfo=utc),
+  datetime.time(hour=5, minute=30, tzinfo=utc),
+  datetime.time(hour=6, minute=0, tzinfo=utc),
+  datetime.time(hour=6, minute=30, tzinfo=utc),
+  datetime.time(hour=7, minute=0, tzinfo=utc),
+  datetime.time(hour=7, minute=30, tzinfo=utc),
+  datetime.time(hour=8, minute=0, tzinfo=utc),
+  datetime.time(hour=8, minute=30, tzinfo=utc),
+  datetime.time(hour=9, minute=0, tzinfo=utc),
+  datetime.time(hour=9, minute=30, tzinfo=utc),
+  datetime.time(hour=10, minute=0, tzinfo=utc),
+  datetime.time(hour=10, minute=30, tzinfo=utc),
+  datetime.time(hour=11, minute=0, tzinfo=utc),
+  datetime.time(hour=11, minute=30, tzinfo=utc),
+  datetime.time(hour=12, minute=0, tzinfo=utc),
+  datetime.time(hour=12, minute=30, tzinfo=utc),
+  datetime.time(hour=13, minute=0, tzinfo=utc),
+  datetime.time(hour=13, minute=30, tzinfo=utc),
+  datetime.time(hour=14, minute=0, tzinfo=utc),
+  datetime.time(hour=14, minute=30, tzinfo=utc),
+  datetime.time(hour=15, minute=0, tzinfo=utc),
+  datetime.time(hour=15, minute=30, tzinfo=utc),
+  datetime.time(hour=16, minute=0, tzinfo=utc),
+  datetime.time(hour=16, minute=30, tzinfo=utc),
+  datetime.time(hour=17, minute=0, tzinfo=utc),
+  datetime.time(hour=17, minute=30, tzinfo=utc),
+  datetime.time(hour=18, minute=0, tzinfo=utc),
+  datetime.time(hour=18, minute=30, tzinfo=utc),
+  datetime.time(hour=19, minute=0, tzinfo=utc),
+  datetime.time(hour=19, minute=30, tzinfo=utc),
+  datetime.time(hour=20, minute=0, tzinfo=utc),
+  datetime.time(hour=20, minute=30, tzinfo=utc),
+  datetime.time(hour=21, minute=0, tzinfo=utc),
+  datetime.time(hour=21, minute=30, tzinfo=utc),
+  datetime.time(hour=22, minute=0, tzinfo=utc),
+  datetime.time(hour=22, minute=30, tzinfo=utc),
+  datetime.time(hour=23, minute=0, tzinfo=utc),
+  datetime.time(hour=23, minute=30, tzinfo=utc),
+]
+
+
+@tasks.loop(time=times)
+async def master_loop(client : discord.Client) :
+    """The main looping function that runs every half hour."""
+    # get channels
+    log_channel = client.get_channel(id=hm.LOG_ID)
+    casino_channel = client.get_channel(id=hm.CASINO_ID)
+    private_log_channel = client.get_channel(id=hm.PRIVATE_LOG_ID)
+    game_additions_channel = client.get_channel(id=hm.GAME_ADDITIONS_ID)
+
+    # ---- game ----
+    database_name = await Mongo_Reader.get_mongo_games()
+    try :
+        new_games = await CEAPIReader.get_api_games_full()
+        # get the embeds
+        embeds = Discord_Helper.game_additions_updates(old_games=database_name, new_games=new_games)
+
+        # send embeds
+        for embed in embeds :
+            await game_additions_channel.send(embed=embed.embed, file=embed.file)
+    
+    except FailedScrapeException as e :
+        await private_log_channel.send(e.get_message())
+    
+    
+
+    # ---- users ----
+    database_user = await Mongo_Reader.get_mongo_users()
+    try :
+        new_users = await CEAPIReader.get_api_users_all()
+
+        # get the updates
+        user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name)
+
+        # send update messages
+        for update_message in user_returns[0] :
+            match(update_message.location) :
+                case "log" : await log_channel.send(update_message.message)
+                case "gameadditions" : await game_additions_channel.send(update_message.message)
+                case "casino" : await casino_channel.send(update_message.message)
+                case "privatelog" : await private_log_channel.send(update_message.message)
+                
+        # and dump updated users
+        await Mongo_Reader.dump_users(user_returns[1])
+    except FailedScrapeException as e :
+        await private_log_channel.send(e.get_message())
+
+
+
+
+@to_thread
+def thread_game_update(old_data : list[CEGame], new_data : list[CEAPIGame]) :
+
+    pass
+
+@to_thread
+def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], database_name : list[CEGame]) -> tuple[list[UpdateMessage], list[CEUser]] :
+    """Update the users."""
+    messages : list[UpdateMessage] = []
+    users : list[CEUser] = []
+    for old_user in old_data :
+        new_user = hm.get_item_from_list(old_user.ce_id, new_data)
+
+        # if the old user isn't on the site, alert someone!
+        if new_user == None : 
+            messages.append(UpdateMessage(
+                location="privatelog",
+                message=f"user not found in scrape: {old_user}"
+            ))
+            continue
+        
+        user_updates = user_update(
+            user=old_user,
+            site_data=new_user,
+            database_name=database_name,
+            database_user=old_data
+        )
+
+        messages += user_updates[0]
+        users += user_updates[1]
+        partners = user_updates[2]
+
+        # if some partners were sent back up, replace them!
+        for partner in partners :
+            index = hm.get_index_from_list(partner.ce_id, old_data)
+            old_data[index] = partner
+
+    return (messages, users)
+    """
+    how the fuck does this work?
+    andy and brooks enter winner takes all
+    andy wins
+    andy's code runs, a message is sent that his thing is completed, moves from current to completed
+    keep iterating...
+    get to brooks
+    sees he loses
+    """

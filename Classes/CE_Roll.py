@@ -1,5 +1,5 @@
 import datetime
-from typing import Literal
+from typing import Literal, get_args
 
 import Modules.hm as hm
 
@@ -287,15 +287,15 @@ class CERoll:
         if self.roll_name == "Two \"Two Week T2 Streak\" Streak" : return len(self.games) == 4
         if self.roll_name == "Fourward Thinking" : return len(self.games) == 4
     
-    async def get_win_message(self) -> str :
+    async def get_win_message(self, database_name : list, database_user : list) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
         import Modules.Mongo_Reader as Mongo_Reader
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
 
         # pull the databases
-        database_name = await Mongo_Reader.get_mongo_games()
-        database_user = await Mongo_Reader.get_mongo_users()
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
 
         # and grab the objects
         user : CEUser = hm.get_item_from_list(self.user_ce_id, database_user)
@@ -432,7 +432,7 @@ class CERoll:
             return s
 
             
-    def get_fail_message(self) -> str :
+    def get_fail_message(self, database_name : list, database_user : list) -> str :
         """Returns a string to send to #casino if this roll is failed."""
         #TODO: finish this function
         return NotImplemented
@@ -447,20 +447,28 @@ class CERoll:
         
         return roll_cooldowns[self.roll_name]
 
-    async def is_won(self) -> bool :
+    def is_won(self, database_name : list, database_user : list) -> bool :
         """Returns true if this roll instance has been won."""
+        # imports
         from Classes.CE_User import CEUser
+        from Classes.CE_Game import CEGame
         import Modules.Mongo_Reader as Mongo_Reader
+
+        # if expired, return false
         if (self.is_expired()) : return False
-        database_user = await Mongo_Reader.get_mongo_users()
-        database_name = await Mongo_Reader.get_mongo_games()
+
+        # type hinting
+        database_user : list[CEUser] = database_user
+        database_name : list[CEGame] = database_name
+
+        # get objects
         user = hm.get_item_from_list(self.user_ce_id, database_user)
         if self.is_co_op() : partner = hm.get_item_from_list(self.partner_ce_id, database_user)
         
         # one hell of a month
         if(self.roll_name == "One Hell of a Month") :
             categories : dict[str, int] = {}
-            for category in hm.get_categories() :
+            for category in get_args(hm.CATEGORIES) :
                 categories[category] = 0
             for game in user.owned_games :
                 if (game.ce_id in self.games and game.is_completed()) :

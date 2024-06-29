@@ -19,6 +19,7 @@ from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
 from Classes.OtherClasses import SteamData, CECompletion, RAData
 import Modules.CEAPIReader as CEAPIReader
+from Modules.WebInteractor import master_loop
 import Modules.hm as hm
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.Discord_Helper as Discord_Helper
@@ -368,7 +369,14 @@ async def scrape(interaction : discord.Interaction) :
     return await interaction.followup.send("Database replaced.")
 
 
+# ---- initiate loop ----
+@tree.command(name="initiate-loop", description="Initiate the loop. ONLY RUN WHEN NECESSARY.", guild=guild)
+async def loop(interaction : discord.Interaction) :
+    await interaction.response.defer()
 
+    await master_loop(client)
+
+    return await interaction.followup.send('looping...')
 
 
 
