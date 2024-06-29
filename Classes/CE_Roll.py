@@ -308,6 +308,11 @@ class CERoll:
         if self.roll_name == "Destiny Alignment" :
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
+                "You have completed Destiny Alignment together. Sorry, but the backend is a little fucked: but here's one of the games! " +
+                f"\n- <@{user.discord_id}> - {hm.get_item_from_list(self.games[0], database_name).game_name}"
+            )
+            return (
+                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! " +
                 "You have both completed Destiny Alignment together." +
                 f"\n- <@{user.discord_id}> - {hm.get_item_from_list(self.games[0], database_name).game_name}" +
                 f"\n- <@{partner.discord_id}> - {hm.get_item_from_list(self.games[1], database_name).game_name}"
@@ -535,12 +540,12 @@ class CERoll:
         "Turns this object into a string representation."
         return (
             "-- CERoll --" +
-            "\nEvent Name: " + self.roll_name +
-            "\nDue Time: " + self.due_time +
-            "\nGames: " + str(self.games) +
-            "\nUser CE ID: " + self.user_ce_id + 
-            "\nPartner CE ID" + self.partner_ce_id +
-            "\nInit Time: " + self.init_time +
-            "\nCompleted Time: " + self.completed_time +
-            "\nRerolls: " + self.rerolls
+            f"\nEvent Name: {self.roll_name}" +
+            f"\nDue Time: {self.due_time}" +
+            f"\nGames: {self.games}" +
+            f"\nUser CE ID: {self.user_ce_id}" + 
+            f"\nPartner CE ID{self.partner_ce_id}" +
+            f"\nInit Time: {self.init_time}" +
+            f"\nCompleted Time: {self.completed_time}" +
+            f"\nRerolls: {self.rerolls}"
         )
