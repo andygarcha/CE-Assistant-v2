@@ -233,8 +233,6 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             continue
 
         # --- the game is new ---
-
-
         if new_game.ce_id not in old_ce_ids : 
 
             # set up the embed

@@ -48,6 +48,9 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     for game in old_games :
         points = game.get_user_points() # grab the points
         database_game = hm.get_item_from_list(game.ce_id, database_name) # get the official game
+        
+        # if the game was deleted, continue
+        if database_game == None : continue
 
         if game.is_completed(database_name) :
             match(database_game.get_tier()) :
@@ -59,6 +62,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
                 case "Tier 6" : oldt5s += points # t6
                 case "Tier 7" : oldt5s += points # t7
 
+        
         match(database_game.category) :
             case "Action" : oldac += points
             case "Arcade" : oldar += points
@@ -71,6 +75,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     for game in new_games :
         points = game.get_user_points()
         database_game = hm.get_item_from_list(game.ce_id, database_name)
+        if database_game == None : continue
         if game.is_completed(database_name) :
             match(database_game.get_tier()) :
                 case "Tier 1" : newt1s += points
@@ -140,7 +145,7 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
     new_games = user.owned_games
 
     # get the role messages
-    updates.append(check_category_roles(original_games, new_games, database_name, user))
+    updates += (check_category_roles(original_games, new_games, database_name, user))
 
     # search for newly completed games
     for game in new_completed_games :
@@ -385,48 +390,59 @@ times = [
 @tasks.loop(time=times)
 async def master_loop(client : discord.Client) :
     """The main looping function that runs every half hour."""
+    print('loop began...')
     # get channels
-    log_channel = client.get_channel(id=hm.LOG_ID)
-    casino_channel = client.get_channel(id=hm.CASINO_ID)
-    private_log_channel = client.get_channel(id=hm.PRIVATE_LOG_ID)
-    game_additions_channel = client.get_channel(id=hm.GAME_ADDITIONS_ID)
+    log_channel = client.get_channel(hm.LOG_ID)
+    casino_channel = client.get_channel(hm.CASINO_ID)
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
 
     # ---- game ----
-    database_name = await Mongo_Reader.get_mongo_games()
-    try :
-        new_games = await CEAPIReader.get_api_games_full()
-        # get the embeds
-        embeds = Discord_Helper.game_additions_updates(old_games=database_name, new_games=new_games)
+    SKIP_GAME_SCRAPE = True
+    if not SKIP_GAME_SCRAPE :
+        database_name = await Mongo_Reader.get_mongo_games()
+        try :
+            new_games = await CEAPIReader.get_api_games_full()
+            # get the embeds
+            embeds = Discord_Helper.game_additions_updates(old_games=database_name, new_games=new_games)
 
-        # send embeds
-        for embed in embeds :
-            await game_additions_channel.send(embed=embed.embed, file=embed.file)
-    
-    except FailedScrapeException as e :
-        await private_log_channel.send(e.get_message())
+            # send embeds
+            for embed in embeds :
+                await game_additions_channel.send(embed=embed.embed, file=embed.file)
+
+            # dump the games
+            await Mongo_Reader.dump_games(new_games)
+        
+        except FailedScrapeException as e :
+            await private_log_channel.send(e.get_message())
     
     
 
     # ---- users ----
-    database_user = await Mongo_Reader.get_mongo_users()
-    try :
-        new_users = await CEAPIReader.get_api_users_all()
+    SKIP_USER_SCRAPE = False
+    if not SKIP_USER_SCRAPE :
+        if SKIP_GAME_SCRAPE : database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+        try :
+            new_users = await CEAPIReader.get_api_users_all()
 
-        # get the updates
-        user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name)
+            # get the updates
+            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name)
 
-        # send update messages
-        for update_message in user_returns[0] :
-            match(update_message.location) :
-                case "log" : await log_channel.send(update_message.message)
-                case "gameadditions" : await game_additions_channel.send(update_message.message)
-                case "casino" : await casino_channel.send(update_message.message)
-                case "privatelog" : await private_log_channel.send(update_message.message)
-                
-        # and dump updated users
-        await Mongo_Reader.dump_users(user_returns[1])
-    except FailedScrapeException as e :
-        await private_log_channel.send(e.get_message())
+            # send update messages
+            for update_message in user_returns[0] :
+                match(update_message.location) :
+                    case "log" : await log_channel.send(update_message.message)
+                    case "gameadditions" : await game_additions_channel.send(update_message.message)
+                    case "casino" : await casino_channel.send(update_message.message)
+                    case "privatelog" : await private_log_channel.send(update_message.message)
+                    
+            # and dump updated users
+            await Mongo_Reader.dump_users(user_returns[1])
+        except FailedScrapeException as e :
+            await private_log_channel.send(e.get_message())
+    
+    print('loop complete.')
 
 
 
@@ -460,7 +476,7 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], databas
         )
 
         messages += user_updates[0]
-        users += user_updates[1]
+        users.append(user_updates[1])
         partners = user_updates[2]
 
         # if some partners were sent back up, replace them!

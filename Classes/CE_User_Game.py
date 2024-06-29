@@ -122,8 +122,8 @@ class CEUserGame():
     def __str__(self) :
         "Returns a string version of this CEUserGame."
         return (
-            "-- CEUserGame --" +
-            "\nName: " + self.name +
-            "\nGame CE ID: " + self.ce_id +
-            "\nObjectives: [" + ("\n" + str(obj)) for obj in self.user_objectives + "]"
+            f"-- CEUserGame --" +
+            f"\nName: " + self.name +
+            f"\nGame CE ID: " + self.ce_id +
+            f"\nObjectives: " + str(self.user_objectives)
         )

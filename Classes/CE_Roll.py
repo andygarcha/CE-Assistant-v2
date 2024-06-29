@@ -263,6 +263,7 @@ class CERoll:
     
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
+        if self.due_time == None : return False
         return self.due_time < hm.get_unix('now')
     
     def ends(self) -> bool :
@@ -287,7 +288,7 @@ class CERoll:
         if self.roll_name == "Two \"Two Week T2 Streak\" Streak" : return len(self.games) == 4
         if self.roll_name == "Fourward Thinking" : return len(self.games) == 4
     
-    async def get_win_message(self, database_name : list, database_user : list) -> str :
+    def get_win_message(self, database_name : list, database_user : list) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
         import Modules.Mongo_Reader as Mongo_Reader
         from Classes.CE_User import CEUser
@@ -536,7 +537,7 @@ class CERoll:
             "-- CERoll --" +
             "\nEvent Name: " + self.roll_name +
             "\nDue Time: " + self.due_time +
-            "\nGames: " + self.games +
+            "\nGames: " + str(self.games) +
             "\nUser CE ID: " + self.user_ce_id + 
             "\nPartner CE ID" + self.partner_ce_id +
             "\nInit Time: " + self.init_time +

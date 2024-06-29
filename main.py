@@ -225,7 +225,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             
             # -- grab games --
             rolled_games : list[str] = []
-            valid_categories = hm.get_categories()
+            valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5) :
                 rolled_games.append(hm.get_rollable_game(
                     database_name=database_name,
@@ -249,7 +249,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             
             # -- grab games --
             rolled_games : list[str] = []
-            valid_categories = hm.get_categories()
+            valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5) :
                 selected_category = random.choice(valid_categories)
                 for j in range(j) :
@@ -377,6 +377,17 @@ async def loop(interaction : discord.Interaction) :
     await master_loop(client)
 
     return await interaction.followup.send('looping...')
+
+
+@tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
+async def get_game_data(interaction : discord.Interaction, ce_id : str) :
+    await interaction.response.defer()
+
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    for game in database_name :
+        if game.ce_id == ce_id : return await interaction.followup.send(str(game))
+    return await interaction.followup.send('game not found')
 
 
 

@@ -88,7 +88,7 @@ def _mongo_to_user_roll(roll : dict) -> CERoll :
     completed_time, rerolls, user_id, winner = (None,)*4
     if 'Event Name' in roll : event_name = roll['Event Name']
     if 'User ID' in roll : user_id = roll['User ID']
-    if 'Partner ID' in roll : partner = roll['Partner']
+    if 'Partner ID' in roll : partner = roll['Partner ID']
     if 'Games' in roll : games = roll['Games']
     if 'Init Time' in roll : init_time = roll['Init Time']
     if 'Due Time' in roll : due_time = roll['Due Time']

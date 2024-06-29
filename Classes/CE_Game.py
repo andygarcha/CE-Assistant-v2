@@ -310,12 +310,12 @@ class CEGame:
             "-- CEGame --" +
             "\nGame Name: " + self.game_name +
             "\nGame CE ID: " + self.ce_id +
-            "\nTotal Points: " + self.get_total_points() +
+            "\nTotal Points: " + str(self.get_total_points()) +
             "\nPlatform: " + self.platform +
-            "\nPlatform ID: " + self.platform_id +
+            "\nPlatform ID: " + str(self.platform_id) +
             "\nCategory: " + self.category +
-            "\nObjectives: " + self.all_objectives +
-            "\nLast Updated: " + self.last_updated
+            "\nObjectives: " + str(self.all_objectives) +
+            "\nLast Updated: " + str(self.last_updated)
         )
     
 class CEAPIGame(CEGame) :
