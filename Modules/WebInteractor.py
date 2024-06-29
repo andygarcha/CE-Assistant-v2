@@ -178,6 +178,20 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
                      f"to Rank {hm.get_emoji(new_rank)}!")
         ))
 
+    # check cooldowns
+    for i, cooldown in enumerate(user.cooldowns) :
+        if cooldown.end_time <= hm.get_unix('now') :
+            updates.append(UpdateMessage(
+                location="casino",
+                message=f"<@{user.discord_id}>, your {cooldown.roll_name} cooldown has ended."
+            ))
+            del user.cooldowns[i]
+    
+    # check pendings
+    for i, pending in enumerate(user.pending_rolls) :
+        if pending.end_time <= hm.get_unix('now') :
+            del user.pending_rolls[i]
+
     # check rolls
     for index, roll in enumerate(user.current_rolls) :
         # step 0: check multistage rolls
