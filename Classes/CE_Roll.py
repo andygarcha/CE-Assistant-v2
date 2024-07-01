@@ -265,6 +265,10 @@ class CERoll:
         """Returns true if the roll has expired."""
         if self.due_time == None : return False
         return self.due_time < hm.get_unix('now')
+
+    def is_completed(self) -> bool :
+        "Return true if this roll has been completed."
+        return self.completed_time is not None
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
@@ -277,9 +281,12 @@ class CERoll:
         return self.due_time == None or self.due_time == 0
     
     def is_multi_stage(self) -> bool :
-        "Returns true if this game is multi-stage."
+        "Returns true if this roll is multi-stage."
         return self.roll_name in hm.MULTI_STAGE_ROLLS
     
+    def is_rerollable(self) -> bool :
+        "Returns true if this roll is rerollable."
+        return self.roll_name in ["Fourward Thinking"]
     
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."
@@ -544,8 +551,59 @@ class CERoll:
             f"\nDue Time: {self.due_time}" +
             f"\nGames: {self.games}" +
             f"\nUser CE ID: {self.user_ce_id}" + 
-            f"\nPartner CE ID{self.partner_ce_id}" +
+            f"\nPartner CE ID: {self.partner_ce_id}" +
             f"\nInit Time: {self.init_time}" +
             f"\nCompleted Time: {self.completed_time}" +
-            f"\nRerolls: {self.rerolls}"
+            f"\nRerolls: {self.rerolls}",
+            f"\nWinner: {self.winner}"
         )
+    
+    def display_str(self, database_name : list, database_user : list) -> str :
+        "Turns this object into a string representation to be sent to discord."
+
+        # import and type hinting
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        # set up string
+        string = ""
+
+        # init time
+        string += f"Rolled on <t:{self.init_time}>, "
+
+        # due time
+        if self.ends() :
+            string += f"due on <t:{self.due_time}>, "
+        
+        # completed time
+        if self.is_completed() :
+            string += f"completed on <t:{self.completed_time}>, "
+        
+        # partner?
+        if self.is_co_op() :
+            partner = hm.get_item_from_list(self.partner_ce_id, database_user)
+            string += f"partnered with <@{partner.discord_id}>, "
+
+            # winner?
+            if self.is_completed() :
+                string += f"won by {'you' if self.winner else 'partner'}, "
+        
+        # rerolls
+        if self.is_rerollable() :
+            string += f"{self.rerolls} reroll(s) remaining, "
+
+        # you're done. remove the ", "
+        string = string[:-2]
+        
+        # rolled games
+        games = [game for game in database_name if game.ce_id in self.games]
+        string += "\nRolled games: "
+        for game in games :
+            string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
+
+        # you're done. remove the ", "
+        string = string[:-2]
+        
+        return string

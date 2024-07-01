@@ -435,7 +435,7 @@ async def master_loop(client : discord.Client) :
     
 
     # ---- users ----
-    SKIP_USER_SCRAPE = False
+    SKIP_USER_SCRAPE = True
     if not SKIP_USER_SCRAPE :
         if SKIP_GAME_SCRAPE : database_name = await Mongo_Reader.get_mongo_games()
         database_user = await Mongo_Reader.get_mongo_users()

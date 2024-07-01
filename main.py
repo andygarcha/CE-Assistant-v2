@@ -1,4 +1,5 @@
 # -------- discord imports -----------
+import datetime
 import time
 from types import NoneType
 import discord
@@ -389,6 +390,67 @@ async def get_game_data(interaction : discord.Interaction, ce_id : str) :
         if game.ce_id == ce_id : return await interaction.followup.send(str(game))
     return await interaction.followup.send('game not found')
 
+@tree.command(name="check-rolls", description="Check the status of your current and completed casino rolls!", guild=guild)
+async def check_rolls(interaction : discord.Interaction) :
+    # defer the message
+    await interaction.response.defer()
+
+    # create the view
+    view = discord.ui.View(timeout=None)
+
+    # add the buttons
+    for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+        button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
+        async def c(interaction : discord.Interaction) : return await show_rolls(interaction, roll_name)
+        button.callback = c
+        pass
+
+    # create the callback for each button
+    async def show_rolls(interaction : discord.Interaction, roll : hm.ALL_ROLL_EVENT_NAMES) :
+        # pull database_name and database_user
+        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+
+        # find the user
+        for user in database_user :
+            if user.discord_id == interaction.user.id : break
+
+        # initialize the embed
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}'s Rolls",
+            description="",
+            timestamp=datetime.datetime.now(),
+            color=0x000000
+        )
+
+        # let them know if they are on cooldown.
+        if user.has_cooldown(roll) : 
+            embed.description = f"You are on cooldown for {roll} until <t:{user.get_cooldown_time(roll)}>."
+        else :
+            embed.description = f"You are not currently on cooldown for {roll}."
+
+        # current rolls
+        current_roll = user.get_current_roll(roll)
+        string = ""
+        if current_roll == None : string = f"You do not have a current roll in {roll}."
+        else : string = current_roll.display_str()
+        embed.add_field(name="Current Roll", value=string)
+
+        # completed rolls
+        completed_rolls = user.get_completed_rolls(roll)
+        string = ""
+        if completed_rolls == [] : string = f"You do not have any completed rolls in {roll}."
+        else : #NOTE: this else may not be necessary, but i'm not risking it!
+            for completed_roll in completed_rolls :
+                string += f"{completed_roll.display_str()}\n"
+        embed.add_field(name="Completed Rolls", value=string)
+
+        for button in view.children :
+            button.
+
+        await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
+
+
 
 
 
@@ -403,6 +465,7 @@ async def on_ready() :
     casino_channel = client.get_channel(hm.CASINO_ID)
     game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+
 
     # send online update
     await log_channel.send("version 2 babyyyyy")

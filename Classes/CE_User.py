@@ -163,10 +163,12 @@ class CEUser:
             if event.roll_name == roll_name : return True
         return False
     
-    def get_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll :
+    def get_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> list[CERoll] :
         """Returns the `CERoll` associated with `roll_name`."""
+        r = []
         for event in self.completed_rolls :
-            if event.roll_name ==roll_name : return event
+            if event.roll_name ==roll_name : r.append(event)
+        if len(r) != 0 : return r
         return None
     
     def has_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :

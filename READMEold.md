@@ -74,3 +74,18 @@ Object-based version of andykasen13/CE-Assistant
 - do we want to have it update users stuff once a day (like have one big message per day outlining what happened that day) or do it every 30 minutes with casino
 - /show-rolls (or something) to see all available rolls 
   - maybe /see-available-rolls?
+
+
+### version 2 changelog
+- huge backend changes, entirely object-oriented now.
+- #game-additions posts now have links to their games.
+- user updates!! messages will be sent in the new #user-log channel for any of the following:
+  - a user ranks up
+  - a user clears a t4 or higher
+  - a user unlocks a new discord role (category/tier related)
+  - open to more suggestions here!! submit them in #assistant-feedback
+- rolling to return soon...
+  - thank you folkius for covering in the meantime :)
+  - #casino-log messages will be more detailed
+  - Winner Takes All now accepts tier and category options.
+  - /check-rolls will be much more concise.
