@@ -153,34 +153,60 @@ def get_api_games_full() -> list[CEAPIGame] :
 
 
 @to_thread
-def get_api_users_all() -> list[CEUser]:
-    """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all"""
+def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[CEUser]:
+    """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all.
+    Note: if `database_user` is passed, this will only return the users who are CEA Registered."""
+
+    # Step 0: check if database_user was passed
+    if database_user is not None and len(database_user) > 0 :
+        registered_ids : list[str] = []
+        if type(database_user[0]) == CEUser :
+            registered_ids = [user.ce_id for user in database_user]
+        elif type(database_user[0]) == str :
+            registered_ids = database_user
+        else :
+            database_user = None
 
     # Step 1: get the big json intact.
-    json_response = []
+    PULL_LIMIT = 50
+    total_response = []
     done_fetching : bool = False
     i = 1
     try :
         while (not done_fetching) :
-            print(f"fetching users {(i-1)*50} through {i*50-1}")
-            api_response = requests.get(f"https://cedb.me/api/users/all?limit=50" 
-                                        + f"&offset={(i-1)*50}")
-            j = json.loads(api_response.text)
-            json_response += j
-            done_fetching = len(j) == 0
+
+            # pull the data
+            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
+            api_response = requests.get(f"https://cedb.me/api/users/all?limit={PULL_LIMIT}" 
+                                        + f"&offset={(i-1)*{PULL_LIMIT}}")
+            current_response = json.loads(api_response.text)
+
+            # check to see if this is the last one
+            done_fetching = len(current_response) == 0
+
+            # go through and filter out users that aren't CEA registered if database_user is passed through
+            if database_user is not None :
+                for index, user in enumerate(current_response) :
+                    if user['id'] not in registered_ids : del current_response[index]
+
+            # add to the total response and increment i
+            total_response += current_response
             i += 1
     except : 
         raise FailedScrapeException("Failed scraping from api/users/all/ "
-                                    + f"on users {(i-1)*50} through {i*50-1}")
+                                    + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     print("done fetching users!")
 
     # convert to objects
     all_users : list[CEUser] = []
-    for user in json_response :
+    i : int = 1
+    for user in total_response :
+        print(f'converting user {i}')
+        i+=1
         all_users.append(_ce_to_user(user))
 
     # free up space
-    del json_response
+    del total_response
 
     # and return
     print('returning users...')

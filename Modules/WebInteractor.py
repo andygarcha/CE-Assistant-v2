@@ -451,7 +451,7 @@ async def master_loop(client : discord.Client) :
         if SKIP_GAME_SCRAPE : return
         database_user = await Mongo_Reader.get_mongo_users()
         try :
-            new_users = await CEAPIReader.get_api_users_all()
+            new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
 
             # get the updates
             print('starting returns')
