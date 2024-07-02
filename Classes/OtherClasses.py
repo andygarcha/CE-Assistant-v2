@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal
 
 import discord
@@ -217,10 +218,20 @@ class RAData() :
         return self.raw_data['NumDistinctPlayers']
     
 
-UPDATEMESSAGE_LOCATIONS = Literal["casino", "log", "privatelog", "gameadditions"]
+UPDATEMESSAGE_LOCATIONS = Literal["casino", "casinolog", "privatelog", "gameadditions", "userlog"]
 
 class UpdateMessage() :
     """A class to hold messages that need to be sent after updating users."""
+
+    """
+    class Location(Enum) :
+        "An enum of locations for messages to be sent."
+        CASINO = 0
+        PRIVATELOG = 1
+        USERLOG = 2
+        CASINOLOG = 3
+        GAMEADDITIONS = 4
+    """
 
     def __init__(self,
                  location : UPDATEMESSAGE_LOCATIONS,
@@ -289,3 +300,30 @@ class DatabaseName(CEList) :
     
 
 """
+
+class Achievement() :
+    "A CE achievement."
+    def __init__(
+            self,
+            ce_id : str,
+            name : str
+        ) :
+        self.__ce_id = ce_id
+        self.__name = name
+
+    @property
+    def ce_id(self) -> str :
+        "The CE ID of this achievement."
+        return self.__ce_id
+    
+    @property
+    def name(self) -> str :
+        "The name of this achievement."
+        return self.__name
+    
+    def __eq__(self, other) :
+        if not isinstance(other, Achievement) : return False
+        return self.ce_id == other.ce_id
+    
+    def __hash__(self) :
+        return id(self)

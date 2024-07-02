@@ -162,7 +162,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     database_name = await Mongo_Reader.get_mongo_games()
 
     # define channel
-    log_channel = client.get_channel(hm.LOG_ID)
+    user_log_channel = client.get_channel(hm.USER_LOG_ID)
 
     # grab the user
     user = None
@@ -198,7 +198,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     
     # jarvis's random event!
     if random.randint(0, 99) == 0 : 
-        log_channel.send(
+        user_log_channel.send(
             f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +
             "Please DM him for your prize :)"
         )
@@ -400,13 +400,30 @@ async def check_rolls(interaction : discord.Interaction) :
 
     # add the buttons
     for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+        # create the button
         button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
-        async def c(interaction : discord.Interaction) : return await show_rolls(interaction, roll_name)
+
+        print(roll_name)
+
+        # designate its unique callback
+        async def c(interaction : discord.Interaction) : return await show_rolls(interaction, roll=roll_name)
         button.callback = c
-        pass
+
+        view.add_item(button)
+
+        del c
+        
 
     # create the callback for each button
     async def show_rolls(interaction : discord.Interaction, roll : hm.ALL_ROLL_EVENT_NAMES) :
+        # defer 
+        await interaction.response.defer()
+
+        def a(r=roll) :
+            return r
+        
+        roll_name = a()
+
         # pull database_name and database_user
         database_name = await Mongo_Reader.get_mongo_games()
         database_user = await Mongo_Reader.get_mongo_users()
@@ -424,33 +441,43 @@ async def check_rolls(interaction : discord.Interaction) :
         )
 
         # let them know if they are on cooldown.
-        if user.has_cooldown(roll) : 
-            embed.description = f"You are on cooldown for {roll} until <t:{user.get_cooldown_time(roll)}>."
+        if user.has_cooldown(roll_name) : 
+            embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll)}>."
         else :
-            embed.description = f"You are not currently on cooldown for {roll}."
+            embed.description = f"You are not currently on cooldown for {roll_name}."
 
         # current rolls
-        current_roll = user.get_current_roll(roll)
+        current_roll = user.get_current_roll(roll_name)
         string = ""
-        if current_roll == None : string = f"You do not have a current roll in {roll}."
-        else : string = current_roll.display_str()
+        if current_roll == None : string = f"You do not have a current roll in {roll_name}."
+        else : string = current_roll.display_str(database_name=database_name, database_user=database_user)
         embed.add_field(name="Current Roll", value=string)
 
         # completed rolls
-        completed_rolls = user.get_completed_rolls(roll)
+        completed_rolls = user.get_completed_rolls(roll_name)
         string = ""
-        if completed_rolls == [] : string = f"You do not have any completed rolls in {roll}."
-        else : #NOTE: this else may not be necessary, but i'm not risking it!
+        if completed_rolls == None : string = f"You do not have any completed rolls in {roll_name}."
+        else :
             for completed_roll in completed_rolls :
-                string += f"{completed_roll.display_str()}\n"
+                string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
         embed.add_field(name="Completed Rolls", value=string)
 
         for button in view.children :
-            button.
+            button.disabled = False
+            if button.label == roll_name :
+                button.disabled = True
 
-        await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
+        return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
 
+    # initialize the embed
+    embed = discord.Embed(
+        title=f"{interaction.user.display_name}'s Rolls",
+        description="",
+        timestamp=datetime.datetime.now(),
+        color=0x000000
+    )
 
+    await interaction.followup.send(embed=embed, view=view)
 
 
 
@@ -461,13 +488,9 @@ async def on_ready() :
     await tree.sync(guild = guild)
 
     # set up channels
-    log_channel = client.get_channel(hm.LOG_ID)
-    casino_channel = client.get_channel(hm.CASINO_ID)
-    game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
 
-
     # send online update
-    await log_channel.send("version 2 babyyyyy")
+    await private_log_channel.send(f"bot started at <t:{hm.get_unix('now')}>")
 
 client.run(discord_token)

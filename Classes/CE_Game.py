@@ -318,7 +318,7 @@ class CEGame:
             "\nPlatform: " + self.platform +
             "\nPlatform ID: " + str(self.platform_id) +
             "\nCategory: " + self.category +
-            "\nObjectives: " + str(self.all_objectives) +
+            "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
             "\nLast Updated: " + str(self.last_updated)
         )
     

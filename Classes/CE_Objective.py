@@ -158,12 +158,12 @@ class CEObjective:
         """String representation of this objective."""
         return (
             "--- CEObjective ---" +
-            "\nObjective Name: " + self.name +
-            "\nPoint Value: " + self.point_value +
-            "\nPartial Point Value: " + self.partial_points +
-            "\nObjective CE ID: " + self.ce_id +
-            "\nGame's CE ID: " + self.game_ce_id +
-            "\nObjective Type: " + self.type +
-            "\nAchievements: " + self.achievement_ce_ids +
-            "\nRequirements: " + self.requirements 
+            f"\nObjective Name: {self.name}" +
+            f"\nPoint Value: {self.point_value}" +
+            f"\nPartial Point Value: {self.partial_points}" +
+            f"\nObjective CE ID: {self.ce_id}" +
+            f"\nGame's CE ID: {self.game_ce_id}" +
+            f"\nObjective Type: {self.type}" +
+            f"\nAchievements: {self.achievement_ce_ids}" +
+            f"\nRequirements: {self.requirements}"
         )

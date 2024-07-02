@@ -8,7 +8,7 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEAPIGame, CEGame
-from Classes.OtherClasses import UpdateMessage
+from Classes.OtherClasses import EmbedMessage, UpdateMessage
 from Exceptions.FailedScrapeException import FailedScrapeException
 from Modules import CEAPIReader, Discord_Helper, Mongo_Reader
 from Modules.Screenshot import Screenshot
@@ -106,7 +106,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
         for i, category in enumerate(list(typing.get_args(hm.CATEGORIES))) :
             if old_categories[i] < point_value and new_categories[i] >= point_value :
                 updates.append(UpdateMessage(
-                    location="log",
+                    location="userlog",
                     message=(f"Congratulations to <@{user.discord_id}>! " +
                              f"You have unlocked {category} {CATEGORY_ROLE_NAMES[point_index]} ({point_value}+ points)")
                 ))
@@ -115,7 +115,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
         #if    oldt1s       < 500   and    newt1s        >= 500
         if old_tiers[i - 1] < i*500 and new_tiers[i - 1] >= i * 500 :
             updates.append(UpdateMessage(
-                location="log",
+                location="userlog",
                 message=(
                     f"Congratulations to <@{user.discord_id}>! " +
                     f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
@@ -125,27 +125,35 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     return updates
 
 
-def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame], database_user : list[CEUser]) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
+def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGame], 
+                new_database_name : list[CEAPIGame], database_user : list[CEUser]
+                ) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
     """Takes in a user and updates it, and returns a list of things to send."""
     updates : list[UpdateMessage] = []
     # if a partner needs to be returned, it'll be placed here
     partners : list[CEUser] = []
-    
 
     original_points = user.get_total_points()
-    original_completed_games = user.get_completed_games_2(database_name)
+    # NOTE: we use old database name here for a specific reason. Say there was a T5,
+    #       Celeste for example. if celeste goes from 250 points to 251 points,
+    #       passing the new database would mark celeste as "incomplete" before
+    #       and "complete" now, and thus every user who has completed celeste
+    #       will get a message that says they've recompleted the game.
+    #       by passing in the old database name, we can see that the game was complete
+    #       before, and therefore a message won't be sent.
+    original_completed_games = user.get_completed_games_2(old_database_name)
     original_rank = user.get_rank()
     original_games = user.owned_games
 
     user.owned_games = site_data.owned_games
 
     new_points = user.get_total_points()
-    new_completed_games = user.get_completed_games_2(database_name)
+    new_completed_games = user.get_completed_games_2(new_database_name)
     new_rank = user.get_rank()
     new_games = user.owned_games
 
     # get the role messages
-    updates += (check_category_roles(original_games, new_games, database_name, user))
+    updates += (check_category_roles(original_games, new_games, new_database_name, user))
 
     # search for newly completed games
     for game in new_completed_games :
@@ -165,7 +173,7 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
         if completed_before : continue
         
         updates.append(UpdateMessage(
-            location="log",
+            location="userlog",
             message=(f"Wow <@{user.discord_id}>! You've completed {game.game_name}, a {game.get_tier_emoji()} " + 
                      f"worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
         ))
@@ -173,7 +181,7 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
     # rank update
     if new_rank != original_rank and new_points > original_points :
         updates.append(UpdateMessage(
-            location="log",
+            location="userlog",
             message=(f"Congrats to <@{user.discord_id}> for ranking up from Rank {hm.get_emoji(original_rank)} " +
                      f"to Rank {hm.get_emoji(new_rank)}!")
         ))
@@ -200,7 +208,7 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
         #       if it's in its final stage we can finish it out,
         #       this if statement just preps for the next one.
         if (roll.is_multi_stage() and not roll.in_final_stage() and 
-            (roll.is_won(database_name=database_name, database_user=database_user))) :
+            (roll.is_won(database_name=new_database_name, database_user=database_user))) :
             # if we've already hit this roll before, keep moving
             if roll.due_time == None : continue
 
@@ -216,12 +224,12 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
             # and kill the due time
             roll.due_time = None
 
-        elif roll.is_won(database_name=database_name, database_user=database_user) :
+        elif roll.is_won(database_name=new_database_name, database_user=database_user) :
             # add the update message
             updates.append(UpdateMessage(
-                location="log",
+                location="casinolog",
                 message=(
-                    roll.get_win_message(database_name=database_name, database_user=database_user)
+                    roll.get_win_message(database_name=new_database_name, database_user=database_user)
                 )
             ))
             # set the completed time to now
@@ -247,7 +255,7 @@ def user_update(user : CEUser, site_data : CEUser, database_name : list[CEGame],
             updates.append(UpdateMessage(
                 location="casino",
                 message=(
-                    roll.get_fail_message(database_name=database_name, database_user=database_user)
+                    roll.get_fail_message(database_name=new_database_name, database_user=database_user)
                 )
             ))
             
@@ -408,7 +416,8 @@ async def master_loop(client : discord.Client) :
     """The main looping function that runs every half hour."""
     print('loop began...')
     # get channels
-    log_channel = client.get_channel(hm.LOG_ID)
+    casino_log_channel = client.get_channel(hm.CASINO_LOG_ID)
+    user_log_channel = client.get_channel(hm.USER_LOG_ID)
     casino_channel = client.get_channel(hm.CASINO_ID)
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
     game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
@@ -420,7 +429,7 @@ async def master_loop(client : discord.Client) :
         try :
             new_games = await CEAPIReader.get_api_games_full()
             # get the embeds
-            embeds = Discord_Helper.game_additions_updates(old_games=database_name, new_games=new_games)
+            embeds : list[EmbedMessage] = await thread_game_update(old_games=database_name, new_games=new_games)
 
             # send embeds
             for embed in embeds :
@@ -431,13 +440,15 @@ async def master_loop(client : discord.Client) :
         
         except FailedScrapeException as e :
             await private_log_channel.send(e.get_message())
+            print('fetching games failed.')
+            return
     
     
 
     # ---- users ----
     SKIP_USER_SCRAPE = True
     if not SKIP_USER_SCRAPE :
-        if SKIP_GAME_SCRAPE : database_name = await Mongo_Reader.get_mongo_games()
+        if SKIP_GAME_SCRAPE : return
         database_user = await Mongo_Reader.get_mongo_users()
         try :
             new_users = await CEAPIReader.get_api_users_all()
@@ -448,7 +459,8 @@ async def master_loop(client : discord.Client) :
             # send update messages
             for update_message in user_returns[0] :
                 match(update_message.location) :
-                    case "log" : await log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+                    case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+                    case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
                     case "gameadditions" : await game_additions_channel.send(update_message.message)
                     case "casino" : await casino_channel.send(update_message.message)
                     case "privatelog" : await private_log_channel.send(update_message.message)
@@ -457,19 +469,20 @@ async def master_loop(client : discord.Client) :
             await Mongo_Reader.dump_users(user_returns[1])
         except FailedScrapeException as e :
             await private_log_channel.send(e.get_message())
+            print('fetching users failed.')
     
     print('loop complete.')
+    return
 
-
+@to_thread
+def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) -> list[EmbedMessage] :
+    "Threaded."
+    return Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
 
 
 @to_thread
-def thread_game_update(old_data : list[CEGame], new_data : list[CEAPIGame]) :
-
-    pass
-
-@to_thread
-def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], database_name : list[CEGame]) -> tuple[list[UpdateMessage], list[CEUser]] :
+def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],
+                       new_database_name : list[CEAPIGame]) -> tuple[list[UpdateMessage], list[CEUser]] :
     """Update the users."""
     messages : list[UpdateMessage] = []
     users : list[CEUser] = []
@@ -487,7 +500,8 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], databas
         user_updates = user_update(
             user=old_user,
             site_data=new_user,
-            database_name=database_name,
+            old_database_name=old_database_name,
+            new_database_name=new_database_name,
             database_user=old_data
         )
 
