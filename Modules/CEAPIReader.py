@@ -143,6 +143,11 @@ def get_api_games_full() -> list[CEAPIGame] :
 
         # ... and append it to the list.
         all_games.append(ce_game)
+    
+    # free up all of that space
+    del json_response
+
+    # and return
     return all_games
 
 
@@ -166,11 +171,18 @@ def get_api_users_all() -> list[CEUser]:
             i += 1
     except : 
         raise FailedScrapeException("Failed scraping from api/users/all/ "
-                                    + f"on users {(i-1)*100} through {i*100-1}")
+                                    + f"on users {(i-1)*50} through {i*50-1}")
     print("done fetching users!")
+
+    # convert to objects
     all_users : list[CEUser] = []
     for user in json_response :
         all_users.append(_ce_to_user(user))
+
+    # free up space
+    del json_response
+
+    # and return
     print('returning users...')
     return all_users
 
