@@ -321,17 +321,17 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
         'css-1ugviwv'
     ]
 
-    BORDER_WIDTH = 15*2
+    BORDER_WIDTH = 15
 
     #NOTE: i multiplied these by two. dk why it's working.
-    top_left_x = (top_left['x'])*2 - BORDER_WIDTH
-    top_left_y = (top_left['y'])*2 - BORDER_WIDTH
-    bottom_right_y = (bottom_right['y'] + size['height'])*2 + BORDER_WIDTH
+    top_left_x = (top_left['x']) - BORDER_WIDTH
+    top_left_y = (top_left['y']) - BORDER_WIDTH
+    bottom_right_y = (bottom_right['y'] + size['height']) + BORDER_WIDTH
 
     if title_location + title_size > bottom_right['x'] + size['width']:
-        bottom_right_x = (title_location + title_size)*2 + BORDER_WIDTH
+        bottom_right_x = (title_location + title_size) + BORDER_WIDTH
     else:
-        bottom_right_x = (bottom_right['x'] + size['width'])*2 + BORDER_WIDTH
+        bottom_right_x = (bottom_right['x'] + size['width']) + BORDER_WIDTH
 
     ob = Screenshot(bottom_right_y)
     im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
