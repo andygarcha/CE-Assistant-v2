@@ -256,7 +256,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                 num_pos = len(new_game.get_primary_objectives())
                 embed.description += (
                         f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} " +
-                        f"worth {new_game.get_po_points()} {hm.get_emoji("Points")}"
+                        f"worth {new_game.get_po_points()} {hm.get_emoji('Points')}"
                     )
             if len(new_game.get_uncleared_objectives()) != 0 :
                 num_uncleareds = len(new_game.get_uncleared_objectives())
