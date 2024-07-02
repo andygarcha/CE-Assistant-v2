@@ -187,10 +187,12 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
             # go through and filter out users that aren't CEA registered if database_user is passed through
             if database_user is not None :
                 removed_indexes = []
+                # if the user isn't registered, add the index to remove indexes
                 for index, user in enumerate(current_response) :
                     if user['id'] not in registered_ids :
                         removed_indexes.append(index)
-                for index in removed_indexes :
+                # remove all of the indexes in reverse order
+                for index in reversed(removed_indexes) :
                     del current_response[index]
                 print(f"removed {len(removed_indexes)} users..")
 
