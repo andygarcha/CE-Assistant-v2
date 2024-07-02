@@ -176,7 +176,7 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
         while (not done_fetching) :
 
             # pull the data
-            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
+            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
             api_response = requests.get(f"https://cedb.me/api/users/all?limit={PULL_LIMIT}" 
                                         + f"&offset={(i-1)*PULL_LIMIT}")
             current_response = json.loads(api_response.text)
@@ -194,13 +194,17 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
                 # remove all of the indexes in reverse order
                 for index in reversed(removed_indexes) :
                     del current_response[index]
-                print(f"removed {len(removed_indexes)} users..")
+                print(f"({len(removed_indexes)} removed)")
+
+            # print this so that there will be a new line
+            else :
+                print("")
 
             # add to the total response and increment i
             total_response += current_response
             i += 1
     except Exception as e : 
-        print(f"original exception: {e.with_traceback()}")
+        print(f"original exception: {e}")
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     print(f"done fetching users! total users: {len(total_response)}")
