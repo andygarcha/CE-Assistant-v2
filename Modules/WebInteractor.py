@@ -454,6 +454,7 @@ async def master_loop(client : discord.Client) :
             new_users = await CEAPIReader.get_api_users_all()
 
             # get the updates
+            print('starting returns')
             user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name)
 
             # send update messages
@@ -484,9 +485,11 @@ def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) ->
 def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],
                        new_database_name : list[CEAPIGame]) -> tuple[list[UpdateMessage], list[CEUser]] :
     """Update the users."""
+    print('thread began')
     messages : list[UpdateMessage] = []
     users : list[CEUser] = []
     for old_user in old_data :
+        print('before grabbing user')
         new_user = hm.get_item_from_list(old_user.ce_id, new_data)
         print(f'updating user {old_user.ce_id}')
 
@@ -498,6 +501,7 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
             ))
             continue
         
+        print('update beginning...')
         user_updates = user_update(
             user=old_user,
             site_data=new_user,
@@ -505,6 +509,7 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
             new_database_name=new_database_name,
             database_user=old_data
         )
+        print('update gotten')
 
         messages += user_updates[0]
         users.append(user_updates[1])
