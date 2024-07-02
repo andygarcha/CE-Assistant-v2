@@ -19,6 +19,7 @@ from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
 from Classes.OtherClasses import SteamData, CECompletion, RAData
+from Modules import WebInteractor
 import Modules.CEAPIReader as CEAPIReader
 from Modules.WebInteractor import master_loop
 import Modules.hm as hm
@@ -39,6 +40,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import io
 from PIL import Image
+from webdriver_manager.core.os_manager import ChromeType
 
 
 # -------------------------------- normal bot code -----------------------------------
@@ -73,7 +75,27 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    database_name = await Mongo_Reader.get_mongo_games()
 
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('log-level=3')
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()), options=options)
+
+    driver.set_window_size(width=1440, height=8000)
+    
+    # grab the first game to get color on the rest of them
+    # ----- variables -----
+    CELESTE_CE_URL = "https://cedb.me/game/1e866995-6fec-452e-81ba-1e8f8594f4ea"
+    driver.get(CELESTE_CE_URL)
+    time.sleep(5)
+
+    image = WebInteractor.get_image(driver=driver, new_game=database_name[14])
+
+    await interaction.channel.send(file=discord.File(image))
 
     return await interaction.followup.send('test done')
 
