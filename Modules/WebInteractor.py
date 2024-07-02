@@ -488,6 +488,7 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
     users : list[CEUser] = []
     for old_user in old_data :
         new_user = hm.get_item_from_list(old_user.ce_id, new_data)
+        print(f'updating user {old_user.ce_id}')
 
         # if the old user isn't on the site, alert someone!
         if new_user == None : 
