@@ -29,6 +29,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import io
 from PIL import Image
+from webdriver_manager.core.os_manager import ChromeType
 
 async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
@@ -191,10 +192,10 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
     # variables
     SELENIUM_ENABLE = True
-    ON_RASPBERRY_PI = True
+    ON_LINUX_MACHINE = True
     ON_WINDOWS_MACHINE = False
 
-    if ON_RASPBERRY_PI :
+    if ON_LINUX_MACHINE :
         import chromedriver_binary
 
     # set selenium driver and preferences
@@ -205,9 +206,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('log-level=3')
 
-        if ON_RASPBERRY_PI :
-            service = Service('/usr/lib/chromium-browser/chromedriver')
-            driver = webdriver.Chrome(service=service, options=options)
+        if ON_LINUX_MACHINE :
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()), options=options)
         elif ON_WINDOWS_MACHINE :
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
