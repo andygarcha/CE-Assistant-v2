@@ -298,8 +298,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             if CONSOLE_MARKERS : print("last update, continuing")
             continue
 
-        print(old_game)
-        print(new_game)
+        if CONSOLE_MARKERS: print(old_game)
+        if CONSOLE_MARKERS: print(new_game)
 
         # set up embed
         embed = discord.Embed(
@@ -375,7 +375,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
                 # if the description was updated
                 if old_objective.description != new_objective.description :
-                    print('huh')
+                    if CONSOLE_MARKERS: print('huh')
                     embed.description += f"\n  - Description updated"
                 
                 # if the requirements were updated
