@@ -171,7 +171,7 @@ def get_api_users_all() -> list[CEUser]:
     all_users : list[CEUser] = []
     for user in json_response :
         all_users.append(_ce_to_user(user))
-
+    print('returning users...')
     return all_users
 
 

@@ -89,3 +89,34 @@ Object-based version of andykasen13/CE-Assistant
   - #casino-log messages will be more detailed
   - Winner Takes All now accepts tier and category options.
   - /check-rolls will be much more concise.
+
+## google cloud commands
+
+### tmux
+create:
+```
+tmux new-session -d -s my_session
+```
+attach:
+```
+tmux attach -t my_session
+```
+detach:
+```
+tmux detach
+```
+list sessions:
+```
+tmux list-sessions
+```
+
+### virtual environment
+create:
+```
+python3 -m venv .venv
+source .venv/bin/activate
+```
+kill:
+```
+deactivate
+```
