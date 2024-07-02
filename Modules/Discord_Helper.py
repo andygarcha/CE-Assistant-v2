@@ -191,8 +191,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
     # variables
     SELENIUM_ENABLE = True
-    ON_RASPBERRY_PI = False
-    ON_WINDOWS_MACHINE = True
+    ON_RASPBERRY_PI = True
+    ON_WINDOWS_MACHINE = False
 
     if ON_RASPBERRY_PI :
         import chromedriver_binary
