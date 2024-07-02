@@ -126,7 +126,7 @@ def get_api_games_full() -> list[CEAPIGame] :
         raise FailedScrapeException(f"Scraping failed from api/games/full " 
                                     + f"on games {(i-1)*100} through {i*100-1}.")
     
-    print("done fetching games!")
+    print(f"done fetching games! total games: {len(json_response)}")
 
     """"
     BIG ASS FUCKING NOTE
@@ -178,7 +178,7 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
             # pull the data
             print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
             api_response = requests.get(f"https://cedb.me/api/users/all?limit={PULL_LIMIT}" 
-                                        + f"&offset={(i-1)*{PULL_LIMIT}}")
+                                        + f"&offset={(i-1)*PULL_LIMIT}")
             current_response = json.loads(api_response.text)
 
             # check to see if this is the last one
@@ -186,8 +186,12 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
 
             # go through and filter out users that aren't CEA registered if database_user is passed through
             if database_user is not None :
+                removed_users : int = 0
                 for index, user in enumerate(current_response) :
-                    if user['id'] not in registered_ids : del current_response[index]
+                    if user['id'] not in registered_ids :
+                        removed_users += 1
+                        del current_response[index]
+                print(f"removed {removed_users} users..")
 
             # add to the total response and increment i
             total_response += current_response
@@ -195,7 +199,7 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
     except : 
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
-    print("done fetching users!")
+    print(f"done fetching users! total users: {len(total_response)}")
 
     # convert to objects
     all_users : list[CEUser] = []
