@@ -346,7 +346,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     im_image = im_image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
 
     imgByteArr = io.BytesIO()
-    im_image.save(imgByteArr, format='JPG')
+    im_image.save(imgByteArr, format='PNG')
     final_im = imgByteArr.getvalue()
     ss = io.BytesIO(final_im)
 

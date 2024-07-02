@@ -95,7 +95,7 @@ async def test(interaction : discord.Interaction) :
 
     image = WebInteractor.get_image(driver=driver, new_game=database_name[14])
 
-    await interaction.channel.send(file=discord.File(image))
+    await interaction.channel.send(file=discord.File(image, filename="image.png"))
 
     return await interaction.followup.send('test done')
 
