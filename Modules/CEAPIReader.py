@@ -197,7 +197,8 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
             # add to the total response and increment i
             total_response += current_response
             i += 1
-    except : 
+    except Exception as e : 
+        print(f"original exception: {e.with_traceback()}")
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     print(f"done fetching users! total users: {len(total_response)}")
