@@ -455,7 +455,7 @@ async def master_loop(client : discord.Client) :
 
             # get the updates
             print('starting returns')
-            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name)
+            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
 
             # send update messages
             for update_message in user_returns[0] :

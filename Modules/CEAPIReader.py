@@ -186,12 +186,13 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
 
             # go through and filter out users that aren't CEA registered if database_user is passed through
             if database_user is not None :
-                removed_users : int = 0
+                removed_indexes = []
                 for index, user in enumerate(current_response) :
                     if user['id'] not in registered_ids :
-                        removed_users += 1
-                        del current_response[index]
-                print(f"removed {removed_users} users..")
+                        removed_indexes.append(index)
+                for index in removed_indexes :
+                    del current_response[index]
+                print(f"removed {len(removed_indexes)} users..")
 
             # add to the total response and increment i
             total_response += current_response
@@ -203,10 +204,7 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
 
     # convert to objects
     all_users : list[CEUser] = []
-    i : int = 1
     for user in total_response :
-        print(f'converting user {i}')
-        i+=1
         all_users.append(_ce_to_user(user))
 
     # free up space
