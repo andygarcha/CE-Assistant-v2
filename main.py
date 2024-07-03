@@ -84,7 +84,7 @@ async def test(interaction : discord.Interaction) :
 @tree.command(name = "register", 
               description = "Register with CE Assistant to unlock all features!", 
               guild = guild)
-@app_commands.describe(ce_id = "The link to your Challenge Enthusiasts profile!")
+@app_commands.describe(ce_id = "The link to your Challenge Enthusiasts profile.")
 async def register(interaction : discord.Interaction, ce_id : str) : 
     await interaction.response.defer()
 
@@ -150,7 +150,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES) :
     await interaction.response.defer()
 
-    return await interaction.followup.send("Rolling still under construction! Please come back later...")
+    return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
     view = discord.ui.View()
 
     # pull mongo database
