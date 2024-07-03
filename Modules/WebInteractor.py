@@ -489,6 +489,7 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
     if CONSOLE_UPDATES : print('thread began')
     messages : list[UpdateMessage] = []
     users : list[CEUser] = []
+    print('thread user began.')
     for old_user in old_data :
         if CONSOLE_UPDATES : print('before grabbing user')
         new_user = hm.get_item_from_list(old_user.ce_id, new_data)
