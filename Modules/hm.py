@@ -205,7 +205,8 @@ def months_to_days(num_months : int) -> int:
     #Required as duration will be different depending on 
     #point in the year, and get_rollable_game requires day inputs
     # function input = number of months
-    # function output = number of days between now and input months away 
+    # function output = number of days between now and input months away
+    if num_months == 0 : return 0 
     now = datetime.datetime.now()
     end_year = now.year + (now.month + num_months - 1) // 12
     end_month = (now.month + num_months - 1) % 12 + 1
@@ -254,6 +255,7 @@ def get_rollable_game(
         user,
         category : str | list[str] = None,
         already_rolled_games : list = [],
+        has_points_restriction : bool = False
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -285,9 +287,11 @@ def get_rollable_game(
             "Non-steam game."
             continue
 
+        """
         if game.is_unfinished() :
             "Game is currently under construction."
             continue
+        """
 
         if game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
@@ -316,6 +320,10 @@ def get_rollable_game(
 
         if game.ce_id in banned_games :
             "This game is in the Banned Games section."
+            continue
+
+        if has_points_restriction and user.has_points(game.ce_id) :
+            "This user is not allowed to have points in this game."
             continue
 
         return game.ce_id

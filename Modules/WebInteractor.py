@@ -473,7 +473,7 @@ async def master_loop(client : discord.Client) :
             print('fetching users failed.')
     
     print('loop complete.')
-    return
+    return await private_log_channel.send(f"loop complete at <t:{hm.get_unix('now')}>.")
 
 @to_thread
 def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) -> list[EmbedMessage] :

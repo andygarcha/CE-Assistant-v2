@@ -236,6 +236,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             if CONSOLE_MARKERS : print("game is unfinished")
             if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
             continue
+            #NOTE: we should add the old game to new_games and return that so that it'll
+            #still be stored in the database in the exact state it is in
 
         # --- the game is new ---
         if new_game.ce_id not in old_ce_ids : 
@@ -398,7 +400,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                     
                 # if the name was changed
                 if old_objective.name != new_objective.name :
-                    embed.description += (f"\n  - Name changed from {old_objective.name} to {new_objective.name}")
+                    embed.description += (f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'")
         
         for old_objective_ce_id in old_objective_ce_ids :
             if CONSOLE_MARKERS : print("objective removed")

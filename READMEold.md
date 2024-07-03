@@ -83,11 +83,11 @@ Object-based version of andykasen13/CE-Assistant
   - a user ranks up
   - a user clears a t4 or higher
   - a user unlocks a new discord role (category/tier related)
-  - open to more suggestions here!! submit them in #assistant-feedback
+  - open to more suggestions here!! please submit them in #assistant-feedback, i'd love to implement more of them
 - rolling to return soon...
-  - thank you folkius for covering in the meantime :)
+  - thank you folkius for covering for the past couple months :)
   - #casino-log messages will be more detailed
-  - Winner Takes All now accepts tier and category options.
+  - Winner Takes All will accept both tier and category options.
   - /check-rolls will be much more concise.
 
 ## google cloud commands

@@ -3,7 +3,7 @@ from typing import Literal, get_args
 
 import Modules.hm as hm
 
-roll_cooldowns = {
+roll_cooldowns : dict[str, int] = {
     'Destiny Alignment' : hm.months_to_days(1),
     'Soul Mates' : {
         'Tier 1' : 7*10,
@@ -47,6 +47,15 @@ roll_due_times = {
         'Tier 5' : None
     }
 }
+
+def relative(tier_num : int) -> int :
+    "Returns the relative points given by tier_num."
+    match(tier_num) :
+        case 1 : return 1
+        case 2 : return 2
+        case 3 : return 4
+        case 4 : return 8
+        case _ : return 20
 
 class CERoll:
     """Roll event.
@@ -448,17 +457,54 @@ class CERoll:
     def get_fail_message(self, database_name : list, database_user : list) -> str :
         """Returns a string to send to #casino if this roll is failed."""
         #TODO: finish this function
-        return NotImplemented
+
+        # imports and type hinting
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        # and grab the objects
+        user : CEUser = hm.get_item_from_list(self.user_ce_id, database_user)
+        if self.is_co_op() : 
+            partner : CEUser = hm.get_item_from_list(self.partner_ce_id, database_user)
+        else :
+            partner = None
+
+        if self.roll_name == "Fourward Thinking" :
+            return (
+                f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. " +
+                f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_date()}>."
+            )
+        else :
+            return (
+                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. " +
+                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+            )
     
-    def calculate_cooldown_date(self) -> int | None :
+    def calculate_cooldown_date(self, database_name : list = None) -> int | None :
         """Calculates the date of which the cooldown should be set
         (or `None` if not applicable)."""
+
+        # imports and type casting
+        if database_name is not None: 
+            from Classes.CE_Game import CEGame
+            database_name : list[CEGame] = database_name
+
         if self.roll_name == "Fourward Thinking" :
-            return NotImplemented   #TODO: finish this !
+            rerolls_used = len(self.games) - (self.rerolls + 1)
+            days = len(self.games)*14 + hm.months_to_days(rerolls_used)
+            return hm.get_unix(days)
         elif self.roll_name == "Soul Mates" :
-            return NotImplemented   #TODO : finish this too!
+            game = hm.get_item_from_list(self.games[0], database_name)
+            match(game.get_tier_num()) :
+                case 1 : return hm.get_unix(10*7)
+                case 2 : return hm.get_unix(8*7)
+                case 3 : return hm.get_unix(6*7)
+                case 4 : return hm.get_unix(4*7)
+                case _ : return hm.get_unix(2*7)
         
-        return roll_cooldowns[self.roll_name]
+        return hm.get_unix(days=roll_cooldowns[self.roll_name])
 
     def is_won(self, database_name : list, database_user : list) -> bool :
         """Returns true if this roll instance has been won."""
@@ -508,15 +554,24 @@ class CERoll:
         
         # destiny alignment
         elif(self.roll_name == "Destiny Alignment") :
-            return NotImplemented
+            return (
+                user.has_completed_game(self.games[0], database_name) and
+                partner.has_completed_game(self.games[1], database_name)
+            )
         
         # soul mates
         elif(self.roll_name == "Soul Mates") :
-            return NotImplemented
+            return (
+                user.has_completed_game(self.games[0], database_name) and
+                partner.has_completed_game(self.games[0], database_name)
+            )
         
         # game theory
         elif(self.roll_name == "Game Theory") :
-            return NotImplemented
+            return (
+                user.has_completed_game(self.games[0], database_name) and
+                partner.has_completed_game(self.games[1], database_name)
+            )
         
         # all other rolls
         else :
@@ -527,6 +582,61 @@ class CERoll:
         #TODO: finish this function
         return NotImplemented
         
+    def casino_increase(self, database_name : list = None) -> int :
+        "Returns the number of casino points the user would gain if the roll is won."
+
+        # imports and type casting
+        if database_name is not None :
+            from Classes.CE_Game import CEGame
+            database_name : list[CEGame] = database_name
+            tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
+
+        # matches
+        match(self.roll_name) :
+            case "One Hell of a Day" : return 1
+            case "One Hell of a Week" : return 7
+            case "One Hell of a Month" : return 18
+            case "Two Week T2 Streak" : return 4
+            case "Two \"Two Week T2 Streak\" Streak" : return 12
+            case "Never Lucky" : return 4
+            case "Triple Threat" : return 15
+            case "Let Fate Decide" : return 8
+            case "Fourward Thinking" : return 18
+            case "Destiny Alignment" : return relative(tier)
+            case "Soul Mates" : return relative(tier)
+            case "Teamwork Makes the Dream Work" : return 10
+            case "Winner Takes All" : return relative(tier)
+            case "Game Theory" : return 4
+    
+    def casino_decrease(self, database_name : list = None) -> int :
+        "Returns the number of casino points the user would lose if the roll is lost."
+
+        # imports and type casting
+        if database_name is not None :
+            from Classes.CE_Game import CEGame
+            database_name : list[CEGame] = database_name
+            tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
+
+        # matches
+        match(self.roll_name) :
+            case "One Hell of a Day" : return 0
+            case "One Hell of a Week" : return -2
+            case "One Hell of a Month" : return -5
+            case "Two Week T2 Streak" : return -1
+            case "Two \"Two Week T2 Streak\" Streak" : return -2
+            case "Never Lucky" : return -1
+            case "Triple Threat" : return -3
+            case "Let Fate Decide" : return -2
+            case "Fourward Thinking" : return -6
+            case "Destiny Alignment" : return int(-1*relative(tier) / 3)
+            case "Soul Mates" : return int(-1*relative(tier) / 2)
+            case "Teamwork Makes the Dream Work" : return -2
+            case "Winner Takes All" : return -1*relative(tier)
+            case "Game Theory" : return -4
+
+
+
+# ---------------- extra class stuff ----------------
         
 
     def to_dict(self) -> dict :
@@ -598,12 +708,13 @@ class CERoll:
         string = string[:-2]
         
         # rolled games
-        games = [game for game in database_name if game.ce_id in self.games]
-        string += "\nRolled games: "
-        for game in games :
-            string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
+        if self.games is not None:
+            games = [game for game in database_name if game.ce_id in self.games]
+            string += "\nRolled games: "
+            for game in games :
+                string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
 
-        # you're done. remove the ", "
-        string = string[:-2]
+            # you're done. remove the ", "
+            string = string[:-2]
         
         return string

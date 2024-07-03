@@ -30,6 +30,7 @@ from Exceptions.FailedScrapeException import FailedScrapeException
 
 # ----------- to-be-sorted imports -------------
 import random
+from functools import partial
 
 # ----------- selenium and beautiful soup stuff -----------
 from bs4 import BeautifulSoup
@@ -60,7 +61,9 @@ with open('secret_info.json') as f :
         discord_token = local_json_data['discord_token']
         guild_id = local_json_data['ce_guild_ID']
     else :
-        discord_token = local_json_data['third_discord_token']
+        RUNNING_LOCALLY = False
+        if RUNNING_LOCALLY : discord_token = local_json_data['other_discord_token']
+        else : discord_token = local_json_data['third_discord_token']
         guild_id = local_json_data['test_guild_ID']
 
 # set up client
@@ -76,15 +79,6 @@ async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
     return await interaction.followup.send('test done')
-
-@tree.command(name="prove", description="proive", guild=guild)
-async def prove(interaction : discord.Interaction) :
-    await interaction.response.defer()
-    #await SpreadsheetHandler.dump_prove_yourselves()
-    print('done"')
-    return await interaction.followup.send('fjksda')
-
-
 
 # ---- register command ----
 @tree.command(name = "register", 
@@ -120,12 +114,12 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     if ce_user == None :
         return await interaction.followup.send("Your Challenge Enthusiast page was not found. " + 
                                                "Please try again later or contact andy.")
-    ce_user.set_discord_id(interaction.user.id)
+    ce_user.discord_id = interaction.user.id
 
     # grab the user's pre-existing rolls
     challenge_enthusiast_game = (
         ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
-    if (challenge_enthusiast_game != None) :
+    if (challenge_enthusiast_game is not None) :
         for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
             if objective.name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
                 ce_user.add_completed_roll(CERoll(
@@ -155,6 +149,8 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 @app_commands.describe(event_name = "The event you'd like to roll.")
 async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES) :
     await interaction.response.defer()
+
+    return await interaction.followup.send("Rolling still under construction! Please come back later...")
     view = discord.ui.View()
 
     # pull mongo database
@@ -375,9 +371,16 @@ async def scrape(interaction : discord.Interaction) :
 async def loop(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    if datetime.datetime.now().minute < 30 and datetime.datetime.now().minute >= 25 :
+        return await interaction.followup.send('this loop will run in less than five minutes. please wait!')
+    if datetime.datetime.now().minute >= 30 and datetime.datetime.now().minute < 35 :
+        return await interaction.followup.send('this loop is probably running now! please wait...')
+
+    await interaction.followup.send("looping...")
+
     await master_loop(client)
 
-    return await interaction.followup.send('looping...')
+    return await interaction.followup.send('loop complete.')
 
 
 @tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
@@ -398,31 +401,27 @@ async def check_rolls(interaction : discord.Interaction) :
     # create the view
     view = discord.ui.View(timeout=None)
 
-    # add the buttons
-    for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
-        # create the button
-        button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
-
-        print(roll_name)
-
-        # designate its unique callback
-        async def c(interaction : discord.Interaction) : return await show_rolls(interaction, roll=roll_name)
-        button.callback = c
-
-        view.add_item(button)
-
-        del c
-        
+    # create the horrible buttons
+    """
+    async def ohoad(interaction : discord.Interaction) : return await show_rolls(interaction, "One Hell of a Day")
+    async def ohoaw(interaction) : return await show_rolls(interaction, "One Hell of a Week")
+    async def ohoam(interaction) : return await show_rolls(interaction, "One Hell of a Month")
+    async def twt2s(interaction) : return await show_rolls(interaction, "Two Week T2 Streak")
+    async def ttwt2ss(interaction) : return await show_rolls(interaction, "Two \"Two Week T2 Streak\" Streak")
+    async def nl(interaction) : return await show_rolls(interaction, "Never Lucky")
+    async def tt(interaction) : return await show_rolls(interaction, "Triple Threat")
+    async def lfd(interaction) : return await show_rolls(interaction, "Let Fate Decide")
+    async def ft(interaction) : return await show_rolls(interaction, "Fourward Thinking")
+    async def coop1(interaction) : return await show_rolls(interaction, "Destiny Alignment")
+    async def coop2(interaction) : return await show_rolls(interaction, "Soul Mates")
+    async def coop3(interaction) : return await show_rolls(interaction, "Teamwork Makes the Dream Work")
+    async def coop4(interaction) : return await show_rolls(interaction)
+    """   
 
     # create the callback for each button
-    async def show_rolls(interaction : discord.Interaction, roll : hm.ALL_ROLL_EVENT_NAMES) :
+    async def show_rolls(interaction : discord.Interaction, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
         # defer 
         await interaction.response.defer()
-
-        def a(r=roll) :
-            return r
-        
-        roll_name = a()
 
         # pull database_name and database_user
         database_name = await Mongo_Reader.get_mongo_games()
@@ -442,7 +441,7 @@ async def check_rolls(interaction : discord.Interaction) :
 
         # let them know if they are on cooldown.
         if user.has_cooldown(roll_name) : 
-            embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll)}>."
+            embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll_name)}>."
         else :
             embed.description = f"You are not currently on cooldown for {roll_name}."
 
@@ -468,6 +467,15 @@ async def check_rolls(interaction : discord.Interaction) :
                 button.disabled = True
 
         return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
+    
+    # add the buttons
+    for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+        # create the button
+        button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
+
+        # designate its unique callback
+        button.callback = partial(show_rolls, roll_name=roll_name)
+        view.add_item(button)
 
     # initialize the embed
     embed = discord.Embed(
