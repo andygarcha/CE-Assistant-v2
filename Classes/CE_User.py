@@ -167,7 +167,7 @@ class CEUser:
         """Returns the `CERoll` associated with `roll_name`."""
         r = []
         for event in self.completed_rolls :
-            if event.roll_name ==roll_name : r.append(event)
+            if event.roll_name == roll_name : r.append(event)
         if len(r) != 0 : return r
         return None
     

@@ -401,23 +401,6 @@ async def check_rolls(interaction : discord.Interaction) :
     # create the view
     view = discord.ui.View(timeout=None)
 
-    # create the horrible buttons
-    """
-    async def ohoad(interaction : discord.Interaction) : return await show_rolls(interaction, "One Hell of a Day")
-    async def ohoaw(interaction) : return await show_rolls(interaction, "One Hell of a Week")
-    async def ohoam(interaction) : return await show_rolls(interaction, "One Hell of a Month")
-    async def twt2s(interaction) : return await show_rolls(interaction, "Two Week T2 Streak")
-    async def ttwt2ss(interaction) : return await show_rolls(interaction, "Two \"Two Week T2 Streak\" Streak")
-    async def nl(interaction) : return await show_rolls(interaction, "Never Lucky")
-    async def tt(interaction) : return await show_rolls(interaction, "Triple Threat")
-    async def lfd(interaction) : return await show_rolls(interaction, "Let Fate Decide")
-    async def ft(interaction) : return await show_rolls(interaction, "Fourward Thinking")
-    async def coop1(interaction) : return await show_rolls(interaction, "Destiny Alignment")
-    async def coop2(interaction) : return await show_rolls(interaction, "Soul Mates")
-    async def coop3(interaction) : return await show_rolls(interaction, "Teamwork Makes the Dream Work")
-    async def coop4(interaction) : return await show_rolls(interaction)
-    """   
-
     # create the callback for each button
     async def show_rolls(interaction : discord.Interaction, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
         # defer 
@@ -428,8 +411,12 @@ async def check_rolls(interaction : discord.Interaction) :
         database_user = await Mongo_Reader.get_mongo_users()
 
         # find the user
-        for user in database_user :
-            if user.discord_id == interaction.user.id : break
+        user : CEUser = None
+        for u in database_user :
+            if u.discord_id == interaction.user.id : 
+                user = u
+                break
+        if user is None : return await interaction.followup.edit_message(message_id=interaction.message.id, content="You're not registered?")
 
         # initialize the embed
         embed = discord.Embed(
@@ -447,19 +434,19 @@ async def check_rolls(interaction : discord.Interaction) :
 
         # current rolls
         current_roll = user.get_current_roll(roll_name)
-        string = ""
-        if current_roll == None : string = f"You do not have a current roll in {roll_name}."
-        else : string = current_roll.display_str(database_name=database_name, database_user=database_user)
-        embed.add_field(name="Current Roll", value=string)
+        current_string = ""
+        if current_roll == None : current_string = f"You do not have a current roll in {roll_name}."
+        else : current_string = current_roll.display_str(database_name=database_name, database_user=database_user)
+        embed.add_field(name="Current Roll", value=current_string)
 
         # completed rolls
         completed_rolls = user.get_completed_rolls(roll_name)
-        string = ""
-        if completed_rolls == None : string = f"You do not have any completed rolls in {roll_name}."
+        completed_string = ""
+        if completed_rolls == None : completed_string = f"You do not have any completed rolls in {roll_name}."
         else :
             for completed_roll in completed_rolls :
-                string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
-        embed.add_field(name="Completed Rolls", value=string)
+                completed_string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
+        embed.add_field(name="Completed Rolls", value=completed_string)
 
         for button in view.children :
             button.disabled = False
