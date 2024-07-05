@@ -1,5 +1,6 @@
 # -------- discord imports -----------
 import datetime
+from enum import Enum
 import time
 from types import NoneType
 import discord
@@ -487,6 +488,50 @@ async def check_rolls(interaction : discord.Interaction) :
 
     await interaction.followup.send(embed=embed, view=view)
 
+@tree.command(name='set-color', description='Set your discord username color!', guild=guild)
+async def set_color(interaction : discord.Interaction) :
+    "Sets the color."
+    await interaction.response.defer(ephemeral=True)
+
+    # pull database_user and get the user
+    database_user = await Mongo_Reader.get_mongo_users()
+    user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
+
+    # set up ranks values
+
+
+    class Rank(Enum) :
+        E = 0
+        D = 1
+        C = 2
+        B = 3
+        A = 4
+        S = 5
+        SS = 6
+        SSS = 7
+        EX = 8
+    class Color(Enum) :
+        Grey = Rank.E
+        Brown = Rank.D
+        Green = Rank.C
+        Blue = Rank.B
+        Purple = Rank.A
+        Orange = Rank.S
+        Yellow = Rank.SS
+        Red = Rank.SSS
+        Black = Rank.EX     
+    
+    ranks = [(rank.name + " Rank") for rank in Rank]
+
+    # set up the callback
+    async def color_callback(interaction : discord.Interaction, color : Color) :
+        "Updates the user's color."
+        color_roles = [(discord.utils.get(interaction.guild.roles, name = f.name)) for f in Color]
+
+    # get the rank
+    user_rank = user.get_rank()[:-5]
+
+    Rank.E.name
 
 
 # ---- on ready function ----

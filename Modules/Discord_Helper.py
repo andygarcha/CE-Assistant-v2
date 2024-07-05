@@ -435,3 +435,9 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
     if SELENIUM_ENABLE : driver.close()
     
     return messages
+
+def get_user_by_discord_id(discord_id, database_user) :
+    "Return the user from their discord id."
+    for user in database_user :
+        if user.discord_id == discord_id : return user
+    return None
