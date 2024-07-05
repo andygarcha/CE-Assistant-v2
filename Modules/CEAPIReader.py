@@ -110,21 +110,22 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 def get_api_games_full() -> list[CEAPIGame] :
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
+    PULL_LIMIT = 50
     json_response = []
     done_fetching : bool = False
     i = 1
     try:
         while (not done_fetching) :
-            print(f"fetching games {(i-1)*100} through {i*100-1}...")
-            api_response = requests.get("https://cedb.me/api/games/full?limit=100&" 
-                                        + f"offset={(i-1)*100}")
+            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
+            api_response = requests.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&" 
+                                        + f"offset={(i-1)*PULL_LIMIT}")
             j = json.loads(api_response.text)
             json_response += j
             done_fetching = len(j) == 0
             i += 1
     except : 
         raise FailedScrapeException(f"Scraping failed from api/games/full " 
-                                    + f"on games {(i-1)*100} through {i*100-1}.")
+                                    + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
     
     print(f"done fetching games! total games: {len(json_response)}")
 

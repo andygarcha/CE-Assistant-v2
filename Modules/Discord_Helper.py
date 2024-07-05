@@ -347,8 +347,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                     f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
                 )
                 if new_objective.type == "Primary" or new_objective.type == "Secondary" :
-                    embed.description += f"\n\t- {new_objective.point_value} {hm.get_emoji('Points')}"
-                embed.description += f"\n\t- {new_objective.description}"
+                    embed.description += f"\n  - {new_objective.point_value} {hm.get_emoji('Points')}"
+                embed.description += f"\n  - {new_objective.description}"
                 continue
             
             # update objective tracker and get the old objective
@@ -386,11 +386,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             
                 # if the achievements were updated
                 # TODO: this can be made more specific in 2.1
-                if ( (not(old_objective.achievement_ce_ids is None and new_objective.achievement_ce_ids is None)) and
-                    ((old_objective.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None) or
-                    (old_objective.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None) or
-                    (set(old_objective.achievement_ce_ids) != set(new_objective.achievement_ce_ids)))
-                    ) :
+                if (not hm.achievements_are_equal(old_objective.achievement_ce_ids, new_objective.achievement_ce_ids)) :
                     embed.description += "\n  - Achievements updated"
 
                 # if the partial points were updated
