@@ -678,7 +678,7 @@ class CERoll:
         database_user : list[CEUser] = database_user
 
         if (
-            self.games == self.partner_ce_id == self.init_time == self.due_time == self.completed_time == self.rerolls == None
+            self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls == None
             ) :
             return "Completed before CE Assistant's existance."
 

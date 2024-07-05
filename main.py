@@ -383,6 +383,45 @@ async def loop(interaction : discord.Interaction) :
     return await interaction.followup.send('loop complete.')
 
 
+@tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
+@app_commands.describe(embed_id="The Message ID of the message you'd like to add notes to.")
+@app_commands.describe(notes="The notes you'd like to append.")
+async def add_notes(interaction : discord.Interaction, embed_id : int, notes : str) :
+    "Adds notes to game additions posts."
+    # defer and make ephemeral
+    await interaction.response.defer(ephemeral=True)
+
+    # grab the site additions channel
+    site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
+
+    # try to get the message
+    try :
+        message = await site_additions_channel.fetch_message(int(embed_id))
+
+    # if it errors, message is not in the site-additions channel
+    except :
+        return await interaction.followup.send(f"This message is not in the <#{hm.GAME_ADDITIONS_ID}> channel.")
+    
+    if message.author.id != 1108618891040657438 : return await interaction.followup.send("This message was not sent by the bot!")
+
+    # grab the embed
+    embed = message.embeds[0]
+
+    # try and see if the embed already has a reason field
+    try :
+        if(embed.fields[len(embed.fields)-1].name == "Note") :
+            embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
+    
+    # if it errors, then just add a reason field
+    except :
+        embed.add_field(name="Note", value=notes, inline=False)
+
+    # edit the message
+    await message.edit(embed=embed, attachments="")
+
+    # and send a response to the original interaction
+    await interaction.followup.send("Notes added!", ephemeral=True)
+
 @tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
 async def get_game_data(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
@@ -401,68 +440,83 @@ async def check_rolls(interaction : discord.Interaction) :
     # create the view
     view = discord.ui.View(timeout=None)
 
-    # create the callback for each button
-    async def show_rolls(interaction : discord.Interaction, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
-        # defer 
-        await interaction.response.defer()
+    # pull database_name and database_user
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
 
-        # pull database_name and database_user
-        database_name = await Mongo_Reader.get_mongo_games()
-        database_user = await Mongo_Reader.get_mongo_users()
+    # find the user
+    user : CEUser = None
+    for u in database_user :
+        if u.discord_id == interaction.user.id : 
+            user = u
+            break
+    if user is None : return await interaction.followup.send(content="You're not registered! Please run /register.")
 
-        # find the user
-        user : CEUser = None
-        for u in database_user :
-            if u.discord_id == interaction.user.id : 
-                user = u
-                break
-        if user is None : return await interaction.followup.edit_message(message_id=interaction.message.id, content="You're not registered?")
+    class CheckRollsDropdown(discord.ui.Select) :
+        def __init__(self, user : CEUser) :
 
-        # initialize the embed
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}'s Rolls",
-            description="",
-            timestamp=datetime.datetime.now(),
-            color=0x000000
-        )
+            # define variable
+            self.__user = user
 
-        # let them know if they are on cooldown.
-        if user.has_cooldown(roll_name) : 
-            embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll_name)}>."
-        else :
-            embed.description = f"You are not currently on cooldown for {roll_name}."
+            # set up options
+            options : list[discord.SelectOption] = []
+            for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+                options.append(discord.SelectOption(label=roll_name))
 
-        # current rolls
-        current_roll = user.get_current_roll(roll_name)
-        current_string = ""
-        if current_roll == None : current_string = f"You do not have a current roll in {roll_name}."
-        else : current_string = current_roll.display_str(database_name=database_name, database_user=database_user)
-        embed.add_field(name="Current Roll", value=current_string)
+            # super init
+            super().__init__(placeholder="Select a roll event!", min_values=1, max_values=1, options=options)
+        
+        @property
+        def user(self) -> CEUser :
+            "The user who called the view."
+            return self.__user
+        
+        async def callback(self, interaction : discord.Interaction) :
+            # make sure only caller can change the values
+            if interaction.user.id != self.user.discord_id : 
+                return await interaction.response.send_message(
+                    "You can't change this person's values! Run /check-rolls yourself to see yours.", ephemeral=True
+                    )
 
-        # completed rolls
-        completed_rolls = user.get_completed_rolls(roll_name)
-        completed_string = ""
-        if completed_rolls == None : completed_string = f"You do not have any completed rolls in {roll_name}."
-        else :
-            for completed_roll in completed_rolls :
-                completed_string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
-        embed.add_field(name="Completed Rolls", value=completed_string)
+            # defer 
+            await interaction.response.defer()
 
-        for button in view.children :
-            button.disabled = False
-            if button.label == roll_name :
-                button.disabled = True
+            # initialize the embed
+            embed = discord.Embed(
+                title=f"{interaction.user.display_name}'s Rolls",
+                description="",
+                timestamp=datetime.datetime.now(),
+                color=0x000000
+            )
 
-        return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
+            # get roll name
+            roll_name = self.values[0]
+
+            # let them know if they are on cooldown.
+            if user.has_cooldown(roll_name) : 
+                embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll_name)}>."
+            else :
+                embed.description = f"You are not currently on cooldown for {roll_name}."
+
+            # current rolls
+            current_roll = user.get_current_roll(roll_name)
+            current_string = ""
+            if current_roll == None : current_string = f"You do not have a current roll in {roll_name}."
+            else : current_string = current_roll.display_str(database_name=database_name, database_user=database_user)
+            embed.add_field(name="Current Roll", value=current_string)
+
+            # completed rolls
+            completed_rolls = user.get_completed_rolls(roll_name)
+            completed_string = ""
+            if completed_rolls == None : completed_string = f"You do not have any completed rolls in {roll_name}."
+            else :
+                for completed_roll in completed_rolls :
+                    completed_string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
+            embed.add_field(name="Completed Rolls", value=completed_string)
+
+            return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
     
-    # add the buttons
-    for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
-        # create the button
-        button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
-
-        # designate its unique callback
-        button.callback = partial(show_rolls, roll_name=roll_name)
-        view.add_item(button)
+    view.add_item(CheckRollsDropdown(user))
 
     # initialize the embed
     embed = discord.Embed(
