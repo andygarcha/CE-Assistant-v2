@@ -386,7 +386,7 @@ async def loop(interaction : discord.Interaction) :
 @tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
 @app_commands.describe(embed_id="The Message ID of the message you'd like to add notes to.")
 @app_commands.describe(notes="The notes you'd like to append.")
-async def add_notes(interaction : discord.Interaction, embed_id : int, notes : str) :
+async def add_notes(interaction : discord.Interaction, embed_id : str, notes : str) :
     "Adds notes to game additions posts."
     # defer and make ephemeral
     await interaction.response.defer(ephemeral=True)
