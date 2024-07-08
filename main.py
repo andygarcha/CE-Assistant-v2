@@ -548,10 +548,10 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
     database_user = await Mongo_Reader.get_mongo_users()
 
     # check to see if they asked for info on another person.
-    asked_for_friend : bool = False
+    asked_for_friend : bool = True
     if user is None :
         user = interaction.user
-        asked_for_friend = True
+        asked_for_friend = False
 
     # make sure they're registered
     ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
