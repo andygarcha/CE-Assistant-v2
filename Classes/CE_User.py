@@ -473,15 +473,15 @@ class CEAPIUser(CEUser) :
         i = 0
         for i, genre_name in enumerate(genre_dict) :
             # syntax
-            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
+            if i % LINE_BREAK_LIMIT == 0 : return_str += " \n"
 
             # add the actual emoji and value
-            return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}  "
+            return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}    "
         
         # set up tiers
         return_str += "\n"
-        return_str += f"{hm.get_emoji('Tier 1')}: {t1s}  {hm.get_emoji('Tier 2')}: {t2s}  {hm.get_emoji('Tier 3')}: {t3s}\n"
-        return_str += f"{hm.get_emoji('Tier 4')}: {t4s}  {hm.get_emoji('Tier 5')}: {t5s}  Total: {total}"
+        return_str += f"{hm.get_emoji('Tier 1')}: {t1s}    {hm.get_emoji('Tier 2')}: {t2s}    {hm.get_emoji('Tier 3')}: {t3s} \n"
+        return_str += f"{hm.get_emoji('Tier 4')}: {t4s}    {hm.get_emoji('Tier 5')}: {t5s}    Total: {total}"
 
         # and now return.
         return return_str
