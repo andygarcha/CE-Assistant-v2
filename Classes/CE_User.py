@@ -435,6 +435,7 @@ class CEAPIUser(CEUser) :
         prev_month_points = 0
 
         for api_objective in self.api_user_objectives :
+            if int(api_objective['updatedAt'][0:4]) != 2024 : continue
             if hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.current_month_num() :
                 if api_objective['partial'] : curr_month_points += api_objective['objective']['pointsPartial']
                 else : curr_month_points += api_objective['objective']['points']

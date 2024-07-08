@@ -120,7 +120,7 @@ OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
 PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-IN_CE = True
+IN_CE = False
 # ce ids
 __CE_OLD_LOG_ID = 1208259110638985246         # old log
 __CE_CASINO_TEST_ID = 1208259878381031485     # fake casino (old)
@@ -395,6 +395,10 @@ def previous_month_str() -> str :
 def previous_month_num() -> int :
     "The number of the prevuous month."
     return (current_month_num() - 1) if current_month_num() != 1 else 12
+
+def current_year_num() -> int :
+    "The number of the current year."
+    return 2024
 
 def get_month_from_cetimestamp(timestamp : str) -> int :
     "Returns the month number from a ce timestamp."

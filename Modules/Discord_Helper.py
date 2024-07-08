@@ -195,7 +195,7 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
         name = "CR", value=user.get_cr(database_name=database_name).cr_string(), inline=False
     )
     summary_embed.add_field(
-        name="Completions", value=api_user.tier_genre_summary_str()
+        name="Completions", value=api_user.tier_genre_summary_str(), inline=False
     )
 
     # recent
