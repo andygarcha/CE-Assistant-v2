@@ -1,8 +1,11 @@
+import json
+import requests
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
 from Classes.CE_Game import CEGame
 from Classes.CE_User_Game import CEUserGame
 import Modules.hm as hm
+from Classes.OtherClasses import CRData
 
 
 class CEUser:
@@ -93,6 +96,18 @@ class CEUser:
                 if game.ce_id == user_game.ce_id and game.get_total_points() == user_game.get_user_points() :
                     completed_games.append(game)
         return completed_games
+    
+    def get_objective(self, objective_id : str) :
+        "Takes in an ID and returns the CEUserObjective associated with it."
+        for game in self.owned_games :
+            for objective in game.user_objectives :
+                if objective_id == objective.ce_id : return objective
+
+        return None
+    
+    def get_cr(self, database_name : list[CEGame]) -> CRData :
+        "Returns the CR class."
+        return CRData(owned_games=self.owned_games, database_name=database_name)
     
     @property
     def current_rolls(self) -> list[CERoll] :
@@ -226,7 +241,23 @@ class CEUser:
     def get_ce_link(self) -> str :
         "Returns the link to this user's Challenge Enthusiasts page."
         return f"https://cedb.me/user/{self.ce_id}"
-        
+    
+    def get_api_user(self) -> 'CEAPIUser' :
+        "Returns the CEAPIUser."
+        data = requests.get(f'https://cedb.me/api/user/{self.ce_id}/')
+        data = json.loads(data.text)
+
+        return CEAPIUser(
+            discord_id=self.discord_id,
+            ce_id=self.ce_id,
+            casino_score=self.casino_score,
+            owned_games=self.owned_games,
+            current_rolls=self.current_rolls,
+            completed_rolls=self.completed_rolls,
+            pending_rolls=self.pending_rolls,
+            cooldowns=self.cooldowns,
+            full_data=data
+        )
         
         
     
@@ -292,3 +323,166 @@ class CEUser:
             "\nCooldowns: " + str(cooldowns_array) +
             "\nPendings: " + str(pendings_array)
         )
+    
+class CEAPIUser(CEUser) :
+    "A user that's been pulled from the Challenge Enthusiasts API."
+    def __init__(
+            self,
+            discord_id : int,
+            ce_id : str,
+            casino_score : int, 
+            owned_games : list[CEUserGame],
+            current_rolls : list[CERoll], 
+            completed_rolls : list[CERoll], 
+            pending_rolls : list[CERoll], 
+            cooldowns : list[CERoll],
+            full_data):
+        super().__init__(discord_id, ce_id, casino_score, owned_games, current_rolls, completed_rolls, pending_rolls, cooldowns)
+        self.__full_data = full_data
+
+    @property
+    def full_data(self) :
+        "Return the full API data."
+        return self.__full_data
+    
+    @property
+    def display_name(self) -> str :
+        "Return this user's display name."
+        return self.full_data['displayName']
+    
+    @property
+    def is_admin(self) -> bool :
+        "Returns true if this user is an admin."
+        return self.full_data['isAdmin']
+    
+    @property
+    def api_user_objectives(self) -> list :
+        "Returns the list of api user objectives as a list."
+        return self.full_data['userObjectives']
+    
+    @property
+    def api_user_games(self) -> list :
+        "Returns the list of api games as a list."
+        return self.full_data['userGames']
+    
+    @property
+    def api_tier_summary(self) -> list :
+        return self.full_data['userTierSummaries']
+    
+    def most_recent_objectives(self) :
+        "Returns a list of `CEObjective`s."
+
+        # make a constant
+        NUM_OF_OBJECTIVES = 3
+
+        # imports
+        from Classes.CE_User_Objective import CEUserObjective
+        from Modules import CEAPIReader
+
+        # grab all the data
+        ce_ids : list[str] = []
+        completion_dates : list[int] = []
+        game_names : list[str] = []
+        for objective in self.full_data['userObjectives'] :
+            ce_ids.append(objective['objective']['id'])
+            completion_dates.append(CEAPIReader._timestamp_to_unix(objective['updatedAt']))
+            game_names.append(objective['objective']['game']['name'])
+        
+        # make sure they didn't request too much
+        if NUM_OF_OBJECTIVES > len(ce_ids) : return None
+
+        # sort and shear them to the number requested
+        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[0:NUM_OF_OBJECTIVES]
+
+        # now get the objects and zip them with the completion dates
+        objective_tuples : list[tuple[CEUserObjective, int, str]] = []
+        for pair in ordered_pairs :
+            objective_tuples.append(
+                (self.get_objective(pair[1]),
+                pair[0],
+                pair[2])
+            )
+
+        return objective_tuples
+    
+    def most_recent_objectives_str(self) -> str :
+        "Returns the string for the most recent objectives."
+        
+        # pull the data
+        objective_tuples = self.most_recent_objectives()
+
+        # set up return
+        return_str : str = ""
+
+        # loop!
+        for item in objective_tuples :
+            # pull the actual items from the tuple
+            objective = item[0]
+            completion_unix = item[1]
+            game_name = item[2]
+
+            # add to the return string
+            return_str += (
+                f"{objective.name} ({objective.user_points} {hm.get_emoji('Points')}) " +
+                f"- [{game_name}](https://cedb.me/game/{objective.game_ce_id}/)\n"
+            )
+
+        return return_str
+    
+    def monthly_report_str(self) -> str :
+        "Returns a string report of the points this user has gained in the last two months."
+        curr_month_points = 0
+        prev_month_points = 0
+
+        for api_objective in self.api_user_objectives :
+            if hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.current_month_num() :
+                if api_objective['partial'] : curr_month_points += api_objective['objective']['pointsPartial']
+                else : curr_month_points += api_objective['objective']['points']
+            elif hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.previous_month_num() :
+                if api_objective['partial'] : prev_month_points += api_objective['objective']['pointsPartial']
+                else : prev_month_points += api_objective['objective']['points']
+
+        return (
+            f"Points this month ({hm.current_month_str()}): {curr_month_points} {hm.get_emoji('Points')}\n" + 
+            f"Points last month ({hm.previous_month_str()}): {prev_month_points} {hm.get_emoji('Points')}"
+        )
+    
+    def tier_genre_summary_str(self) -> str :
+        "Returns a string report of the Tier and Genre Summary string to be sent."
+        t1s, t2s, t3s, t4s, t5s = (0,)*5
+        genre_dict : dict[str, int] = {}
+
+        # get the data
+        for tier in self.api_tier_summary :
+            if hm.genre_id_to_name(tier['genreId']) == "Total" :
+                t1s = tier['tier1']
+                t2s = tier['tier2']
+                t3s = tier['tier3']
+                t4s = tier['tier4']
+                t5s = tier['tier5']
+                total = tier['total']
+                continue
+            genre_name = hm.genre_id_to_name(tier['genreId'])
+            genre_dict[genre_name] = tier['total']
+        
+        # yeah
+        LINE_BREAK_LIMIT = 3
+
+        # set up categories
+        return_str = ""
+        i = 0
+        for i, genre_name in enumerate(genre_dict) :
+            print(genre_name)
+            # syntax
+            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
+
+            # add the actual emoji and value
+            return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}  "
+        
+        # set up tiers
+        return_str += "\n"
+        return_str += f"{hm.get_emoji('Tier 1')}: {t1s}  {hm.get_emoji('Tier 2')}: {t2s}  {hm.get_emoji('Tier 3')}: {t3s}\n"
+        return_str += f"{hm.get_emoji('Tier 4')}: {t4s}  {hm.get_emoji('Tier 5')}: {t5s}  Total: {total}"
+
+        # and now return.
+        return return_str

@@ -120,7 +120,7 @@ OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
 PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-IN_CE = True
+IN_CE = False
 # ce ids
 __CE_OLD_LOG_ID = 1208259110638985246         # old log
 __CE_CASINO_TEST_ID = 1208259878381031485     # fake casino (old)
@@ -165,6 +165,26 @@ def get_emoji(input : __ICON_KEYS) -> str :
     if not IN_CE and input in list(__test_icons.keys()) :
         return __test_icons[input]
     return __icons[input]
+
+#"""
+#"3c3fd562-525c-4e24-a1fa-5b5eda85ebbd" : "Platformer",
+#        "4d43349a-43a8-4755-9d52-41ece63ec5b1" : "Action",
+##        "7f8676fe-4900-400b-9284-c073388d88f7" : "Bullet Hell",
+#        "a6d00cc0-9481-47cb-bb52-a7011041915a" : "First-Person",
+#        "ec499226-0913-4db1-890e-093b366bcb3c" : "Arcade",
+##        "ffb558c1-5a45-4b8c-856c-e9622ce54f00" : "Strategy",
+#        "00000000-0000-0000-0000-000000000000" : None
+#3        """
+def genre_id_to_name(genre_id : str) -> str :
+    match(genre_id) :
+        case "3c3fd562-525c-4e24-a1fa-5b5eda85ebbd" : return "Platformer"
+        case "4d43349a-43a8-4755-9d52-41ece63ec5b1" : return "Action"
+        case "7f8676fe-4900-400b-9284-c073388d88f7" : return "Bullet Hell"
+        case "a6d00cc0-9481-47cb-bb52-a7011041915a" : return "First-Person"
+        case "ec499226-0913-4db1-890e-093b366bcb3c" : return "Arcade"
+        case "ffb558c1-5a45-4b8c-856c-e9622ce54f00" : return "Strategy"
+        case "00000000-0000-0000-0000-000000000000" : return "Total"
+        case _ : return None
 
 def get_grammar_str(input : list) -> str :
     """Takes in the list `input` and returns a string of their
@@ -357,3 +377,25 @@ def achievements_are_equal(old_achievements : list[str], new_achievements : list
     if old_achievements is None and new_achievements is not None : return False
     if old_achievements is not None and new_achievements is None : return False
     return set(old_achievements) == set(new_achievements)
+
+def current_month_str() -> str :
+    "Returns the name of the current month."
+    return datetime.datetime.now().strftime('%B')
+
+def current_month_num() -> int :
+    "The number of the current month."
+    return datetime.datetime.now().month
+
+def previous_month_str() -> str :
+    "Returns the name of the previous month."
+    current_month_num = datetime.datetime.now().month
+    previous_month_num = (current_month_num - 1) if current_month_num != 1 else 12
+    return datetime.datetime(year=2024, month=previous_month_num, day = 1).strftime('%B')
+
+def previous_month_num() -> int :
+    "The number of the prevuous month."
+    return (current_month_num() - 1) if current_month_num() != 1 else 12
+
+def get_month_from_cetimestamp(timestamp : str) -> int :
+    "Returns the month number from a ce timestamp."
+    return int(timestamp[5:7])

@@ -137,6 +137,11 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     users.append(ce_user)
     await Mongo_Reader.dump_users(users)
 
+    # get the role and attach it
+    cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
+    await interaction.user.add_roles(cea_registered_role)
+
+    # and return.
     return await interaction.followup.send("You've been successfully registered!")
 
 
@@ -528,6 +533,37 @@ async def check_rolls(interaction : discord.Interaction) :
 
     await interaction.followup.send(embed=embed, view=view)
 
+
+@tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
+@app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
+async def profile(interaction : discord.Interaction, user : discord.User = None) :
+    await interaction.response.defer()
+
+    # pull databases
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+
+    # check to see if they asked for info on another person.
+    asked_for_friend : bool = False
+    if user is None :
+        user = interaction.user
+        asked_for_friend = True
+
+    # make sure they're registered
+    ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
+    if ce_user is None and asked_for_friend : 
+        return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
+                                               allowed_mentions=discord.AllowedMentions.none())
+    if ce_user is None and not asked_for_friend :
+        return await interaction.followup.send("Sorry! You are not registered. Please run /register and try again!")
+    
+    # get the embed and the view
+    returns = await Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name, database_user=database_user)
+    summary_embed = returns[0]
+    view = returns[1]
+
+    # and send
+    return await interaction.followup.send(view=view, embed=summary_embed)
 
 
 # ---- on ready function ----

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Literal, get_args
 
 import discord
 
@@ -327,3 +327,115 @@ class Achievement() :
     
     def __hash__(self) :
         return id(self)
+    
+
+class CRData :
+    "A wrapper class for a user's CR."
+
+    @staticmethod
+    def calculate_cr(games : list) :
+        "Helper function that contains the CR equation."
+
+        # set some constants before we begin.
+        CR_MULTIPLIER = 0.90        # the multiplier
+        CR_GAME_CAP = 1000          # the cap of how much an individual game is allowed to contribute
+
+        # calculate the actual cr
+        cr : int = 0
+        for i, point_value in enumerate(games) :
+
+            # if the game's value is higher than the cap, set it to the cap
+            if point_value > CR_GAME_CAP : point_value = CR_GAME_CAP
+
+            # do the calculation
+            cr += (CR_MULTIPLIER**i)*(float(point_value))
+
+        # and now round it to two decimal places
+        cr = round(cr, 2)
+        
+        # and return it.
+        return cr
+
+
+    def __init__(
+            self, 
+            owned_games : list,
+            database_name : list
+        ) :
+
+        # imports
+        from Modules import hm
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User_Game import CEUserGame
+        owned_games : list[CEUserGame] = owned_games
+        database_name : list[CEGame] = database_name
+
+        # iterate through every category and set up an array in the dict
+        cr_groups : dict[str, list[int]] = {}
+        for category in get_args(hm.CATEGORIES) :
+            cr_groups[category] = []
+
+        # now go through all of their games and sort them into their categories
+        for i, game in enumerate(owned_games) :
+            mongo_game = hm.get_item_from_list(game.ce_id, database_name)
+            cr_groups[mongo_game.category].append(game.get_user_points())
+
+        # now that they've all been sorted, calculate the individual crs, and store THAT dict.
+        final_dict = {key : self.calculate_cr(cr_groups[key]) for key in cr_groups}
+        self.__final_cr_dict = final_dict
+
+        # finally, get the total CR for this user.
+        self.__total_cr = self.calculate_cr([game.get_user_points() for game in owned_games])
+
+    
+    @property
+    def cr_dict(self) -> dict :
+        return self.__final_cr_dict
+    @property
+    def action_cr(self) -> int :
+        return self.cr_dict['Action']
+    @property 
+    def arcade_cr(self) -> int :
+        return self.cr_dict['Arcade']
+    @property
+    def bullethell_cr(self) -> int :
+        return self.cr_dict['Bullet Hell']
+    @property
+    def firstperson_cr(self) -> int :
+        return self.cr_dict['First-Person']
+    @property
+    def platformer_cr(self) -> int :
+        return self.cr_dict['Platformer']
+    @property
+    def strategy_cr(self) -> int :
+        return self.cr_dict['Strategy']
+    @property
+    def total_cr(self) -> int :
+        return self.__total_cr
+
+    def cr_string(self) -> str :
+        "A string representation meant to send in a profile embed."
+
+        # imports 
+        from Modules import hm
+
+        # set up the return string
+        return_str : str = ""
+
+        # constant to denote how many CRs should be displayed per line
+        LINE_BREAK_LIMIT = 3
+
+        # iterate and add to it as necessary
+        for i, category in enumerate(self.cr_dict) :
+
+            # make a line break if necessary
+            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
+
+            # now add the actual values
+            return_str += f"{hm.get_emoji(category)}: {self.cr_dict[category]}  "
+        
+        # add the total CR
+        return_str += f"\n{self.total_cr}"
+        
+        # and now return
+        return return_str
