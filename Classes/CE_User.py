@@ -472,7 +472,6 @@ class CEAPIUser(CEUser) :
         return_str = ""
         i = 0
         for i, genre_name in enumerate(genre_dict) :
-            print(genre_name)
             # syntax
             if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
 

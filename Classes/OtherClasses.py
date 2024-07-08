@@ -378,6 +378,7 @@ class CRData :
         # now go through all of their games and sort them into their categories
         for i, game in enumerate(owned_games) :
             mongo_game = hm.get_item_from_list(game.ce_id, database_name)
+            if mongo_game is None : continue
             cr_groups[mongo_game.category].append(game.get_user_points())
 
         # now that they've all been sorted, calculate the individual crs, and store THAT dict.
@@ -435,7 +436,7 @@ class CRData :
             return_str += f"{hm.get_emoji(category)}: {self.cr_dict[category]}  "
         
         # add the total CR
-        return_str += f"\n{self.total_cr}"
+        return_str += f"\nTotal: {self.total_cr}"
         
         # and now return
         return return_str

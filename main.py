@@ -78,6 +78,10 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    database_name = await Mongo_Reader.get_mongo_games()
+    for game in database_name :
+        if game is None : print(game)
+
     return await interaction.followup.send('test done')
 
 # ---- register command ----
