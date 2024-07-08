@@ -73,6 +73,11 @@ guild = discord.Object(id=guild_id)
 
 # ------------------------------ commands -------------------------------------
 
+
+
+
+
+
 # ---- test command ----
 @tree.command(name='test', description='test',guild=guild)
 async def test(interaction : discord.Interaction) :
@@ -83,6 +88,12 @@ async def test(interaction : discord.Interaction) :
         if game is None : print(game)
 
     return await interaction.followup.send('test done')
+
+
+
+
+
+
 
 # ---- register command ----
 @tree.command(name = "register", 
@@ -131,6 +142,11 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     # and return.
     return await interaction.followup.send("You've been successfully registered!")
 
+
+
+
+
+
 @tree.command(name='force-register', description='Register another user with CE Assistant!', guild=guild)
 @app_commands.describe(ce_link="The link to their CE page (or their ID, either works)")
 @app_commands.describe(user="The user you want to link this page (or ID) to.")
@@ -158,7 +174,7 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
     if ce_user == None :
         return await interaction.followup.send("This Challenge Enthusiast page was not found. " + 
                                                "Please try again later or contact andy.")
-    ce_user.discord_id = interaction.user.id
+    ce_user.discord_id = user.id
 
     # grab the user's pre-existing rolls
     rolls = ce_user.get_ce_rolls()
@@ -176,6 +192,14 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
     # and return.
     return await interaction.followup.send(f"<@{user.id}> been successfully registered. " + 
                                            "Please make sure they received the CEA Registered role!")
+
+
+
+
+
+
+
+
 
 
 # ---- solo roll command ----
@@ -387,6 +411,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
 
 
+
+
+
+
+
 # ---- scrape function ----
 @tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
 async def scrape(interaction : discord.Interaction) :
@@ -400,6 +429,11 @@ async def scrape(interaction : discord.Interaction) :
     await Mongo_Reader.dump_games(database_name)
 
     return await interaction.followup.send("Database replaced.")
+
+
+
+
+
 
 
 # ---- initiate loop ----
@@ -417,6 +451,12 @@ async def loop(interaction : discord.Interaction) :
     await master_loop(client)
 
     return await interaction.followup.send('loop complete.')
+
+
+
+
+
+
 
 
 @tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
@@ -457,6 +497,13 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
 
     # and send a response to the original interaction
     await interaction.followup.send("Notes added!", ephemeral=True)
+
+
+
+
+
+
+
 
 @tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
 async def get_game_data(interaction : discord.Interaction, ce_id : str) :
@@ -565,6 +612,16 @@ async def check_rolls(interaction : discord.Interaction) :
     await interaction.followup.send(embed=embed, view=view)
 
 
+
+
+
+
+
+
+
+
+
+
 @tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
 @app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
 async def profile(interaction : discord.Interaction, user : discord.User = None) :
@@ -595,6 +652,14 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 
     # and send
     return await interaction.followup.send(view=view, embed=summary_embed)
+
+
+
+
+
+
+
+
 
 
 # ---- on ready function ----
