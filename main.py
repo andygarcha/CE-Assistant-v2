@@ -83,6 +83,12 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    DEV_CHANNEL_ID = 1135993275162050690
+    dev_channel = client.get_channel(DEV_CHANNEL_ID)
+
+    database_user = await Mongo_Reader.get_mongo_users()
+    for user in database_user :
+        await dev_channel.send(f"<@{user.discord_id}>", allowed_mentions=discord.AllowedMentions.none())
 
     return await interaction.followup.send('test done')
 
