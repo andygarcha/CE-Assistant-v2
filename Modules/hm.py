@@ -403,3 +403,16 @@ def current_year_num() -> int :
 def get_month_from_cetimestamp(timestamp : str) -> int :
     "Returns the month number from a ce timestamp."
     return int(timestamp[5:7])
+
+def format_ce_link(ce_link : str) -> str :
+    "Takes in a full link and returns the CE ID."
+
+    # replace all the other stuff
+    ce_id = ce_link.replace("https://","").replace("www.","").replace("cedb.me", "").replace("/","").replace("games","").replace("user","")
+
+    # if it's not valid, return None
+    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-") :
+        return None
+    
+    # else, return the id.
+    return ce_id

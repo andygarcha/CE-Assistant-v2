@@ -1,4 +1,5 @@
 import json
+from typing import get_args
 import requests
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
@@ -172,6 +173,8 @@ class CEUser:
 
     # ----------- other methods ------------
 
+    # -- rolls --
+
     def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user has completed `roll_name`."""
         for event in self.completed_rolls :
@@ -217,6 +220,38 @@ class CEUser:
             if pending.roll_name == roll_name : return True
         return False
     
+    def get_ce_rolls(self) -> list[CERoll] :
+        "Returns a list of CERolls pulled from CE."
+
+        # set the constant
+        CE_GAME_ID = "76574ec1-42df-4488-a511-b9f2d9290e5d"
+
+        # get the game, and if it's None, return
+        ce_game = self.get_owned_game(CE_GAME_ID)
+        if ce_game is None : return []
+
+        # iterate through the objectives
+        rolls : list[CERoll] = []
+        for objective in ce_game.user_objectives :
+
+            # if the objective name is a roll name, add it to the list.
+            if objective.name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+                rolls.append(CERoll(
+                    roll_name=objective.name,
+                    user_ce_id=self.ce_id,
+                    games=None,
+                    partner_ce_id=None,
+                    init_time=None,
+                    due_time=None,
+                    completed_time=None,
+                    rerolls=None
+                ))
+
+        # return the list.
+        return rolls
+    
+    # -- game ownership and completion --
+
     def has_completed_game(self, game_id : str , database_name : list[CEGame]) :
         "Returns true if this user has completed this game, returns false otherwise."
         for user_game in self.owned_games :
@@ -238,6 +273,8 @@ class CEUser:
             if game.ce_id == game_id : return game.get_user_points() != 0
         return False
     
+    # -- other -- 
+
     def get_ce_link(self) -> str :
         "Returns the link to this user's Challenge Enthusiasts page."
         return f"https://cedb.me/user/{self.ce_id}"
@@ -474,15 +511,15 @@ class CEAPIUser(CEUser) :
         i = 0
         for i, genre_name in enumerate(genre_dict) :
             # syntax
-            if i % LINE_BREAK_LIMIT == 0 : return_str += " \n"
+            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
 
             # add the actual emoji and value
-            return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}    "
+            return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}\t"
         
         # set up tiers
         return_str += "\n"
-        return_str += f"{hm.get_emoji('Tier 1')}: {t1s}    {hm.get_emoji('Tier 2')}: {t2s}    {hm.get_emoji('Tier 3')}: {t3s} \n"
-        return_str += f"{hm.get_emoji('Tier 4')}: {t4s}    {hm.get_emoji('Tier 5')}: {t5s}    Total: {total}"
+        return_str += f"{hm.get_emoji('Tier 1')}: {t1s}\t{hm.get_emoji('Tier 2')}: {t2s}\t{hm.get_emoji('Tier 3')}: {t3s} \n"
+        return_str += f"{hm.get_emoji('Tier 4')}: {t4s}\t{hm.get_emoji('Tier 5')}: {t5s}\tTotal: {total}"
 
         # and now return.
         return return_str

@@ -93,16 +93,11 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
 
     # format correctly
-    ce_id = ce_id.replace("https://","").replace("www.","").replace("cedb.me", "").replace("/","").replace("games","").replace("user","")
-    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-") :
-        return await interaction.followup.send("An incorrect link was sent. Please try again.")
+    ce_id = hm.format_ce_link(ce_id)
+    if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
 
-    # try and get database_user
-    try :
-        users = await Mongo_Reader.get_mongo_users()
-    except FailedScrapeException :
-        return await interaction.followup.send("There was an issue with the Challenge " 
-                                               + "Enthusiast API. Please try again later.")
+    # get database_user
+    users = await Mongo_Reader.get_mongo_users()
     
     # make sure they're not already registered
     for user in users :
@@ -121,21 +116,9 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     ce_user.discord_id = interaction.user.id
 
     # grab the user's pre-existing rolls
-    challenge_enthusiast_game = (
-        ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
-    if (challenge_enthusiast_game is not None) :
-        for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
-                ce_user.add_completed_roll(CERoll(
-                    roll_name=objective.name,
-                    user_ce_id=ce_user.ce_id,
-                    games=None,
-                    partner_ce_id=None,
-                    init_time=None,
-                    due_time=None,
-                    completed_time=None,
-                    rerolls=None
-                ))
+    rolls = ce_user.get_ce_rolls()
+    for roll in rolls :
+        user.add_completed_roll(roll)
 
     # add the user to users and dump it
     users.append(ce_user)
@@ -148,7 +131,51 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     # and return.
     return await interaction.followup.send("You've been successfully registered!")
 
+@tree.command(name='force-register', description='Register another user with CE Assistant!', guild=guild)
+@app_commands.describe(ce_link="The link to their CE page (or their ID, either works)")
+@app_commands.describe(user="The user you want to link this page (or ID) to.")
+async def register_other(interaction : discord.Interaction, ce_link : str, user : discord.Member) :
+    await interaction.response.defer(ephemeral=True)
 
+    # format correctly
+    ce_id = hm.format_ce_link(ce_link)
+    if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
+
+    # get users
+    users = await Mongo_Reader.get_mongo_users()
+    
+    # make sure they're not already registered
+    for mongo_user in users :
+        if mongo_user.discord_id == user.id :
+            return await interaction.followup.send("This user is already registered in the " +
+                                                   "CE Assistant database!")
+        if mongo_user.ce_id == ce_id : 
+            return await interaction.followup.send("This Challenge Enthusiast page is " +
+                                                   "already connected to another account!")
+        
+    # grab their data from CE
+    ce_user : CEUser = CEAPIReader.get_api_page_data("user", ce_id)
+    if ce_user == None :
+        return await interaction.followup.send("This Challenge Enthusiast page was not found. " + 
+                                               "Please try again later or contact andy.")
+    ce_user.discord_id = interaction.user.id
+
+    # grab the user's pre-existing rolls
+    rolls = ce_user.get_ce_rolls()
+    for roll in rolls :
+        ce_user.add_completed_roll(roll)
+
+    # add the user to users and dump it
+    users.append(ce_user)
+    await Mongo_Reader.dump_users(users)
+
+    # get the role and attach it
+    cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
+    await user.add_roles(cea_registered_role)
+
+    # and return.
+    return await interaction.followup.send(f"<@{user.id}> been successfully registered. " + 
+                                           "Please make sure they received the CEA Registered role!")
 
 
 # ---- solo roll command ----
