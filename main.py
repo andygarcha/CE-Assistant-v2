@@ -83,9 +83,13 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    database_name = await Mongo_Reader.get_mongo_games()
-    for game in database_name :
-        if game is None : print(game)
+    database_user = await Mongo_Reader.get_mongo_users()
+    index = -1
+    for i, user in enumerate(database_user) :
+        if user.ce_id == "b2408873-9eff-4f44-9725-bd9fb312a921" : index = i
+    del database_user[index]
+
+    await Mongo_Reader.dump_users(database_user)
 
     return await interaction.followup.send('test done')
 
