@@ -334,9 +334,12 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     else:
         bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
-    ob = Screenshot(bottom_right_y)
-    im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
-                            is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    try :
+        ob = Screenshot(bottom_right_y)
+        im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
+                                is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    except :
+        return "Assets/image_failed.png"
     im = io.BytesIO(im)
     im_image = Image.open(im)
 

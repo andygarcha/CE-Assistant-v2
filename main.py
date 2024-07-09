@@ -90,6 +90,8 @@ async def test(interaction : discord.Interaction) :
     for user in database_user :
         await dev_channel.send(f"<@{user.discord_id}>", allowed_mentions=discord.AllowedMentions.none())
 
+
+
     return await interaction.followup.send('test done')
 
 
