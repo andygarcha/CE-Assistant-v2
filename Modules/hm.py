@@ -372,10 +372,11 @@ async def name_to_steamid(name : str) -> str :
     # if no exact match is found, return the first one
     return json_response['items'][0]['id']
 
-def achievements_are_equal(old_achievements : list[str], new_achievements : list[str]) -> bool :
+def achievements_are_equal(old_achievements : list[str] | None, new_achievements : list[str] | None) -> bool :
     "Returns true if the achievements are equal, false if they're not."
     if old_achievements is None and new_achievements is not None : return False
     if old_achievements is not None and new_achievements is None : return False
+    if old_achievements is None and new_achievements is None : return True
     return set(old_achievements) == set(new_achievements)
 
 def current_month_str() -> str :
