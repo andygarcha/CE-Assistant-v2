@@ -273,7 +273,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Literal['Assets/image_failed.png'] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -284,8 +284,12 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     "The maximum amount of objectives to be screenshot before cropping." 
 
     # initiate selenium
-    url = f"https://cedb.me/game/{new_game.ce_id}/"
-    driver.get(url)
+    try :
+        url = f"https://cedb.me/game/{new_game.ce_id}/"
+        driver.get(url)
+    except Exception as e :
+        print(e)
+        return "Assets/image_failed.png"
     
     # set up variables
     start_time = hm.get_unix('now')
