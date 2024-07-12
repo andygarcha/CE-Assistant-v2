@@ -510,10 +510,10 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             color=0xce4e2c,
             timestamp=datetime.datetime.now()
         )
-        embed.set_image(url="Assets/removed.png")
+        embed.set_image(url="attachment://image.png")
 
         messages.append(EmbedMessage(
-            embed=embed, file=discord.File("Web_Interaction/removed.png", filename="image.png")
+            embed=embed, file=discord.File("Assets/removed.png", filename="image.png")
         ))
 
     if SELENIUM_ENABLE : driver.close()
