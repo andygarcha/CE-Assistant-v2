@@ -330,6 +330,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         # --- the game is new ---
         if new_game.ce_id not in old_ce_ids : 
 
+            print(f'🟢 NEW GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
+
             # set up the embed
             embed = discord.Embed(
                 title=f"__{new_game.game_name}__ added to the site:",
@@ -376,6 +378,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             continue
 
         # --- the game is updated ---
+
+        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
 
         # remove the ce id from old_ce_ids
         old_ce_ids.remove(new_game.ce_id)
@@ -505,6 +509,9 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
     # --- all additions and updates have finished. check for removed games ---
     for game in old_ce_ids :
         game_object = hm.get_item_from_list(game, old_games)
+
+        print(f'🔴 REMOVED GAME: {game_object.game_name}, https://cedb.me/game/{game_object.ce_id}')
+
         embed = discord.Embed(
             title=f"__{game_object.game_name}__ removed from the site.",
             color=0xce4e2c,
