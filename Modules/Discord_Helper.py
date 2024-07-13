@@ -512,6 +512,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
         print(f'🔴 REMOVED GAME: {game_object.game_name}, https://cedb.me/game/{game_object.ce_id}')
 
+        # create the embed
         embed = discord.Embed(
             title=f"__{game_object.game_name}__ removed from the site.",
             color=0xce4e2c,
@@ -519,12 +520,15 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         )
         embed.set_image(url="attachment://image.png")
 
+        # and add the message
         messages.append(EmbedMessage(
             embed=embed, file=discord.File("Assets/removed.png", filename="image.png")
         ))
 
+    # if we're looking for images, close the driver
     if SELENIUM_ENABLE : driver.close()
     
+    # and return
     return messages
 
 def get_user_by_discord_id(discord_id, database_user) :

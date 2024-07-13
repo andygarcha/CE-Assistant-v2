@@ -112,6 +112,7 @@ class CEObjective:
     
     def equals(self, new_objective : 'CEObjective') -> bool :
         "Returns true if the two objectives have the same values."
+        if type(new_objective) != CEObjective : return False
         if self.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None : return False
         if self.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None : return False
         return (
@@ -122,8 +123,7 @@ class CEObjective:
             self.ce_id == new_objective.ce_id and
             self.partial_points == new_objective.partial_points and
             self.name == new_objective.name and 
-            ((self.achievement_ce_ids is None and new_objective.achievement_ce_ids is None) or
-            (set(self.achievement_ce_ids) == set(new_objective.achievement_ce_ids)))
+            hm.achievements_are_equal(self.achievement_ce_ids, new_objective.achievement_ce_ids)
         )
 
     def to_dict(self) -> dict :
