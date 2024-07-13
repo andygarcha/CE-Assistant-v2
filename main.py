@@ -74,12 +74,32 @@ guild = discord.Object(id=guild_id)
 
 # ------------------------------ commands -------------------------------------
 
+
+
+
+
+
 # ---- test command ----
 @tree.command(name='test', description='test',guild=guild)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    DEV_CHANNEL_ID = 1135993275162050690
+    dev_channel = client.get_channel(DEV_CHANNEL_ID)
+
+    database_user = await Mongo_Reader.get_mongo_users()
+    for user in database_user :
+        await dev_channel.send(f"<@{user.discord_id}>", allowed_mentions=discord.AllowedMentions.none())
+
+
+
     return await interaction.followup.send('test done')
+
+
+
+
+
+
 
 # ---- register command ----
 @tree.command(name = "register", 
@@ -90,16 +110,11 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
 
     # format correctly
-    ce_id = ce_id.replace("https://","").replace("www.","").replace("cedb.me", "").replace("/","").replace("games","").replace("user","")
-    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-") :
-        return await interaction.followup.send("An incorrect link was sent. Please try again.")
+    ce_id = hm.format_ce_link(ce_id)
+    if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
 
-    # try and get database_user
-    try :
-        users = await Mongo_Reader.get_mongo_users()
-    except FailedScrapeException :
-        return await interaction.followup.send("There was an issue with the Challenge " 
-                                               + "Enthusiast API. Please try again later.")
+    # get database_user
+    users = await Mongo_Reader.get_mongo_users()
     
     # make sure they're not already registered
     for user in users :
@@ -118,27 +133,77 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     ce_user.discord_id = interaction.user.id
 
     # grab the user's pre-existing rolls
-    challenge_enthusiast_game = (
-        ce_user.get_owned_game("76574ec1-42df-4488-a511-b9f2d9290e5d"))
-    if (challenge_enthusiast_game is not None) :
-        for objective in (challenge_enthusiast_game.get_user_community_objectives()) :
-            if objective.name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
-                ce_user.add_completed_roll(CERoll(
-                    roll_name=objective.name,
-                    user_ce_id=ce_user.ce_id,
-                    games=None,
-                    partner_ce_id=None,
-                    init_time=None,
-                    due_time=None,
-                    completed_time=None,
-                    rerolls=None
-                ))
+    rolls = ce_user.get_ce_rolls()
+    for roll in rolls :
+        user.add_completed_roll(roll)
 
     # add the user to users and dump it
     users.append(ce_user)
     await Mongo_Reader.dump_users(users)
 
+    # get the role and attach it
+    cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
+    await interaction.user.add_roles(cea_registered_role)
+
+    # and return.
     return await interaction.followup.send("You've been successfully registered!")
+
+
+
+
+
+
+@tree.command(name='force-register', description='Register another user with CE Assistant!', guild=guild)
+@app_commands.describe(ce_link="The link to their CE page (or their ID, either works)")
+@app_commands.describe(user="The user you want to link this page (or ID) to.")
+async def register_other(interaction : discord.Interaction, ce_link : str, user : discord.Member) :
+    await interaction.response.defer(ephemeral=True)
+
+    # format correctly
+    ce_id = hm.format_ce_link(ce_link)
+    if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
+
+    # get users
+    users = await Mongo_Reader.get_mongo_users()
+    
+    # make sure they're not already registered
+    for mongo_user in users :
+        if mongo_user.discord_id == user.id :
+            return await interaction.followup.send("This user is already registered in the " +
+                                                   "CE Assistant database!")
+        if mongo_user.ce_id == ce_id : 
+            return await interaction.followup.send("This Challenge Enthusiast page is " +
+                                                   "already connected to another account!")
+        
+    # grab their data from CE
+    ce_user : CEUser = CEAPIReader.get_api_page_data("user", ce_id)
+    if ce_user == None :
+        return await interaction.followup.send("This Challenge Enthusiast page was not found. " + 
+                                               "Please try again later or contact andy.")
+    ce_user.discord_id = user.id
+
+    # grab the user's pre-existing rolls
+    rolls = ce_user.get_ce_rolls()
+    for roll in rolls :
+        ce_user.add_completed_roll(roll)
+
+    # add the user to users and dump it
+    users.append(ce_user)
+    await Mongo_Reader.dump_users(users)
+
+    # get the role and attach it
+    cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
+    await user.add_roles(cea_registered_role)
+
+    # and return.
+    return await interaction.followup.send(f"<@{user.id}> been successfully registered. " + 
+                                           "Please make sure they received the CEA Registered role!")
+
+
+
+
+
+
 
 
 
@@ -352,6 +417,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
 
 
+
+
+
+
+
 # ---- scrape function ----
 @tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
 async def scrape(interaction : discord.Interaction) :
@@ -365,6 +435,11 @@ async def scrape(interaction : discord.Interaction) :
     await Mongo_Reader.dump_games(database_name)
 
     return await interaction.followup.send("Database replaced.")
+
+
+
+
+
 
 
 # ---- initiate loop ----
@@ -382,6 +457,58 @@ async def loop(interaction : discord.Interaction) :
     await master_loop(client)
 
     return await interaction.followup.send('loop complete.')
+
+
+
+
+
+
+
+
+@tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
+@app_commands.describe(embed_id="The Message ID of the message you'd like to add notes to.")
+@app_commands.describe(notes="The notes you'd like to append.")
+async def add_notes(interaction : discord.Interaction, embed_id : str, notes : str) :
+    "Adds notes to game additions posts."
+    # defer and make ephemeral
+    await interaction.response.defer(ephemeral=True)
+
+    # grab the site additions channel
+    site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
+
+    # try to get the message
+    try :
+        message = await site_additions_channel.fetch_message(int(embed_id))
+
+    # if it errors, message is not in the site-additions channel
+    except :
+        return await interaction.followup.send(f"This message is not in the <#{hm.GAME_ADDITIONS_ID}> channel.")
+    
+    if message.author.id != 1108618891040657438 : return await interaction.followup.send("This message was not sent by the bot!")
+
+    # grab the embed
+    embed = message.embeds[0]
+
+    # try and see if the embed already has a reason field
+    try :
+        if(embed.fields[len(embed.fields)-1].name == "Note") :
+            embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
+    
+    # if it errors, then just add a reason field
+    except :
+        embed.add_field(name="Note", value=notes, inline=False)
+
+    # edit the message
+    await message.edit(embed=embed, attachments="")
+
+    # and send a response to the original interaction
+    await interaction.followup.send("Notes added!", ephemeral=True)
+
+
+
+
+
+
 
 
 @tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
@@ -402,81 +529,83 @@ async def check_rolls(interaction : discord.Interaction) :
     # create the view
     view = discord.ui.View(timeout=None)
 
-    # create the horrible buttons
-    """
-    async def ohoad(interaction : discord.Interaction) : return await show_rolls(interaction, "One Hell of a Day")
-    async def ohoaw(interaction) : return await show_rolls(interaction, "One Hell of a Week")
-    async def ohoam(interaction) : return await show_rolls(interaction, "One Hell of a Month")
-    async def twt2s(interaction) : return await show_rolls(interaction, "Two Week T2 Streak")
-    async def ttwt2ss(interaction) : return await show_rolls(interaction, "Two \"Two Week T2 Streak\" Streak")
-    async def nl(interaction) : return await show_rolls(interaction, "Never Lucky")
-    async def tt(interaction) : return await show_rolls(interaction, "Triple Threat")
-    async def lfd(interaction) : return await show_rolls(interaction, "Let Fate Decide")
-    async def ft(interaction) : return await show_rolls(interaction, "Fourward Thinking")
-    async def coop1(interaction) : return await show_rolls(interaction, "Destiny Alignment")
-    async def coop2(interaction) : return await show_rolls(interaction, "Soul Mates")
-    async def coop3(interaction) : return await show_rolls(interaction, "Teamwork Makes the Dream Work")
-    async def coop4(interaction) : return await show_rolls(interaction)
-    """   
+    # pull database_name and database_user
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
 
-    # create the callback for each button
-    async def show_rolls(interaction : discord.Interaction, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
-        # defer 
-        await interaction.response.defer()
+    # find the user
+    user : CEUser = None
+    for u in database_user :
+        if u.discord_id == interaction.user.id : 
+            user = u
+            break
+    if user is None : return await interaction.followup.send(content="You're not registered! Please run /register.")
 
-        # pull database_name and database_user
-        database_name = await Mongo_Reader.get_mongo_games()
-        database_user = await Mongo_Reader.get_mongo_users()
+    class CheckRollsDropdown(discord.ui.Select) :
+        def __init__(self, user : CEUser) :
 
-        # find the user
-        for user in database_user :
-            if user.discord_id == interaction.user.id : break
+            # define variable
+            self.__user = user
 
-        # initialize the embed
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}'s Rolls",
-            description="",
-            timestamp=datetime.datetime.now(),
-            color=0x000000
-        )
+            # set up options
+            options : list[discord.SelectOption] = []
+            for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+                options.append(discord.SelectOption(label=roll_name))
 
-        # let them know if they are on cooldown.
-        if user.has_cooldown(roll_name) : 
-            embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll_name)}>."
-        else :
-            embed.description = f"You are not currently on cooldown for {roll_name}."
+            # super init
+            super().__init__(placeholder="Select a roll event!", min_values=1, max_values=1, options=options)
+        
+        @property
+        def user(self) -> CEUser :
+            "The user who called the view."
+            return self.__user
+        
+        async def callback(self, interaction : discord.Interaction) :
+            # make sure only caller can change the values
+            if interaction.user.id != self.user.discord_id : 
+                return await interaction.response.send_message(
+                    "You can't change this person's values! Run /check-rolls yourself to see yours.", ephemeral=True
+                    )
 
-        # current rolls
-        current_roll = user.get_current_roll(roll_name)
-        string = ""
-        if current_roll == None : string = f"You do not have a current roll in {roll_name}."
-        else : string = current_roll.display_str(database_name=database_name, database_user=database_user)
-        embed.add_field(name="Current Roll", value=string)
+            # defer 
+            await interaction.response.defer()
 
-        # completed rolls
-        completed_rolls = user.get_completed_rolls(roll_name)
-        string = ""
-        if completed_rolls == None : string = f"You do not have any completed rolls in {roll_name}."
-        else :
-            for completed_roll in completed_rolls :
-                string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
-        embed.add_field(name="Completed Rolls", value=string)
+            # initialize the embed
+            embed = discord.Embed(
+                title=f"{interaction.user.display_name}'s Rolls",
+                description="",
+                timestamp=datetime.datetime.now(),
+                color=0x000000
+            )
 
-        for button in view.children :
-            button.disabled = False
-            if button.label == roll_name :
-                button.disabled = True
+            # get roll name
+            roll_name = self.values[0]
 
-        return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
+            # let them know if they are on cooldown.
+            if user.has_cooldown(roll_name) : 
+                embed.description = f"You are on cooldown for {roll_name} until <t:{user.get_cooldown_time(roll_name)}>."
+            else :
+                embed.description = f"You are not currently on cooldown for {roll_name}."
+
+            # current rolls
+            current_roll = user.get_current_roll(roll_name)
+            current_string = ""
+            if current_roll == None : current_string = f"You do not have a current roll in {roll_name}."
+            else : current_string = current_roll.display_str(database_name=database_name, database_user=database_user)
+            embed.add_field(name="Current Roll", value=current_string)
+
+            # completed rolls
+            completed_rolls = user.get_completed_rolls(roll_name)
+            completed_string = ""
+            if completed_rolls == None : completed_string = f"You do not have any completed rolls in {roll_name}."
+            else :
+                for completed_roll in completed_rolls :
+                    completed_string += f"{completed_roll.display_str(database_name=database_name, database_user=database_user)}\n"
+            embed.add_field(name="Completed Rolls", value=completed_string)
+
+            return await interaction.followup.edit_message(message_id=interaction.message.id, view=view, embed=embed)
     
-    # add the buttons
-    for roll_name in get_args(hm.ALL_ROLL_EVENT_NAMES) :
-        # create the button
-        button = discord.ui.Button(label=roll_name, style=discord.ButtonStyle.gray)
-
-        # designate its unique callback
-        button.callback = partial(show_rolls, roll_name=roll_name)
-        view.add_item(button)
+    view.add_item(CheckRollsDropdown(user))
 
     # initialize the embed
     embed = discord.Embed(
@@ -532,6 +661,55 @@ async def set_color(interaction : discord.Interaction) :
     user_rank = user.get_rank()[:-5]
 
     Rank.E.name
+
+
+
+
+
+
+
+
+
+
+
+@tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
+@app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
+async def profile(interaction : discord.Interaction, user : discord.User = None) :
+    await interaction.response.defer()
+
+    # pull databases
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+
+    # check to see if they asked for info on another person.
+    asked_for_friend : bool = True
+    if user is None :
+        user = interaction.user
+        asked_for_friend = False
+
+    # make sure they're registered
+    ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
+    if ce_user is None and asked_for_friend : 
+        return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
+                                               allowed_mentions=discord.AllowedMentions.none())
+    if ce_user is None and not asked_for_friend :
+        return await interaction.followup.send("Sorry! You are not registered. Please run /register and try again!")
+    
+    # get the embed and the view
+    returns = await Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name, database_user=database_user)
+    summary_embed = returns[0]
+    view = returns[1]
+
+    # and send
+    return await interaction.followup.send(view=view, embed=summary_embed)
+
+
+
+
+
+
+
+
 
 
 # ---- on ready function ----

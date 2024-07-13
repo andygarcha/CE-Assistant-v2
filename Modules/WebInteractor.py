@@ -273,7 +273,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Literal['Assets/image_failed.png'] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -284,8 +284,12 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     "The maximum amount of objectives to be screenshot before cropping." 
 
     # initiate selenium
-    url = f"https://cedb.me/game/{new_game.ce_id}/"
-    driver.get(url)
+    try :
+        url = f"https://cedb.me/game/{new_game.ce_id}/"
+        driver.get(url)
+    except Exception as e :
+        print(e)
+        return "Assets/image_failed.png"
     
     # set up variables
     start_time = hm.get_unix('now')
@@ -322,20 +326,24 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     ]
 
     BORDER_WIDTH = 15
+    DISPLAY_FACTOR = 1
 
     #NOTE: i multiplied these by two. dk why it's working.
-    top_left_x = (top_left['x']) - BORDER_WIDTH
-    top_left_y = (top_left['y']) - BORDER_WIDTH
-    bottom_right_y = (bottom_right['y'] + size['height']) + BORDER_WIDTH
+    top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
+    top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
+    bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
     if title_location + title_size > bottom_right['x'] + size['width']:
-        bottom_right_x = (title_location + title_size) + BORDER_WIDTH
+        bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
     else:
-        bottom_right_x = (bottom_right['x'] + size['width']) + BORDER_WIDTH
+        bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
-    ob = Screenshot(bottom_right_y)
-    im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
-                            is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    try :
+        ob = Screenshot(bottom_right_y)
+        im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
+                                is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    except :
+        return "Assets/image_failed.png"
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
