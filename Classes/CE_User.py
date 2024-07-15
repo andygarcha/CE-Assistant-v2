@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import get_args
 import requests
@@ -472,12 +473,19 @@ class CEAPIUser(CEUser) :
         curr_month_points = 0
         prev_month_points = 0
 
+        now = datetime.datetime.now()
+        current_month_datetime = datetime.datetime(year=now.year, month=now.month, day=1)
+        previous_month_datetime = datetime.datetime(
+            year=(now.year if now.month != 1 else now.year-1),
+            month=(now.month - 1 if now.month != 1 else 12),
+            day=1
+        )
+
         for api_objective in self.api_user_objectives :
-            if int(api_objective['updatedAt'][0:4]) != 2024 : continue
-            if hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.current_month_num() :
+            if hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= current_month_datetime :
                 if api_objective['partial'] : curr_month_points += api_objective['objective']['pointsPartial']
                 else : curr_month_points += api_objective['objective']['points']
-            elif hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.previous_month_num() :
+            elif hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= previous_month_datetime :
                 if api_objective['partial'] : prev_month_points += api_objective['objective']['pointsPartial']
                 else : prev_month_points += api_objective['objective']['points']
 

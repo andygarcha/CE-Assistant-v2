@@ -393,17 +393,9 @@ def previous_month_str() -> str :
     previous_month_num = (current_month_num - 1) if current_month_num != 1 else 12
     return datetime.datetime(year=2024, month=previous_month_num, day = 1).strftime('%B')
 
-def previous_month_num() -> int :
-    "The number of the prevuous month."
-    return (current_month_num() - 1) if current_month_num() != 1 else 12
-
-def current_year_num() -> int :
-    "The number of the current year."
-    return 2024
-
-def get_month_from_cetimestamp(timestamp : str) -> int :
-    "Returns the month number from a ce timestamp."
-    return int(timestamp[5:7])
+def cetimestamp_to_datetime(timestamp : str) -> datetime.datetime :
+    "Takes in a CE timestamp and returns a datetime."
+    return datetime.datetime.strptime(str(timestamp[:-5:]), "%Y-%m-%dT%H:%M:%S")
 
 def format_ce_link(ce_link : str) -> str :
     "Takes in a full link and returns the CE ID."
