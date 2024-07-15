@@ -425,7 +425,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         # category changes
         if old_game.category != new_game.category :
             if CONSOLE_MARKERS : print("category change")
-            embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Points')} {new_game.get_category_emoji()}"
+            embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Arrow')} {new_game.get_category_emoji()}"
 
         # objective changes...
         old_objective_ce_ids = [old_objective.ce_id for old_objective in old_game.all_objectives]
