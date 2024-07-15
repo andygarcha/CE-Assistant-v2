@@ -492,15 +492,14 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
     # try and see if the embed already has a reason field
     try :
         if(embed.fields[-1].name == "Note") :
-
-            # if clear has been set, set the value to this
+            # if clear has been set, set the value to only the new notes
             if clear :
                 embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
             
-            # else, add the notes to the top and keep the old notes
+            # else, add the new notes to the end and keep the old notes
             else :
                 old_notes = embed.fields[-1].value
-                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=f"{notes}\n{old_notes}")
+                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=f"{old_notes}\n{notes}")
     
     # if it errors, then just add a reason field
     except :

@@ -378,9 +378,6 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             continue
 
         # --- the game is updated ---
-
-        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
-
         # remove the ce id from old_ce_ids
         old_ce_ids.remove(new_game.ce_id)
 
@@ -391,6 +388,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         if old_game.last_updated >= new_game.last_updated : 
             if CONSOLE_MARKERS : print("last update, continuing")
             continue
+
+        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
 
         if CONSOLE_MARKERS: print(old_game)
         if CONSOLE_MARKERS: print(new_game)
