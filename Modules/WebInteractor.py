@@ -447,7 +447,7 @@ async def master_loop(client : discord.Client) :
             await Mongo_Reader.dump_games(new_games)
         
         except FailedScrapeException as e :
-            await private_log_channel.send(e.get_message())
+            await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching games failed.')
             return
     
@@ -477,11 +477,11 @@ async def master_loop(client : discord.Client) :
             # and dump updated users
             await Mongo_Reader.dump_users(user_returns[1])
         except FailedScrapeException as e :
-            await private_log_channel.send(e.get_message())
+            await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching users failed.')
     
     print('loop complete.')
-    return await private_log_channel.send(f"loop complete at <t:{hm.get_unix('now')}>.")
+    return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
 
 @to_thread
 def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) -> list[EmbedMessage] :
