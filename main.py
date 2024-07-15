@@ -467,7 +467,8 @@ async def loop(interaction : discord.Interaction) :
 @tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
 @app_commands.describe(embed_id="The Message ID of the message you'd like to add notes to.")
 @app_commands.describe(notes="The notes you'd like to append.")
-async def add_notes(interaction : discord.Interaction, embed_id : str, notes : str) :
+@app_commands.describe(clear="Set this to true if you want to replace all previous notes with this one.")
+async def add_notes(interaction : discord.Interaction, embed_id : str, notes : str, clear : bool) :
     "Adds notes to game additions posts."
     # defer and make ephemeral
     await interaction.response.defer(ephemeral=True)
@@ -490,8 +491,16 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
 
     # try and see if the embed already has a reason field
     try :
-        if(embed.fields[len(embed.fields)-1].name == "Note") :
-            embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
+        if(embed.fields[-1].name == "Note") :
+
+            # if clear has been set, set the value to this
+            if clear :
+                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
+            
+            # else, add the notes to the top and keep the old notes
+            else :
+                old_notes = embed.fields[-1].value
+                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=f"{notes}\n{old_notes}")
     
     # if it errors, then just add a reason field
     except :
