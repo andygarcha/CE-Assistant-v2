@@ -319,7 +319,7 @@ class CEGame:
             "\nPlatform ID: " + str(self.platform_id) +
             "\nCategory: " + self.category +
             "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
-            "\nLast Updated: " + str(self.last_updated)
+            f"\nLast Updated: <t:{self.last_updated}>"
         )
     
 class CEAPIGame(CEGame) :

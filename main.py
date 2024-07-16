@@ -2,6 +2,7 @@
 import datetime
 import time
 from types import NoneType
+import typing
 import discord
 from discord import app_commands
 
@@ -75,6 +76,12 @@ guild = discord.Object(id=guild_id)
 
 
 
+#  _______   ______    _____   _______ 
+# |__   __| |  ____|  / ____| |__   __|
+#    | |    | |__    | (___      | |   
+#    | |    |  __|    \___ \     | |   
+#    | |    | |____   ____) |    | |   
+#    |_|    |______| |_____/     |_|   
 
 
 
@@ -97,6 +104,12 @@ async def test(interaction : discord.Interaction) :
 
 
 
+#  _____    ______    _____   _____    _____   _______   ______   _____  
+# |  __ \  |  ____|  / ____| |_   _|  / ____| |__   __| |  ____| |  __ \ 
+# | |__) | | |__    | |  __    | |   | (___      | |    | |__    | |__) |
+# |  _  /  |  __|   | | |_ |   | |    \___ \     | |    |  __|   |  _  / 
+# | | \ \  | |____  | |__| |  _| |_   ____) |    | |    | |____  | | \ \ 
+# |_|  \_\ |______|  \_____| |_____| |_____/     |_|    |______| |_|  \_\
 
 
 
@@ -149,6 +162,12 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 
 
 
+#  ______    ____    _____     _____   ______     _____    ______    _____   _____    _____   _______   ______   _____  
+# |  ____|  / __ \  |  __ \   / ____| |  ____|   |  __ \  |  ____|  / ____| |_   _|  / ____| |__   __| |  ____| |  __ \ 
+# | |__    | |  | | | |__) | | |      | |__      | |__) | | |__    | |  __    | |   | (___      | |    | |__    | |__) |
+# |  __|   | |  | | |  _  /  | |      |  __|     |  _  /  |  __|   | | |_ |   | |    \___ \     | |    |  __|   |  _  / 
+# | |      | |__| | | | \ \  | |____  | |____    | | \ \  | |____  | |__| |  _| |_   ____) |    | |    | |____  | | \ \ 
+# |_|       \____/  |_|  \_\  \_____| |______|   |_|  \_\ |______|  \_____| |_____| |_____/     |_|    |______| |_|  \_\
 
 
 
@@ -203,6 +222,12 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
 
 
 
+#   _____    ____    _         ____      _____     ____    _        _      
+#  / ____|  / __ \  | |       / __ \    |  __ \   / __ \  | |      | |     
+# | (___   | |  | | | |      | |  | |   | |__) | | |  | | | |      | |     
+#  \___ \  | |  | | | |      | |  | |   |  _  /  | |  | | | |      | |     
+#  ____) | | |__| | | |____  | |__| |   | | \ \  | |__| | | |____  | |____ 
+# |_____/   \____/  |______|  \____/    |_|  \_\  \____/  |______| |______|
 
 
 
@@ -416,7 +441,12 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
 
 
-
+#   _____    _____   _____               _____    ______ 
+#  / ____|  / ____| |  __ \      /\     |  __ \  |  ____|
+# | (___   | |      | |__) |    /  \    | |__) | | |__   
+#  \___ \  | |      |  _  /    / /\ \   |  ___/  |  __|  
+#  ____) | | |____  | | \ \   / ____ \  | |      | |____ 
+# |_____/   \_____| |_|  \_\ /_/    \_\ |_|      |______|
 
 
 
@@ -437,6 +467,12 @@ async def scrape(interaction : discord.Interaction) :
 
 
 
+#  _____   _   _   _____   _______   _____              _______   ______     _         ____     ____    _____  
+# |_   _| | \ | | |_   _| |__   __| |_   _|     /\     |__   __| |  ____|   | |       / __ \   / __ \  |  __ \ 
+#   | |   |  \| |   | |      | |      | |      /  \       | |    | |__      | |      | |  | | | |  | | | |__) |
+#   | |   | . ` |   | |      | |      | |     / /\ \      | |    |  __|     | |      | |  | | | |  | | |  ___/ 
+#  _| |_  | |\  |  _| |_     | |     _| |_   / ____ \     | |    | |____    | |____  | |__| | | |__| | | |     
+# |_____| |_| \_| |_____|    |_|    |_____| /_/    \_\    |_|    |______|   |______|  \____/   \____/  |_|     
 
 
 
@@ -459,7 +495,12 @@ async def loop(interaction : discord.Interaction) :
 
 
 
-
+#             _____    _____      _   _    ____    _______   ______    _____ 
+#     /\     |  __ \  |  __ \    | \ | |  / __ \  |__   __| |  ____|  / ____|
+#    /  \    | |  | | | |  | |   |  \| | | |  | |    | |    | |__    | (___  
+#   / /\ \   | |  | | | |  | |   | . ` | | |  | |    | |    |  __|    \___ \ 
+#  / ____ \  | |__| | | |__| |   | |\  | | |__| |    | |    | |____   ____) |
+# /_/    \_\ |_____/  |_____/    |_| \_|  \____/     |_|    |______| |_____/ 
 
 
 
@@ -514,19 +555,76 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
 
 
 
+#   _____   ______   _______             _____              __  __   ______ 
+#  / ____| |  ____| |__   __|           / ____|     /\     |  \/  | |  ____|
+# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__   
+# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|  
+# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____ 
+#  \_____| |______|    |_|              \_____| /_/    \_\ |_|  |_| |______|
+
+
+async def get_game_auto(interaction : discord.Interaction, current : str) -> typing.List[app_commands.Choice[str]]:
+    """Function that autocompletes whatever the user is trying to type in.
+    The game's name will appear on the user's screen, but the game's CE ID will be passed."""
+    database_name = await Mongo_Reader.get_mongo_games()
+    choices : list = []
+
+    for game in database_name :
+        if current.lower() in game.game_name.lower() :
+            choices.append(app_commands.Choice(name=game.game_name, value=game.ce_id))
+        if len(choices) >= 25 : break
+
+    return choices[0:25]
+
+@tree.command(name="get-game", description="Get information about any game on CE!", guild=guild)
+@app_commands.autocomplete(game=get_game_auto)
+async def get_game(interaction : discord.Interaction, game : str) :
+
+    # defer
+    await interaction.response.defer()
+
+    # pull database name
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    # you were only given the game's name, so go find it.
+    chosen_game = hm.get_item_from_list(game, database_name)
+    if chosen_game is None : return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
+
+    # pull the game embed
+    game_embed = Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
+
+    # and return
+    return await interaction.followup.send(embed=game_embed)
 
 
 
+#   _____   ______   _______             _____              __  __   ______     _____    ______  __      __
+#  / ____| |  ____| |__   __|           / ____|     /\     |  \/  | |  ____|   |  __ \  |  ____| \ \    / /
+# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__      | |  | | | |__     \ \  / / 
+# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|     | |  | | |  __|     \ \/ /  
+# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____    | |__| | | |____     \  /   
+#  \_____| |______|    |_|              \_____| /_/    \_\ |_|  |_| |______|   |_____/  |______|     \/    
 
+    
 @tree.command(name="get-game-data", description="return the local data on a game.", guild=guild)
+@app_commands.autocomplete(ce_id=get_game_auto)
 async def get_game_data(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
 
     database_name = await Mongo_Reader.get_mongo_games()
 
     for game in database_name :
-        if game.ce_id == ce_id : return await interaction.followup.send(str(game))
+        if game.ce_id == ce_id : return await interaction.followup.send(f"{str(game)}")
     return await interaction.followup.send('game not found')
+
+
+#   _____   _    _   ______    _____   _  __           _____     ____    _        _         _____ 
+#  / ____| | |  | | |  ____|  / ____| | |/ /          |  __ \   / __ \  | |      | |       / ____|
+# | |      | |__| | | |__    | |      | ' /   ______  | |__) | | |  | | | |      | |      | (___  
+# | |      |  __  | |  __|   | |      |  <   |______| |  _  /  | |  | | | |      | |       \___ \ 
+# | |____  | |  | | | |____  | |____  | . \           | | \ \  | |__| | | |____  | |____   ____) |
+#  \_____| |_|  |_| |______|  \_____| |_|\_\          |_|  \_\  \____/  |______| |______| |_____/ 
+
 
 @tree.command(name="check-rolls", description="Check the status of your current and completed casino rolls!", guild=guild)
 async def check_rolls(interaction : discord.Interaction) :
@@ -630,10 +728,12 @@ async def check_rolls(interaction : discord.Interaction) :
 
 
 
-
-
-
-
+#  _____    _____     ____    ______   _____   _        ______ 
+# |  __ \  |  __ \   / __ \  |  ____| |_   _| | |      |  ____|
+# | |__) | | |__) | | |  | | | |__      | |   | |      | |__   
+# |  ___/  |  _  /  | |  | | |  __|     | |   | |      |  __|  
+# | |      | | \ \  | |__| | | |       _| |_  | |____  | |____ 
+# |_|      |_|  \_\  \____/  |_|      |_____| |______| |______|
 
 @tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
 @app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
@@ -671,9 +771,12 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 
 
 
-
-
-
+#   ____    _   _     _____    ______              _____   __     __
+#  / __ \  | \ | |   |  __ \  |  ____|     /\     |  __ \  \ \   / /
+# | |  | | |  \| |   | |__) | | |__       /  \    | |  | |  \ \_/ / 
+# | |  | | | . ` |   |  _  /  |  __|     / /\ \   | |  | |   \   /  
+# | |__| | | |\  |   | | \ \  | |____   / ____ \  | |__| |    | |   
+#  \____/  |_| \_|   |_|  \_\ |______| /_/    \_\ |_____/     |_|   
 
 # ---- on ready function ----
 @client.event
