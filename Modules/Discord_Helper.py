@@ -103,15 +103,16 @@ def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
 
     # -- get steam data and set image and description --
-    steam_data = game.get_steam_data()
-    embed.set_image(url=steam_data.header_image)
+    if game.platform == "steam" :
+        steam_data = game.get_steam_data()
+        embed.set_image(url=steam_data.header_image)
     embed.description = (
         f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
     # -- set up price --
-    if steam_data.is_free :
+    if game.platform == "retroachievements" or steam_data.is_free :
         embed.description += "- Price: Free!\n"
     else :
         embed.description += (f"- Price: {steam_data.current_price_formatted}\n")
