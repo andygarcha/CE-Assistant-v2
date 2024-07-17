@@ -506,6 +506,7 @@ async def master_loop(client : discord.Client) :
         except FailedScrapeException as e :
             await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching users failed.')
+            return
     
     print('loop complete.')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")

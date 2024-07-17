@@ -223,14 +223,18 @@ class CERoll:
         self._due_time += increase_in_seconds
 
     @due_time.setter
-    def due_time(self, days : int | None) -> None :
-        """Sets the due time for `days` days from now. 
-        Additionally, you can reset the due time to `None`
-        by passing `None`."""
-        if days == None :
-            self._due_time = None
+    def due_time(self, days : int) -> None :
+        """Sets the due time for `days` days from now."""
+        self._due_time = hm.get_unix(days=days)
+    
+    def reset_due_time(self) :
+        "Resets the due time."
+        # if fourward thinking, assume the new game has been added already.
+        if self.roll_name == "Fourward Thinking" : 
+            self._due_time = hm.get_unix(days=7*len(self.games))
+        # if its not, give it the default
         else :
-            self._due_time = hm.get_unix(days=days)
+            self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
 
     def add_game(self, game : str) -> None :
         """Adds the Challenge Enthusiast ID given by `game`
@@ -291,7 +295,7 @@ class CERoll:
     
     def is_multi_stage(self) -> bool :
         "Returns true if this roll is multi-stage."
-        return self.roll_name in hm.MULTI_STAGE_ROLLS
+        return self.roll_name in get_args(hm.MULTI_STAGE_ROLLS)
     
     def is_rerollable(self) -> bool :
         "Returns true if this roll is rerollable."
@@ -303,6 +307,14 @@ class CERoll:
         if self.roll_name == "Two Week T2 Streak" : return len(self.games) == 2
         if self.roll_name == "Two \"Two Week T2 Streak\" Streak" : return len(self.games) == 4
         if self.roll_name == "Fourward Thinking" : return len(self.games) == 4
+
+    def rolled_categories(self, database_name : list) -> list[str] :
+        "Returns a list of the categories that have been rolled so far."
+        # type casting
+        from Classes.CE_Game import CEGame
+        database_name : list[CEGame] = database_name
+
+        return list(set([hm.get_item_from_list(game, database_name).category for game in self.games]))
     
     def get_win_message(self, database_name : list, database_user : list) -> str :
         """Returns a string to send to #casino-log if this roll is won."""
@@ -573,6 +585,9 @@ class CERoll:
                 partner.has_completed_game(self.games[1], database_name)
             )
         
+        # multistage rolls
+        elif(self.is_multi_stage() and not self.in_final_stage()) : return False
+
         # all other rolls
         else :
             for game in self.games :

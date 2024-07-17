@@ -344,7 +344,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
             # set up the embed
             embed = discord.Embed(
-                title=f"__{new_game.game_name}__ added to the site:",
+                title=f"__ {new_game.game_name} __ added to the site:",
                 color=0x48b474,
                 timestamp=datetime.datetime.now(),
                 description=(
@@ -406,7 +406,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
         # set up embed
         embed = discord.Embed(
-            title=f"__{new_game.game_name}__ updated on the site:",
+            title=f"__ {new_game.game_name} __ updated on the site:",
             color=0xefd839,
             timestamp=datetime.datetime.now(),
             description="",

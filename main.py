@@ -13,6 +13,7 @@ from typing import Literal, get_args
 import requests
 
 # --------- local class imports --------
+from Classes.CE_Cooldown import CECooldown
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEObjective
@@ -237,7 +238,8 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
               description = "Roll a solo event with CE Assistant!",
               guild = guild)
 @app_commands.describe(event_name = "The event you'd like to roll.")
-async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES) :
+@app_commands.describe(price_restriction="Set this to false if you'd like to be able to roll any game, regardless of price.")
+async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, price_restriction : bool = True) :
     await interaction.response.defer()
 
     return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
@@ -292,6 +294,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     # -- set up vars --
     rolled_games : list[str] = []
 
+    # in this switch statement, grab the games. the roll will be set up at the end.
     match(event_name) :
         case "One Hell of a Day" :
             # -- grab games --
@@ -300,7 +303,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 completion_limit=10,
                 price_limit=10,
                 tier_number=1,
-                user=user
+                user=user,
+                price_restriction=price_restriction
             )]
         
         case "One Hell of a Week" :
@@ -321,7 +325,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     tier_number=1,
                     user=user,
                     category=valid_categories,
-                    already_rolled_games=rolled_games
+                    already_rolled_games=rolled_games,
+                    price_restriction=price_restriction
                 ))
                 valid_categories.remove(
                     hm.get_item_from_list(rolled_games[i], database_name).category
@@ -347,7 +352,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         tier_number=1,
                         user=user,
                         category=selected_category,
-                        already_rolled_games=rolled_games
+                        already_rolled_games=rolled_games,
+                        price_restriction=price_restriction
                     ))
                 valid_categories.remove(selected_category)
     
@@ -368,7 +374,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         price_limit=20,
                         tier_number=2,
                         user=user,
-                        already_rolled_games=r.games
+                        already_rolled_games=r.games,
+                        price_restriction=price_restriction
                     ))
                     user.current_rolls[past_roll_index] = past_roll
                     database_user[user_index] = user
@@ -380,10 +387,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             else :
                 rolled_games = [hm.get_rollable_game(
                     database_name=database_name,
-                    completion_limit=20,
+                    completion_limit=40,
                     price_limit=20,
                     tier_number = 2,
-                    user=user
+                    user=user,
+                    price_restriction=price_restriction
                 )]
         case "Two \"Two Week T2 Streak\" Streak" :
             if not user.has_completed_roll("Two Week T2 Streak") :
@@ -392,24 +400,172 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 )
             if user.has_current_roll("Two \"Two Week T2 Streak\" Streak") :
                 # if the user is currently working 
-                past_roll : CERoll
-                past_roll_index : int
-                for i, r in enumerate(user.current_rolls) :
-                    if r.roll_name == event_name :
-                        past_roll = r
-                        past_roll_index = i
-                        break
+                past_roll = user.get_current_roll("Two \"Two Week T2 Streak\" Streak")
                 if past_roll.ready_for_next() :
-                    past_roll.add_game(hm.get_rollable_game(
+                    new_game_id = hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=40,
                         price_limit=20,
                         tier_number=2,
                         user=user,
-                        already_rolled_games=r.games
-                    ))
-                    user.current_rolls[past_roll_index] = past_roll
+                        already_rolled_games=past_roll.games,
+                        price_restriction=price_restriction
+                    )
+                    past_roll.add_game(new_game_id)
+                    new_game_object = hm.get_item_from_list(new_game_id, database_name)
+                    user.replace_current_roll(past_roll)
                     database_user[user_index] = user
+                    return await interaction.followup.send(
+                        f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
+                        f"Run /check-rolls to see more information."
+                    )
+                else :
+                    return await interaction.followup.send("You need to finish your current games before you roll your next one!")
+            
+            else :
+                rolled_games = [hm.get_rollable_game(
+                    database_name=database_name,
+                    completion_limit=40,
+                    price_limit=20,
+                    tier_number=2,
+                    user=user,
+                    price_restriction=price_restriction
+                )]
+        case "Never Lucky" :
+            rolled_games = [hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=None,
+                price_limit=20,
+                tier_number=3,
+                user=user,
+                price_restriction=price_restriction
+            )]
+        case "Triple Threat" :
+            if not user.has_completed_roll("Never Lucky") :
+                return await interaction.followup.send(f"You need to complete Never Lucky before rolling Triple Threat!")
+            rolled_games = []
+            for i in range(3) :
+                rolled_games.append(hm.get_rollable_game(
+                    database_name=database_name,
+                    completion_limit=40,
+                    price_limit=20,
+                    tier_number=3,
+                    user=user,
+                    already_rolled_games=rolled_games,
+                    price_restriction=price_restriction
+                ))
+        case "Let Fate Decide" :
+            rolled_games = [hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=None,
+                price_limit=20,
+                tier_number=4,
+                user=user,
+                price_restriction=price_restriction
+            )]
+        case "Fourward Thinking" :
+            #if not user.has_completed_roll("Let Fate Decide") :
+            #    return await interaction.followup.send("You need to complete Let Fate Decide before rolling Fourward Thinking!")
+
+            # grab the previous roll (if there is one)
+            past_roll : CERoll | None = user.get_current_roll("Fourward Thinking")
+
+            # check to make sure this person is ready for the next iteration of their roll
+            if past_roll is not None and not past_roll.ready_for_next() :
+                return await interaction.followup.send("You need to finish your previous game first! Run /check-rolls to check them.")
+            
+            class FourwardThinkingDropdown(discord.ui.Select) :
+                def __init__(self) :
+                    # store the user
+                    self.__user = user
+
+                    # initialize options
+                    options : list[discord.SelectOption] = []
+
+                    # if haven't rolled before, here are options
+                    if past_roll is None : options = [
+                        discord.SelectOption(label=cat, emoji=hm.get_emoji(cat)) for cat in get_args(hm.CATEGORIES)
+                    ]
+
+                    # if they have rolled before, get new options
+                    else :
+                        already_rolled_categories = past_roll.rolled_categories(database_name=database_name)
+                        for cat in get_args(hm.CATEGORIES) :
+                            if cat not in already_rolled_categories : options.append(
+                                discord.SelectOption(label=cat, emoji=hm.get_emoji(cat))
+                            )
+                    
+                    super().__init__(placeholder="Select a category.", min_values=1, max_values=1, options=options)
+
+                async def callback(self, interaction : discord.Interaction) :
+                    "The callback."
+
+                    # stop other users from clicking the dropdown
+                    if interaction.user.id != self.__user.discord_id :
+                        return await interaction.response.send_message(
+                            "Stop that! This isn't your roll.", ephemeral=True
+                        )
+                    
+                    # defer the message
+                    await interaction.response.defer()
+                    
+                    # pull database user
+                    database_user = await Mongo_Reader.get_mongo_users()
+                    user = hm.get_item_from_list(self.__user.ce_id, database_user)
+
+                    # get past_roll
+                    past_roll = user.get_current_roll("Fourward Thinking")
+                    if past_roll is None :
+                        past_roll = CERoll(
+                            roll_name="Fourward Thinking",
+                            user_ce_id=user.ce_id,
+                            games=[],
+                            is_current=True
+                        )
+                    
+                    # get the data
+                    next_phase_num = len(past_roll.games) + 1
+                    category = self.values[0]
+                    game_id = hm.get_rollable_game(
+                        database_name=database_name,
+                        completion_limit=40*next_phase_num,
+                        price_limit=20,
+                        tier_number=next_phase_num,
+                        user=user,
+                        category=category,
+                        price_restriction=price_restriction
+                    )
+
+                    # add the new game and reset the due time.
+                    past_roll.add_game(game_id)
+                    past_roll.reset_due_time()
+
+                    # replace the roll and push the user to mongo
+                    user.replace_current_roll(past_roll)
+                    user.remove_pending("Fourward Thinking")
+                    await Mongo_Reader.dump_user(user)
+
+                    # now send the message
+                    game_object = hm.get_item_from_list(game_id, database_name)
+                    view.clear_items()
+                    return await interaction.followup.edit_message(
+                        message_id=interaction.message.id,
+                        content=f"Your new game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
+                        view=view
+                    )
+                
+            # add the pending and dump it
+            user.add_pending(CECooldown(roll_name="Fourward Thinking", end_time=hm.get_unix(minutes=10)))
+            await Mongo_Reader.dump_user(user)
+            
+            view.timeout = 600
+            view.add_item(FourwardThinkingDropdown())
+            
+            return await interaction.followup.send(
+                "Choose your category.", view=view
+            )
+
+
 
     # -- check to make sure there were enough rollable games --
     if None in rolled_games :
@@ -768,7 +924,30 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 
 
 
+#   _____   _        ______              _____  
+#  / ____| | |      |  ____|     /\     |  __ \ 
+# | |      | |      | |__       /  \    | |__) |
+# | |      | |      |  __|     / /\ \   |  _  / 
+# | |____  | |____  | |____   / ____ \  | | \ \ 
+#  \_____| |______| |______| /_/    \_\ |_|  \_\
 
+
+@tree.command(name="clear-roll", description="Clear any user's current/completed rolls, cooldowns, or pendings.", guild=guild)
+async def clear_roll(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES, 
+                     current : bool = False, completed : bool = False, cooldown : bool = False, pending : bool = False) :
+    await interaction.response.defer()
+
+    # get database user and the user
+    database_user = await Mongo_Reader.get_mongo_users()
+    user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
+
+    if current : user.remove_current_roll(roll_name)
+    if completed : user.remove_completed_rolls(roll_name)
+    if cooldown : user.remove_cooldown(roll_name)
+    if pending : user.remove_pending(roll_name)
+
+    await Mongo_Reader.dump_user(user)
+    return await interaction.followup.send("Done!")
 
 
 #   ____    _   _     _____    ______              _____   __     __
@@ -791,7 +970,7 @@ async def on_ready() :
     await private_log_channel.send(f":arrows_counterclockwise: bot started at <t:{hm.get_unix('now')}>")
     
     # master loop
-    if hm.IN_CE or True :
+    if hm.IN_CE :
         await master_loop.start(client)
 
 

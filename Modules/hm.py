@@ -64,7 +64,7 @@ __icons = {
 
 __test_icons = {
     "Action" : "<:CE_action:1133558549990088734>",
-    "Arcade" : "<:CE_action:1133558549990088734>",
+    "Arcade" : "<:CE_arcade:1133558574287683635>",
     "Bullet Hell" : "<:CE_bullethell:1133558610530676757>",
     "First-Person" : "<:CE_firstperson:1133558611898015855>",
     "Platformer" : "<:CE_platformer:1133558613705769020>",
@@ -275,7 +275,8 @@ def get_rollable_game(
         user,
         category : str | list[str] = None,
         already_rolled_games : list = [],
-        has_points_restriction : bool = False
+        has_points_restriction : bool = False,
+        price_restriction : bool = True
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -329,12 +330,12 @@ def get_rollable_game(
             "This game has an uncleared objective."
             continue
 
-        if game.get_price() > price_limit :
-            "The price is too high."
+        if game.get_price() > price_limit and price_restriction and not user.owns_game(game.ce_id) :
+            "The price is too high (and the price is restricted) and the user doesn't own the game."
             continue
 
         sh_data = game.get_steamhunters_data()
-        if sh_data == None or sh_data > completion_limit :
+        if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
             "The SteamHunters median-completion-time is too high."
             continue
 
