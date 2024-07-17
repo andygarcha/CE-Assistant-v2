@@ -178,6 +178,11 @@ async def register(interaction : discord.Interaction, ce_id : str) :
 async def register_other(interaction : discord.Interaction, ce_link : str, user : discord.Member) :
     await interaction.response.defer(ephemeral=True)
 
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /force-register, "
+                     + f"params: ce_link={ce_link}, user={user.id}", allowed_mentions=discord.AllowedMentions.none())
+
     # format correctly
     ce_id = hm.format_ce_link(ce_link)
     if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
@@ -645,6 +650,11 @@ async def loop(interaction : discord.Interaction) :
 
     await interaction.followup.send("looping...")
 
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
+                             allowed_mentions=discord.AllowedMentions.none())
+
     await master_loop(client)
 
     return await interaction.followup.send('loop complete.')
@@ -669,6 +679,11 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
     "Adds notes to game additions posts."
     # defer and make ephemeral
     await interaction.response.defer(ephemeral=True)
+
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /add-notes, "
+                     + f"params: embed_id={embed_id}, notes={notes}, clear={clear}", allowed_mentions=discord.AllowedMentions.none())
 
     # grab the site additions channel
     site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
@@ -936,6 +951,12 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 async def clear_roll(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES, 
                      current : bool = False, completed : bool = False, cooldown : bool = False, pending : bool = False) :
     await interaction.response.defer()
+
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /clear-roll, "
+                     + f"params: member=<@{member.id}>, roll_name={roll_name}, current={current}, completed={completed}, "
+                     + f"cooldown={cooldown}, pending={pending}", allowed_mentions=discord.AllowedMentions.none())
 
     # get database user and the user
     database_user = await Mongo_Reader.get_mongo_users()
