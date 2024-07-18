@@ -183,7 +183,7 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
 
     # log this interaction
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /force-register, "
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /force-register, "
                      + f"params: ce_link={ce_link}, user={user.id}", allowed_mentions=discord.AllowedMentions.none())
 
     # format correctly
@@ -655,7 +655,7 @@ async def loop(interaction : discord.Interaction) :
 
     # log this interaction
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
                              allowed_mentions=discord.AllowedMentions.none())
 
     await master_loop(client)
@@ -685,7 +685,7 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
 
     # log this interaction
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /add-notes, "
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /add-notes, "
                      + f"params: embed_id={embed_id}, notes={notes}, clear={clear}", allowed_mentions=discord.AllowedMentions.none())
 
     # grab the site additions channel
@@ -957,7 +957,7 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
 
     # log this interaction
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":black_large_square: dev command run by <@{interaction.user.id}>: /clear-roll, "
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /clear-roll, "
                      + f"params: member=<@{member.id}>, roll_name={roll_name}, current={current}, completed={completed}, "
                      + f"cooldown={cooldown}, pending={pending}", allowed_mentions=discord.AllowedMentions.none())
 
