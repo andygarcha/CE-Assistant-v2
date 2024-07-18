@@ -317,54 +317,55 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Litera
     timeout = hm.get_unix('now') - start_time > 5
     objective_list = []
 
-    # give it five seconds to load the elements.
-    while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
-        # run this to just fully load the page...
-        html_page = driver.execute_script("return document.documentElement.innerHTML;")
-        # ...and now get the list.
-        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-        timeout = hm.get_unix('now') - start_time > 5
-    
-    # if it took longer than 5 seconds, just return the image failed image.
-    if timeout : return "Assets/image_failed.png"
+    try:
+        # give it five seconds to load the elements.
+        while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
+            # run this to just fully load the page...
+            html_page = driver.execute_script("return document.documentElement.innerHTML;")
+            # ...and now get the list.
+            objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+            timeout = hm.get_unix('now') - start_time > 5
+        
+        # if it took longer than 5 seconds, just return the image failed image.
+        if timeout : return "Assets/image_failed.png"
 
-    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
-    objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-    title = driver.find_element(By.TAG_NAME, "h1")
-    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
-    title_size = title.size['width']
-    title_location = title.location['x']
 
-    bottom_right = objective_list[len(objective_list)-2].location
-    size = objective_list[len(objective_list)-2].size
+        primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
+        objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+        title = driver.find_element(By.TAG_NAME, "h1")
+        top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
+        title_size = title.size['width']
+        title_location = title.location['x']
 
-    objective_list[0]
+        bottom_right = objective_list[len(objective_list)-2].location
+        size = objective_list[len(objective_list)-2].size
 
-    header_elements = [
-        'bp4-navbar',
-        'tr-fadein',
-        'css-1ugviwv'
-    ]
+        objective_list[0]
 
-    BORDER_WIDTH = 15
-    DISPLAY_FACTOR = 1
+        header_elements = [
+            'bp4-navbar',
+            'tr-fadein',
+            'css-1ugviwv'
+        ]
 
-    #NOTE: i multiplied these by two. dk why it's working.
-    top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
-    top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
-    bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
+        BORDER_WIDTH = 15
+        DISPLAY_FACTOR = 1
 
-    if title_location + title_size > bottom_right['x'] + size['width']:
-        bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
-    else:
-        bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
+        top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
+        top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
+        bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
-    try :
+        if title_location + title_size > bottom_right['x'] + size['width']:
+            bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
+        else:
+            bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
+
         ob = Screenshot(bottom_right_y)
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
     except :
         return "Assets/image_failed.png"
+    
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
