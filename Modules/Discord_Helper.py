@@ -535,7 +535,10 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         ))
 
     # if we're looking for images, close the driver
-    if SELENIUM_ENABLE : driver.close()
+    try :
+        if SELENIUM_ENABLE : driver.close()
+    except Exception as e:
+        print(e)
     
     # and return
     return messages
