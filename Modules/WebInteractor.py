@@ -363,7 +363,8 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Litera
         ob = Screenshot(bottom_right_y)
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
-    except :
+    except Exception as e :
+        print(e)
         return "Assets/image_failed.png"
     
     im = io.BytesIO(im)
