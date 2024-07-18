@@ -91,14 +91,17 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    DEV_CHANNEL_ID = 1135993275162050690
-    dev_channel = client.get_channel(DEV_CHANNEL_ID)
+    """
+    HOTS = "e5b91554-215a-41b9-8974-e921044b2081"
+    MYID = "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5"
 
     database_user = await Mongo_Reader.get_mongo_users()
-    for user in database_user :
-        await dev_channel.send(f"<@{user.discord_id}>", allowed_mentions=discord.AllowedMentions.none())
-
-
+    user = hm.get_item_from_list(MYID, database_user)
+    roll = user.get_current_roll("Fourward Thinking")
+    roll._games = [HOTS]
+    user.replace_current_roll(roll)
+    await Mongo_Reader.dump_user(user)
+    """
 
     return await interaction.followup.send('test done')
 
@@ -247,7 +250,7 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
 async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, price_restriction : bool = True) :
     await interaction.response.defer()
 
-    return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
+    #return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
     view = discord.ui.View()
 
     # pull mongo database
@@ -970,6 +973,117 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
     await Mongo_Reader.dump_user(user)
     return await interaction.followup.send("Done!")
 
+"""
+#   _____   ______   _______            _____     ____    _        _                  _____              __  __   ______ 
+#  / ____| |  ____| |__   __|          |  __ \   / __ \  | |      | |                / ____|     /\     |  \/  | |  ____|
+# | (___   | |__       | |     ______  | |__) | | |  | | | |      | |       ______  | |  __     /  \    | \  / | | |__   
+#  \___ \  |  __|      | |    |______| |  _  /  | |  | | | |      | |      |______| | | |_ |   / /\ \   | |\/| | |  __|  
+#  ____) | | |____     | |             | | \ \  | |__| | | |____  | |____           | |__| |  / ____ \  | |  | | | |____ 
+# |_____/  |______|    |_|             |_|  \_\  \____/  |______| |______|           \_____| /_/    \_\ |_|  |_| |______|
+
+@tree.command(name="set-roll-game", description="Set any game in a user's current rolls.", guild=guild)
+async def set_roll_game(interaction : discord.Interaction, member : discord.Member, 
+                        roll_name : hm.ALL_ROLL_EVENT_NAMES, game_id : str) :
+    await interaction.response.defer(ephemeral=True)
+
+    # pull databases
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+
+    # get objects
+    game = hm.get_item_from_list(game_id, database_name)
+    user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
+
+    # make sure they're registered
+    if user is None : return await interaction.followup.send("This user is not registered.")
+
+    # make sure they have the roll
+    roll = user.get_current_roll(roll_name)
+    if roll is None : return await interaction.followup.send("This user doesn't have this roll.")
+
+    class SetRollDropdown(discord.ui.Select) :
+        def __init__(self, roll : CERoll) :
+            self.__roll = roll
+            self.__replacement_id = game_id
+
+            game_objects = [hm.get_item_from_list(game, database_name) for game in roll.games]
+
+            options = [discord.SelectOption(label=game.game_name) for game in game_objects]
+
+            super().__init__(placeholder="Select a game to replace.", min_values=1, max_values=1, options=options)
+
+        async def callback(self, interaction : discord.Interaction) :
+            "Callback."
+            await interaction.response.defer()
+
+            # get the id of the game they want to swap out
+            game_id = self.values[0]
+
+            database_name = await Mongo_Reader.get_mongo_games()
+
+            # go through and find that id and swap it out
+            for i, rollgameid in enumerate(self.__roll.games) :
+                if rollgameid == game_id : self.__roll._games[i] = self.__replacement_id
+            
+            # pull database name
+            database_user = await Mongo_Reader.get_mongo_users()
+
+            # get the user and replace the roll
+            user = hm.get_item_from_list(self.__roll.user_ce_id, database_user)
+            user.replace_current_roll(self.__roll)
+
+            replaced_game = hm.get_item_from_list(game_id, database_name)
+            game_that_replaced = hm.get_item_from_list(self.__replacement_id, database_name)
+
+            return await interaction.followup.send(
+                f"Replaced {replaced_game.game_name if replaced_game is not None else ''} with ({game_that_replaced.game_name})" 
+                + f"[https://cedb.me/game/{game_that_replaced.ce_id}]."
+            )
+
+    view = discord.ui.View(timeout=None)
+    view.add_item(SetRollDropdown(roll))
+
+    return await interaction.followup.send("Select which game you'd like to replace.", view=view, ephemeral=True)
+"""
+
+
+"""
+#   ____    _   _     __  __   ______    _____    _____               _____   ______ 
+#  / __ \  | \ | |   |  \/  | |  ____|  / ____|  / ____|     /\      / ____| |  ____|
+# | |  | | |  \| |   | \  / | | |__    | (___   | (___      /  \    | |  __  | |__   
+# | |  | | | . ` |   | |\/| | |  __|    \___ \   \___ \    / /\ \   | | |_ | |  __|  
+# | |__| | | |\  |   | |  | | | |____   ____) |  ____) |  / ____ \  | |__| | | |____ 
+#  \____/  |_| \_|   |_|  |_| |______| |_____/  |_____/  /_/    \_\  \_____| |______|
+@client.event
+async def on_message(message : discord.Message) :
+    "This runs for every message that is sent. This might get fucked."
+
+    if message.author.bot : return
+    
+    if message.channel.id == hm.PROOF_SUBMISSIONS_ID :
+        "The message is in the #proof-submissions channel."
+
+        # pull the user
+        database_user = await Mongo_Reader.get_mongo_users()
+        user = Discord_Helper.get_user_by_discord_id(message.author.id, database_user)
+        
+        # scenario 2: is registered but forget link
+        if "cedb.me/user" not in message.content and user is not None :
+            await message.channel.send(f"https://cedb.me/user/{user.ce_id}/")
+        
+        # scenario 3: is not registered but sends link
+        elif "cedb.me/user" in message.content and user is None :
+            ""
+        
+        # scenario 4: is not registered and forgets link
+        elif "cedb.me/user" not in message.content and user is not None :
+            content = message.content
+            await message.delete()
+            try :
+                await message.author.send(f"Your message was removed because you forgot")
+            except :
+                ""
+"""
 
 #   ____    _   _     _____    ______              _____   __     __
 #  / __ \  | \ | |   |  __ \  |  ____|     /\     |  __ \  \ \   / /

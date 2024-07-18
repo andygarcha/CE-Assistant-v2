@@ -225,6 +225,7 @@ class CERoll:
     @due_time.setter
     def due_time(self, days : int) -> None :
         """Sets the due time for `days` days from now."""
+        if days == None : self._due_time = None
         self._due_time = hm.get_unix(days=days)
     
     def reset_due_time(self) :
@@ -585,8 +586,10 @@ class CERoll:
                 partner.has_completed_game(self.games[1], database_name)
             )
         
-        # multistage rolls
-        elif(self.is_multi_stage() and not self.in_final_stage()) : return False
+            """
+            # multistage rolls
+            elif(self.is_multi_stage() and not self.in_final_stage()) : return False
+            """
 
         # all other rolls
         else :
