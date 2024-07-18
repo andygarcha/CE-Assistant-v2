@@ -254,9 +254,9 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
     # return the minutes
     elif (minutes != -1) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
     # return the months
-    elif (months != -1) : return get_unix(months_to_days(months))
+    elif (months != -1) : return get_unix(days=months_to_days(months))
     # return the days
-    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))
+    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days=days)).timetuple()))
 
 
 def get_banned_games() -> list[str] :

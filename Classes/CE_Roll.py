@@ -226,7 +226,7 @@ class CERoll:
     def due_time(self, days : int) -> None :
         """Sets the due time for `days` days from now."""
         if days == None : self._due_time = None
-        self._due_time = hm.get_unix(days=days)
+        else: self._due_time = hm.get_unix(days=days)
     
     def reset_due_time(self) :
         "Resets the due time."
