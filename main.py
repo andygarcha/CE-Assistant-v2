@@ -250,7 +250,7 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
 async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, price_restriction : bool = True) :
     await interaction.response.defer()
 
-    #return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
+    return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
     view = discord.ui.View()
 
     # pull mongo database
