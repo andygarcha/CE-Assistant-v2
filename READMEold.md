@@ -120,3 +120,18 @@ kill:
 ```
 deactivate
 ```
+
+
+### pip dependencies
+```
+pip install --upgrade discord selenium pillow requests bs4 apscheduler pymongo motor chromedriver_binary webdriver_manager google-api-python-client google-auth-httplib2 google-auth-oauthlib
+```
+- `discord`: discord api manager
+- `selenium` and `pillow`: screenshotting
+- `requests`: api access
+- `bs4`: html sorting
+- `apscheduler`: task scheduler (out of date)
+- `pymongo` and `motor`: mongodb access
+- `chromedriver_binary`: screenshotting (out of date?)
+- `webdriver_manager`: screenshotting
+- `google-api-python-client`, `google-auth-httplib2`, and `google-auth-oauthlib`: google api access
