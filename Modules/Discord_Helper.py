@@ -12,7 +12,7 @@ import discord
 
 # -- local --
 from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import EmbedMessage
+from Classes.OtherClasses import EmbedMessage, UpdateMessage
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
@@ -276,7 +276,7 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
 
 
 
-def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMessage] :
+def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :
     "Returns a list of `discord.Embed`s to send to #game-additions."
 
     # import and type casting
@@ -287,6 +287,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
     # the list to be returned
     messages : list[EmbedMessage] = []
+    exceptions : list[UpdateMessage] = []
 
     # variables
     SELENIUM_ENABLE = True
@@ -381,10 +382,17 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
             embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
-            if SELENIUM_ENABLE : image = WebInteractor.get_image(driver=driver, new_game=new_game)
+            if SELENIUM_ENABLE : 
+                image = WebInteractor.get_image(driver=driver, new_game=new_game)
+                if isinstance(image, tuple) :
+                    file = image[0]
+                    exceptions.append(UpdateMessage("privatelog", f":red_square: {e}"))
+                else :
+                    file = image
+
             #TODO: fix this?
 
-            messages.append(EmbedMessage(embed=embed, file=discord.File(image, filename="image.png")))
+            messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
             continue
 
         # --- the game is updated ---
@@ -511,8 +519,15 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         if description_test == "" : continue
 
         print('adding')
+        image = WebInteractor.get_image(driver=driver, new_game=new_game)
+        if isinstance(image, tuple):
+            file = image[0]
+            exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+        else :
+            file = image
+
         messages.append(EmbedMessage(
-            embed=embed, file=discord.File(WebInteractor.get_image(driver=driver,new_game=new_game), filename="image.png")
+            embed=embed, file=discord.File(file, filename="image.png")
         ))
     
     # --- all additions and updates have finished. check for removed games ---
@@ -538,10 +553,11 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
     try :
         if SELENIUM_ENABLE : driver.close()
     except Exception as e:
+        exceptions.append(UpdateMessage("privatelog", f":red_square: {e}"))
         print(e)
     
     # and return
-    return messages
+    return (messages, exceptions)
 
 def get_user_by_discord_id(discord_id, database_user) :
     "Return the user from their discord id."

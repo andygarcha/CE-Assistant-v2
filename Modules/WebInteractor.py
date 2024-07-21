@@ -294,7 +294,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Literal['Assets/image_failed.png'] :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.Literal['Assets/image_failed.png'], str] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -327,7 +327,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Litera
             timeout = hm.get_unix('now') - start_time > 5
         
         # if it took longer than 5 seconds, just return the image failed image.
-        if timeout : return "Assets/image_failed.png"
+        if timeout : return ("Assets/image_failed.png", "image timeout")
 
 
         primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
@@ -364,8 +364,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Litera
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
     except Exception as e :
-        print(e)
-        return "Assets/image_failed.png"
+        return ("Assets/image_failed.png", f"{e}")
     
     im = io.BytesIO(im)
     im_image = Image.open(im)
@@ -466,11 +465,19 @@ async def master_loop(client : discord.Client) :
         try :
             new_games = await CEAPIReader.get_api_games_full()
             # get the embeds
-            embeds : list[EmbedMessage] = await thread_game_update(old_games=database_name, new_games=new_games)
+            game_returns : tuple[list[EmbedMessage], list[UpdateMessage]] = await thread_game_update(
+                old_games=database_name, new_games=new_games
+            )
+            embeds = game_returns[0]
+            exceptions = game_returns[1]
 
             # send embeds
             for embed in embeds :
                 await game_additions_channel.send(embed=embed.embed, file=embed.file)
+            
+            # send exceptions
+            for exc in exceptions :
+                await private_log_channel.send(exc.message)
 
             # dump the games
             await Mongo_Reader.dump_games(new_games)
@@ -523,7 +530,7 @@ async def master_loop(client : discord.Client) :
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____| /_/    \_\ |_|  |_| |______|
 
 @to_thread
-def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) -> list[EmbedMessage] :
+def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
     "Threaded."
     return Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
 
