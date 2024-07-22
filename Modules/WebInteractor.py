@@ -316,6 +316,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     start_time = hm.get_unix('now')
     timeout = hm.get_unix('now') - start_time > 5
     objective_list = []
+    TIMEOUT_LIMIT = 10
 
     try:
         # give it five seconds to load the elements.
@@ -324,7 +325,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
             html_page = driver.execute_script("return document.documentElement.innerHTML;")
             # ...and now get the list.
             objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-            timeout = hm.get_unix('now') - start_time > 5
+            timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT
         
         # if it took longer than 5 seconds, just return the image failed image.
         if timeout : return ("Assets/image_failed.png", "image timeout")

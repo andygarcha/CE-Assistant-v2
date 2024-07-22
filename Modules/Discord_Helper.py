@@ -386,7 +386,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                 image = WebInteractor.get_image(driver=driver, new_game=new_game)
                 if isinstance(image, tuple) :
                     file = image[0]
-                    exceptions.append(UpdateMessage("privatelog", f":red_square: {e}"))
+                    exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
                 else :
                     file = image
 
