@@ -386,7 +386,7 @@ class CRData :
         self.__final_cr_dict = final_dict
 
         # finally, get the total CR for this user.
-        self.__total_cr = sum([final_dict[key] for key in final_dict])
+        self.__total_cr = round(sum([final_dict[key] for key in final_dict]), 2)
 
     
     @property
