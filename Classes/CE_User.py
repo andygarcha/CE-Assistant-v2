@@ -380,8 +380,8 @@ class CEUser:
         return (
             "-- CEUser --" +
             "\nCE ID: " + self.ce_id +
-            "\nDiscord ID: " + self.discord_id +
-            "\nCasino Score: " + self.casino_score +
+            "\nDiscord ID: " + str(self.discord_id) +
+            "\nCasino Score: " + str(self.casino_score) +
             "\nOwned Games: " + str(owned_games_array) +
             "\nCurrent Rolls: " + str(current_rolls_array) +
             "\nCompleted Rolls: " + str(completed_rolls_array) +
