@@ -458,24 +458,6 @@ async def master_loop(client : discord.Client) :
     casino_channel = client.get_channel(hm.CASINO_ID)
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
     game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
-
-    # grab mongo data
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
-
-    # grab ce api data
-    try :
-        new_games = await CEAPIReader.get_api_games_full()
-    except FailedScrapeException as e :
-        await private_log_channel.send(e.get_message())
-        print('fetching games failed.')
-        return
-    try :
-        new_users = await CEAPIReader.get_api_users_all()
-    except FailedScrapeException as e :
-        await private_log_channel.send(e.get_message())
-        print('fetching users failed.')
-        return
     
     # ---- game ----
     SKIP_GAME_SCRAPE = False
@@ -508,24 +490,36 @@ async def master_loop(client : discord.Client) :
     
     
 
-    # ---- user ----
-    # get the updates
-    user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
+    # ---- users ----
+    SKIP_USER_SCRAPE = False
+    if not SKIP_USER_SCRAPE :
+        if SKIP_GAME_SCRAPE : return
+        database_user = await Mongo_Reader.get_mongo_users()
+        try :
+            new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
 
-    # send update messages
-    for update_message in user_returns[0] :
-        match(update_message.location) :
-            case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
-            case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
-            case "gameadditions" : await game_additions_channel.send(update_message.message)
-            case "casino" : await casino_channel.send(update_message.message)
-            case "privatelog" : await private_log_channel.send(update_message.message)
-            
-    # and dump updated users
-    await Mongo_Reader.dump_users(user_returns[1])
+            # get the updates
+            print('starting returns')
+            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
 
-    print('loop complete')
-    return await private_log_channel.send(f"loop complete at <t:{hm.get_unix('now')}>.")
+            # send update messages
+            for update_message in user_returns[0] :
+                match(update_message.location) :
+                    case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+                    case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+                    case "gameadditions" : await game_additions_channel.send(update_message.message)
+                    case "casino" : await casino_channel.send(update_message.message)
+                    case "privatelog" : await private_log_channel.send(update_message.message)
+                    
+            # and dump updated users
+            await Mongo_Reader.dump_users(user_returns[1])
+        except FailedScrapeException as e :
+            await private_log_channel.send(f":warning: {e.get_message()}")
+            print('fetching users failed.')
+            return
+    
+    print('loop complete.')
+    return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
 
 
 #  _______   _    _   _____    ______              _____       _____              __  __   ______ 
