@@ -626,16 +626,29 @@ async def scrape(interaction : discord.Interaction) :
     await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /scrape",
                              allowed_mentions=discord.AllowedMentions.none())
 
-    old_db_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_mongo_users()
 
     try :
         database_name = await CEAPIReader.get_api_games_full()
-        #database_user = await CEAPIReader.get_api_users_all(database_user=old_db_user)
+        ce_users : list[CEUser] = await CEAPIReader.get_api_users_all(database_user=database_user)
     except FailedScrapeException as e :
         return await interaction.followup.send(f"Error FailedScrapeException: {e.get_message()}")
+    
+    for i, user in enumerate(database_user) :
+        # find the user from api
+        c_user = None
+        for ce_user in ce_users :
+            if ce_user.ce_id == user.ce_id :
+                c_user = ce_user
+                break
+        
+        if c_user is None : continue
+
+        database_user[i].owned_games = c_user.owned_games
+        
 
     await Mongo_Reader.dump_games(database_name)
-    #await Mongo_Reader.dump_users(database_user)
+    await Mongo_Reader.dump_users(database_user)
 
     return await interaction.followup.send("Database replaced.")
 
