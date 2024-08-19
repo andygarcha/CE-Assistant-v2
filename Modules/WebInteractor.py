@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import functools
+import time
 import typing
 from discord.ext import tasks
 import discord
@@ -329,6 +330,10 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
         
         # if it took longer than 5 seconds, just return the image failed image.
         if timeout : return ("Assets/image_failed_v2.png", "image timeout")
+
+        # i'm gonna let it sleep here just so that we are SURE the rest of the page loads in.
+        SLEEP_LIMIT = 3
+        time.sleep(SLEEP_LIMIT)
 
 
         primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
