@@ -980,6 +980,7 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 
     # make sure they're registered
     print(user)
+    print(user.id)
     ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
     print(ce_user)
     if ce_user is None and asked_for_friend : 
