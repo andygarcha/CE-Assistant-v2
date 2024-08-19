@@ -294,7 +294,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.Literal['Assets/image_failed.png'], str] :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.Literal['Assets/image_failed_v2.png'], str] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -328,7 +328,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
             timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT
         
         # if it took longer than 5 seconds, just return the image failed image.
-        if timeout : return ("Assets/image_failed.png", "image timeout")
+        if timeout : return ("Assets/image_failed_v2.png", "image timeout")
 
 
         primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
@@ -365,7 +365,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
     except Exception as e :
-        return ("Assets/image_failed.png", f"{e}")
+        return ("Assets/image_failed_v2.png", f"{e}")
     
     im = io.BytesIO(im)
     im_image = Image.open(im)

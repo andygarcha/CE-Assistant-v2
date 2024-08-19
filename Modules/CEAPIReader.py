@@ -168,6 +168,7 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
         else :
             database_user = None
 
+
     # Step 1: get the big json intact.
     PULL_LIMIT = 50
     total_response = []
@@ -178,8 +179,14 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
 
             # pull the data
             print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
-            api_response = requests.get(f"https://cedb.me/api/users/all?limit={PULL_LIMIT}" 
-                                        + f"&offset={(i-1)*PULL_LIMIT}")
+
+            # set up params
+            params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
+            """# if database_user has been provided, include the 'ids' in the payload.
+            if database_user is not None : params['ids'] = registered_ids"""
+
+            # pull the data and json-ify it
+            api_response = requests.get(f"https://cedb.me/api/users/all", params=params)
             current_response = json.loads(api_response.text)
 
             # check to see if this is the last one
