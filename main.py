@@ -979,7 +979,9 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
         asked_for_friend = False
 
     # make sure they're registered
+    print(database_user)
     ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
+    print(ce_user)
     if ce_user is None and asked_for_friend : 
         return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
                                                allowed_mentions=discord.AllowedMentions.none())
