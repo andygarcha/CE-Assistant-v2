@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import get_args
 import requests
@@ -167,13 +168,40 @@ class CEUser:
         "Removes `roll_name` from this user."
         for i, roll in enumerate(self.current_rolls) :
             if roll.roll_name == roll_name : 
-                del self.current_rolls[i]
+                del self._current_rolls[i]
                 return
     
+    def remove_pending(self, pending : hm.ALL_ROLL_EVENT_NAMES) :
+        "Removes the pending from this user."
+        for i, p in enumerate(self.pending_rolls) :
+            if p.roll_name == pending :
+                del self._pending_rolls[i]
+                break
+
+    def remove_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "Removes all completed rolls associated with roll_name."
+        for i, roll in enumerate(self.completed_rolls) :
+            if roll.roll_name == roll_name :
+                del self._current_rolls[i]
+    
+    def remove_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "Removes the cooldown associated with roll_name."
+        for i, cooldown in enumerate(self.cooldowns) :
+            if cooldown.roll_name == roll_name :
+                del self._cooldowns[i]
+                break
 
     # ----------- other methods ------------
 
     # -- rolls --
+    def replace_current_roll(self, roll : CERoll) -> bool :
+        "Replaces the user's roll with a new one. Returns true if it works, false if not."
+        for i, event in enumerate(self.current_rolls) :
+            if event.roll_name == roll.roll_name :
+                self._current_rolls[i] = roll
+                return True
+        self.add_current_roll(roll)
+        return False
 
     def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user has completed `roll_name`."""
@@ -195,7 +223,7 @@ class CEUser:
             if event.roll_name == roll_name : return True
         return False
     
-    def get_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll :
+    def get_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None :
         "REturns the `CERoll` associated with `roll_name`."
         for event in self.current_rolls :
             if event.roll_name == roll_name : return event
@@ -447,6 +475,7 @@ class CEAPIUser(CEUser) :
         
         # pull the data
         objective_tuples = self.most_recent_objectives()
+        if objective_tuples is None : return "Error. Please try again or ping andy."
 
         # set up return
         return_str : str = ""
@@ -471,12 +500,19 @@ class CEAPIUser(CEUser) :
         curr_month_points = 0
         prev_month_points = 0
 
+        now = datetime.datetime.now()
+        current_month_datetime = datetime.datetime(year=now.year, month=now.month, day=1)
+        previous_month_datetime = datetime.datetime(
+            year=(now.year if now.month != 1 else now.year-1),
+            month=(now.month - 1 if now.month != 1 else 12),
+            day=1
+        )
+
         for api_objective in self.api_user_objectives :
-            if int(api_objective['updatedAt'][0:4]) != 2024 : continue
-            if hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.current_month_num() :
+            if hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= current_month_datetime :
                 if api_objective['partial'] : curr_month_points += api_objective['objective']['pointsPartial']
                 else : curr_month_points += api_objective['objective']['points']
-            elif hm.get_month_from_cetimestamp(api_objective['updatedAt']) == hm.previous_month_num() :
+            elif hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= previous_month_datetime :
                 if api_objective['partial'] : prev_month_points += api_objective['objective']['pointsPartial']
                 else : prev_month_points += api_objective['objective']['points']
 

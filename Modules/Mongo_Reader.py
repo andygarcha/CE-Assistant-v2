@@ -300,7 +300,7 @@ async def dump_user(user : CEUser | list[CEUser]) -> None :
 
     for i, u in enumerate(database_user) :
         for b in user :
-            if u.get_ce_id() == b.get_ce_id() :
+            if u.ce_id == b.ce_id :
                 database_user[i] = b
 
     await dump_users(database_user)

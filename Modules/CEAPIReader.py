@@ -219,7 +219,6 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
     del total_response
 
     # and return
-    print('returning users...')
     return all_users
 
 

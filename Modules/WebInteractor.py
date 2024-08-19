@@ -31,6 +31,12 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
         return await asyncio.to_thread(func, *args, **kwargs)
     return wrapper
 
+#   _____   _    _   ______    _____   _  __    _____     ____    _        ______    _____ 
+#  / ____| | |  | | |  ____|  / ____| | |/ /   |  __ \   / __ \  | |      |  ____|  / ____|
+# | |      | |__| | | |__    | |      | ' /    | |__) | | |  | | | |      | |__    | (___  
+# | |      |  __  | |  __|   | |      |  <     |  _  /  | |  | | | |      |  __|    \___ \ 
+# | |____  | |  | | | |____  | |____  | . \    | | \ \  | |__| | | |____  | |____   ____) |
+#  \_____| |_|  |_| |______|  \_____| |_|\_\   |_|  \_\  \____/  |______| |______| |_____/ 
 
 def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGame],
                          database_name : list[CEGame], user : CEUser
@@ -123,6 +129,15 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
             ))
 
     return updates
+
+
+
+#  _    _    _____   ______   _____      _    _   _____    _____               _______   ______ 
+# | |  | |  / ____| |  ____| |  __ \    | |  | | |  __ \  |  __ \      /\     |__   __| |  ____|
+# | |  | | | (___   | |__    | |__) |   | |  | | | |__) | | |  | |    /  \       | |    | |__   
+# | |  | |  \___ \  |  __|   |  _  /    | |  | | |  ___/  | |  | |   / /\ \      | |    |  __|  
+# | |__| |  ____) | | |____  | | \ \    | |__| | | |      | |__| |  / ____ \     | |    | |____ 
+#  \____/  |_____/  |______| |_|  \_\    \____/  |_|      |_____/  /_/    \_\    |_|    |______|
 
 
 def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGame], 
@@ -269,11 +284,17 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
     return (updates, user, partners)
 
 
+#   _____   ______   _______     _____   __  __               _____   ______ 
+#  / ____| |  ____| |__   __|   |_   _| |  \/  |     /\      / ____| |  ____|
+# | |  __  | |__       | |        | |   | \  / |    /  \    | |  __  | |__   
+# | | |_ | |  __|      | |        | |   | |\/| |   / /\ \   | | |_ | |  __|  
+# | |__| | | |____     | |       _| |_  | |  | |  / ____ \  | |__| | | |____ 
+#  \_____| |______|    |_|      |_____| |_|  |_| /_/    \_\  \_____| |______|
 
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Literal['Assets/image_failed_v2.png'] :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.Literal['Assets/image_failed.png'], str] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -295,55 +316,57 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Litera
     start_time = hm.get_unix('now')
     timeout = hm.get_unix('now') - start_time > 5
     objective_list = []
+    TIMEOUT_LIMIT = 10
 
-    # give it five seconds to load the elements.
-    while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
-        # run this to just fully load the page...
-        html_page = driver.execute_script("return document.documentElement.innerHTML;")
-        # ...and now get the list.
-        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-        timeout = hm.get_unix('now') - start_time > 5
-    
-    # if it took longer than 5 seconds, just return the image failed image.
-    if timeout : return "Assets/image_failed_v2.png"
+    try:
+        # give it five seconds to load the elements.
+        while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
+            # run this to just fully load the page...
+            html_page = driver.execute_script("return document.documentElement.innerHTML;")
+            # ...and now get the list.
+            objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+            timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT
+        
+        # if it took longer than 5 seconds, just return the image failed image.
+        if timeout : return ("Assets/image_failed.png", "image timeout")
 
-    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
-    objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-    title = driver.find_element(By.TAG_NAME, "h1")
-    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
-    title_size = title.size['width']
-    title_location = title.location['x']
 
-    bottom_right = objective_list[len(objective_list)-2].location
-    size = objective_list[len(objective_list)-2].size
+        primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
+        objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+        title = driver.find_element(By.TAG_NAME, "h1")
+        top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
+        title_size = title.size['width']
+        title_location = title.location['x']
 
-    objective_list[0]
+        bottom_right = objective_list[len(objective_list)-2].location
+        size = objective_list[len(objective_list)-2].size
 
-    header_elements = [
-        'bp4-navbar',
-        'tr-fadein',
-        'css-1ugviwv'
-    ]
+        objective_list[0]
 
-    BORDER_WIDTH = 15
-    DISPLAY_FACTOR = 1
+        header_elements = [
+            'bp4-navbar',
+            'tr-fadein',
+            'css-1ugviwv'
+        ]
 
-    #NOTE: i multiplied these by two. dk why it's working.
-    top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
-    top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
-    bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
+        BORDER_WIDTH = 15
+        DISPLAY_FACTOR = 1
 
-    if title_location + title_size > bottom_right['x'] + size['width']:
-        bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
-    else:
-        bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
+        top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
+        top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
+        bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
-    try :
+        if title_location + title_size > bottom_right['x'] + size['width']:
+            bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
+        else:
+            bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
+
         ob = Screenshot(bottom_right_y)
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
-    except :
-        return "Assets/image_failed_v2.png"
+    except Exception as e :
+        return ("Assets/image_failed.png", f"{e}")
+    
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
@@ -418,6 +441,12 @@ times = [
   datetime.time(hour=23, minute=30, tzinfo=utc),
 ]
 
+#  __  __               _____   _______   ______   _____      _         ____     ____    _____  
+# |  \/  |     /\      / ____| |__   __| |  ____| |  __ \    | |       / __ \   / __ \  |  __ \ 
+# | \  / |    /  \    | (___      | |    | |__    | |__) |   | |      | |  | | | |  | | | |__) |
+# | |\/| |   / /\ \    \___ \     | |    |  __|   |  _  /    | |      | |  | | | |  | | |  ___/ 
+# | |  | |  / ____ \   ____) |    | |    | |____  | | \ \    | |____  | |__| | | |__| | | |     
+# |_|  |_| /_/    \_\ |_____/     |_|    |______| |_|  \_\   |______|  \____/   \____/  |_|     
 
 @tasks.loop(time=times)
 async def master_loop(client : discord.Client) :
@@ -449,15 +478,35 @@ async def master_loop(client : discord.Client) :
         return
     
     # ---- game ----
-    # get game embeds
-    embeds : list[EmbedMessage] = await thread_game_update(old_games=database_name, new_games=new_games)
+    SKIP_GAME_SCRAPE = False
+    if not SKIP_GAME_SCRAPE :
+        database_name = await Mongo_Reader.get_mongo_games()
+        try :
+            new_games = await CEAPIReader.get_api_games_full()
+            # get the embeds
+            game_returns : tuple[list[EmbedMessage], list[UpdateMessage]] = await thread_game_update(
+                old_games=database_name, new_games=new_games
+            )
+            embeds = game_returns[0]
+            exceptions = game_returns[1]
 
-    # send embeds
-    for embed in embeds :
-        await game_additions_channel.send(embed=embed.embed, file=embed.file)
+            # send embeds
+            for embed in embeds :
+                await game_additions_channel.send(embed=embed.embed, file=embed.file)
+            
+            # send exceptions
+            for exc in exceptions :
+                await private_log_channel.send(exc.message)
 
-    # dump the games
-    await Mongo_Reader.dump_games(new_games)
+            # dump the games
+            await Mongo_Reader.dump_games(new_games)
+        
+        except FailedScrapeException as e :
+            await private_log_channel.send(f":warning: {e.get_message()}")
+            print('fetching games failed.')
+            return
+    
+    
 
     # ---- user ----
     # get the updates
@@ -478,10 +527,27 @@ async def master_loop(client : discord.Client) :
     print('loop complete')
     return await private_log_channel.send(f"loop complete at <t:{hm.get_unix('now')}>.")
 
+
+#  _______   _    _   _____    ______              _____       _____              __  __   ______ 
+# |__   __| | |  | | |  __ \  |  ____|     /\     |  __ \     / ____|     /\     |  \/  | |  ____|
+#    | |    | |__| | | |__) | | |__       /  \    | |  | |   | |  __     /  \    | \  / | | |__   
+#    | |    |  __  | |  _  /  |  __|     / /\ \   | |  | |   | | |_ |   / /\ \   | |\/| | |  __|  
+#    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |__| |  / ____ \  | |  | | | |____ 
+#    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____| /_/    \_\ |_|  |_| |______|
+
 @to_thread
-def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) -> list[EmbedMessage] :
+def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
     "Threaded."
     return Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
+
+
+
+#  _______   _    _   _____    ______              _____      _    _    _____   ______   _____  
+# |__   __| | |  | | |  __ \  |  ____|     /\     |  __ \    | |  | |  / ____| |  ____| |  __ \ 
+#    | |    | |__| | | |__) | | |__       /  \    | |  | |   | |  | | | (___   | |__    | |__) |
+#    | |    |  __  | |  _  /  |  __|     / /\ \   | |  | |   | |  | |  \___ \  |  __|   |  _  / 
+#    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |__| |  ____) | | |____  | | \ \ 
+#    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \____/  |_____/  |______| |_|  \_\
 
 
 @to_thread

@@ -64,7 +64,7 @@ __icons = {
 
 __test_icons = {
     "Action" : "<:CE_action:1133558549990088734>",
-    "Arcade" : "<:CE_action:1133558549990088734>",
+    "Arcade" : "<:CE_arcade:1133558574287683635>",
     "Bullet Hell" : "<:CE_bullethell:1133558610530676757>",
     "First-Person" : "<:CE_firstperson:1133558611898015855>",
     "Platformer" : "<:CE_platformer:1133558613705769020>",
@@ -129,12 +129,14 @@ __CE_CASINO_ID = 1080137628604694629          # real casino
 __CE_CASINO_LOG_ID = 1218980203209035938      # casino log
 __CE_PRIVATE_LOG_ID = 1208259110638985246     # private log
 __CE_USER_LOG_ID = 1256832310523859025        # user log
+__CE_PROOF_SUBMISSIONS_ID = 747384873320448082# proof submissions
 # bot test ids
 __TEST_GAME_ADDITIONS_ID = 1128742486416834570
 __TEST_CASINO_ID = 811286469251039333
 __TEST_CASINO_LOG_ID = 1257381604452466737
 __TEST_PRIVATE_LOG_ID = 1141886539157221457
 __TEST_USER_LOG_ID = 1257381593136365679
+__TEST_PROOF_SUBMISSIONS_ID = 1263199416462868522
 # go-to channels 
 # NOTE: replace these with the ids as needed
 if IN_CE:
@@ -143,12 +145,14 @@ if IN_CE:
     CASINO_LOG_ID = __CE_CASINO_LOG_ID
     PRIVATE_LOG_ID = __CE_PRIVATE_LOG_ID
     USER_LOG_ID = __CE_USER_LOG_ID
+    PROOF_SUBMISSIONS_ID = __CE_PROOF_SUBMISSIONS_ID
 else :
     GAME_ADDITIONS_ID = __TEST_GAME_ADDITIONS_ID
     CASINO_ID = __TEST_CASINO_ID
     CASINO_LOG_ID = __TEST_CASINO_LOG_ID
     PRIVATE_LOG_ID = __TEST_PRIVATE_LOG_ID
     USER_LOG_ID = __TEST_USER_LOG_ID
+    PROOF_SUBMISSIONS_ID = __TEST_PROOF_SUBMISSIONS_ID
 
 
 """
@@ -250,9 +254,9 @@ def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
     # return the minutes
     elif (minutes != -1) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
     # return the months
-    elif (months != -1) : return get_unix(months_to_days(months))
+    elif (months != -1) : return get_unix(days=months_to_days(months))
     # return the days
-    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days)).timetuple()))
+    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days=days)).timetuple()))
 
 
 def get_banned_games() -> list[str] :
@@ -275,7 +279,8 @@ def get_rollable_game(
         user,
         category : str | list[str] = None,
         already_rolled_games : list = [],
-        has_points_restriction : bool = False
+        has_points_restriction : bool = False,
+        price_restriction : bool = True
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -329,12 +334,12 @@ def get_rollable_game(
             "This game has an uncleared objective."
             continue
 
-        if game.get_price() > price_limit :
-            "The price is too high."
+        if game.get_price() > price_limit and price_restriction and not user.owns_game(game.ce_id) :
+            "The price is too high (and the price is restricted) and the user doesn't own the game."
             continue
 
         sh_data = game.get_steamhunters_data()
-        if sh_data == None or sh_data > completion_limit :
+        if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
             "The SteamHunters median-completion-time is too high."
             continue
 
@@ -393,17 +398,9 @@ def previous_month_str() -> str :
     previous_month_num = (current_month_num - 1) if current_month_num != 1 else 12
     return datetime.datetime(year=2024, month=previous_month_num, day = 1).strftime('%B')
 
-def previous_month_num() -> int :
-    "The number of the prevuous month."
-    return (current_month_num() - 1) if current_month_num() != 1 else 12
-
-def current_year_num() -> int :
-    "The number of the current year."
-    return 2024
-
-def get_month_from_cetimestamp(timestamp : str) -> int :
-    "Returns the month number from a ce timestamp."
-    return int(timestamp[5:7])
+def cetimestamp_to_datetime(timestamp : str) -> datetime.datetime :
+    "Takes in a CE timestamp and returns a datetime."
+    return datetime.datetime.strptime(str(timestamp[:-5:]), "%Y-%m-%dT%H:%M:%S")
 
 def format_ce_link(ce_link : str) -> str :
     "Takes in a full link and returns the CE ID."

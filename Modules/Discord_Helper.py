@@ -12,7 +12,7 @@ import discord
 
 # -- local --
 from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import EmbedMessage
+from Classes.OtherClasses import EmbedMessage, UpdateMessage
 import Modules.Mongo_Reader as Mongo_Reader
 import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
@@ -31,7 +31,7 @@ import io
 from PIL import Image
 from webdriver_manager.core.os_manager import ChromeType
 
-async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
+def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from Classes.CE_Game import CEGame
 
@@ -60,16 +60,16 @@ async def get_roll_embeds(roll : CERoll, database_user : list, database_name : l
     description += "__Roll Info__\n"
     if roll.ends() :
         description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
-        description += f"If you fail, you will have a cooldown until {roll.calculate_cooldown_date()}.\n"
+        description += f"If you fail, you will have a cooldown until {roll.calculate_cooldown_date(database_name=database_name)}.\n"
     else :
-        description += f"{roll.roll_name} has no time limit. You can reroll on {roll.calculate_cooldown_date()}.\n"
+        description += f"{roll.roll_name} has no time limit. You can reroll on {roll.calculate_cooldown_date(database_name=database_name)}.\n"
 
     # -- set the description --
     embeds[0].description = description
 
     # -- now grab all the other embeds --
     for i, id in enumerate(roll.games) :
-        embeds.append(await get_game_embed(id))
+        embeds.append(get_game_embed(game_id=id, database_name=database_name))
         embeds[i+1].set_footer(
             text=f"Page {i+2} of {len(roll.games) + 1}",
             icon_url = hm.FINAL_CE_ICON
@@ -81,13 +81,16 @@ async def get_roll_embeds(roll : CERoll, database_user : list, database_name : l
 
 
 
-async def get_game_embed(game_id : str) -> discord.Embed :
+def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     """This function returns a `discord.Embed` that holds all information about a game."""
+
+    # imports and type hinting
     from Classes.CE_Game import CEGame
-    # -- get the api data --
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name : list[CEGame] = database_name
+
+    # grab the game
     game : CEGame = hm.get_item_from_list(game_id, database_name)
-    if game == None : return None
+    if game is None : return None
 
     # -- instantiate the embed --
     embed = discord.Embed(
@@ -100,15 +103,16 @@ async def get_game_embed(game_id : str) -> discord.Embed :
     embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
 
     # -- get steam data and set image and description --
-    steam_data = game.get_steam_data()
-    embed.set_image(url=steam_data.header_image)
+    if game.platform == "steam" :
+        steam_data = game.get_steam_data()
+        embed.set_image(url=steam_data.header_image)
     embed.description = (
         f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
     # -- set up price --
-    if steam_data.is_free :
+    if game.platform == "retroachievements" or steam_data.is_free :
         embed.description += "- Price: Free!\n"
     else :
         embed.description += (f"- Price: {steam_data.current_price_formatted}\n")
@@ -262,11 +266,17 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
 # ---------------------------------- game additions ----------------------------------
 
     
-    
+#   _____              __  __   ______                _____    _____    _____   _______   _____    ____    _   _    _____ 
+#  / ____|     /\     |  \/  | |  ____|       /\     |  __ \  |  __ \  |_   _| |__   __| |_   _|  / __ \  | \ | |  / ____|
+# | |  __     /  \    | \  / | | |__         /  \    | |  | | | |  | |   | |      | |      | |   | |  | | |  \| | | (___  
+# | | |_ |   / /\ \   | |\/| | |  __|       / /\ \   | |  | | | |  | |   | |      | |      | |   | |  | | | . ` |  \___ \ 
+# | |__| |  / ____ \  | |  | | | |____     / ____ \  | |__| | | |__| |  _| |_     | |     _| |_  | |__| | | |\  |  ____) |
+#  \_____| /_/    \_\ |_|  |_| |______|   /_/    \_\ |_____/  |_____/  |_____|    |_|    |_____|  \____/  |_| \_| |_____/ 
 
 
 
-def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMessage] :
+
+def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :
     "Returns a list of `discord.Embed`s to send to #game-additions."
 
     # import and type casting
@@ -277,6 +287,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
     # the list to be returned
     messages : list[EmbedMessage] = []
+    exceptions : list[UpdateMessage] = []
 
     # variables
     SELENIUM_ENABLE = True
@@ -334,7 +345,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
 
             # set up the embed
             embed = discord.Embed(
-                title=f"__{new_game.game_name}__ added to the site:",
+                title=f"__ {new_game.game_name} __ added to the site:",
                 color=0x48b474,
                 timestamp=datetime.datetime.now(),
                 description=(
@@ -371,16 +382,20 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
             embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
-            if SELENIUM_ENABLE : image = WebInteractor.get_image(driver=driver, new_game=new_game)
+            if SELENIUM_ENABLE : 
+                image = WebInteractor.get_image(driver=driver, new_game=new_game)
+                if isinstance(image, tuple) :
+                    file = image[0]
+                    exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+                else :
+                    file = image
+
             #TODO: fix this?
 
-            messages.append(EmbedMessage(embed=embed, file=discord.File(image, filename="image.png")))
+            messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
             continue
 
         # --- the game is updated ---
-
-        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
-
         # remove the ce id from old_ce_ids
         old_ce_ids.remove(new_game.ce_id)
 
@@ -392,12 +407,14 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             if CONSOLE_MARKERS : print("last update, continuing")
             continue
 
+        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
+
         if CONSOLE_MARKERS: print(old_game)
         if CONSOLE_MARKERS: print(new_game)
 
         # set up embed
         embed = discord.Embed(
-            title=f"__{new_game.game_name}__ updated on the site:",
+            title=f"__ {new_game.game_name} __ updated on the site:",
             color=0xefd839,
             timestamp=datetime.datetime.now(),
             description="",
@@ -425,7 +442,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         # category changes
         if old_game.category != new_game.category :
             if CONSOLE_MARKERS : print("category change")
-            embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Points')} {new_game.get_category_emoji()}"
+            embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Arrow')} {new_game.get_category_emoji()}"
 
         # objective changes...
         old_objective_ce_ids = [old_objective.ce_id for old_objective in old_game.all_objectives]
@@ -502,8 +519,15 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         if description_test == "" : continue
 
         print('adding')
+        image = WebInteractor.get_image(driver=driver, new_game=new_game)
+        if isinstance(image, tuple):
+            file = image[0]
+            exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+        else :
+            file = image
+
         messages.append(EmbedMessage(
-            embed=embed, file=discord.File(WebInteractor.get_image(driver=driver,new_game=new_game), filename="image.png")
+            embed=embed, file=discord.File(file, filename="image.png")
         ))
     
     # --- all additions and updates have finished. check for removed games ---
@@ -526,10 +550,14 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         ))
 
     # if we're looking for images, close the driver
-    if SELENIUM_ENABLE : driver.close()
+    try :
+        if SELENIUM_ENABLE : driver.close()
+    except Exception as e:
+        exceptions.append(UpdateMessage("privatelog", f":red_square: {e}"))
+        print(e)
     
     # and return
-    return messages
+    return (messages, exceptions)
 
 def get_user_by_discord_id(discord_id, database_user) :
     "Return the user from their discord id."
