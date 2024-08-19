@@ -1159,7 +1159,7 @@ async def on_ready() :
     await private_log_channel.send(f":arrows_counterclockwise: bot started at <t:{hm.get_unix('now')}>")
     
     # master loop
-    if hm.IN_CE or True :
+    if hm.IN_CE :
         await master_loop.start(client)
 
 
