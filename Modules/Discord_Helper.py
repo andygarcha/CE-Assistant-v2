@@ -165,9 +165,97 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
 
     #view.on_timeout = disable
 
-async def get_user_embed() -> discord.Embed :
+async def get_user_embeds(user, database_name : list, database_user : list) -> tuple[discord.Embed, discord.ui.View] :
     """Returns a `discord.Embed` that represents this user.""" 
-    return NotImplemented
+
+    # imports and type hintin
+    from Classes.CE_User import CEUser
+    from Classes.CE_Game import CEGame
+    user : CEUser = user
+    database_name : list[CEGame] = database_name
+    database_user : list[CEUser] = database_user
+
+    # pull api data
+    api_user = user.get_api_user()
+
+    # -- two embeds: summary, completions --
+    # summary
+    summary_embed = discord.Embed(
+        title="Profile",
+        color=0xff9494,
+        timestamp=datetime.datetime.now()
+    )
+    summary_embed.add_field(
+        name="User", value = f"<@{user.discord_id}> {hm.get_emoji(user.get_rank())}", inline=True
+    )
+    summary_embed.add_field(
+        name = "Current Values", value = f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score}", inline=True
+    )
+    summary_embed.add_field(
+        name = "CR", value=user.get_cr(database_name=database_name).cr_string(), inline=False
+    )
+    summary_embed.add_field(
+        name="Completions", value=api_user.tier_genre_summary_str(), inline=False
+    )
+
+    # recent
+    recent_embed = discord.Embed(
+        title="Profile",
+        color=0xff9494,
+        timestamp=datetime.datetime.now()
+    )
+    recent_embed.add_field(
+        name="Recent Completions", value=api_user.most_recent_objectives_str()
+    )
+    recent_embed.add_field(
+        name="Monthly Breakdown", value=api_user.monthly_report_str()
+    )
+
+    # set up the view
+    class ProfileView(discord.ui.View) :
+        def __init__(self) :
+            super().__init__(timeout=None)
+        
+        @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
+        async def summary_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+            # defer the message
+            await interaction.response.defer()
+
+            # un-disable everything
+            for child in self.children :
+                child.disabled = False
+            
+            # and disable this one
+            button.disabled = True
+
+            # and now edit the message and return
+            return await interaction.followup.edit_message(
+                message_id=interaction.message.id,
+                embed=summary_embed,
+                view=self
+            )
+
+        @discord.ui.button(label="Recent", style=discord.ButtonStyle.gray)
+        async def recent_buttton(self, interaction : discord.Interaction, button : discord.ui.Button) :
+            # defer the message
+            await interaction.response.defer()
+
+            # un-disable everything
+            for child in self.children :
+                child.disabled = False
+
+            # but disable this one
+            button.disabled = True
+
+            # and now edit the mesasge
+            return await interaction.followup.edit_message(
+                message_id=interaction.message.id,
+                embed=recent_embed,
+                view=self
+            )
+
+
+    return (summary_embed, ProfileView())
 
 
 
@@ -242,6 +330,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
         # --- the game is new ---
         if new_game.ce_id not in old_ce_ids : 
 
+            print(f'🟢 NEW GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
+
             # set up the embed
             embed = discord.Embed(
                 title=f"__{new_game.game_name}__ added to the site:",
@@ -288,6 +378,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             continue
 
         # --- the game is updated ---
+
+        print(f'🟡 UPDATED GAME: {new_game.game_name}, https://cedb.me/game/{new_game.ce_id}')
 
         # remove the ce id from old_ce_ids
         old_ce_ids.remove(new_game.ce_id)
@@ -347,8 +439,8 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
                     f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
                 )
                 if new_objective.type == "Primary" or new_objective.type == "Secondary" :
-                    embed.description += f"\n\t- {new_objective.point_value} {hm.get_emoji('Points')}"
-                embed.description += f"\n\t- {new_objective.description}"
+                    embed.description += f"\n  - {new_objective.point_value} {hm.get_emoji('Points')}"
+                embed.description += f"\n  - {new_objective.description}"
                 continue
             
             # update objective tracker and get the old objective
@@ -386,11 +478,7 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
             
                 # if the achievements were updated
                 # TODO: this can be made more specific in 2.1
-                if ( (not(old_objective.achievement_ce_ids is None and new_objective.achievement_ce_ids is None)) and
-                    ((old_objective.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None) or
-                    (old_objective.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None) or
-                    (set(old_objective.achievement_ce_ids) != set(new_objective.achievement_ce_ids)))
-                    ) :
+                if (not hm.achievements_are_equal(old_objective.achievement_ce_ids, new_objective.achievement_ce_ids)) :
                     embed.description += "\n  - Achievements updated"
 
                 # if the partial points were updated
@@ -421,17 +509,30 @@ def game_additions_updates(old_games : list, new_games : list) -> list[EmbedMess
     # --- all additions and updates have finished. check for removed games ---
     for game in old_ce_ids :
         game_object = hm.get_item_from_list(game, old_games)
+
+        print(f'🔴 REMOVED GAME: {game_object.game_name}, https://cedb.me/game/{game_object.ce_id}')
+
+        # create the embed
         embed = discord.Embed(
             title=f"__{game_object.game_name}__ removed from the site.",
             color=0xce4e2c,
             timestamp=datetime.datetime.now()
         )
-        embed.set_image(url="Assets/removed.png")
+        embed.set_image(url="attachment://image.png")
 
+        # and add the message
         messages.append(EmbedMessage(
-            embed=embed, file=discord.File("Web_Interaction/removed.png", filename="image.png")
+            embed=embed, file=discord.File("Assets/removed.png", filename="image.png")
         ))
 
+    # if we're looking for images, close the driver
     if SELENIUM_ENABLE : driver.close()
     
+    # and return
     return messages
+
+def get_user_by_discord_id(discord_id, database_user) :
+    "Return the user from their discord id."
+    for user in database_user :
+        if user.discord_id == discord_id : return user
+    return None

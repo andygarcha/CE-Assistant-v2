@@ -273,7 +273,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
 
-def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
+def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | typing.Literal['Assets/image_failed.png'] :
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
@@ -284,8 +284,12 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     "The maximum amount of objectives to be screenshot before cropping." 
 
     # initiate selenium
-    url = f"https://cedb.me/game/{new_game.ce_id}/"
-    driver.get(url)
+    try :
+        url = f"https://cedb.me/game/{new_game.ce_id}/"
+        driver.get(url)
+    except Exception as e :
+        print(e)
+        return "Assets/image_failed.png"
     
     # set up variables
     start_time = hm.get_unix('now')
@@ -322,20 +326,24 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO :
     ]
 
     BORDER_WIDTH = 15
+    DISPLAY_FACTOR = 1
 
     #NOTE: i multiplied these by two. dk why it's working.
-    top_left_x = (top_left['x']) - BORDER_WIDTH
-    top_left_y = (top_left['y']) - BORDER_WIDTH
-    bottom_right_y = (bottom_right['y'] + size['height']) + BORDER_WIDTH
+    top_left_x = (top_left['x'] - BORDER_WIDTH)*DISPLAY_FACTOR
+    top_left_y = (top_left['y'] - BORDER_WIDTH)*DISPLAY_FACTOR
+    bottom_right_y = (bottom_right['y'] + size['height'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
     if title_location + title_size > bottom_right['x'] + size['width']:
-        bottom_right_x = (title_location + title_size) + BORDER_WIDTH
+        bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
     else:
-        bottom_right_x = (bottom_right['x'] + size['width']) + BORDER_WIDTH
+        bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
 
-    ob = Screenshot(bottom_right_y)
-    im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
-                            is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    try :
+        ob = Screenshot(bottom_right_y)
+        im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
+                                is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+    except :
+        return "Assets/image_failed.png"
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
@@ -422,57 +430,52 @@ async def master_loop(client : discord.Client) :
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
     game_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
 
+    # grab mongo data
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+
+    # grab ce api data
+    try :
+        new_games = await CEAPIReader.get_api_games_full()
+    except FailedScrapeException as e :
+        await private_log_channel.send(e.get_message())
+        print('fetching games failed.')
+        return
+    try :
+        new_users = await CEAPIReader.get_api_users_all()
+    except FailedScrapeException as e :
+        await private_log_channel.send(e.get_message())
+        print('fetching users failed.')
+        return
+    
     # ---- game ----
-    SKIP_GAME_SCRAPE = False
-    if not SKIP_GAME_SCRAPE :
-        database_name = await Mongo_Reader.get_mongo_games()
-        try :
-            new_games = await CEAPIReader.get_api_games_full()
-            # get the embeds
-            embeds : list[EmbedMessage] = await thread_game_update(old_games=database_name, new_games=new_games)
+    # get game embeds
+    embeds : list[EmbedMessage] = await thread_game_update(old_games=database_name, new_games=new_games)
 
-            # send embeds
-            for embed in embeds :
-                await game_additions_channel.send(embed=embed.embed, file=embed.file)
+    # send embeds
+    for embed in embeds :
+        await game_additions_channel.send(embed=embed.embed, file=embed.file)
 
-            # dump the games
-            await Mongo_Reader.dump_games(new_games)
-        
-        except FailedScrapeException as e :
-            await private_log_channel.send(e.get_message())
-            print('fetching games failed.')
-            return
-    
-    
+    # dump the games
+    await Mongo_Reader.dump_games(new_games)
 
-    # ---- users ----
-    SKIP_USER_SCRAPE = False
-    if not SKIP_USER_SCRAPE :
-        if SKIP_GAME_SCRAPE : return
-        database_user = await Mongo_Reader.get_mongo_users()
-        try :
-            new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
+    # ---- user ----
+    # get the updates
+    user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
 
-            # get the updates
-            print('starting returns')
-            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
+    # send update messages
+    for update_message in user_returns[0] :
+        match(update_message.location) :
+            case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+            case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+            case "gameadditions" : await game_additions_channel.send(update_message.message)
+            case "casino" : await casino_channel.send(update_message.message)
+            case "privatelog" : await private_log_channel.send(update_message.message)
+            
+    # and dump updated users
+    await Mongo_Reader.dump_users(user_returns[1])
 
-            # send update messages
-            for update_message in user_returns[0] :
-                match(update_message.location) :
-                    case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
-                    case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
-                    case "gameadditions" : await game_additions_channel.send(update_message.message)
-                    case "casino" : await casino_channel.send(update_message.message)
-                    case "privatelog" : await private_log_channel.send(update_message.message)
-                    
-            # and dump updated users
-            await Mongo_Reader.dump_users(user_returns[1])
-        except FailedScrapeException as e :
-            await private_log_channel.send(e.get_message())
-            print('fetching users failed.')
-    
-    print('loop complete.')
+    print('loop complete')
     return await private_log_channel.send(f"loop complete at <t:{hm.get_unix('now')}>.")
 
 @to_thread
