@@ -621,6 +621,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 async def scrape(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /scrape",
+                             allowed_mentions=discord.AllowedMentions.none())
+
     old_db_user = await Mongo_Reader.get_mongo_users()
 
     try :
