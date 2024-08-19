@@ -630,12 +630,12 @@ async def scrape(interaction : discord.Interaction) :
 
     try :
         database_name = await CEAPIReader.get_api_games_full()
-        database_user = await CEAPIReader.get_api_users_all(database_user=old_db_user)
+        #database_user = await CEAPIReader.get_api_users_all(database_user=old_db_user)
     except FailedScrapeException as e :
         return await interaction.followup.send(f"Error FailedScrapeException: {e.get_message()}")
 
     await Mongo_Reader.dump_games(database_name)
-    await Mongo_Reader.dump_users(database_user)
+    #await Mongo_Reader.dump_users(database_user)
 
     return await interaction.followup.send("Database replaced.")
 
