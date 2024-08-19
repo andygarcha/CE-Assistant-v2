@@ -175,6 +175,29 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
     done_fetching : bool = False
     i = 1
     try :
+
+        # this will run if database user has been provided
+        if database_user is not None and False :
+            while (not done_fetching) :
+                
+                # print
+                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
+
+                # set up data
+                data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
+
+                # pull the data and json-ify it
+                api_response = requests.post("https://cedb.me/api/users/query", data=data)
+                current_response = json.loads(api_response.text)
+
+                # check if you're done fetching
+                done_fetching = len(current_response) == 0
+
+                # add this to the total response and increment i
+                total_response += current_response
+                i += 1
+
+        # this will run if database user wasn't provided
         while (not done_fetching) :
 
             # pull the data
