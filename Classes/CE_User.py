@@ -191,6 +191,10 @@ class CEUser:
                 del self._cooldowns[i]
                 break
 
+    def clear_cooldowns(self) :
+        "Removes all cooldowns."
+        self.cooldowns = []
+
     # ----------- other methods ------------
 
     # -- rolls --

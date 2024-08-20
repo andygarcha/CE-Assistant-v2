@@ -104,6 +104,12 @@ async def test(interaction : discord.Interaction) :
     await Mongo_Reader.dump_user(user)
     """
 
+    database_user = await Mongo_Reader.get_mongo_users()
+    for i, user in enumerate(database_user) :
+        database_user[i].clear_cooldowns()
+
+    await Mongo_Reader.dump_users(database_user)
+
     return await interaction.followup.send('test done')
 
 
