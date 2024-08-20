@@ -517,6 +517,7 @@ class CERoll:
                 case 4 : return hm.get_unix(4*7)
                 case _ : return hm.get_unix(2*7)
         
+        if roll_cooldowns[self.roll_name] is None : return None
         return hm.get_unix(days=roll_cooldowns[self.roll_name])
 
     def is_won(self, database_name : list, database_user : list) -> bool :
