@@ -460,13 +460,15 @@ class CEAPIUser(CEUser) :
         ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[0:NUM_OF_OBJECTIVES]
 
         # now get the objects and zip them with the completion dates
-        objective_tuples : list[tuple[CEUserObjective, int, str]] = []
+        objective_tuples : list[tuple[CEUserObjective | str, int, str]] = []
         for pair in ordered_pairs :
+            objective_object = self.get_objective(pair[1])
             objective_tuples.append(
-                (self.get_objective(pair[1]),
+                ((objective_object if objective_object is not None else pair[1]),
                 pair[0],
                 pair[2])
             )
+            
 
         return objective_tuples
     
@@ -486,6 +488,9 @@ class CEAPIUser(CEUser) :
             objective = item[0]
             completion_unix = item[1]
             game_name = item[2]
+
+            if type(objective) is str :
+                return_str += f"Error, please ping andy. obj: {objective} game: {game_name}\n"
 
             # add to the return string
             return_str += (

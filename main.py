@@ -162,6 +162,10 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
     await interaction.user.add_roles(cea_registered_role)
 
+    # send a message to log
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":arrow_up: new user registered: <@{interaction.user.id}>: https://cedb.me/user/{ce_id}")
+
     # and return.
     return await interaction.followup.send("You've been successfully registered!")
 
@@ -992,10 +996,7 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
         asked_for_friend = False
 
     # make sure they're registered
-    print(user)
-    print(user.id)
     ce_user = Discord_Helper.get_user_by_discord_id(user.id, database_user)
-    print(ce_user)
     if ce_user is None and asked_for_friend : 
         return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
                                                allowed_mentions=discord.AllowedMentions.none())
