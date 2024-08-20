@@ -279,6 +279,8 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
 def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :
     "Returns a list of `discord.Embed`s to send to #game-additions."
 
+    print('start')
+
     # import and type casting
     from Classes.CE_Game import CEGame, CEAPIGame
     old_games : list[CEGame] = old_games
@@ -328,9 +330,9 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
     CONSOLE_MARKERS = False
 
     for new_game in new_games :
+        print('game')
         # check if it's unfinished, skip if so
         if CONSOLE_MARKERS and False : print(f"current game: {new_game.game_name}")
-        if CONSOLE_MARKERS and new_game.game_name == "OlliOlli World" : print("yuh")
         if not new_game.is_finished :
             if CONSOLE_MARKERS : print("game is unfinished")
             if new_game.ce_id in old_ce_ids : old_ce_ids.remove(new_game.ce_id)
