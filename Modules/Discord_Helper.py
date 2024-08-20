@@ -309,6 +309,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
 
         if ON_LINUX_MACHINE :
             service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+            print('service created')
             driver = webdriver.Chrome(service=service, options=options)
         elif ON_WINDOWS_MACHINE :
             service = Service(ChromeDriverManager().install())
