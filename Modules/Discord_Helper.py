@@ -308,13 +308,17 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
         options.add_argument('log-level=3')
 
         if ON_LINUX_MACHINE :
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()), options=options)
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+            driver = webdriver.Chrome(service=service, options=options)
         elif ON_WINDOWS_MACHINE :
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         else :
             return "No valid machine option available."
         driver.set_window_size(width=1440, height=8000)
+
+        # uhhh
+        print('driver gotten.')
         
         # grab the first game to get color on the rest of them
         # ----- variables -----
@@ -330,7 +334,6 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
     CONSOLE_MARKERS = False
 
     for new_game in new_games :
-        print('game')
         # check if it's unfinished, skip if so
         if CONSOLE_MARKERS and False : print(f"current game: {new_game.game_name}")
         if not new_game.is_finished :

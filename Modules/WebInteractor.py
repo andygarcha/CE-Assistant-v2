@@ -474,6 +474,9 @@ async def master_loop(client : discord.Client) :
             game_returns : tuple[list[EmbedMessage], list[UpdateMessage]] = await thread_game_update(
                 old_games=database_name, new_games=new_games
             )
+            if game_returns == "No valid machine option available." :
+                await private_log_channel.send("No valid machine option available for selenium.")
+                return
             embeds = game_returns[0]
             exceptions = game_returns[1]
 
