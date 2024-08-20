@@ -193,7 +193,7 @@ class CEUser:
 
     def clear_cooldowns(self) :
         "Removes all cooldowns."
-        self.cooldowns = []
+        self._cooldowns = []
 
     # ----------- other methods ------------
 
