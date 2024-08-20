@@ -491,6 +491,7 @@ class CEAPIUser(CEUser) :
 
             if type(objective) is str :
                 return_str += f"Error, please ping andy. obj: {objective} game: {game_name}\n"
+                continue
 
             # add to the return string
             return_str += (
