@@ -305,6 +305,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
         options.add_argument('--no-sandbox')
         options.add_argument('--headless')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
         options.add_argument('log-level=3')
 
         if ON_LINUX_MACHINE :
