@@ -402,7 +402,7 @@ def cetimestamp_to_datetime(timestamp : str) -> datetime.datetime :
     "Takes in a CE timestamp and returns a datetime."
     return datetime.datetime.strptime(str(timestamp[:-5:]), "%Y-%m-%dT%H:%M:%S")
 
-def format_ce_link(ce_link : str) -> str :
+def format_ce_link(ce_link : str) -> str | None :
     "Takes in a full link and returns the CE ID."
 
     # replace all the other stuff
