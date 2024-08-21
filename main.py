@@ -233,6 +233,10 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
     cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
     await user.add_roles(cea_registered_role)
 
+    # send a message to log
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":arrow_up: new user registered: <@{user.id}>: https://cedb.me/user/{ce_id}")
+
     # and return.
     return await interaction.followup.send(f"<@{user.id}> been successfully registered. " + 
                                            "Please make sure they received the CEA Registered role!")
