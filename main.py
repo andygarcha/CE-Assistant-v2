@@ -487,8 +487,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 price_restriction=price_restriction
             )]
         case "Fourward Thinking" :
-            #if not user.has_completed_roll("Let Fate Decide") :
-            #    return await interaction.followup.send("You need to complete Let Fate Decide before rolling Fourward Thinking!")
+            if not user.has_completed_roll("Let Fate Decide") :
+                return await interaction.followup.send("You need to complete Let Fate Decide before rolling Fourward Thinking!")
 
             # grab the previous roll (if there is one)
             past_roll : CERoll | None = user.get_current_roll("Fourward Thinking")
