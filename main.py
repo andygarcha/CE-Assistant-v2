@@ -92,24 +92,6 @@ guild = discord.Object(id=guild_id)
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    """
-    HOTS = "e5b91554-215a-41b9-8974-e921044b2081"
-    MYID = "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5"
-
-    database_user = await Mongo_Reader.get_mongo_users()
-    user = hm.get_item_from_list(MYID, database_user)
-    roll = user.get_current_roll("Fourward Thinking")
-    roll._games = [HOTS]
-    user.replace_current_roll(roll)
-    await Mongo_Reader.dump_user(user)
-    """
-
-    database_user = await Mongo_Reader.get_mongo_users()
-    for i, user in enumerate(database_user) :
-        database_user[i].clear_cooldowns()
-
-    await Mongo_Reader.dump_users(database_user)
-
     return await interaction.followup.send('test done')
 
 
@@ -933,6 +915,8 @@ async def check_rolls(interaction : discord.Interaction) :
 
     await interaction.followup.send(embed=embed, view=view)
 
+
+"""
 @tree.command(name='set-color', description='Set your discord username color!', guild=guild)
 async def set_color(interaction : discord.Interaction) :
     "Sets the color."
@@ -977,7 +961,7 @@ async def set_color(interaction : discord.Interaction) :
     user_rank = user.get_rank()[:-5]
 
     Rank.E.name
-
+"""
 
 
 

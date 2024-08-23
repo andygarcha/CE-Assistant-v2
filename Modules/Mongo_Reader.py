@@ -27,7 +27,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # ----------------------------- mongo helpers --------------------------------
 mongo_ids = {
     'name' : ObjectId('66303f21918c91e3b67b33df'),
-    'user' : ObjectId('66303f66918c91e3b67b33e0')
+    'user' : ObjectId('66303f66918c91e3b67b33e0'),
+    'curator' : ObjectId('66c7ef38a1c0c555afe139ec')
 }
 
 # open secret_info.json
@@ -37,7 +38,7 @@ with open('secret_info.json') as f :
     _uri = local_json_data['mongo_uri']
 _mongo_client = AsyncIOMotorClient(_uri)
 _collection = _mongo_client['database_name']['ce-assistant-v2']
-_mongo_names = Literal['name', 'user']
+_mongo_names = Literal['name', 'user', 'curator']
 
 async def get_mongo(title :_mongo_names) :
     """Returns the MongoDB associated with `title`
@@ -272,6 +273,14 @@ async def get_mongo_games() -> list[CEGame] :
         games.append(_mongo_to_game(game))
     return games
 
+async def get_mongo_curator_count() -> int :
+    "Returns the Mongo curator count."
+    data = await get_mongo("curator")
+    return data['curator_count']
+
+async def dump_curator_count(num : int) :
+    "Dumps the curator count"
+    await dump_mongo('curator', {"curator_count" : num})
 
 
 async def dump_users(users : list[CEUser]) -> None :

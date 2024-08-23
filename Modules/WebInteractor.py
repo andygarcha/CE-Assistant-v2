@@ -5,6 +5,7 @@ import time
 import typing
 from discord.ext import tasks
 import discord
+import requests
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
@@ -535,6 +536,21 @@ async def master_loop(client : discord.Client) :
             print('fetching users failed.')
             return
     
+    # ---- curator ----
+
+    # pull the data
+    mongo_curator_count = await Mongo_Reader.get_mongo_curator_count()
+    steam_curator_count = get_curator_count()
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    # if steam didn't fail and the numbers are different
+    if steam_curator_count is not None and mongo_curator_count != steam_curator_count :
+        curator_embeds = await thread_curator(steam_curator_count - mongo_curator_count, database_name)
+        for embed in curator_embeds :
+            await game_additions_channel.send(embed=embed)
+        
+        await Mongo_Reader.dump_curator_count(steam_curator_count)
+    
     print('loop complete.')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
 
@@ -611,3 +627,92 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
     get to brooks
     sees he loses
     """
+
+
+
+#   _____   _    _   _____               _______    ____    _____       _____    ____    _    _   _   _   _______ 
+#  / ____| | |  | | |  __ \      /\     |__   __|  / __ \  |  __ \     / ____|  / __ \  | |  | | | \ | | |__   __|
+# | |      | |  | | | |__) |    /  \       | |    | |  | | | |__) |   | |      | |  | | | |  | | |  \| |    | |   
+# | |      | |  | | |  _  /    / /\ \      | |    | |  | | |  _  /    | |      | |  | | | |  | | | . ` |    | |   
+# | |____  | |__| | | | \ \   / ____ \     | |    | |__| | | | \ \    | |____  | |__| | | |__| | | |\  |    | |   
+#  \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\    \_____|  \____/   \____/  |_| \_|    |_|   
+
+def get_curator_count() -> int | None :
+    "Returns the current curator count."
+
+    # set the payload and pull from the curator
+    payload = {"cc" : "us", "l" : "english"}
+    data = requests.get("https://store.steampowered.com/curator/36185934", params=payload)
+
+    # beautiful soupify
+    soup_data = BeautifulSoup(data.text, features="html.parser")
+
+    # get all spans
+    spans = soup_data.find_all("span")
+
+    # iterate through them
+    for item in spans :
+        try : 
+            if item['id'] == "Recommendations_total" :
+                return item.string
+        except :
+            continue
+
+    # return None if this fails.
+    return None
+
+
+
+#  _______   _    _   _____    ______              _____       _____   _    _   _____               _______    ____    _____  
+# |__   __| | |  | | |  __ \  |  ____|     /\     |  __ \     / ____| | |  | | |  __ \      /\     |__   __|  / __ \  |  __ \ 
+#    | |    | |__| | | |__) | | |__       /  \    | |  | |   | |      | |  | | | |__) |    /  \       | |    | |  | | | |__) |
+#    | |    |  __  | |  _  /  |  __|     / /\ \   | |  | |   | |      | |  | | |  _  /    / /\ \      | |    | |  | | |  _  / 
+#    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |____  | |__| | | | \ \   / ____ \     | |    | |__| | | | \ \ 
+#    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\
+
+
+@to_thread
+def thread_curator(num_updates : int, database_name : list[CEGame]) -> list[discord.Embed] :
+    "Returns embed descriptions for the last `num_updates` curator posts. Max of 10."
+
+    # adjust in case of max
+    MAXIMUM_UPDATES = 10
+    if num_updates > MAXIMUM_UPDATES : num_updates = MAXIMUM_UPDATES
+
+    # set the payload and pull from the curator
+    payload = {'cc' : 'us', 'l' : 'english'}
+    data = requests.get('https://store.steampowered.com/curator/36185934', params=payload)
+
+    # beautiful soupify
+    soup_data = BeautifulSoup(data.text, features="html.parser")
+
+    # set up variables
+    descriptions, ce_ids = [], []
+
+    # get all divs
+    divs = soup_data.find_all('div')
+
+    # iterate through them
+    for item in divs :
+        try :
+            CONSOLE_MESSAGES = False
+            if item['class'][0] == 'recommendation_readmore' :
+                if CONSOLE_MESSAGES : print('-- readmore --')
+                ce_ids.append(item.contents[0]['href'][-36:])
+                if CONSOLE_MESSAGES : print(ce_ids[-1])
+            if item['class'][0] == "recommendation_desc" :
+                if CONSOLE_MESSAGES : print('-- description --')
+                descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
+                if CONSOLE_MESSAGES : print(descriptions[-1])
+        except : continue
+    
+    # and now return the embeds
+    embeds : list[discord.Embed] = []
+    for i in range(num_updates) :
+        embed = Discord_Helper.get_game_embed(game_id=ce_ids[i], database_name=database_name)
+        #TODO: change header image to hex
+        embed.title = f"New curator update: {embed.title}"
+        embed.add_field(name="Curator Description", value=descriptions[i])
+        embeds.append(embed)
+    
+    return embeds
