@@ -654,7 +654,7 @@ def get_curator_count() -> int | None :
     for item in spans :
         try : 
             if item['id'] == "Recommendations_total" :
-                return item.string
+                return int(item.string)
         except :
             continue
 
