@@ -539,17 +539,21 @@ async def master_loop(client : discord.Client) :
     # ---- curator ----
 
     # pull the data
+    print("checking curator")
     mongo_curator_count = await Mongo_Reader.get_mongo_curator_count()
     steam_curator_count = get_curator_count()
     database_name = await Mongo_Reader.get_mongo_games()
 
     # if steam didn't fail and the numbers are different
     if steam_curator_count is not None and mongo_curator_count != steam_curator_count :
+        print(f"curating {steam_curator_count - mongo_curator_count} update(s)")
         curator_embeds = await thread_curator(steam_curator_count - mongo_curator_count, database_name)
         for embed in curator_embeds :
             await game_additions_channel.send(embed=embed)
         
         await Mongo_Reader.dump_curator_count(steam_curator_count)
+    
+    else : print('no new curator updates.')
     
     print('loop complete.')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
