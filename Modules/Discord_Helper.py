@@ -512,7 +512,14 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     
                 # if the name was changed
                 if old_objective.name != new_objective.name :
-                    embed.description += (f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'")
+
+                    # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
+                    if (old_objective.is_uncleared() and not new_objective.is_uncleared() and
+                        old_objective.uncleared_name() != new_objective.name) :
+                            embed.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
+                    else :
+                        embed.description += (f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'")
+        # -- end objective changes --
         
         for old_objective_ce_id in old_objective_ce_ids :
             if CONSOLE_MARKERS : print("objective removed")

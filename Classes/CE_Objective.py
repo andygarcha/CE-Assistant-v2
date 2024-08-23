@@ -71,6 +71,12 @@ class CEObjective:
         """Returns the name of this objective."""
         return self._name
     
+    def uncleared_name(self) -> str :
+        "Returns the name of this objective without the 'UNCLEARED' nonsense."
+        if not self.is_uncleared() : return self.name
+        if self.name[-11:len(self.name)] == "(UNCLEARED)" : return self.name[0:-12]
+        if self.name[-10:len(self.name)] == "(UNVALUED)" : return self.name[0:-11]
+    
     @property
     def requirements(self) -> str | None:
         """Returns the requirements associated with this objective 
