@@ -328,7 +328,14 @@ class CEUser:
             full_data=data
         )
         
-        
+    def completions(self, database_name : list[CEGame]) -> int :
+        "Returns the number of completions this user has."
+        completions = 0
+        for owned_game in self.owned_games :
+            if owned_game.is_completed(database_name=database_name) :
+                completions += 1
+        return completions
+
     
 
     def to_dict(self) -> dict :

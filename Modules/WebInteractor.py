@@ -202,6 +202,15 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
                      f"to Rank {hm.get_emoji(new_rank)}!")
         ))
 
+    # check completion count
+    COMPLETION_INCREMENT = 25
+    if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
+        updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Amazing! <@{user.discord_id}> has passed the milestone of " +
+                     f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+        ))
+
     # check cooldowns
     for i, cooldown in enumerate(user.cooldowns) :
         if cooldown.end_time <= hm.get_unix('now') :
