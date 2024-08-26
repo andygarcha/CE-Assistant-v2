@@ -473,7 +473,7 @@ times = [
 @tasks.loop(time=times)
 async def master_loop(client : discord.Client) :
     """The main looping function that runs every half hour."""
-    print('loop began...')
+    print('---- loop began... ----')
     # get channels
     casino_log_channel = client.get_channel(hm.CASINO_LOG_ID)
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -562,7 +562,7 @@ async def master_loop(client : discord.Client) :
     
     else : print('no new curator updates.')
     
-    print('loop complete.')
+    print('---- loop complete. ----')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
 
 
