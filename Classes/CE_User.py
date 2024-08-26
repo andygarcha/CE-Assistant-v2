@@ -159,6 +159,10 @@ class CEUser:
     def add_cooldown(self, cooldown : CECooldown) -> None :
         """Adds `cooldown` to this user's Cooldowns section."""
         self._cooldowns.append(cooldown)
+    
+    #def add_cooldown_from_roll(self, roll : CERoll) :
+    #    "Adds a cooldown based on an old roll."
+    #    if roll.calculate_cooldown_date()
 
     def add_pending(self, pending : CECooldown) -> None :
         """Adds `pending` to this user's Pending section."""

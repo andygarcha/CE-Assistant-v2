@@ -239,22 +239,22 @@ def months_to_days(num_months : int) -> int:
 
     return date_delta.days
 
-def get_unix(days = 0, minutes = -1, months = -1, old_unix = -1) -> int:
+def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:
     """Returns a unix timestamp for `days` days (or `minutes` minutes, or `months` months) from the current time.
     \nAdditionally, `old_unix` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that unix."""
     # -- old unix passed --
-    if(old_unix != -1) :
-        if (minutes != -1) : return int(minutes * 60) + old_unix
-        elif (months != -1) : return (months_to_days(months))*(86400) + old_unix
+    if(old_unix != None) :
+        if (minutes != None) : return int(minutes * 60) + old_unix
+        elif (months != None) : return (months_to_days(months))*(86400) + old_unix
         else : return days * 86400 + old_unix
 
     # -- old unix NOT passed --
     # return right now
     if(days == "now") : return int(time.mktime((datetime.datetime.now()).timetuple()))
     # return the minutes
-    elif (minutes != -1) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
+    elif (minutes != None) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
     # return the months
-    elif (months != -1) : return get_unix(days=months_to_days(months))
+    elif (months != None) : return get_unix(days=months_to_days(months))
     # return the days
     else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days=days)).timetuple()))
 

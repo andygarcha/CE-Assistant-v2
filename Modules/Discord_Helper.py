@@ -39,11 +39,11 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
     embeds : list[discord.Embed] = []
 
     # -- set up the intro embed --
-    embeds[0] = discord.Embed(
+    embeds.append(discord.Embed(
         title=roll.roll_name,
         timestamp=datetime.datetime.now(),
         color = 0x000000
-    )
+    ))
     embeds[0].set_footer(
         text = f'Page 1 of {str(len(roll.games) + 1)}',
         icon_url = hm.FINAL_CE_ICON
@@ -52,7 +52,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
     # -- set up description --
     description = "__Rolled Games__\n"
-    for i, id in roll.games :
+    for i, id in enumerate(roll.games) :
         game : CEGame = hm.get_item_from_list(id, database_name)
         description += f"{i + 1}. {game.game_name}\n"
     
@@ -60,7 +60,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
     description += "__Roll Info__\n"
     if roll.ends() :
         description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
-        description += f"If you fail, you will have a cooldown until {roll.calculate_cooldown_date(database_name=database_name)}.\n"
+        description += f"If you fail, you will have a cooldown until <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
     else :
         description += f"{roll.roll_name} has no time limit. You can reroll on {roll.calculate_cooldown_date(database_name=database_name)}.\n"
 
@@ -390,12 +390,15 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
             embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
             if SELENIUM_ENABLE : 
-                image = WebInteractor.get_image(driver=driver, new_game=new_game)
-                if isinstance(image, tuple) :
-                    file = image[0]
-                    exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
-                else :
-                    file = image
+                try :
+                    image = WebInteractor.get_image(driver=driver, new_game=new_game)
+                    if isinstance(image, tuple) :
+                        file = image[0]
+                        exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+                    else :
+                        file = image
+                except :
+                    file = "Assets/image_failed_v2.png"
 
             #TODO: fix this?
 
@@ -533,12 +536,15 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
         if description_test == "" : continue
 
         print('adding')
-        image = WebInteractor.get_image(driver=driver, new_game=new_game)
-        if isinstance(image, tuple):
-            file = image[0]
-            exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
-        else :
-            file = image
+        try :
+            image = WebInteractor.get_image(driver=driver, new_game=new_game)
+            if isinstance(image, tuple):
+                file = image[0]
+                exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+            else :
+                file = image
+        except :
+            file = "Assets/image_failed_v2.png"
 
         messages.append(EmbedMessage(
             embed=embed, file=discord.File(file, filename="image.png")

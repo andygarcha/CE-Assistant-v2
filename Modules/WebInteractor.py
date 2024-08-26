@@ -6,6 +6,7 @@ import typing
 from discord.ext import tasks
 import discord
 import requests
+from Classes.CE_Cooldown import CECooldown
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
@@ -291,6 +292,12 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
                 partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
                 partner.remove_current_roll(roll.roll_name)
                 partners.append(partner)
+
+
+            # and add a cooldown
+            #user.add_cooldown(CECooldown(
+            #    roll_name=
+            #))
     
     return (updates, user, partners)
 
@@ -333,7 +340,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
         # give it five seconds to load the elements.
         while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
             # run this to just fully load the page...
-            html_page = driver.execute_script("return document.documentElement.innerHTML;")
+            #html_page = driver.execute_script("return document.documentElement.innerHTML;")
             # ...and now get the list.
             objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
             timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT

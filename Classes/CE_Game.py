@@ -226,6 +226,7 @@ class CEGame:
     def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
         json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard').text)
+        #json_response = json_response['entries']
         completions, started, owners = (0,)*3
 
         total_points = self.get_total_points()

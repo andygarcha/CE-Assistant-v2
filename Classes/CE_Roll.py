@@ -507,18 +507,19 @@ class CERoll:
         if self.roll_name == "Fourward Thinking" :
             rerolls_used = len(self.games) - (self.rerolls + 1)
             days = len(self.games)*14 + hm.months_to_days(rerolls_used)
-            return hm.get_unix(days)
+            return hm.get_unix(days=days, old_unix=self.init_time)
+        
         elif self.roll_name == "Soul Mates" :
             game = hm.get_item_from_list(self.games[0], database_name)
             match(game.get_tier_num()) :
-                case 1 : return hm.get_unix(10*7)
-                case 2 : return hm.get_unix(8*7)
-                case 3 : return hm.get_unix(6*7)
-                case 4 : return hm.get_unix(4*7)
-                case _ : return hm.get_unix(2*7)
+                case 1 : return hm.get_unix(10*7, old_unix=self.init_time)
+                case 2 : return hm.get_unix(8*7, old_unix=self.init_time)
+                case 3 : return hm.get_unix(6*7, old_unix=self.init_time)
+                case 4 : return hm.get_unix(4*7, old_unix=self.init_time)
+                case _ : return hm.get_unix(2*7, old_unix=self.init_time)
         
         if roll_cooldowns[self.roll_name] is None : return None
-        return hm.get_unix(days=roll_cooldowns[self.roll_name])
+        return hm.get_unix(days=roll_cooldowns[self.roll_name], old_unix=self.init_time)
 
     def is_won(self, database_name : list, database_user : list) -> bool :
         """Returns true if this roll instance has been won."""
