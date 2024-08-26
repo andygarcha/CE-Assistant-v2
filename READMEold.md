@@ -126,6 +126,13 @@ kill:
 deactivate
 ```
 
+### starting
+```
+cd CE-Assistant-v2/
+git pull
+python3 main.py
+```
+
 
 ### pip dependencies
 ```
