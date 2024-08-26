@@ -101,6 +101,11 @@ attach:
 ```
 tmux attach -t my_session
 ```
+create and attach:
+```
+tmux new-session -d -s my_session
+tmux attach -t my_session
+```
 detach:
 ```
 tmux detach
@@ -119,6 +124,13 @@ source .venv/bin/activate
 kill:
 ```
 deactivate
+```
+
+### starting
+```
+cd CE-Assistant-v2/
+git pull
+python3 main.py
 ```
 
 
