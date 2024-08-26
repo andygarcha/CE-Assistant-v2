@@ -101,6 +101,11 @@ attach:
 ```
 tmux attach -t my_session
 ```
+create and attach:
+```
+tmux new-session -d -s my_session
+tmux attach -t my_session
+```
 detach:
 ```
 tmux detach
