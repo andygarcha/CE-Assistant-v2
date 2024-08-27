@@ -523,7 +523,7 @@ async def master_loop(client : discord.Client) :
             
             # send exceptions
             for exc in exceptions :
-                await private_log_channel.send(exc.message)
+                await private_log_channel.send(f"{exc.message} \n<@413427677522034727>")
 
             # dump the games
             await Mongo_Reader.dump_games(new_games)
