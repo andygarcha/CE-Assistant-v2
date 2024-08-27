@@ -488,7 +488,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     embed.description += (f"\n- '**{new_objective.name}**' increased from {old_objective.point_value} {hm.get_emoji('Points')} " + 
                                         f"to {new_objective.point_value} {hm.get_emoji('Points')}")
                 else :
-                    embed.description += (f"\n- '**{new_objective.name}**' updated")
+                    embed.description += (f"\n- {new_objective.get_type_short()}'**{new_objective.name}**' updated")
                 
                 # if the type has changed
                 if old_objective.type != new_objective.type :
@@ -526,7 +526,8 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
         
         for old_objective_ce_id in old_objective_ce_ids :
             if CONSOLE_MARKERS : print("objective removed")
-            embed.description += (f"\n- Objective {old_objective_ce_id} removed.")
+            old_objective = old_game.get_objective(old_objective_ce_id)
+            embed.description += (f"\n- {old_objective.get_type_short()} {old_objective.name} removed.")
 
         # all objectives have been reflected
         description_test = embed.description
