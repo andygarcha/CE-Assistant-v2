@@ -571,7 +571,9 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
 
     # if we're looking for images, close the driver
     try :
-        if SELENIUM_ENABLE : driver.close()
+        if SELENIUM_ENABLE : 
+            driver.close()
+            driver.quit()
     except Exception as e:
         exceptions.append(UpdateMessage("privatelog", f":red_square: {e}"))
         print(e)
