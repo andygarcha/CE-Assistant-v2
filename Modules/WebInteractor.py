@@ -322,13 +322,17 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     OBJECTIVE_LIMIT = 7
     "The maximum amount of objectives to be screenshot before cropping." 
 
+    CONSOLE_MESSAGES = True
+
     # initiate selenium
+    if CONSOLE_MESSAGES: print('trying')
     try :
         url = f"https://cedb.me/game/{new_game.ce_id}/"
         driver.get(url)
     except Exception as e :
         print(e)
         return "Assets/image_failed_v2.png"
+    if CONSOLE_MESSAGES: print('try complete.')
     
     # set up variables
     start_time = hm.get_unix('now')
@@ -338,21 +342,29 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
 
     try:
         # give it five seconds to load the elements.
+        if CONSOLE_MESSAGES: print('before while')
         while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
             # run this to just fully load the page...
             #html_page = driver.execute_script("return document.documentElement.innerHTML;")
             # ...and now get the list.
+            print('whiling..')
             objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+            print('objective whiling...')
             timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT
+        
+        if CONSOLE_MESSAGES: print('while left.')
         
         # if it took longer than 5 seconds, just return the image failed image.
         if timeout : return ("Assets/image_failed_v2.png", "image timeout")
 
         # i'm gonna let it sleep here just so that we are SURE the rest of the page loads in.
+        if CONSOLE_MESSAGES: print('sleeping...')
         SLEEP_LIMIT = 3
         time.sleep(SLEEP_LIMIT)
+        if CONSOLE_MESSAGES: print('sleep over.')
 
 
+        if CONSOLE_MESSAGES: print('finding elements...')
         primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
         objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
         title = driver.find_element(By.TAG_NAME, "h1")
@@ -362,8 +374,6 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
 
         bottom_right = objective_list[len(objective_list)-2].location
         size = objective_list[len(objective_list)-2].size
-
-        objective_list[0]
 
         header_elements = [
             'bp4-navbar',
@@ -382,13 +392,19 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
             bottom_right_x = (title_location + title_size + BORDER_WIDTH)*DISPLAY_FACTOR
         else:
             bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
+        
+        if CONSOLE_MESSAGES: print('elements found')
 
+        if CONSOLE_MESSAGES: print('screenshotting 1...')
         ob = Screenshot(bottom_right_y)
+        if CONSOLE_MESSAGES: print('screenshotting 2...')
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
+        if CONSOLE_MESSAGES: print('screenshot gotten.')
     except Exception as e :
         return ("Assets/image_failed_v2.png", f"{e}")
     
+    if CONSOLE_MESSAGES: print('passed try-except.')
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
@@ -396,12 +412,16 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     if SAVE_FULL_IMAGE_LOCALLY :
         im_image.save('ss.png')
 
+    if CONSOLE_MESSAGES: print('cropping...')
     im_image = im_image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
+    if CONSOLE_MESSAGES: print('cropped.')
 
+    if CONSOLE_MESSAGES: print('bytesio ing...')
     imgByteArr = io.BytesIO()
     im_image.save(imgByteArr, format='PNG')
     final_im = imgByteArr.getvalue()
     ss = io.BytesIO(final_im)
+    if CONSOLE_MESSAGES: print('bytesio gotten.')
 
     SAVE_CROPPED_IMAGE_LOCALLY = False
 
