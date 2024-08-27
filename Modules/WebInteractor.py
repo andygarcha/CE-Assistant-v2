@@ -338,7 +338,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     start_time = hm.get_unix('now')
     timeout = hm.get_unix('now') - start_time > 5
     objective_list = []
-    TIMEOUT_LIMIT = 10
+    TIMEOUT_LIMIT = 8
 
     try:
         # give it five seconds to load the elements.
