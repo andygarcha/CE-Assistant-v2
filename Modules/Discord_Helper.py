@@ -292,12 +292,12 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
     exceptions : list[UpdateMessage] = []
 
     # variables
-    SELENIUM_ENABLE = True
+    SELENIUM_ENABLE = False
     ON_LINUX_MACHINE = True
     ON_WINDOWS_MACHINE = False
 
-    if ON_LINUX_MACHINE :
-        import chromedriver_binary
+    #if ON_LINUX_MACHINE :
+    #    import chromedriver_binary
 
     # set selenium driver and preferences
     if SELENIUM_ENABLE :
@@ -399,6 +399,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                         file = image
                 except :
                     file = "Assets/image_failed_v2.png"
+            else : file = new_game.get_steam_data().header_image
 
             #TODO: fix this?
 
@@ -537,15 +538,17 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
         if description_test == "" : continue
 
         print('adding')
-        try :
-            image = WebInteractor.get_image(driver=driver, new_game=new_game)
-            if isinstance(image, tuple):
-                file = image[0]
-                exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
-            else :
-                file = image
-        except :
-            file = "Assets/image_failed_v2.png"
+        if SELENIUM_ENABLE :
+            try :
+                image = WebInteractor.get_image(driver=driver, new_game=new_game)
+                if isinstance(image, tuple):
+                    file = image[0]
+                    exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+                else :
+                    file = image
+            except :
+                file = "Assets/image_failed_v2.png"
+        else : file = new_game.get_steam_data().header_image
 
         messages.append(EmbedMessage(
             embed=embed, file=discord.File(file, filename="image.png")
