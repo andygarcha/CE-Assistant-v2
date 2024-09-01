@@ -152,6 +152,7 @@ class CERoll:
         # set the rerolls to the correct amount
         if rerolls == None :
             self._rerolls = None
+            if self.roll_name == "Fourward Thinking" : self._rerolls = 0
         else :
             self._rerolls = rerolls
 
@@ -505,6 +506,7 @@ class CERoll:
             database_name : list[CEGame] = database_name
 
         if self.roll_name == "Fourward Thinking" :
+            if self.rerolls is None : self._rerolls = 0
             rerolls_used = len(self.games) - (self.rerolls + 1)
             days = len(self.games)*14 + hm.months_to_days(rerolls_used)
             return hm.get_unix(days=days, old_unix=self.init_time)
