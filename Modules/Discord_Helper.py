@@ -401,7 +401,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     file = "Assets/image_failed_v2.png"
                 messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
             else : 
-                embed.set_image(new_game.get_steam_data().header_image)
+                embed.set_image(url=new_game.get_steam_data().header_image)
                 messages.append(EmbedMessage(embed=embed, file=None))
 
             #TODO: fix this?
@@ -556,7 +556,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                 embed=embed, file=discord.File(file, filename="image.png")
             ))
         else : 
-            embed.set_image(new_game.get_steam_data().header_image)
+            embed.set_image(url=new_game.get_steam_data().header_image)
             messages.append(EmbedMessage(
                 embed=embed, file=None
             ))
