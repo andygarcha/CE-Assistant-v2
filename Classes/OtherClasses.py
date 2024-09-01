@@ -266,7 +266,7 @@ class EmbedMessage() :
         return self.__embed
     
     @property
-    def file(self) -> discord.File :
+    def file(self) -> discord.File | None :
         "The file."
         return self.__file
 

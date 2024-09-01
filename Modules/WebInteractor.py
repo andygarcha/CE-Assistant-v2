@@ -519,7 +519,10 @@ async def master_loop(client : discord.Client) :
 
             # send embeds
             for embed in embeds :
-                await game_additions_channel.send(embed=embed.embed, file=embed.file)
+                if embed.file is not None :
+                    await game_additions_channel.send(embed=embed.embed, file=embed.file)
+                else :
+                    await game_additions_channel.send(embed=embed.embed)
             
             # send exceptions
             for exc in exceptions :

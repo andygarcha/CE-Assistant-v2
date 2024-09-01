@@ -399,11 +399,14 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                         file = image
                 except :
                     file = "Assets/image_failed_v2.png"
-            else : file = new_game.get_steam_data().header_image
+                messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
+            else : 
+                embed.set_image(new_game.get_steam_data().header_image)
+                messages.append(EmbedMessage(embed=embed, file=None))
 
             #TODO: fix this?
 
-            messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
+            
             continue
 
         # --- the game is updated ---
@@ -548,11 +551,17 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     file = image
             except :
                 file = "Assets/image_failed_v2.png"
-        else : file = new_game.get_steam_data().header_image
+            
+            messages.append(EmbedMessage(
+                embed=embed, file=discord.File(file, filename="image.png")
+            ))
+        else : 
+            embed.set_image(new_game.get_steam_data().header_image)
+            messages.append(EmbedMessage(
+                embed=embed, file=None
+            ))
 
-        messages.append(EmbedMessage(
-            embed=embed, file=discord.File(file, filename="image.png")
-        ))
+
     
     # --- all additions and updates have finished. check for removed games ---
     for game in old_ce_ids :
