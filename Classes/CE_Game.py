@@ -220,7 +220,8 @@ class CEGame:
             response = requests.get("https://store.steampowered.com/api/appdetails?", 
                                     params = payload)
             return SteamData(json.loads(response.text))
-        except :
+        except Exception as e :
+            print(e)
             return None
         
     def get_completion_data(self) -> CECompletion :
