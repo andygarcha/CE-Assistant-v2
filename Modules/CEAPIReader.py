@@ -57,7 +57,7 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
         achievement_ids : list[str] | None = []
         for requirement in objective['objectiveRequirements'] :
             if requirement['type'] == "achievement" : 
-                achievement_ids.append(requirement['id'])
+                achievement_ids.append(requirement['data'])
             elif requirement['type'] == "custom" : 
                 requirements : str | None = requirement['data']
         
