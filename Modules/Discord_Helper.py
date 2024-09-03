@@ -102,10 +102,12 @@ def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     )
     embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
 
-    # -- get steam data and set image and description --
+    # -- set the image to the ce header --
+    embed.set_image(url=game.get_ce_api_game().header)
+
+    # -- get steam data and set and description --
     if game.platform == "steam" :
         steam_data = game.get_steam_data()
-        embed.set_image(url=steam_data.header_image)
     embed.description = (
         f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
@@ -401,8 +403,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     file = "Assets/image_failed_v2.png"
                 messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
             else : 
-                if new_game.platform == "steam" :
-                    embed.set_image(url=new_game.get_steam_data().header_image)
+                embed.set_image(url=new_game.get_ce_api_game().header)
                 messages.append(EmbedMessage(embed=embed, file=None))
 
             #TODO: fix this?
@@ -557,8 +558,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                 embed=embed, file=discord.File(file, filename="image.png")
             ))
         else : 
-            if new_game.platform == "steam" :
-                embed.set_image(url=new_game.get_steam_data().header_image)
+            embed.set_image(url=new_game.get_ce_api_game().header)
             messages.append(EmbedMessage(
                 embed=embed, file=None
             ))

@@ -139,6 +139,19 @@ class CEGame:
         "Returns the raw CE data."
         return json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}').text)
     
+    def get_ce_api_game(self) -> 'CEAPIGame' :
+        "Returns the CEAPIGame."
+        return CEAPIGame(
+            ce_id=self.ce_id,
+            game_name=self.game_name,
+            platform=self.platform,
+            platform_id=self.platform_id,
+            category=self.category,
+            objectives=self.all_objectives,
+            last_updated=self.last_updated,
+            full_data=self.get_raw_ce_data()
+        )
+    
     # ----------- setters -----------
 
     def add_objective(self, objective : CEObjective) :
@@ -346,16 +359,21 @@ class CEAPIGame(CEGame) :
         return self.__full_data
     
     @property
-    def icon(self) :
+    def icon(self) -> str :
         "The icon for this game."
         return self.full_data['icon']
     
     @property
-    def is_finished(self) :
+    def is_finished(self) -> bool :
         "The game is not `unfinished`."
         return self.full_data['isFinished']
     
     @property
-    def information(self) :
+    def information(self) -> str :
         "The information for this game."
         return self.full_data['information']
+    
+    @property
+    def header(self) -> str :
+        "The header for this game."
+        return self.full_data['header']
