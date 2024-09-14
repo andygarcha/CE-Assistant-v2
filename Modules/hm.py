@@ -334,7 +334,8 @@ def get_rollable_game(
             "This game has an uncleared objective."
             continue
 
-        if game.get_price() > price_limit and price_restriction and not user.owns_game(game.ce_id) :
+        price = game.get_price()
+        if price is not None and price > price_limit and price_restriction and not user.owns_game(game.ce_id) :
             "The price is too high (and the price is restricted) and the user doesn't own the game."
             continue
 
