@@ -33,9 +33,9 @@ roll_due_times = {
     'One Hell of a Month' : hm.months_to_days(1),
     'Two Week T2 Streak' : 7,
     'Two "Two Week T2 Streak" Streak' : 7,
-    'Never Lucky' : hm.months_to_days(3), #NOTE: needs to be fixed
+    'Never Lucky' : None, #NOTE: needs to be fixed
     'Triple Threat' : hm.months_to_days(1),
-    'Let Fate Decide' : hm.months_to_days(6), #NOTE: needs to be fixed
+    'Let Fate Decide' : None, #NOTE: needs to be fixed
     'Fourward Thinking' : 7, #NOTE: this is dynamically updated later
 
     'Destiny Alignment' : None,
@@ -137,8 +137,10 @@ class CERoll:
             self._init_time = init_time
 
         # set the due time to the correct time
-        if due_time == None :
+        if due_time == None and roll_due_times[self._roll_name] is not None:
             self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
+        elif due_time == None and roll_due_times[self._roll_name] is None :
+            self._due_time = None
         else :
             self._due_time = due_time
 
