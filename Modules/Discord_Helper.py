@@ -62,7 +62,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
         description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
         description += f"If you fail, you will have a cooldown until <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
     else :
-        description += f"{roll.roll_name} has no time limit. You can reroll on {roll.calculate_cooldown_date(database_name=database_name)}.\n"
+        description += f"{roll.roll_name} has no time limit. You can reroll on <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
 
     # -- set the description --
     embeds[0].description = description
