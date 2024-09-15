@@ -33,9 +33,9 @@ roll_due_times = {
     'One Hell of a Month' : hm.months_to_days(1),
     'Two Week T2 Streak' : 7,
     'Two "Two Week T2 Streak" Streak' : 7,
-    'Never Lucky' : None,
+    'Never Lucky' : hm.months_to_days(3), #NOTE: needs to be fixed
     'Triple Threat' : hm.months_to_days(1),
-    'Let Fate Decide' : None,
+    'Let Fate Decide' : hm.months_to_days(6), #NOTE: needs to be fixed
     'Fourward Thinking' : 7, #NOTE: this is dynamically updated later
 
     'Destiny Alignment' : None,
