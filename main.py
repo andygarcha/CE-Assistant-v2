@@ -460,14 +460,86 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     price_restriction=price_restriction
                 ))
         case "Let Fate Decide" :
-            rolled_games = [hm.get_rollable_game(
-                database_name=database_name,
-                completion_limit=None,
-                price_limit=20,
-                tier_number=4,
-                user=user,
-                price_restriction=price_restriction
-            )]
+            
+            class LetFateDecideDropdown(discord.ui.Select) :
+                def __init__(self) :
+                    # store the user
+                    self.__user = user
+
+                    # initialize and set options
+                    options : list[discord.SelectOption] = []
+                    for category in get_args(hm.CATEGORIES) :
+                        options.append(discord.SelectOption(label=category, emoji=hm.get_emoji(category)))
+
+                    # init the superclass
+                    super().__init__(placeholder="Select a category.", min_values=1, max_values=1, options=options)
+
+                async def callback(self, interaction : discord.Interaction) :
+                    "The callback."
+
+                    # stop other users from clicking the dropdown
+                    if interaction.user.id != self.__user.discord_id : 
+                        return await interaction.response.send_message(
+                            "Stop that! This isn't your roll.", ephemeral=True
+                        )
+
+                    # defer the message
+                    await interaction.response.defer()
+
+                    # pull database user
+                    database_user = await Mongo_Reader.get_mongo_users()
+                    user = hm.get_item_from_list(self.__user.ce_id, database_user)
+
+                    # define our category
+                    category = self.values[0]
+
+                    # roll a game with these parameters
+                    rolled_game_id = hm.get_rollable_game(
+                        database_name=database_name,
+                        completion_limit=None,
+                        price_limit=20,
+                        tier_number=4,
+                        user=user,
+                        price_restriction=price_restriction,
+                        category=category
+                    )
+
+                    roll : CERoll = CERoll(
+                        roll_name="Let Fate Decide",
+                        user_ce_id=user.ce_id,
+                        games=[rolled_game_id],
+                        is_current=True
+                    )
+
+                    user.remove_pending("Let Fate Decide")
+                    user.add_current_roll(roll)
+                    await Mongo_Reader.dump_user(user)
+
+                    database_user = await Mongo_Reader.get_mongo_users()
+
+                    view.clear_items()
+                    embeds = Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
+                    await Discord_Helper.get_buttons(view, embeds)
+                    
+                    return await interaction.followup.edit_message(
+                        message_id=interaction.message.id,
+                        #content=f"Your rolled game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
+                        embed=embeds[0],
+                        view=view
+                    )
+            
+            # add the pending
+            user.add_pending(CECooldown(roll_name="Let Fate Decide", end_time=hm.get_unix(minutes=10)))
+            await Mongo_Reader.dump_user(user)
+
+            view.add_item(LetFateDecideDropdown())
+            view.timeout = 600
+
+            return await interaction.followup.send(
+                "Choose your category.", view=view
+            )
+
+
         case "Fourward Thinking" :
             if not user.has_completed_roll("Let Fate Decide") :
                 return await interaction.followup.send("You need to complete Let Fate Decide before rolling Fourward Thinking!")
