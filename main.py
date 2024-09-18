@@ -520,7 +520,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     view.clear_items()
                     embeds = Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
                     await Discord_Helper.get_buttons(view, embeds)
-                    
+
                     return await interaction.followup.edit_message(
                         message_id=interaction.message.id,
                         #content=f"Your rolled game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
@@ -719,6 +719,26 @@ async def scrape(interaction : discord.Interaction) :
     await Mongo_Reader.dump_users(database_user)
 
     return await interaction.followup.send("Database replaced.")
+
+
+
+#   _____               _____   _____   _   _    ____       _____    _____    ____    _____    ______ 
+#  / ____|     /\      / ____| |_   _| | \ | |  / __ \     / ____|  / ____|  / __ \  |  __ \  |  ____|
+# | |         /  \    | (___     | |   |  \| | | |  | |   | (___   | |      | |  | | | |__) | | |__   
+# | |        / /\ \    \___ \    | |   | . ` | | |  | |    \___ \  | |      | |  | | |  _  /  |  __|  
+# | |____   / ____ \   ____) |  _| |_  | |\  | | |__| |    ____) | | |____  | |__| | | | \ \  | |____ 
+#  \_____| /_/    \_\ |_____/  |_____| |_| \_|  \____/    |_____/   \_____|  \____/  |_|  \_\ |______|
+
+update_casino_score_options = Literal["INCREASE", "DECREASE", "SET"]
+@tree.command(name="manual-update-casino-score", description="Update any user's casino score.", guild=guild)
+@app_commands.describe(member="The user you'd like to update the casino score for.")
+@app_commands.describe(value="The increase, decrease, or new value for the user's casino score.")
+@app_commands.describe(type="Whether you'd like to increase, decrease, or set the user's casino score to value.")
+async def manual_update_casino_score(interaction : discord.Interaction, member : discord.Member, value : int, type : update_casino_score_options) :
+    await interaction.response.defer(ephemeral=True)
+
+    await interaction.followup.send("Not Implemented.")
+
 
 
 
