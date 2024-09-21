@@ -274,11 +274,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     # user has cooldown
     if user.has_cooldown(event_name) :
         return await interaction.followup.send(
-            f"You are currently on cooldown for {event_name} until {user.get_cooldown_time(event_name)}. "
+            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name)}>. "
         )
     
     # user currently rolled
-    if (event_name in ["Never Lucky", "Let Fate Decide"]) and (user.has_current_roll(event_name)) :
+    if (event_name in ["Never Lucky", "Let Fate Decide"]) and (user.has_current_roll(event_name)) and not (
+        user.get_current_roll(event_name).calculate_cooldown_date(database_name) > hm.get_unix(days="now")
+    ) :
         class RerollView(discord.ui.View) :
             def __init__(self) :
                 self.__user_ce_id = user.ce_id
@@ -474,6 +476,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 user=user,
                 price_restriction=price_restriction
             )]
+            user.add_cooldown(CECooldown("Never Lucky", hm.get_unix(months=1)))
         case "Triple Threat" :
             if not user.has_completed_roll("Never Lucky") :
                 return await interaction.followup.send(f"You need to complete Never Lucky before rolling Triple Threat!")
@@ -542,6 +545,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
                     user.remove_pending("Let Fate Decide")
                     user.add_current_roll(roll)
+                    user.add_cooldown(CECooldown("Let Fate Decide", hm.get_unix(months=3)))
                     await Mongo_Reader.dump_user(user)
 
                     database_user = await Mongo_Reader.get_mongo_users()
