@@ -276,7 +276,36 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
         return await interaction.followup.send(
             f"You are currently on cooldown for {event_name} until {user.get_cooldown_time(event_name)}. "
         )
+    
     # user currently rolled
+    if (event_name in ["Never Lucky", "Let Fate Decide"]) and (user.has_current_roll(event_name)) :
+        class RerollView(discord.ui.View) :
+            def __init__(self) :
+                self.__user_ce_id = user.ce_id
+                self.__event_name = event_name
+                super().__init__(timeout=None)
+            
+            @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+            async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+                # pull database user and get user
+                database_user = await Mongo_Reader.get_mongo_users()
+                user = hm.get_item_from_list(self.__user_ce_id, database_user)
+
+                user.remove_current_roll(self.__event_name) # remove the current roll
+
+                await Mongo_Reader.dump_user(user)
+
+                self.clear_items()
+                await interaction.response.edit_message(content=f"You can now reroll {self.__event_name}.", view=self)
+
+            @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+            async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+                self.clear_items()
+                await interaction.response.edit_message(content="Reroll cancelled. Your old roll is still intact.", view=self)
+
+        view = RerollView()
+        return await interaction.followup.send(f"Would you like to reset your {event_name} roll?", view=view)       
+    
     if user.has_current_roll(event_name) and event_name not in ["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak"
                                                                 , "Fourward Thinking"] :
         return await interaction.followup.send(
