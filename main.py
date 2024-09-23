@@ -459,7 +459,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     past_roll.reset_due_time()
                     new_game_object = hm.get_item_from_list(new_game_id, database_name)
                     user.replace_current_roll(past_roll)
-                    database_user[user_index] = user
+                    await Mongo_Reader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
                         f"It is due on <t:{past_roll.due_time}>. " +
