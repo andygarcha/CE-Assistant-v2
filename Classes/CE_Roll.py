@@ -238,7 +238,7 @@ class CERoll:
             self._due_time = hm.get_unix(days=7*len(self.games))
         # if two week t2 streak, assume the new game has been added already.
         elif self.roll_name == "Two Week T2 Streak" or self.roll_name == "Two \"Two Week T2 Streak\" Streak" :
-            self._due_time = hm.get_unix(days=7*len(self.games))
+            self._due_time = hm.get_unix(days=7)
         # if its not, give it the default
         else :
             self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
