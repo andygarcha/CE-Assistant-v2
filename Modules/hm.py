@@ -59,7 +59,11 @@ __icons = {
 
     # reactions
     "Shake" : '<:shake:894912425869074462>',
-    "Safety" : '<:safety:802615322858487838>'
+    "Safety" : '<:safety:802615322858487838>',
+
+    # logos
+    "steam" : '<:steam:1282856420827463730>',
+    "retroachievements": "<:retroachievementslogo:1282856386228916285>"
 }
 
 __test_icons = {
