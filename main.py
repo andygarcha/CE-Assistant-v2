@@ -1366,6 +1366,74 @@ An example of how the new input MongoDB document will look.
 
 """
 
+class ValueDropdown(discord.ui.Select) :
+    def __init__(self, game : CEGame) :
+
+        options : list[discord.SelectOption] = []
+        for po in game.get_primary_objectives() :
+            options.append(discord.SelectOption(label=po.name, value=po.ce_id, description=f"Current value: {po.point_value}"))
+
+        super().__init__(placeholder="Choose an Objective.", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction : discord.Interaction) : 
+        await interaction.response.send_message(f"you picked {self.values[0]} har har har har har")
+
+class ValueButtonView(discord.ui.View) :
+    def __init__(self, game : CEGame) :
+        self.__game = game
+        super().__init__(timeout=None)
+
+        self.add_item(ValueDropdown(game))
+    
+    @property
+    def game(self) :
+        "The game that's being re-evaluated."
+        return self.__game
+
+    
+class CurateButtonYesOrNoView(discord.ui.View) :
+    def __init__(self, has_selected_yes : bool, has_selected_no : bool) :
+        self.__has_selected_yes = has_selected_yes
+        self.__has_selected_no = has_selected_no
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content="You have voted 'Yes'!",
+            view = discord.ui.View()
+        )
+    
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content="You have voted 'No'!",
+            view=discord.ui.View()
+        )
+
+    @property
+    def has_selected_yes(self) :
+        "This user has selected yes in the past."
+        return self.__has_selected_yes
+    
+    @property
+    def has_selected_no(self) :
+        "This user has selected no in the past."
+        return self.__has_selected_no
+
+    def message(self) :
+        "The message that should be sent with the curate message."
+        if self.has_selected_yes : return "Would you recommend this game for the curator? (You previously said 'Yes')."
+        if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
+        return "Would you recommend this game for the curator?"
+        
+
 class GameInputView(discord.ui.View) :
     "This view will be sent along with any /input command."
 
@@ -1382,17 +1450,21 @@ class GameInputView(discord.ui.View) :
     @discord.ui.button(label="Value")
     async def value_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
-        await interaction.followup.send("Value button under construction.")
+        database_name = await Mongo_Reader.get_mongo_games()
+        game = hm.get_item_from_list(self.ce_id, database_name)
+        await interaction.followup.send("Select an objective to revalue!", view=ValueButtonView(game=game))
+
     
     @discord.ui.button(label="Curate")
     async def curate_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
-        await interaction.followup.send("Curate button under construction.")
+        view = CurateButtonYesOrNoView(False, False)
+        await interaction.followup.send(view.message(), view=view)
 
     @discord.ui.button(label="Tags")
     async def tags_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
-        await interaction.followup.send("Tags button under construction.")
+        await interaction.followup.send("Select tags to assign to this game!.")
 
 @tree.command(name="input", description="Send in input on any CE game.", guild=guild)
 @app_commands.describe(game="The game you'd like to provide input on.")
@@ -1400,7 +1472,11 @@ class GameInputView(discord.ui.View) :
 async def game_input(interaction : discord.Interaction, game : str) :
     await interaction.response.defer()
 
-    return await interaction.followup.send(f"Game chosen: {game}.")
+    database_name = await Mongo_Reader.get_mongo_games()
+    game_object = hm.get_item_from_list(game, database_name)
+
+    return await interaction.followup.send(f"Game chosen: [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).", 
+                                           view=GameInputView(game))
 
 
 
