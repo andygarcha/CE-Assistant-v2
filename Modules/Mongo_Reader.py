@@ -28,7 +28,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 mongo_ids = {
     'name' : ObjectId('66303f21918c91e3b67b33df'),
     'user' : ObjectId('66303f66918c91e3b67b33e0'),
-    'curator' : ObjectId('66c7ef38a1c0c555afe139ec')
+    'curator' : ObjectId('66c7ef38a1c0c555afe139ec'),
+    'input' : ObjectId('66f64983e65f770f71d4ac2e')
 }
 
 # open secret_info.json
@@ -38,7 +39,7 @@ with open('secret_info.json') as f :
     _uri = local_json_data['mongo_uri']
 _mongo_client = AsyncIOMotorClient(_uri)
 _collection = _mongo_client['database_name']['ce-assistant-v2']
-_mongo_names = Literal['name', 'user', 'curator']
+_mongo_names = Literal['name', 'user', 'curator', 'input']
 
 async def get_mongo(title :_mongo_names) :
     """Returns the MongoDB associated with `title`
@@ -313,3 +314,7 @@ async def dump_user(user : CEUser | list[CEUser]) -> None :
                 database_user[i] = b
 
     await dump_users(database_user)
+
+async def get_inputs() -> list :
+    inputs = await get_mongo("input")
+    return inputs["inputs"]

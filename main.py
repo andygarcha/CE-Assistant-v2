@@ -1295,6 +1295,105 @@ async def on_message(message : discord.Message) :
 #  _| |_  | |\  | | |      | |__| |    | |   
 # |_____| |_| \_| |_|       \____/     |_|   
 
+"""
+An example of how the new input MongoDB document will look.
+[
+    {
+        "ce-id" : "c23a06b2-9fc7-49ed-9b34-05e012cdd19a",
+        "value" : [
+            {
+                "objective-ce-id" : "97f8da7d-26b6-4103-a387-3d969b51fc4e",
+                "evaluations" : [
+                    {
+                        "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                        "recommendation" : 20
+                    },
+                    {
+                        "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                        "recommendation" : 35
+                    }
+                ]
+            },
+            {
+                "objective-ce-id" : "d30facc3-214c-4357-92bc-d61f0c595e81",
+                "evaluations" : [
+                    {
+                        "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                        "recommendation" : 15
+                    },
+                    {
+                        "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                        "recommendation" : 20
+                    }
+                ]
+            }
+        ],
+
+        "curate" : [
+            {
+                "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                "curate" : True
+            },
+            {
+                "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                "curate" : True
+            }
+        ],
+
+        "tags" : [
+            {
+                "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                "tags" : [
+                    "A",
+                    "B",
+                    "F"
+                ]
+            },
+            {
+                "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                "tags" : [
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G"
+                ]
+            }
+        ]
+
+    }
+]
+
+"""
+
+class GameInputView(discord.ui.View) :
+    "This view will be sent along with any /input command."
+
+    def __init__(self, ce_id : str) :
+        self.__ce_id = ce_id
+        super().__init__(timeout = None)
+
+    
+    @property
+    def ce_id(self) :
+        """The CE ID of the game that this command was run with."""
+        return self.__ce_id
+
+    @discord.ui.button(label="Value")
+    async def value_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+        await interaction.followup.send("Value button under construction.")
+    
+    @discord.ui.button(label="Curate")
+    async def curate_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+        await interaction.followup.send("Curate button under construction.")
+
+    @discord.ui.button(label="Tags")
+    async def tags_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+        await interaction.followup.send("Tags button under construction.")
+
 @tree.command(name="input", description="Send in input on any CE game.", guild=guild)
 @app_commands.describe(game="The game you'd like to provide input on.")
 @app_commands.autocomplete(game=get_game_auto)

@@ -440,3 +440,23 @@ class CRData :
         
         # and now return
         return return_str
+    
+
+class CEInput :
+    def __init__(
+            self) : ""
+    
+class CETagInput :
+    def __init__(self, user_ce_id : str, tags : list[str]) :
+        self.__user_ce_id = user_ce_id
+        self.__tags = tags
+    
+    @property
+    def user_ce_id(self) :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def tags(self) :
+        "The list of tags this user selected. Maximum of 5."
+        return self.__tags
