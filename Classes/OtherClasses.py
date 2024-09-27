@@ -442,9 +442,52 @@ class CRData :
         return return_str
     
 
-class CEInput :
-    def __init__(
-            self) : ""
+
+
+
+class CEIndividualValueInput :
+    def __init__(self, user_ce_id : str, value : int) :
+        self.__user_ce_id = user_ce_id
+        self.__value = value
+
+    @property
+    def user_ce_id(self) :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def value(self) :
+        "What this user thinks the objective should be valued at."
+        return self.__value
+    
+class CEValueInput :
+    def __init__(self, objective_ce_id : str, individual_value_inputs : list[CEIndividualValueInput]) :
+        self.__objective_ce_id = objective_ce_id
+        self.__individual_value_inputs = individual_value_inputs
+
+    @property
+    def objective_ce_id(self) :
+        "The CE ID of the objective the value input is about."
+        return self.__objective_ce_id
+    
+    @property
+    def individual_value_inputs(self) :
+        "The list of value inputs for this objective."
+        return self.__individual_value_inputs
+
+class CECurateInput :
+    def __init__(self, user_ce_id : str, curate : bool) :
+        self.__user_ce_id = user_ce_id
+        self.__curate = curate
+
+    @property
+    def user_ce_id(self) :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def curate(self) :
+        "Whether or not this user thinks the game should be curated or not."
     
 class CETagInput :
     def __init__(self, user_ce_id : str, tags : list[str]) :
@@ -460,3 +503,34 @@ class CETagInput :
     def tags(self) :
         "The list of tags this user selected. Maximum of 5."
         return self.__tags
+    
+class CEInput :
+    def __init__(self, 
+                 game_ce_id : str, 
+                 value_inputs : list[CEValueInput], 
+                 curate_inputs : list[CECurateInput], 
+                 tag_inputs : list[CETagInput]) :
+        self.__game_ce_id = game_ce_id
+        self.__value_inputs = value_inputs
+        self.__curate_inputs = curate_inputs
+        self.__tag_inputs = tag_inputs
+
+    @property
+    def game_ce_id(self) :
+        "The CE ID of the game associated with this input."
+        return self.__game_ce_id
+    
+    @property
+    def value_inputs(self) :
+        "The list of value inputs for this game."
+        return self.__value_inputs
+    
+    @property
+    def curate_inputs(self) : 
+        "The list of curate inputs for this game."
+        return self.__curate_inputs
+    
+    @property
+    def tag_inputs(self) : 
+        "The list of tag inputs for this game."
+        return self.__tag_inputs
