@@ -1366,6 +1366,32 @@ An example of how the new input MongoDB document will look.
 
 """
 
+# -- value --
+class ValueModal(discord.ui.Modal) :
+    def __init__(self, game : CEGame, objective : CEObjective) :
+        self.__game = game
+        self.__objective = objective
+        super().__init__(title=f"Value Input for {objective.name}")
+
+    new_value = discord.ui.TextInput(
+        label=f"Revalue Objective",
+        style=discord.TextStyle.short,
+        min_length=1,
+        max_length=4,
+        required=True,
+        placeholder=f"Proposed value"
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        return await interaction.followup.send(
+            f"You've valued [{self.__game.game_name}](https://cedb.me/game/{self.__game.ce_id})'s " +
+            f"{self.__objective.get_type_short()} '{self.__objective.name}' at {self.new_value} points."
+        )
+    
+
+
 class ValueDropdown(discord.ui.Select) :
     def __init__(self, game : CEGame) :
 
@@ -1373,15 +1399,23 @@ class ValueDropdown(discord.ui.Select) :
         for po in game.get_primary_objectives() :
             options.append(discord.SelectOption(label=po.name, value=po.ce_id, description=f"Current value: {po.point_value}"))
 
+        self.__game = game
+
         super().__init__(placeholder="Choose an Objective.", min_values=1, max_values=1, options=options)
+    
+    @property
+    def game(self) :
+        "The game that this dropdown is associated with."
+        return self.__game
 
     async def callback(self, interaction : discord.Interaction) : 
-        await interaction.response.send_message(f"you picked {self.values[0]} har har har har har")
+        objective_object = self.game.get_objective(self.values[0])
+        await interaction.response.send_modal(ValueModal(self.game, objective_object))
 
 class ValueButtonView(discord.ui.View) :
     def __init__(self, game : CEGame) :
         self.__game = game
-        super().__init__(timeout=None)
+        super().__init__(timeout=600)
 
         self.add_item(ValueDropdown(game))
     
@@ -1390,7 +1424,10 @@ class ValueButtonView(discord.ui.View) :
         "The game that's being re-evaluated."
         return self.__game
 
-    
+    async def on_timeout(self) -> NoneType:
+        return await super().on_timeout()
+
+# -- curate --
 class CurateButtonYesOrNoView(discord.ui.View) :
     def __init__(self, has_selected_yes : bool, has_selected_no : bool) :
         self.__has_selected_yes = has_selected_yes
@@ -1434,6 +1471,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         return "Would you recommend this game for the curator?"
         
 
+# -- input --
 class GameInputView(discord.ui.View) :
     "This view will be sent along with any /input command."
 
@@ -1461,10 +1499,10 @@ class GameInputView(discord.ui.View) :
         view = CurateButtonYesOrNoView(False, False)
         await interaction.followup.send(view.message(), view=view)
 
-    @discord.ui.button(label="Tags")
+    @discord.ui.button(label="Tags", disabled=True)
     async def tags_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
-        await interaction.followup.send("Select tags to assign to this game!.")
+        await interaction.followup.send("Tags have not yet been released!.")
 
 @tree.command(name="input", description="Send in input on any CE game.", guild=guild)
 @app_commands.describe(game="The game you'd like to provide input on.")

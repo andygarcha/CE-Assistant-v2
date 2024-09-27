@@ -1,0 +1,79 @@
+{
+    "id_generator" : "https://www.uuidgenerator.net/version4",
+    "genre_tags" : [
+        {
+            "id" : "abb29a1f-83d9-4429-91fd-da6a2b7ed351",
+            "name" : "Miscellaneous"
+        },
+        {
+            "id" : "07dbd3fb-3658-4b11-8caf-e2bc040a7318",
+            "name" : "Rogue-Like"
+        },
+        {
+            "id" : "37fc52d0-7e8f-43b4-b8b1-0c47c417d971",
+            "name" : "2D Platformer"
+        },
+        {
+            "id" : "30cd56be-3025-47d4-8345-73a67b53d213",
+            "name" : "3D Platformer"
+        },
+        {
+            "id" : "b95ece37-49c6-4f70-b353-50746347c044",
+            "name" : "Foddian"
+        },
+        {
+            "id" : "9effa417-cf35-4ad3-bb6e-fea442129a85",
+            "name" : "Metroidvania"
+        }, 
+        {
+            "id" : "3c59c2b3-d458-4157-bee1-6ce9814769f3",
+            "name" : "Awkward Movement"
+        },
+        {
+            "id" : "b4824043-93b5-4bf6-b4c6-50aeb18e0e8d",
+            "name" : "Autorunner"
+        },
+        {
+            "id" : "3e216876-ad9c-4d5e-9c48-3d8e2e0ba5bc",
+            "name" : "Shooter"
+        },
+        {
+            "id" : "7eb8007d-a8e7-4caa-8040-702080e11017",
+            "name" : "Third Person Shooter"
+        },
+        {
+            "id" : "5107418e-34c6-45e9-a851-882924948e0d",
+            "name" : "Movement"
+        },
+        {
+            "id" : "f09fd1d2-3dc9-438c-8ee7-3f241c49d8d8",
+            "name" : "Horror"
+        },
+        {
+            "id" : "597261b7-2dc5-46f1-9136-c47a33e7c258",
+            "name" : "Rhythm"
+        }
+    ],
+    "informational_tags" : [
+        
+    ],
+    "remaining_ids" : [
+        "105011cd-3687-48ae-81b6-4080a4c088f1",
+        "a010d752-78ed-4e73-94bf-f45a225b0dcc",
+        "c9460c77-3131-418b-9605-f40b5bdc83ea",
+        "2c209dc9-cc95-4635-8efa-14573bef1015",
+        "35911952-984a-49ea-be14-cf55369b20b2",
+        "a0711acc-2976-4a88-b3e1-9647b67f0bdc",
+        "02ccd10b-dbc2-44ce-a22d-b004c7e38c89",
+        "26063e71-010e-430e-8c9c-9346677ba8c7",
+        "1f6a19a9-18b3-43eb-8673-b6c64053a6ae",
+        "d556fef4-ec29-4936-8aba-bbecead8df3a",
+        "4f9b405a-7183-40d7-8daa-acbc70ceb7fd",
+        "952133c5-80d7-4ee9-a200-7a7900ed0cf5",
+        "9c8fa799-e8f6-4ce7-a2e5-32e86365c151",
+        "33875e9f-a7e2-4365-9ad1-1fa485160fe8",
+        "cfbaa521-fc83-4a55-a8af-24beddc1946b",
+        "c79e7641-bcfe-466e-8388-237ed53bbc42",
+        "d864e690-1c14-4958-bfd9-bc53a5913d31"
+    ]
+}

@@ -460,6 +460,12 @@ class CEIndividualValueInput :
         "What this user thinks the objective should be valued at."
         return self.__value
     
+    def to_dict(self) :
+        return {
+            "user-ce-id" : self.user_ce_id,
+            "recommendation" : self.value
+        }
+    
 class CEValueInput :
     def __init__(self, objective_ce_id : str, individual_value_inputs : list[CEIndividualValueInput]) :
         self.__objective_ce_id = objective_ce_id
@@ -474,6 +480,13 @@ class CEValueInput :
     def individual_value_inputs(self) :
         "The list of value inputs for this objective."
         return self.__individual_value_inputs
+    
+    def to_dict(self) :
+        value_array = [value.to_dict() for value in self.individual_value_inputs]
+        return {
+            "objective-ce-id" : self.objective_ce_id,
+            "evaluations" : value_array
+        }
 
 class CECurateInput :
     def __init__(self, user_ce_id : str, curate : bool) :
@@ -488,6 +501,13 @@ class CECurateInput :
     @property
     def curate(self) :
         "Whether or not this user thinks the game should be curated or not."
+        return self.__curate
+    
+    def to_dict(self) :
+        return {
+            'user-ce-id' : self.user_ce_id,
+            'curate' : self.curate
+        }
     
 class CETagInput :
     def __init__(self, user_ce_id : str, tags : list[str]) :
@@ -503,6 +523,12 @@ class CETagInput :
     def tags(self) :
         "The list of tags this user selected. Maximum of 5."
         return self.__tags
+    
+    def to_dict(self) :
+        return {
+            'user-ce-id' : self.user_ce_id,
+            'tags' : self.tags
+        }
     
 class CEInput :
     def __init__(self, 
@@ -534,3 +560,11 @@ class CEInput :
     def tag_inputs(self) : 
         "The list of tag inputs for this game."
         return self.__tag_inputs
+    
+    def to_dict(self) :
+        return {
+            'ce-id' : self.game_ce_id,
+            'value' : [value.to_dict() for value in self.value_inputs],
+            'curate' : [curate.to_dict() for curate in self.curate_inputs],
+            'tags' : [tag.to_dict() for tag in self.tag_inputs]
+        }
