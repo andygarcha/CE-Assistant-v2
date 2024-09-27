@@ -1283,7 +1283,27 @@ async def on_message(message : discord.Message) :
                 await message.author.send(f"Your message was removed because you forgot")
             except :
                 ""
+    
+    # https://patorjk.com/software/taag/#p=display&h=0&v=0&f=Big&t=TEST
 """
+
+
+#  _____   _   _   _____    _    _   _______ 
+# |_   _| | \ | | |  __ \  | |  | | |__   __|
+#   | |   |  \| | | |__) | | |  | |    | |   
+#   | |   | . ` | |  ___/  | |  | |    | |   
+#  _| |_  | |\  | | |      | |__| |    | |   
+# |_____| |_| \_| |_|       \____/     |_|   
+
+@tree.command(name="input", description="Send in input on any CE game.", guild=guild)
+@app_commands.describe(game="The game you'd like to provide input on.")
+@app_commands.autocomplete(game=get_game_auto)
+async def game_input(interaction : discord.Interaction, game : str) :
+    await interaction.response.defer()
+
+    return await interaction.followup.send(f"Game chosen: {game}.")
+
+
 
 #   ____    _   _     _____    ______              _____   __     __
 #  / __ \  | \ | |   |  __ \  |  ____|     /\     |  __ \  \ \   / /
