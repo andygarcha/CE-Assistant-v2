@@ -562,6 +562,9 @@ class CEInput :
         return self.__tag_inputs
     
     def to_dict(self) :
+        # value_array = [value.to_dict() for value in self.value_inputs]
+        # curate_array = [curate.to_dict() for curate in self.curate_inputs]
+        # tag_array = [tag.to_dict() for tag in self.tag_inputs]
         return {
             'ce-id' : self.game_ce_id,
             'value' : [value.to_dict() for value in self.value_inputs],

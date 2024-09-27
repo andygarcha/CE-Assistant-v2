@@ -389,6 +389,8 @@ async def get_inputs() -> list[CEInput] :
     return inputs
 
 async def dump_inputs(inputs : list[CEInput]) :
-    input_dict_array = [input.to_dict() for input in inputs]
+    input_dict_array = [] #[input.to_dict() for input in inputs]
+    for input in inputs :
+        input_dict_array.append(input.to_dict())
     await dump_mongo('input', {'inputs' : input_dict_array})
     return

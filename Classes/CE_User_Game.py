@@ -54,6 +54,12 @@ class CEUserGame():
                 p.append(obj)
         return p
     
+    def has_completed_objective(self, objective_id : str, points : int) -> CEUserObjective :
+        "Returns true if this user has completed the specified objective."
+        for obj in self.user_objectives :
+            if obj.ce_id == objective_id and obj.user_points == points : return True
+        return False
+    
     @property
     def name(self) :
         """Returns the name of this game."""

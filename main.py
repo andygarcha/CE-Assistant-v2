@@ -21,7 +21,7 @@ from Classes.CE_User_Objective import CEObjective
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import SteamData, CECompletion, RAData
+from Classes.OtherClasses import CEInput, SteamData, CECompletion, RAData
 from Modules import WebInteractor
 import Modules.CEAPIReader as CEAPIReader
 from Modules.WebInteractor import master_loop
@@ -1393,10 +1393,10 @@ class ValueModal(discord.ui.Modal) :
 
 
 class ValueDropdown(discord.ui.Select) :
-    def __init__(self, game : CEGame) :
+    def __init__(self, game : CEGame, valid_objectives : list[CEObjective]) :
 
         options : list[discord.SelectOption] = []
-        for po in game.get_primary_objectives() :
+        for po in valid_objectives :
             options.append(discord.SelectOption(label=po.name, value=po.ce_id, description=f"Current value: {po.point_value}"))
 
         self.__game = game
@@ -1413,11 +1413,11 @@ class ValueDropdown(discord.ui.Select) :
         await interaction.response.send_modal(ValueModal(self.game, objective_object))
 
 class ValueButtonView(discord.ui.View) :
-    def __init__(self, game : CEGame) :
+    def __init__(self, game : CEGame, valid_objectives : list[CEObjective]) :
         self.__game = game
         super().__init__(timeout=600)
 
-        self.add_item(ValueDropdown(game))
+        self.add_item(ValueDropdown(game, valid_objectives))
     
     @property
     def game(self) :
@@ -1479,18 +1479,63 @@ class GameInputView(discord.ui.View) :
         self.__ce_id = ce_id
         super().__init__(timeout = None)
 
-    
     @property
     def ce_id(self) :
         """The CE ID of the game that this command was run with."""
         return self.__ce_id
+    
+    @staticmethod
+    def set_up_input(inputs : list[CEInput], game_id : str) -> list[CEInput] :
+        inputs.append(
+            CEInput(
+                game_ce_id=game_id,
+                value_inputs=[],
+                curate_inputs=[],
+                tag_inputs=[]
+            )
+        )
+        return inputs
 
     @discord.ui.button(label="Value")
     async def value_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
+
+        # pull from mongo
         database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+        inputs = await Mongo_Reader.get_inputs()
         game = hm.get_item_from_list(self.ce_id, database_name)
-        await interaction.followup.send("Select an objective to revalue!", view=ValueButtonView(game=game))
+        user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
+
+        # if this game hasn't been evaluated yet, add it to `inputs`.
+        found = False
+        for input in inputs :
+            if input.game_ce_id == game.ce_id : found = True
+        
+        if not found : 
+            inputs = self.set_up_input(inputs, game.ce_id)
+            await Mongo_Reader.dump_inputs(inputs)
+
+        # go through objectives and only let users select POs they've completed
+        valid_objectives : list[CEObjective] = []
+        for objective in game.get_primary_objectives() :
+            if user.get_owned_game(game.ce_id).has_completed_objective(objective.ce_id, objective.point_value) :
+                valid_objectives.append(objective)
+        
+        # if they haven't completed any of the objectives, then don't let them vote!
+        if valid_objectives == [] :
+            return await interaction.followup.send(
+                f"You haven't completed any objectives in {game.game_name}!"
+            )
+
+        # if they have, then send them to the next view.
+        return await interaction.followup.send(
+            "Select an objective to revalue!", 
+            view=ValueButtonView(
+                game=game,
+                valid_objectives=valid_objectives
+            )
+        )
 
     
     @discord.ui.button(label="Curate")
@@ -1511,10 +1556,24 @@ async def game_input(interaction : discord.Interaction, game : str) :
     await interaction.response.defer()
 
     database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
     game_object = hm.get_item_from_list(game, database_name)
+    user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
 
-    return await interaction.followup.send(f"Game chosen: [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).", 
-                                           view=GameInputView(game))
+    if not user.owns_game(game_object.ce_id) : 
+        return await interaction.followup.send(
+            f"You don't own {game_object.game_name}!"
+        )
+    
+    content = f"Game chosen: [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id})"
+    if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
+    content += "."
+
+
+    return await interaction.followup.send(
+        content, 
+        view=GameInputView(game)
+    )
 
 
 
