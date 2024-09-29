@@ -1,6 +1,7 @@
 # -------- discord imports -----------
 import datetime
 from enum import Enum
+import math
 import time
 from types import NoneType
 import typing
@@ -1174,6 +1175,7 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
     return await interaction.followup.send("Done!")
 
 """
+
 #   _____   ______   _______            _____     ____    _        _                  _____              __  __   ______ 
 #  / ____| |  ____| |__   __|          |  __ \   / __ \  | |      | |                / ____|     /\     |  \/  | |  ____|
 # | (___   | |__       | |     ______  | |__) | | |  | | | |      | |       ______  | |  __     /  \    | \  / | | |__   
@@ -1248,6 +1250,7 @@ async def set_roll_game(interaction : discord.Interaction, member : discord.Memb
 
 
 """
+
 #   ____    _   _     __  __   ______    _____    _____               _____   ______ 
 #  / __ \  | \ | |   |  \/  | |  ____|  / ____|  / ____|     /\      / ____| |  ____|
 # | |  | | |  \| |   | \  / | | |__    | (___   | (___      /  \    | |  __  | |__   
@@ -1385,6 +1388,24 @@ class ValueModal(discord.ui.Modal) :
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
+        # make sure the recommendation was within 50% of the objective's value
+        if float(abs(self.__objective.point_value - int(self.new_value.value))) > (float(self.__objective.point_value) / 2) :
+            return await interaction.followup.send(
+                f"You've evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
+                f"{self.__objective.name} at {self.new_value} is outside of the 50% range. Please try again or " +
+                "DM a mod if you believe this is wrong."
+            )
+        
+        inputs = await Mongo_Reader.get_inputs()
+        database_user = await Mongo_Reader.get_mongo_users()
+        curr_input = hm.get_item_from_list(self.__game.ce_id, inputs)
+        curr_input.add_value_input(
+            objective_id=self.__objective.ce_id,
+            user_id=Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user).ce_id,
+            value=int(self.new_value.value)
+        )
+        await Mongo_Reader.dump_input(curr_input)
+
         return await interaction.followup.send(
             f"You've valued [{self.__game.game_name}](https://cedb.me/game/{self.__game.ce_id})'s " +
             f"{self.__objective.get_type_short()} '{self.__objective.name}' at {self.new_value} points."
@@ -1510,7 +1531,7 @@ class GameInputView(discord.ui.View) :
         # if this game hasn't been evaluated yet, add it to `inputs`.
         found = False
         for input in inputs :
-            if input.game_ce_id == game.ce_id : found = True
+            if input.ce_id == game.ce_id : found = True
         
         if not found : 
             inputs = self.set_up_input(inputs, game.ce_id)

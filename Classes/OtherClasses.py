@@ -481,6 +481,14 @@ class CEValueInput :
         "The list of value inputs for this objective."
         return self.__individual_value_inputs
     
+    def add_new_individual_input(self, user_id : str, value : int) :
+        "Adds a new individual input."
+        self.__individual_value_inputs.append(CEIndividualValueInput(
+            user_ce_id=user_id,
+            value=value
+        ))
+        return
+    
     def to_dict(self) :
         value_array = [value.to_dict() for value in self.individual_value_inputs]
         return {
@@ -542,7 +550,7 @@ class CEInput :
         self.__tag_inputs = tag_inputs
 
     @property
-    def game_ce_id(self) :
+    def ce_id(self) :
         "The CE ID of the game associated with this input."
         return self.__game_ce_id
     
@@ -561,12 +569,37 @@ class CEInput :
         "The list of tag inputs for this game."
         return self.__tag_inputs
     
+    def has_value_input(self, objective_id : str) -> bool :
+        "Returns true if there already is a `CEValueInput` for this objective."
+        for value_input in self.value_inputs :
+            if value_input.objective_ce_id == objective_id : return True
+        return False
+    
+    def get_value_input(self, objective_id : str) -> CEValueInput | None :
+        "Returns the `CEValueInput` associated with objective_id, or `None` if none exists."
+        for value_input in self.value_inputs :
+            if value_input.objective_ce_id == objective_id : return value_input
+        return None
+    
+    def add_value_input(self, objective_id : str, user_id : str, value : int) :
+        "Adds a new value input for this game."
+        if self.has_value_input(objective_id) :
+            pass
+        else :
+            new_value_input = CEValueInput(
+                objective_ce_id=objective_id,
+                individual_value_inputs=[]
+            )
+            new_value_input.add_new_individual_input(user_id=user_id, value=value)
+        self.__value_inputs.append(new_value_input)
+        return
+    
     def to_dict(self) :
         # value_array = [value.to_dict() for value in self.value_inputs]
         # curate_array = [curate.to_dict() for curate in self.curate_inputs]
         # tag_array = [tag.to_dict() for tag in self.tag_inputs]
         return {
-            'ce-id' : self.game_ce_id,
+            'ce-id' : self.ce_id,
             'value' : [value.to_dict() for value in self.value_inputs],
             'curate' : [curate.to_dict() for curate in self.curate_inputs],
             'tags' : [tag.to_dict() for tag in self.tag_inputs]

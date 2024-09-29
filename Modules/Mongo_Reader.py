@@ -394,3 +394,12 @@ async def dump_inputs(inputs : list[CEInput]) :
         input_dict_array.append(input.to_dict())
     await dump_mongo('input', {'inputs' : input_dict_array})
     return
+
+async def dump_input(input : CEInput) :
+    inputs = await get_inputs()
+    for i, input_object in enumerate(inputs) :
+        if input_object.ce_id == input.ce_id :
+            inputs[i] = input
+
+    await dump_inputs(inputs)
+    return
