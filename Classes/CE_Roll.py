@@ -741,10 +741,16 @@ class CERoll:
         
         # rolled games
         if self.games is not None:
-            games = [game for game in database_name if game.ce_id in self.games]
+            # go get all the games from self.games
+            games = [hm.get_item_from_list(game, database_name) for game in self.games]
+
+            # now setup the string
             string += "\nRolled games: "
             for game in games :
-                string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
+                if game is None :
+                    string += f"'ERROR', "
+                else :
+                    string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
 
             # you're done. remove the ", "
             string = string[:-2]
