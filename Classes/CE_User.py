@@ -42,6 +42,10 @@ class CEUser:
         """Returns the Discord ID associated with this user."""
         return self._discord_id
     
+    def discord_id_with_brackets(self) :
+        "Returns the Discord ID with brackets (Example: '<@1234>')."
+        return f"<@{self.discord_id}>"
+    
     @property
     def casino_score(self) :
         """Returns the casino score associated with this user."""
@@ -147,6 +151,8 @@ class CEUser:
     def owned_games(self, games) :
         """Sets the 'owned games' to `games`."""
         self._owned_games = games
+
+    # == rolls cooldowns and pendings ==
 
     def add_current_roll(self, roll : CERoll) -> None :
         """Adds `roll` to this user's Current Rolls section."""

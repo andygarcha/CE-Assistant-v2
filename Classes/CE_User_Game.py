@@ -83,7 +83,7 @@ class CEUserGame():
         """Returns true if this game has been completed, false if not."""
         for game in database_name :
             if game.ce_id == self.ce_id :
-                return game.get_total_points() == self.get_user_points()
+                return game.get_total_points() == self.get_user_points()# and not game.is_t0()
         return False
 
     def get_category(self) -> str :
