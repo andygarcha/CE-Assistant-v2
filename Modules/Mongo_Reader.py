@@ -16,6 +16,7 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
+from Classes.OtherClasses import *
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
@@ -28,7 +29,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 mongo_ids = {
     'name' : ObjectId('66303f21918c91e3b67b33df'),
     'user' : ObjectId('66303f66918c91e3b67b33e0'),
-    'curator' : ObjectId('66c7ef38a1c0c555afe139ec')
+    'curator' : ObjectId('66c7ef38a1c0c555afe139ec'),
+    'input' : ObjectId('66f64983e65f770f71d4ac2e')
 }
 
 # open secret_info.json
@@ -38,7 +40,7 @@ with open('secret_info.json') as f :
     _uri = local_json_data['mongo_uri']
 _mongo_client = AsyncIOMotorClient(_uri)
 _collection = _mongo_client['database_name']['ce-assistant-v2']
-_mongo_names = Literal['name', 'user', 'curator']
+_mongo_names = Literal['name', 'user', 'curator', 'input']
 
 async def get_mongo(title :_mongo_names) :
     """Returns the MongoDB associated with `title`
@@ -313,3 +315,91 @@ async def dump_user(user : CEUser | list[CEUser]) -> None :
                 database_user[i] = b
 
     await dump_users(database_user)
+
+
+def __mongo_to_ceindividualvalueinput(input : dict) -> CEIndividualValueInput :
+    "Takes in a `dict` and returns a `CEIndividualValueInput`."
+    return CEIndividualValueInput(
+        user_ce_id=input['user-ce-id'], 
+        value=input['recommendation']
+    )
+
+def __mongo_to_cevalueinput(input : dict) -> CEValueInput :
+    "Takes in a `dict` and returns a `CEValueInput`."
+    objective_ce_id = input['objective-ce-id']
+    individual_value_inputs : list[CEIndividualValueInput] = []
+    for individual_value_input in input['evaluations'] :
+        individual_value_inputs.append(__mongo_to_ceindividualvalueinput(individual_value_input))
+
+    return CEValueInput(
+        objective_ce_id=objective_ce_id, 
+        individual_value_inputs=individual_value_inputs
+    )
+
+def __mongo_to_cecurateinput(input : dict) -> CECurateInput :
+    "Takes in a `dict` and returns a `CECurateInput`."
+    return CECurateInput(
+        user_ce_id=input['user-ce-id'],
+        curate=input['curate']
+    )
+
+def __mongo_to_cetaginput(input : dict) -> CETagInput :
+    "Takes in a `dict` and returns a `CETagInput`."
+    return CETagInput(
+        user_ce_id=input['user-ce-id'],
+        tags=input['tags']
+    )
+
+def __mongo_to_ceinput(input : dict) -> CEInput :
+    "Takes in a dict and returns a `CEInput`."
+    # get game id 
+    ce_id = input['ce-id']
+
+    # get all evaluations
+    values : list[CEValueInput] = []
+    for value in input['value'] :
+        values.append(__mongo_to_cevalueinput(value))
+    
+    # get all curates
+    curates : list[CECurateInput] = []
+    for curate in input['curate'] :
+        curates.append(__mongo_to_cecurateinput(curate))
+
+    # get all tags
+    tags : list[CETagInput] = []
+    for tag in input['tags'] :
+        tags.append(__mongo_to_cetaginput(tag))
+
+    return CEInput(
+        game_ce_id=ce_id,
+        value_inputs=values,
+        curate_inputs=curates,
+        tag_inputs=tags
+)
+    
+
+
+
+async def get_inputs() -> list[CEInput] :
+    mongo_inputs = await get_mongo("input")
+    inputs : list[CEInput] = []
+    for input in mongo_inputs['inputs'] :
+        inputs.append(__mongo_to_ceinput(input))
+
+    return inputs
+
+async def dump_inputs(inputs : list[CEInput]) :
+    input_dict_array = [] #[input.to_dict() for input in inputs]
+    for input in inputs :
+        input_dict_array.append(input.to_dict())
+    await dump_mongo('input', {'inputs' : input_dict_array})
+    return
+
+async def dump_input(input : CEInput) :
+    inputs = await get_inputs()
+    for i, input_object in enumerate(inputs) :
+        if input_object.ce_id == input.ce_id :
+            inputs[i] = input
+
+    await dump_inputs(inputs)
+    return

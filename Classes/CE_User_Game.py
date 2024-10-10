@@ -54,6 +54,12 @@ class CEUserGame():
                 p.append(obj)
         return p
     
+    def has_completed_objective(self, objective_id : str, points : int) -> CEUserObjective :
+        "Returns true if this user has completed the specified objective."
+        for obj in self.user_objectives :
+            if obj.ce_id == objective_id and obj.user_points == points : return True
+        return False
+    
     @property
     def name(self) :
         """Returns the name of this game."""
@@ -77,7 +83,7 @@ class CEUserGame():
         """Returns true if this game has been completed, false if not."""
         for game in database_name :
             if game.ce_id == self.ce_id :
-                return game.get_total_points() == self.get_user_points()
+                return game.get_total_points() == self.get_user_points()# and not game.is_t0()
         return False
 
     def get_category(self) -> str :

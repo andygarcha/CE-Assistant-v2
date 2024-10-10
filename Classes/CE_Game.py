@@ -307,6 +307,9 @@ class CEGame:
             f"<:CE_points:1128420207329816597>")
         #TODO: finish this function
 
+    def name_with_link(self) -> str :
+        "Returns the name with a link."
+        return f"[{self.game_name}](https://cedb.me/game/{self.ce_id})"
     
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
