@@ -1390,12 +1390,58 @@ class ValueModal(discord.ui.Modal) :
         placeholder=f"Proposed value"
     )
 
+    @staticmethod
+    def is_within_percentage(input : int, percentage : int, value : int) -> bool :
+        """Checks if `input` is within `percent`% of `value`.
+        Example: `is_within_percentage(10, 50, 15)` will check if 10 is within 50% of 15."""
+        threshold = percentage / 100 * value
+        lower_bound = value - threshold
+        upper_bound = value + threshold
+        return lower_bound <= input <= upper_bound
+    
+    def __is_valid_recommendation(self, input : int, value : int) -> bool :
+        "Returns true if the input is within the valid range for the objective."
+        # if value <= VALUE_LIMIT_X, check if within RANGE_LIMIT_X
+        VALUE_LIMIT_0 = 10
+        RANGE_LIMIT_0 = 200
+        VALUE_LIMIT_1 = 35
+        RANGE_LIMIT_1 = 100
+        RANGE_LIMIT_2 = 50
+
+        if value <= VALUE_LIMIT_0 : return self.is_within_percentage(input, RANGE_LIMIT_0, value)
+        if value <= VALUE_LIMIT_1 : return self.is_within_percentage(input, RANGE_LIMIT_1, value)
+        return self.is_within_percentage(input, RANGE_LIMIT_2, value)
+
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        # make sure the recommendation was within 50% of the objective's value
+        # make sure the recommendation was actually a number
+        if not self.new_value.value.isdigit() :
+            return await interaction.followup.send(
+                f"{self.new_value.value} is not a number. Try again.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+
         objective_point_value = self.__objective.point_value
         proposed_value = int(self.new_value.value)
+
+        # make sure we recommended a positive number
+        if proposed_value < 0 :
+            return await interaction.followup.send(
+                f"You cannot recommend a negative number! Please try again."
+            )
+
+
+        # make sure the recommendation was within valid percentage range of the objective's value
+        if not self.__is_valid_recommendation(proposed_value, objective_point_value) :
+            return await interaction.followup.send(
+                f"Your evaluation of {proposed_value} is outside of the recommendable range. Please try again, "
+                + "or DM a mod if you believe this is wrong.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+
+
         if float(abs(objective_point_value - proposed_value)) > (float(objective_point_value) / 2.0) :
             return await interaction.followup.send(
                 f"Your evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
