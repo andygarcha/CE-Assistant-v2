@@ -440,3 +440,444 @@ class CRData :
         
         # and now return
         return return_str
+    
+
+
+
+
+class CEIndividualValueInput :
+    def __init__(self, user_ce_id : str, value : int) :
+        self.__user_ce_id = user_ce_id
+        self.__value = value
+
+    @property
+    def user_ce_id(self) :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def value(self) :
+        "What this user thinks the objective should be valued at."
+        return self.__value
+    
+    def set_value(self, value) :
+        "Sets the input's `value` attribute to argument `value`."
+        self.__value = value
+        pass
+
+    
+    def to_dict(self) :
+        return {
+            "user-ce-id" : self.user_ce_id,
+            "recommendation" : self.value
+        }
+    
+    def to_string(self, database_user : list) :
+        # imports
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_user : list[CEUser] = database_user
+
+        # grab user object
+        user = hm.get_item_from_list(self.user_ce_id, database_user)
+        
+        # now return
+        return f"  - {user.discord_id_with_brackets()}: {self.value}\n"
+    
+
+
+
+
+
+class CEValueInput :
+    def __init__(self, objective_ce_id : str, individual_value_inputs : list[CEIndividualValueInput]) :
+        self.__objective_ce_id = objective_ce_id
+        self.__individual_value_inputs = individual_value_inputs
+
+    @property
+    def objective_ce_id(self) :
+        "The CE ID of the objective the value input is about."
+        return self.__objective_ce_id
+    
+    @property
+    def individual_value_inputs(self) :
+        "The list of value inputs for this objective."
+        return self.__individual_value_inputs
+    
+    # == individual eval stuff ==
+
+    def add_individual_input(self, user_id : str, value : int) :
+        "Adds an individual input. Handles cases where the user has previously made an input for this objective."
+        if self.user_has_individual_input(user_id) :
+            self.replace_individual_input(user_id, value)
+        else :
+            self.add_new_individual_input(user_id, value)
+    
+    def add_new_individual_input(self, user_id : str, value : int) :
+        """Adds a new individual input. 
+        Does NOT handle case when the user has previously made an input for this objective."""
+        self.__individual_value_inputs.append(CEIndividualValueInput(
+            user_ce_id=user_id,
+            value=value
+        ))
+        return
+    
+    def user_has_individual_input(self, user_id : str) :
+        "Returns true if the user whose ce id is passed as `user_id` has an individual value input for this value."
+        return self.index_of_individual_input(user_id) != -1
+    
+    def get_individual_input(self, user_id : str) :
+        "Returns the individual input of a user for this value input."
+        return self.__individual_value_inputs[self.index_of_individual_input(user_id)]
+    
+    def replace_individual_input(self, user_id : str, value : int) :
+        "Replaces a user's previous input with a new one."
+        self.__individual_value_inputs[self.index_of_individual_input(user_id)].set_value(value)
+
+    def index_of_individual_input(self, user_id : str) -> int :
+        "Returns the index of the individual input for a user (or -1 if one doesn't exist)."
+        for i, individual_value_input in enumerate(self.__individual_value_inputs) :
+            if individual_value_input.user_ce_id == user_id : return i
+        return -1
+    
+    # == other methods ==
+    
+    def average(self) -> float :
+        values = [individual_value_input.value for individual_value_input in self.individual_value_inputs]
+        average = float(sum(values)) / float(len(values))
+        return round(average, 2)
+    
+    # == to dict and to string ==
+    
+    def to_dict(self) :
+        value_array = [value.to_dict() for value in self.individual_value_inputs]
+        return {
+            "objective-ce-id" : self.objective_ce_id,
+            "evaluations" : value_array
+        }
+    
+    def to_string(self, database_name : list, database_user : list, game_id : str) :
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        game : CEGame = hm.get_item_from_list(game_id, database_name)
+
+        returned_string : str = ""
+
+        returned_string += f"- Objective: {game.get_objective(self.objective_ce_id).name} "
+        returned_string += f"({game.get_objective(self.objective_ce_id).point_value} {hm.get_emoji('Points')})\n"
+        for individual_value_input in self.individual_value_inputs :
+            returned_string += individual_value_input.to_string(database_user)
+        returned_string += f"  - Average: {self.average()}\n"
+        return returned_string
+    
+    def to_string_simple(self, database_name : list, game_id : str) -> str :
+        "Returns a much simpler string."
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        game : CEGame = hm.get_item_from_list(game_id, database_name)
+
+        return (f"- Objective: {game.get_objective(self.objective_ce_id).name} " +
+                f"({game.get_objective(self.objective_ce_id).point_value} {hm.get_emoji('Points')})\n" +
+                f"  - Average: {self.average()}\n")
+
+
+
+
+
+
+class CECurateInput :
+    def __init__(self, user_ce_id : str, curate : bool) :
+        self.__user_ce_id = user_ce_id
+        self.__curate = curate
+
+    @property
+    def user_ce_id(self) -> str :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def curate(self) -> bool :
+        "Whether or not this user thinks the game should be curated or not."
+        return self.__curate
+    
+    def set_curate(self, curate) :
+        "Sets this object's curate attribute to `curate` argument."
+        self.__curate = curate
+    
+    def to_dict(self) :
+        return {
+            'user-ce-id' : self.user_ce_id,
+            'curate' : self.curate
+        }
+    
+    def to_string(self, database_user : list) :
+        # imports
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_user : list[CEUser] = database_user
+
+        # grab user object
+        user = hm.get_item_from_list(self.user_ce_id, database_user)
+
+        return f"- {user.discord_id_with_brackets()}: {self.curate}\n"
+    
+
+
+
+
+class CETagInput :
+    def __init__(self, user_ce_id : str, tags : list[str]) :
+        self.__user_ce_id = user_ce_id
+        self.__tags = tags
+    
+    @property
+    def user_ce_id(self) :
+        "The CE ID of the user who made the input."
+        return self.__user_ce_id
+    
+    @property
+    def tags(self) :
+        "The list of tags this user selected. Maximum of 5."
+        return self.__tags
+    
+    def to_dict(self) :
+        return {
+            'user-ce-id' : self.user_ce_id,
+            'tags' : self.tags
+        }
+    
+
+
+
+
+class CEInput :
+    def __init__(self, 
+                 game_ce_id : str, 
+                 value_inputs : list[CEValueInput], 
+                 curate_inputs : list[CECurateInput], 
+                 tag_inputs : list[CETagInput]) :
+        self.__game_ce_id = game_ce_id
+        self.__value_inputs = value_inputs
+        self.__curate_inputs = curate_inputs
+        self.__tag_inputs = tag_inputs
+
+    @property
+    def ce_id(self) :
+        "The CE ID of the game associated with this input."
+        return self.__game_ce_id
+    
+    @property
+    def value_inputs(self) :
+        "The list of value inputs for this game."
+        return self.__value_inputs
+    
+    @property
+    def curate_inputs(self) : 
+        "The list of curate inputs for this game."
+        return self.__curate_inputs
+    
+    @property
+    def tag_inputs(self) : 
+        "The list of tag inputs for this game."
+        return self.__tag_inputs
+    
+    # === value input stuff ==
+    
+    def has_value_input(self, objective_id : str) -> bool :
+        "Returns true if there already is a `CEValueInput` for this objective."
+        for value_input in self.value_inputs :
+            if value_input.objective_ce_id == objective_id : return True
+        return False
+    
+    def get_value_input(self, objective_id : str) -> CEValueInput | None :
+        "Returns the `CEValueInput` associated with objective_id, or `None` if none exists."
+        for value_input in self.value_inputs :
+            if value_input.objective_ce_id == objective_id : return value_input
+        return None
+    
+    def index_of_value_input(self, objective_id : str) :
+        "Returns the index of the value input with ce-id `objective_id` (or -1 if it doesn't exist)."
+        for i, value_input in enumerate(self.__value_inputs) :
+            if value_input.objective_ce_id == objective_id :
+                return i
+            
+        return -1
+    
+    def replace_value_input(self, objective_id : str, value_input : CEValueInput) : 
+        index = self.index_of_value_input(objective_id)
+        self.__value_inputs[index] = value_input
+        pass
+    
+    def add_value_input(self, objective_id : str, user_id : str, value : int) :
+        "Adds a new value input for this game."
+        # if we already have a *value input* for this objective, just add the 
+        # individual value input we just made.
+        if self.has_value_input(objective_id) :
+            value_input = self.get_value_input(objective_id)
+            value_input.add_individual_input(user_id=user_id, value=value)
+            self.replace_value_input(objective_id, value_input)
+
+        # if we don't already have a value input for this objective,
+        # make a new one and add it to the array.
+        else :
+            value_input = CEValueInput(
+                objective_ce_id=objective_id,
+                individual_value_inputs=[]
+            )
+            value_input.add_new_individual_input(user_id=user_id, value=value)
+            self.__value_inputs.append(value_input)
+        pass
+    
+    # == curate input stuff ==
+
+    def average_curate(self) -> str :
+        "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
+        if (self.curator_count() == 0) : return "N/A"
+        inputs = [curate_input.curate for curate_input in self.curate_inputs]
+        average = float(inputs.count(True)) / float(len(inputs)) * 100
+        return f"{round(average, 2)}%"
+
+    def curator_count(self) -> int :
+        "Returns the number of people who have given curator inputs."
+        return len(self.curate_inputs)
+    
+    def user_has_selected_yes(self, user_id : str) -> bool :
+        "Returns true if this user has selected yes in the past."
+        for curate_input in self.__curate_inputs :
+            if curate_input.user_ce_id == user_id and curate_input.curate == True :
+                return True
+        return False
+    
+    def user_has_selected_no(self, user_id : str) -> bool :
+        "Returns true if this user has selected no in the past."
+        for curate_input in self.__curate_inputs :
+            if curate_input.user_ce_id == user_id and curate_input.curate == False :
+                return True
+        return False
+    
+    def add_curate_input(self, user_id : str, curate : bool) :
+        "Adds or overwrites a curate input."
+        if (self.has_curate_input(user_id)) :
+            self.replace_curate_input(user_id, curate)
+        else :
+            self.add_new_curate_input(user_id, curate)
+        pass
+
+    def add_new_curate_input(self, user_id : str, curate : bool) :
+        "Adds a new curate input."
+        self.__curate_inputs.append(CECurateInput(
+            user_ce_id=user_id,
+            curate=curate
+        ))
+        pass
+        
+    def has_curate_input(self, user_id : str) :
+        "Returns true if this user has already made a curate input."
+        return self.index_of_curate_input(user_id) != -1
+
+    def index_of_curate_input(self, user_id : str) :
+        "Returns the index of the curate input from this user (or -1 if none exists)."
+        for i, curate_input in enumerate(self.__curate_inputs) :
+            if curate_input.user_ce_id == user_id : return i
+        return -1
+    
+    def get_curate_input(self, user_id : str) :
+        "Returns the curate input given by a the user id."
+        return self.__curate_inputs[self.index_of_curate_input(user_id)]
+    
+    def replace_curate_input(self, user_id : str, curate : bool) :
+        "Adjusts the curate input accordingly."
+        if not self.has_curate_input(user_id) :
+            raise Exception("Tried replacing a curate input - but the user doesn't have one!")
+        
+        self.__curate_inputs[self.index_of_curate_input(user_id)].set_curate(curate)
+        pass
+
+    
+    # == to dict and to string ==
+
+    def to_dict(self) :
+        # value_array = [value.to_dict() for value in self.value_inputs]
+        # curate_array = [curate.to_dict() for curate in self.curate_inputs]
+        # tag_array = [tag.to_dict() for tag in self.tag_inputs]
+        return {
+            'ce-id' : self.ce_id,
+            'value' : [value.to_dict() for value in self.value_inputs],
+            'curate' : [curate.to_dict() for curate in self.curate_inputs],
+            'tags' : [tag.to_dict() for tag in self.tag_inputs]
+        }
+    
+    def to_string(self, database_name : list, database_user : list) -> str :
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        # grab the game object
+        game = hm.get_item_from_list(self.ce_id, database_name)
+
+        returned_string : str = ""
+
+        # show game name
+        returned_string += f"Game: {game.name_with_link()}\n"
+
+        # show value inputs
+        returned_string += "Value Inputs:\n"
+        for value_input in self.value_inputs :
+            returned_string += value_input.to_string(database_name, database_user, self.__game_ce_id)
+
+        # show curate inputs
+        returned_string += "Curate Inputs:\n"
+        for curate_input in self.curate_inputs :
+            returned_string += curate_input.to_string(database_user)
+        returned_string += f"- Curate Percentage: {self.average_curate()}\n"
+
+        # show tag inputs
+        returned_string += "Tag Inputs:\n"
+        returned_string += "- Tag Inputs are not yet available." #TODO: tag
+
+        return returned_string
+    
+    def to_string_simple(self, database_name : list) -> str :
+        "Returns this Input as a simple string."
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        # grab the game object
+        game = hm.get_item_from_list(self.ce_id, database_name)
+
+        returned_string : str = ""
+
+        # show game name
+        returned_string += f"Game: {game.name_with_link()}\n"
+
+        # show value inputs
+        returned_string += "Value Inputs:\n"
+        for value_input in self.value_inputs :
+            returned_string += value_input.to_string_simple()
+
+        # show curate inputs
+        returned_string += "Curate Inputs:\n"
+        returned_string += f"- Curate Percentage: {self.average_curate()}"
+
+        # show tag inputs
+        returned_string += "Tag Inputs:\n"
+        returned_string += "- Tag Inputs are not yet available." #TODO: tag
+
+        return returned_string

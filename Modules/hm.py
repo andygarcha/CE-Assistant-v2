@@ -60,6 +60,7 @@ __icons = {
     # reactions
     "Shake" : '<:shake:894912425869074462>',
     "Safety" : '<:safety:802615322858487838>',
+    "Crown" : "<:crown:1289287905331777596>",
 
     # logos
     "steam" : '<:steam:1282856420827463730>',
@@ -82,7 +83,9 @@ __test_icons = {
     "Tier 4" : "<:tier4:1133560881356226650>",
     "Tier 5" : "<:tier5:1133560882291548323>",
     "Tier 6" : "<:tier6:1133540654983688324>",
-    "Tier 7" : "<:tier7:1133540655981920347>"
+    "Tier 7" : "<:tier7:1133540655981920347>",
+    
+    "Crown" : "<:crown:1289290399025860691>",
 }
 
 __ICON_KEYS = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3', 
@@ -92,7 +95,8 @@ __ICON_KEYS = Literal['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3',
              'A Rank', 'B Rank', 'C Rank', 'D Rank', 'E Rank', 
              'S Rank', 'SS Rank', 'SSS Rank', 'EX Rank', 'P Rank', 
              'Q Rank', 'Casino', 'Diamond', 'All', 'Rank Omega', 
-             'Hexagon', 'Site Dev', 'Shake', 'Safety']
+             'Hexagon', 'Site Dev', 'Shake', 'Safety', 'steam',
+             'retroachievements', 'Crown']
 
 
 ALL_ROLL_EVENT_NAMES = Literal["One Hell of a Day", "One Hell of a Week", "One Hell of a Month",
@@ -124,7 +128,7 @@ OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
 PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-IN_CE = True
+IN_CE = False
 # ce ids
 __CE_OLD_LOG_ID = 1208259110638985246         # old log
 __CE_CASINO_TEST_ID = 1208259878381031485     # fake casino (old)

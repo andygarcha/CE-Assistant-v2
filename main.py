@@ -1,6 +1,7 @@
 # -------- discord imports -----------
 import datetime
 from enum import Enum
+import math
 import time
 from types import NoneType
 import typing
@@ -21,7 +22,7 @@ from Classes.CE_User_Objective import CEObjective
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import SteamData, CECompletion, RAData
+from Classes.OtherClasses import CEInput, SteamData, CECompletion, RAData
 from Modules import WebInteractor
 import Modules.CEAPIReader as CEAPIReader
 from Modules.WebInteractor import master_loop
@@ -1174,6 +1175,7 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
     return await interaction.followup.send("Done!")
 
 """
+
 #   _____   ______   _______            _____     ____    _        _                  _____              __  __   ______ 
 #  / ____| |  ____| |__   __|          |  __ \   / __ \  | |      | |                / ____|     /\     |  \/  | |  ____|
 # | (___   | |__       | |     ______  | |__) | | |  | | | |      | |       ______  | |  __     /  \    | \  / | | |__   
@@ -1248,6 +1250,7 @@ async def set_roll_game(interaction : discord.Interaction, member : discord.Memb
 
 
 """
+
 #   ____    _   _     __  __   ______    _____    _____               _____   ______ 
 #  / __ \  | \ | |   |  \/  | |  ____|  / ____|  / ____|     /\      / ____| |  ____|
 # | |  | | |  \| |   | \  / | | |__    | (___   | (___      /  \    | |  __  | |__   
@@ -1283,7 +1286,481 @@ async def on_message(message : discord.Message) :
                 await message.author.send(f"Your message was removed because you forgot")
             except :
                 ""
+    
+    # https://patorjk.com/software/taag/#p=display&h=0&v=0&f=Big&t=TEST
 """
+
+
+#  _____   _   _   _____    _    _   _______ 
+# |_   _| | \ | | |  __ \  | |  | | |__   __|
+#   | |   |  \| | | |__) | | |  | |    | |   
+#   | |   | . ` | |  ___/  | |  | |    | |   
+#  _| |_  | |\  | | |      | |__| |    | |   
+# |_____| |_| \_| |_|       \____/     |_|   
+
+"""
+An example of how the new input MongoDB document will look.
+[
+    {
+        "ce-id" : "c23a06b2-9fc7-49ed-9b34-05e012cdd19a",
+        "value" : [
+            {
+                "objective-ce-id" : "97f8da7d-26b6-4103-a387-3d969b51fc4e",
+                "evaluations" : [
+                    {
+                        "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                        "recommendation" : 20
+                    },
+                    {
+                        "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                        "recommendation" : 35
+                    }
+                ]
+            },
+            {
+                "objective-ce-id" : "d30facc3-214c-4357-92bc-d61f0c595e81",
+                "evaluations" : [
+                    {
+                        "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                        "recommendation" : 15
+                    },
+                    {
+                        "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                        "recommendation" : 20
+                    }
+                ]
+            }
+        ],
+
+        "curate" : [
+            {
+                "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                "curate" : True
+            },
+            {
+                "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                "curate" : True
+            }
+        ],
+
+        "tags" : [
+            {
+                "user-ce-id" : "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5",
+                "tags" : [
+                    "A",
+                    "B",
+                    "F"
+                ]
+            },
+            {
+                "user-ce-id" : "df0a0319-c1be-4a22-9152-4267216832d1",
+                "tags" : [
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G"
+                ]
+            }
+        ]
+
+    }
+]
+
+"""
+
+INPUT_MESSAGES_ARE_EPHEMERAL : bool = True
+
+# -- value --
+class ValueModal(discord.ui.Modal) :
+    def __init__(self, game : CEGame, objective : CEObjective) :
+        self.__game = game
+        self.__objective = objective
+        
+        title = f"Value Input for {objective.name}"
+        if len(title) >= 45 : super().__init__(title="Value Input")
+        else : super().__init__(title=f"Value Input for {objective.name}")
+
+    new_value = discord.ui.TextInput(
+        label=f"Revalue Objective",
+        style=discord.TextStyle.short,
+        min_length=1,
+        max_length=4,
+        required=True,
+        placeholder=f"Proposed value"
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        # make sure the recommendation was within 50% of the objective's value
+        objective_point_value = self.__objective.point_value
+        proposed_value = int(self.new_value.value)
+        if float(abs(objective_point_value - proposed_value)) > (float(objective_point_value) / 2.0) :
+            return await interaction.followup.send(
+                f"Your evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
+                f"{self.__objective.name} at {self.new_value} is outside of the 50% range. Please try again or " +
+                "DM a mod if you believe this is wrong.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+        
+        # make sure its divisible by 5 too lol
+        if (int(self.new_value.value) % 5 != 0) :
+            return await interaction.followup.send(
+                f"{self.new_value.value} is not divisible by 5.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+        
+        # pull databases
+        database_inputs = await Mongo_Reader.get_inputs()
+        database_user = await Mongo_Reader.get_mongo_users()
+
+        # grab the current input. we can guarantee this exists because we set it up previously.
+        curr_input = hm.get_item_from_list(self.__game.ce_id, database_inputs)
+
+        # add the value input for the newly grabbed data.
+        curr_input.add_value_input(
+            objective_id=self.__objective.ce_id,
+            user_id=Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user).ce_id,
+            value=int(self.new_value.value)
+        )
+
+        # and dump it back to mongo
+        await Mongo_Reader.dump_input(curr_input)
+
+        # return a quick little confirmation message
+        return await interaction.followup.send(
+            f"You've valued {self.__game.name_with_link()}'s " +
+            f"{self.__objective.get_type_short()} '{self.__objective.name}' at {self.new_value} points.",
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+    
+
+
+
+
+class ValueDropdown(discord.ui.Select) :
+    def __init__(self, game : CEGame, valid_objectives : list[CEObjective]) :
+
+        options : list[discord.SelectOption] = []
+        for po in valid_objectives :
+            options.append(discord.SelectOption(label=po.name, value=po.ce_id, description=f"Current value: {po.point_value}"))
+
+        self.__game = game
+
+        super().__init__(placeholder="Choose an Objective.", min_values=1, max_values=1, options=options)
+    
+    @property
+    def game(self) :
+        "The game that this dropdown is associated with."
+        return self.__game
+
+    async def callback(self, interaction : discord.Interaction) : 
+        objective_object = self.game.get_objective(self.values[0])
+        await interaction.response.send_modal(ValueModal(self.game, objective_object))
+
+
+
+
+
+class ValueButtonView(discord.ui.View) :
+    def __init__(self, game : CEGame, valid_objectives : list[CEObjective]) :
+        self.__game = game
+        super().__init__(timeout=600)
+
+        self.add_item(ValueDropdown(game, valid_objectives))
+    
+    @property
+    def game(self) :
+        "The game that's being re-evaluated."
+        return self.__game
+
+    async def on_timeout(self) -> NoneType:
+        return await super().on_timeout()
+
+
+
+
+
+
+# -- curate --
+class CurateButtonYesOrNoView(discord.ui.View) :
+    def __init__(self, has_selected_yes : bool, has_selected_no : bool, game_id : str) :
+        self.__has_selected_yes = has_selected_yes
+        self.__has_selected_no = has_selected_no
+        self.__game_id = game_id
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        # pull from mongo
+        database_input = await Mongo_Reader.get_inputs()
+        database_user = await Mongo_Reader.get_mongo_users()
+        input_object = hm.get_item_from_list(self.game_id, database_input)
+
+        # add the curate input
+        input_object.add_curate_input(
+            Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user).ce_id,
+            True
+        )
+
+        # and push back to mongo
+        await Mongo_Reader.dump_input(input_object)
+
+        # now return a confirmation message
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content="You have voted 'Yes'!",
+            view = discord.ui.View()
+        )
+    
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        # pull from mongo
+        database_input = await Mongo_Reader.get_inputs()
+        database_user = await Mongo_Reader.get_mongo_users()
+        input_object = hm.get_item_from_list(self.game_id, database_input)
+
+        # add the curate input
+        input_object.add_curate_input(
+            Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user).ce_id,
+            False
+        )
+
+        # and push back to mongo
+        await Mongo_Reader.dump_input(input_object)
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content="You have voted 'No'!",
+            view=discord.ui.View()
+        )
+
+    @property
+    def has_selected_yes(self) :
+        "This user has selected yes in the past."
+        return self.__has_selected_yes
+    
+    @property
+    def has_selected_no(self) :
+        "This user has selected no in the past."
+        return self.__has_selected_no
+    
+    @property
+    def game_id(self) :
+        "The game ID."
+        return self.__game_id
+
+    def message(self) :
+        "The message that should be sent with the curate message."
+        if self.has_selected_yes : return "Would you recommend this game for the curator? (You previously said 'Yes')."
+        if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
+        return "Would you recommend this game for the curator?"
+        
+
+
+
+
+
+
+# -- input --
+class GameInputView(discord.ui.View) :
+    "This view will be sent along with any /input command."
+
+    def __init__(self, ce_id : str) :
+        self.__ce_id = ce_id
+        super().__init__(timeout = None)
+
+    @property
+    def ce_id(self) :
+        """The CE ID of the game that this command was run with."""
+        return self.__ce_id
+    
+    @staticmethod
+    def set_up_input(inputs : list[CEInput], game_id : str) -> list[CEInput] :
+        inputs.append(
+            CEInput(
+                game_ce_id=game_id,
+                value_inputs=[],
+                curate_inputs=[],
+                tag_inputs=[]
+            )
+        )
+        return inputs
+
+    @discord.ui.button(label="Value")
+    async def value_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        # pull from mongo
+        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+        database_input = await Mongo_Reader.get_inputs()
+        game = hm.get_item_from_list(self.ce_id, database_name)
+        user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
+
+        # if this game hasn't been evaluated yet, add it to `inputs`.
+        found = False
+        for input in database_input :
+            if input.ce_id == game.ce_id : found = True
+        
+        if not found : 
+            database_input = self.set_up_input(database_input, game.ce_id)
+            await Mongo_Reader.dump_inputs(database_input)
+
+        # go through objectives and only let users select POs they've completed
+        valid_objectives : list[CEObjective] = []
+        for objective in game.get_primary_objectives() :
+            if user.get_owned_game(game.ce_id).has_completed_objective(objective.ce_id, objective.point_value) :
+                valid_objectives.append(objective)
+        
+        # if they haven't completed any of the objectives, then don't let them vote!
+        if valid_objectives == [] :
+            return await interaction.followup.send(
+                f"You haven't completed any objectives in {game.game_name}!",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+
+        # if they have, then send them to the next view.
+        return await interaction.followup.send(
+            "Select an objective to revalue!", 
+            view=ValueButtonView(
+                game=game,
+                valid_objectives=valid_objectives
+            ),
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+
+    
+    @discord.ui.button(label="Curate")
+    async def curate_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        # pull from mongo
+        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_mongo_users()
+        database_input = await Mongo_Reader.get_inputs()
+        game = hm.get_item_from_list(self.ce_id, database_name)
+        user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
+
+        # if this game hasn't been evaluated yet, add it to `inputs`.
+        found = False
+        for input in database_input :
+            if input.ce_id == game.ce_id : found = True
+        
+        if not found : 
+            database_input = self.set_up_input(database_input, game.ce_id)
+            await Mongo_Reader.dump_inputs(database_input)
+
+        # grab the input object itself
+        input_object = hm.get_item_from_list(game.ce_id, database_input)
+
+        view = CurateButtonYesOrNoView(
+            input_object.user_has_selected_yes(user.ce_id), 
+            input_object.user_has_selected_no(user.ce_id),
+            game.ce_id
+        )
+        await interaction.followup.send(view.message(), view=view, ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
+
+    @discord.ui.button(label="Tags", disabled=True)
+    async def tags_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+        await interaction.followup.send("Tags have not yet been released!.", ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
+
+
+
+
+
+
+
+@tree.command(name="input", description="Send in input on any CE game.", guild=guild)
+@app_commands.describe(game="The game you'd like to provide input on.")
+@app_commands.autocomplete(game=get_game_auto)
+async def game_input(interaction : discord.Interaction, game : str) :
+    await interaction.response.defer(ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
+
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+    game_object = hm.get_item_from_list(game, database_name)
+    user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
+
+    # make sure a valid game was passed
+    if game_object is None : 
+        return await interaction.followup.send(
+            f"{game} is not a valid game.",
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+
+    # make sure the user owns the game
+    if not user.owns_game(game_object.ce_id) : 
+        return await interaction.followup.send(
+            f"You don't own {game_object.game_name}!",
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+    
+    # set up the message
+    content = f"Game chosen: {game_object.name_with_link()}"
+    if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
+    content += "."
+
+    # and send it.
+    return await interaction.followup.send(
+        content, 
+        view=GameInputView(game),
+        ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+    )
+
+@tree.command(name="check-inputs", description="View any previous inputs from a CE game.", guild=guild)
+@app_commands.describe(game="The game you'd like to see previous input in.")
+@app_commands.describe(simple="Whether you want the full report or the simple version.")
+@app_commands.autocomplete(game=get_game_auto)
+async def check_inputs(interaction : discord.Interaction, game : str, simple : bool) :
+    await interaction.response.defer()
+
+    # pull from mongo
+    database_inputs = await Mongo_Reader.get_inputs()
+    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_mongo_users()
+    game_object = hm.get_item_from_list(game, database_name)
+    input_object = hm.get_item_from_list(game, database_inputs)
+
+    # make sure a valid game was passed
+    if game_object is None : 
+        return await interaction.followup.send(
+            f"{game} is not a valid game.",
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+    
+    # check to see if any inputs have even been provided.
+    if (input_object is None) :
+        return await interaction.followup.send(
+            f"No inputs have been provided on {game_object.name_with_link()}.",
+            ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+        )
+    
+    # now get the actual to_string()
+    if not simple : input_object_string = input_object.to_string(database_name, database_user)
+    else : input_object_string = input_object.to_string_simple(database_name)
+
+    # check if it needs to be sent as a file
+    if len(input_object_string) > 2000 :
+        with io.BytesIO() as file :
+            file.write(input_object_string.encode())
+            file.seek(0)
+
+            return await interaction.followup.send(
+                file=discord.File(file, filename="input_message.txt")
+            )
+
+    return await interaction.followup.send(
+        input_object_string
+    )
+
+
 
 #   ____    _   _     _____    ______              _____   __     __
 #  / __ \  | \ | |   |  __ \  |  ____|     /\     |  __ \  \ \   / /
