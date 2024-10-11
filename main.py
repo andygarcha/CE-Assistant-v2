@@ -1393,6 +1393,13 @@ class ValueModal(discord.ui.Modal) :
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
+        # make sure the recommendation was actually a number
+        if not self.new_value.value.isdigit() :
+            return await interaction.followup.send(
+                f"{self.new_value.value} is not a number. Try again.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+
         # make sure the recommendation was within 50% of the objective's value
         objective_point_value = self.__objective.point_value
         proposed_value = int(self.new_value.value)
