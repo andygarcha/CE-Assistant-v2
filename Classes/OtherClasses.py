@@ -872,7 +872,7 @@ class CEInput :
 
         # show curate inputs
         returned_string += "Curate Inputs:\n"
-        returned_string += f"- Curate Percentage: {self.average_curate()}"
+        returned_string += f"- Curate Percentage: {self.average_curate()}\n"
 
         # show tag inputs
         returned_string += "Tag Inputs:\n"
