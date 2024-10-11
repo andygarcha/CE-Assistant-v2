@@ -582,7 +582,6 @@ class CEValueInput :
         from Classes.CE_User import CEUser
         import Modules.hm as hm
         database_name : list[CEGame] = database_name
-        database_user : list[CEUser] = database_user
 
         game : CEGame = hm.get_item_from_list(game_id, database_name)
 
@@ -836,7 +835,7 @@ class CEInput :
         # show value inputs
         returned_string += "Value Inputs:\n"
         for value_input in self.value_inputs :
-            returned_string += value_input.to_string(database_name, database_user, self.__game_ce_id)
+            returned_string += value_input.to_string(database_name, database_user, self.ce_id)
 
         # show curate inputs
         returned_string += "Curate Inputs:\n"
@@ -869,7 +868,7 @@ class CEInput :
         # show value inputs
         returned_string += "Value Inputs:\n"
         for value_input in self.value_inputs :
-            returned_string += value_input.to_string_simple()
+            returned_string += value_input.to_string_simple(database_name, self.ce_id)
 
         # show curate inputs
         returned_string += "Curate Inputs:\n"
