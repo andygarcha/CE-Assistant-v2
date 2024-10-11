@@ -1716,8 +1716,9 @@ async def game_input(interaction : discord.Interaction, game : str) :
 
 @tree.command(name="check-inputs", description="View any previous inputs from a CE game.", guild=guild)
 @app_commands.describe(game="The game you'd like to see previous input in.")
+@app_commands.describe(simple="Whether you want the full report or the simple version.")
 @app_commands.autocomplete(game=get_game_auto)
-async def check_inputs(interaction : discord.Interaction, game : str) :
+async def check_inputs(interaction : discord.Interaction, game : str, simple : bool) :
     await interaction.response.defer()
 
     # pull from mongo
@@ -1742,7 +1743,8 @@ async def check_inputs(interaction : discord.Interaction, game : str) :
         )
     
     # now get the actual to_string()
-    input_object_string = input_object.to_string(database_name, database_user)
+    if not simple : input_object_string = input_object.to_string(database_name, database_user)
+    else : input_object_string = input_object.to_string_simple(database_name)
 
     # check if it needs to be sent as a file
     if len(input_object_string) > 2000 :

@@ -574,6 +574,21 @@ class CEValueInput :
             returned_string += individual_value_input.to_string(database_user)
         returned_string += f"  - Average: {self.average()}\n"
         return returned_string
+    
+    def to_string_simple(self, database_name : list, game_id : str) -> str :
+        "Returns a much simpler string."
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        game : CEGame = hm.get_item_from_list(game_id, database_name)
+
+        return (f"- Objective: {game.get_objective(self.objective_ce_id).name} " +
+                f"({game.get_objective(self.objective_ce_id).point_value} {hm.get_emoji('Points')})\n" +
+                f"  - Average: {self.average()}\n")
 
 
 
@@ -831,6 +846,38 @@ class CEInput :
 
         # show tag inputs
         returned_string += "Tag Inputs:\n"
-        returned_string += "- Tag Inputs are not yet available."
+        returned_string += "- Tag Inputs are not yet available." #TODO: tag
+
+        return returned_string
+    
+    def to_string_simple(self, database_name : list) -> str :
+        "Returns this Input as a simple string."
+        # imports
+        from Classes.CE_Game import CEGame
+        from Classes.CE_User import CEUser
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        database_user : list[CEUser] = database_user
+
+        # grab the game object
+        game = hm.get_item_from_list(self.ce_id, database_name)
+
+        returned_string : str = ""
+
+        # show game name
+        returned_string += f"Game: {game.name_with_link()}\n"
+
+        # show value inputs
+        returned_string += "Value Inputs:\n"
+        for value_input in self.value_inputs :
+            returned_string += value_input.to_string_simple()
+
+        # show curate inputs
+        returned_string += "Curate Inputs:\n"
+        returned_string += f"- Curate Percentage: {self.average_curate()}"
+
+        # show tag inputs
+        returned_string += "Tag Inputs:\n"
+        returned_string += "- Tag Inputs are not yet available." #TODO: tag
 
         return returned_string
