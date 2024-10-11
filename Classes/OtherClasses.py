@@ -857,7 +857,6 @@ class CEInput :
         from Classes.CE_User import CEUser
         import Modules.hm as hm
         database_name : list[CEGame] = database_name
-        database_user : list[CEUser] = database_user
 
         # grab the game object
         game = hm.get_item_from_list(self.ce_id, database_name)
