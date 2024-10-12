@@ -1556,7 +1556,11 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
         database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
         input_object = hm.get_item_from_list(self.game_id, database_input)
+        game_object = hm.get_item_from_list(self.game_id, database_name)
+
+        old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
@@ -1564,8 +1568,18 @@ class CurateButtonYesOrNoView(discord.ui.View) :
             True
         )
 
+        new_curatable = input_object.is_curatable()
+
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
+
+        # log
+        if not old_curatable and new_curatable :
+            input_channel = client.get_channel(hm.INPUT_LOG_ID)
+            await input_channel.send(
+                f":bell: Alert! {game_object.name_with_link()} has been voted curatable! " +
+                f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
+            )
 
         # now return a confirmation message
         return await interaction.followup.edit_message(
@@ -1581,7 +1595,11 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
         database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
         input_object = hm.get_item_from_list(self.game_id, database_input)
+        game_object = hm.get_item_from_list(self.game_id, database_name)
+
+        old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
@@ -1589,9 +1607,20 @@ class CurateButtonYesOrNoView(discord.ui.View) :
             False
         )
 
+        new_curatable = input_object.is_curatable()
+
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
 
+        # log
+        if old_curatable and not new_curatable :
+            input_channel = client.get_channel(hm.INPUT_LOG_ID)
+            await input_channel.send(
+                f":bell: Alert! {game_object.name_with_link()}'s curatable status has been removed! " +
+                f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
+            )
+        
+        # send a confirmation message
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
             content="You have voted 'No'!",

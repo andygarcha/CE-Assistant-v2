@@ -817,6 +817,13 @@ class CEInput :
         self.__curate_inputs[self.index_of_curate_input(user_id)].set_curate(curate)
         pass
 
+    def is_curatable(self) :
+        "Returns true if this game belongs on the curator."
+        MINIMUM_CURATE_VOTES = 20
+        MINIMUM_CURATE_PERCENTAGE = 80
+        
+        return self.curator_count() >= MINIMUM_CURATE_VOTES and self.average_curate() >= MINIMUM_CURATE_PERCENTAGE
+
     
     # == to dict and to string ==
 
