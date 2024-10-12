@@ -130,14 +130,15 @@ PLATFORM_NAMES = Literal['steam', 'retroachievements']
 # ------------- discord channel numbers -------------
 IN_CE = False
 # ce ids
-__CE_OLD_LOG_ID = 1208259110638985246         # old log
-__CE_CASINO_TEST_ID = 1208259878381031485     # fake casino (old)
-__CE_GAME_ADDITIONS_ID = 949482536726298666   # game additions
-__CE_CASINO_ID = 1080137628604694629          # real casino
-__CE_CASINO_LOG_ID = 1218980203209035938      # casino log
-__CE_PRIVATE_LOG_ID = 1208259110638985246     # private log
-__CE_USER_LOG_ID = 1256832310523859025        # user log
-__CE_PROOF_SUBMISSIONS_ID = 747384873320448082# proof submissions
+__CE_OLD_LOG_ID = 1208259110638985246          # old log
+__CE_CASINO_TEST_ID = 1208259878381031485      # fake casino (old)
+__CE_GAME_ADDITIONS_ID = 949482536726298666    # game additions
+__CE_CASINO_ID = 1080137628604694629           # real casino
+__CE_CASINO_LOG_ID = 1218980203209035938       # casino log
+__CE_PRIVATE_LOG_ID = 1208259110638985246      # private log
+__CE_USER_LOG_ID = 1256832310523859025         # user log
+__CE_PROOF_SUBMISSIONS_ID = 747384873320448082 # proof submissions
+__CE_INPUT_LOG_ID = 0                              # input
 # bot test ids
 __TEST_GAME_ADDITIONS_ID = 1128742486416834570
 __TEST_CASINO_ID = 811286469251039333
@@ -145,6 +146,7 @@ __TEST_CASINO_LOG_ID = 1257381604452466737
 __TEST_PRIVATE_LOG_ID = 1141886539157221457
 __TEST_USER_LOG_ID = 1257381593136365679
 __TEST_PROOF_SUBMISSIONS_ID = 1263199416462868522
+__TEST_INPUT_LOG_ID = 1294335132236251157
 # go-to channels 
 # NOTE: replace these with the ids as needed
 if IN_CE:
@@ -154,6 +156,7 @@ if IN_CE:
     PRIVATE_LOG_ID = __CE_PRIVATE_LOG_ID
     USER_LOG_ID = __CE_USER_LOG_ID
     PROOF_SUBMISSIONS_ID = __CE_PROOF_SUBMISSIONS_ID
+    INPUT_LOG_ID = __CE_INPUT_LOG_ID
 else :
     GAME_ADDITIONS_ID = __TEST_GAME_ADDITIONS_ID
     CASINO_ID = __TEST_CASINO_ID
@@ -161,6 +164,7 @@ else :
     PRIVATE_LOG_ID = __TEST_PRIVATE_LOG_ID
     USER_LOG_ID = __TEST_USER_LOG_ID
     PROOF_SUBMISSIONS_ID = __TEST_PROOF_SUBMISSIONS_ID
+    INPUT_LOG_ID = __TEST_INPUT_LOG_ID
 
 
 """
@@ -423,3 +427,11 @@ def format_ce_link(ce_link : str) -> str | None :
     
     # else, return the id.
     return ce_id
+
+def is_within_percentage(input : int | float, percentage : int, value : int) -> bool :
+    """Checks if `input` is within `percent`% of `value`.
+    Example: `is_within_percentage(10, 50, 15)` will check if 10 is within 50% of 15."""
+    threshold = percentage / 100 * value
+    lower_bound = value - threshold
+    upper_bound = value + threshold
+    return lower_bound <= input <= upper_bound
