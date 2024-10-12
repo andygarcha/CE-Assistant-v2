@@ -482,7 +482,7 @@ class CEIndividualValueInput :
         user = hm.get_item_from_list(self.user_ce_id, database_user)
         
         # now return
-        return f"  - {user.discord_id_with_brackets()}: {self.value}\n"
+        return f"  - {user.mention()}: {self.value}\n"
     
 
 
@@ -628,7 +628,7 @@ class CECurateInput :
         # grab user object
         user = hm.get_item_from_list(self.user_ce_id, database_user)
 
-        return f"- {user.discord_id_with_brackets()}: {self.curate}\n"
+        return f"- {user.mention()}: {self.curate}\n"
     
 
 

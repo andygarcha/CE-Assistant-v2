@@ -1790,7 +1790,7 @@ async def on_ready() :
     
     # master loop
     if hm.IN_CE :
-        await master_loop.start(client)
+        await master_loop.start(client, guild)
 
 
 client.run(discord_token)
