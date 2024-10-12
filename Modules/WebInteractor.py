@@ -144,8 +144,8 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
 
 
 def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGame], 
-                new_database_name : list[CEAPIGame], database_user : list[CEUser]
-                ) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
+                new_database_name : list[CEAPIGame], database_user : list[CEUser],
+                guild : discord.Guild) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
     """Takes in a user and updates it, and returns a list of things to send."""
     updates : list[UpdateMessage] = []
     # if a partner needs to be returned, it'll be placed here
@@ -173,6 +173,9 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
     # get the role messages
     updates += (check_category_roles(original_games, new_games, new_database_name, user))
 
+    # discord user
+    discord_user = guild.get_member(user.discord_id)
+
     # search for newly completed games
     for game in new_completed_games :
 
@@ -192,16 +195,16 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
         
         updates.append(UpdateMessage(
             location="userlog",
-            message=(f"Wow <@{user.discord_id}>! You've completed {game.game_name}, a {game.get_tier_emoji()} " + 
-                     f"worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
+            message=(f"Wow {discord_user.global_name} ({user.mention()})! You've completed {game.game_name}, " + 
+                     f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
         ))
 
     # rank update
     if new_rank != original_rank and new_points > original_points :
         updates.append(UpdateMessage(
             location="userlog",
-            message=(f"Congrats to <@{user.discord_id}> for ranking up from Rank {hm.get_emoji(original_rank)} " +
-                     f"to Rank {hm.get_emoji(new_rank)}!")
+            message=(f"Congrats to {discord_user.global_name} {user.mention()} for ranking up from Rank " +
+                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
         ))
 
     # check completion count
@@ -209,7 +212,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
     if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
         updates.append(UpdateMessage(
             location="userlog",
-            message=(f"Amazing! <@{user.discord_id}> has passed the milestone of " +
+            message=(f"Amazing! {discord_user} ({user.mention()}) has passed the milestone of " +
                      f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
         ))
 
@@ -218,7 +221,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
         if cooldown.end_time <= hm.get_unix('now') :
             updates.append(UpdateMessage(
                 location="casino",
-                message=f"<@{user.discord_id}>, your {cooldown.roll_name} cooldown has ended."
+                message=f"{user.mention()}, your {cooldown.roll_name} cooldown has ended."
             ))
             del user.cooldowns[i]
     
@@ -243,7 +246,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
             updates.append(UpdateMessage(
                 location="casino",
                 message=(
-                    f"<@{user.discord_id}>, you've finished your current stage in {roll.roll_name}. " +
+                    f"{user.mention()}, you've finished your current stage in {roll.roll_name}. " +
                     f"To roll your next stage, type `/solo-roll {roll.roll_name}` in <#{hm.CASINO_ID}>."
                 )
             ))
@@ -492,7 +495,7 @@ times = [
 # |_|  |_| /_/    \_\ |_____/     |_|    |______| |_|  \_\   |______|  \____/   \____/  |_|     
 
 @tasks.loop(time=times)
-async def master_loop(client : discord.Client) :
+async def master_loop(client : discord.Client, guild : discord.Object) :
     """The main looping function that runs every half hour."""
     print('---- loop began... ----')
     # get channels
@@ -549,13 +552,15 @@ async def master_loop(client : discord.Client) :
 
             # get the updates
             print('starting returns')
-            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(database_user, new_users, database_name, new_games)
+            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(
+                database_user, new_users, database_name, new_games, guild
+            )
 
             # send update messages
             for update_message in user_returns[0] :
                 match(update_message.location) :
-                    case "userlog" : await user_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
-                    case "casinolog" : await casino_log_channel.send(update_message.message, allowed_mentions=discord.AllowedMentions.none())
+                    case "userlog" : await user_log_channel.send(update_message.message)
+                    case "casinolog" : await casino_log_channel.send(update_message.message)
                     case "gameadditions" : await game_additions_channel.send(update_message.message)
                     case "casino" : await casino_channel.send(update_message.message)
                     case "privatelog" : await private_log_channel.send(update_message.message)
@@ -614,7 +619,8 @@ def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
 
 @to_thread
 def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],
-                       new_database_name : list[CEAPIGame]) -> tuple[list[UpdateMessage], list[CEUser]] :
+                       new_database_name : list[CEAPIGame], guild : discord.Object
+                       ) -> tuple[list[UpdateMessage], list[CEUser]] :
     """Update the users."""
     CONSOLE_UPDATES = False
     if CONSOLE_UPDATES : print('thread began')
@@ -639,13 +645,14 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
             site_data=new_user,
             old_database_name=old_database_name,
             new_database_name=new_database_name,
-            database_user=old_data
+            database_user=old_data,
+            guild=guild
         )
         if CONSOLE_UPDATES : print('update gotten')
 
         messages += user_updates[0]
         users.append(user_updates[1])
-        partners = user_updates[2]
+        partners : list[CEUser] = user_updates[2]
 
         # if some partners were sent back up, replace them!
         for partner in partners :
