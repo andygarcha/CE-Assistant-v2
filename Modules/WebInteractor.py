@@ -495,7 +495,7 @@ times = [
 # |_|  |_| /_/    \_\ |_____/     |_|    |______| |_|  \_\   |______|  \____/   \____/  |_|     
 
 @tasks.loop(time=times)
-async def master_loop(client : discord.Client, guild : discord.Object) :
+async def master_loop(client : discord.Client, guild_id : int) :
     """The main looping function that runs every half hour."""
     print('---- loop began... ----')
     # get channels
@@ -549,6 +549,9 @@ async def master_loop(client : discord.Client, guild : discord.Object) :
         database_user = await Mongo_Reader.get_mongo_users()
         try :
             new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
+
+            # guild
+            guild = await client.fetch_guild(id=guild_id)
 
             # get the updates
             print('starting returns')
@@ -619,7 +622,7 @@ def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
 
 @to_thread
 def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],
-                       new_database_name : list[CEAPIGame], guild : discord.Object
+                       new_database_name : list[CEAPIGame], guild : discord.Guild
                        ) -> tuple[list[UpdateMessage], list[CEUser]] :
     """Update the users."""
     CONSOLE_UPDATES = False
