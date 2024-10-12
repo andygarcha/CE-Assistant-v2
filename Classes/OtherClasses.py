@@ -482,7 +482,7 @@ class CEIndividualValueInput :
         user = hm.get_item_from_list(self.user_ce_id, database_user)
         
         # now return
-        return f"  - {user.discord_id_with_brackets()}: {self.value}\n"
+        return f"  - {user.mention()}: {self.value}\n"
     
 
 
@@ -546,6 +546,20 @@ class CEValueInput :
         values = [individual_value_input.value for individual_value_input in self.individual_value_inputs]
         average = float(sum(values)) / float(len(values))
         return round(average, 2)
+    
+    def average_is_okay(self, database_name : list, game_id : str) -> bool :
+        "Will return true if this average is not within a scary enough range for the mods to change."
+        # imports
+        from Classes.CE_Game import CEGame
+        import Modules.hm as hm
+        database_name : list[CEGame] = database_name
+        game_object = hm.get_item_from_list(game_id, database_name)
+        objective_object = game_object.get_objective(self.objective_ce_id)
+
+        "This variable determines what percentage range the average can be within the actual value."
+        VALID_RANGE = 50
+
+        return hm.is_within_percentage(self.average(), VALID_RANGE, objective_object.point_value)
     
     # == to dict and to string ==
     
@@ -628,7 +642,7 @@ class CECurateInput :
         # grab user object
         user = hm.get_item_from_list(self.user_ce_id, database_user)
 
-        return f"- {user.discord_id_with_brackets()}: {self.curate}\n"
+        return f"- {user.mention()}: {self.curate}\n"
     
 
 
@@ -801,6 +815,13 @@ class CEInput :
         
         self.__curate_inputs[self.index_of_curate_input(user_id)].set_curate(curate)
         pass
+
+    def is_curatable(self) :
+        "Returns true if this game belongs on the curator."
+        MINIMUM_CURATE_VOTES = 20
+        MINIMUM_CURATE_PERCENTAGE = 80
+        
+        return self.curator_count() >= MINIMUM_CURATE_VOTES and self.average_curate() >= MINIMUM_CURATE_PERCENTAGE
 
     
     # == to dict and to string ==

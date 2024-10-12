@@ -42,7 +42,7 @@ class CEUser:
         """Returns the Discord ID associated with this user."""
         return self._discord_id
     
-    def discord_id_with_brackets(self) :
+    def mention(self) :
         "Returns the Discord ID with brackets (Example: '<@1234>')."
         return f"<@{self.discord_id}>"
     

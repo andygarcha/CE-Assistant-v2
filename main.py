@@ -1389,6 +1389,22 @@ class ValueModal(discord.ui.Modal) :
         required=True,
         placeholder=f"Proposed value"
     )
+    
+    def __is_valid_recommendation(self, input : int, value : int) -> bool :
+        "Returns true if the input is within the valid range for the objective."
+        # imports
+        import Modules.hm as hm
+
+        # if value <= VALUE_LIMIT_X, check if within RANGE_LIMIT_X
+        VALUE_LIMIT_0 = 10
+        RANGE_LIMIT_0 = 200
+        VALUE_LIMIT_1 = 35
+        RANGE_LIMIT_1 = 100
+        RANGE_LIMIT_2 = 50
+
+        if value <= VALUE_LIMIT_0 : return hm.is_within_percentage(input, RANGE_LIMIT_0, value)
+        if value <= VALUE_LIMIT_1 : return hm.is_within_percentage(input, RANGE_LIMIT_1, value)
+        return hm.is_within_percentage(input, RANGE_LIMIT_2, value)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -1403,6 +1419,21 @@ class ValueModal(discord.ui.Modal) :
         # make sure the recommendation was within 50% of the objective's value
         objective_point_value = self.__objective.point_value
         proposed_value = int(self.new_value.value)
+
+        # make sure we recommended a positive number
+        if proposed_value < 0 :
+            return await interaction.followup.send(
+                f"You cannot recommend a negative number! Please try again."
+            )
+
+        # make sure the recommendation was within valid percentage range of the objective's value
+        if not self.__is_valid_recommendation(proposed_value, objective_point_value) :
+            return await interaction.followup.send(
+                f"Your evaluation of {proposed_value} is outside of the recommendable range. Please try again, "
+                + "or DM a mod if you believe this is wrong.",
+                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
+            )
+
         if float(abs(objective_point_value - proposed_value)) > (float(objective_point_value) / 2.0) :
             return await interaction.followup.send(
                 f"Your evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
@@ -1421,9 +1452,16 @@ class ValueModal(discord.ui.Modal) :
         # pull databases
         database_inputs = await Mongo_Reader.get_inputs()
         database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
 
         # grab the current input. we can guarantee this exists because we set it up previously.
         curr_input = hm.get_item_from_list(self.__game.ce_id, database_inputs)
+        value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
+
+        # we now need to check if our average has changed enough to enter scary territory
+        old_average = value_input.average_is_okay(
+            database_name, self.__game.ce_id
+        )
 
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
@@ -1434,6 +1472,20 @@ class ValueModal(discord.ui.Modal) :
 
         # and dump it back to mongo
         await Mongo_Reader.dump_input(curr_input)
+
+        # now lets grab the new average
+        new_average = value_input.average_is_okay(
+            database_name, self.__game.ce_id
+        )
+
+        # and if the old average was okay, but the new average is not, send a message to the input channel.
+        if old_average and not new_average :
+            log_channel = client.get_channel(hm.INPUT_LOG_ID)
+
+            await log_channel.send(
+                f":bell: Alert! {self.__game.name_with_link()}'s PO {self.__objective.name} " +
+                f"({self.__objective.point_value} points) has an average evaluation of {value_input.average()} points."
+            )
 
         # return a quick little confirmation message
         return await interaction.followup.send(
@@ -1505,7 +1557,11 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
         database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
         input_object = hm.get_item_from_list(self.game_id, database_input)
+        game_object = hm.get_item_from_list(self.game_id, database_name)
+
+        old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
@@ -1513,8 +1569,18 @@ class CurateButtonYesOrNoView(discord.ui.View) :
             True
         )
 
+        new_curatable = input_object.is_curatable()
+
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
+
+        # log
+        if not old_curatable and new_curatable :
+            input_channel = client.get_channel(hm.INPUT_LOG_ID)
+            await input_channel.send(
+                f":bell: Alert! {game_object.name_with_link()} has been voted curatable! " +
+                f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
+            )
 
         # now return a confirmation message
         return await interaction.followup.edit_message(
@@ -1530,7 +1596,11 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
         database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_mongo_games()
         input_object = hm.get_item_from_list(self.game_id, database_input)
+        game_object = hm.get_item_from_list(self.game_id, database_name)
+
+        old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
@@ -1538,9 +1608,20 @@ class CurateButtonYesOrNoView(discord.ui.View) :
             False
         )
 
+        new_curatable = input_object.is_curatable()
+
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
 
+        # log
+        if old_curatable and not new_curatable :
+            input_channel = client.get_channel(hm.INPUT_LOG_ID)
+            await input_channel.send(
+                f":bell: Alert! {game_object.name_with_link()}'s curatable status has been removed! " +
+                f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
+            )
+        
+        # send a confirmation message
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
             content="You have voted 'No'!",
