@@ -295,9 +295,10 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
 
             # and add a cooldown
-            #user.add_cooldown(CECooldown(
-            #    roll_name=
-            #))
+            user.add_cooldown(CECooldown(
+                roll_name=roll.roll_name,
+                end_time=roll.calculate_cooldown_date(database_name=new_database_name)
+            ))
     
     return (updates, user, partners)
 

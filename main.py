@@ -1416,6 +1416,7 @@ class ValueModal(discord.ui.Modal) :
                 ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
             )
 
+        # make sure the recommendation was within 50% of the objective's value
         objective_point_value = self.__objective.point_value
         proposed_value = int(self.new_value.value)
 

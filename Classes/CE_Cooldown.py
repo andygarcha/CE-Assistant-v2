@@ -23,7 +23,7 @@ class CECooldown :
 
     def is_expired(self) -> bool :
         """Returns true if this cooldown is ready to be lifted."""
-        return self.end_time < hm.get_current_unix()
+        return self.end_time < hm.get_unix("now")
     
     def to_dict(self) -> dict :
         """Returns this object as a dictionary."""
