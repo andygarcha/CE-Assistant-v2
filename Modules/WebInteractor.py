@@ -551,7 +551,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
             new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
 
             # guild
-            guild = await client.fetch_guild(id=guild_id)
+            guild = await client.fetch_guild(guild_id)
 
             # get the updates
             print('starting returns')
