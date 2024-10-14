@@ -170,11 +170,13 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
     new_rank = user.get_rank()
     new_games = user.owned_games
 
+    NEW_MESSAGES = False
+
     # get the role messages
     updates += (check_category_roles(original_games, new_games, new_database_name, user))
 
     # discord user
-    discord_user = guild.get_member(user.discord_id)
+    if NEW_MESSAGES : discord_user = guild.fetch_member(user.discord_id)
 
     # search for newly completed games
     for game in new_completed_games :
@@ -193,26 +195,41 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
                 completed_before = True
         if completed_before : continue
         
-        updates.append(UpdateMessage(
+        if NEW_MESSAGES : updates.append(UpdateMessage(
             location="userlog",
             message=(f"Wow {discord_user.global_name} ({user.mention()})! You've completed {game.game_name}, " + 
                      f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
         ))
+        else : updates.append(UpdateMessage(
+            location="userlog",
+            messsage=(f"Wow {user.mention()}! You've completed {game.game_name}, " +
+                      f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
+        ))
 
     # rank update
     if new_rank != original_rank and new_points > original_points :
-        updates.append(UpdateMessage(
+        if NEW_MESSAGES : updates.append(UpdateMessage(
             location="userlog",
             message=(f"Congrats to {discord_user.global_name} {user.mention()} for ranking up from Rank " +
+                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
+        ))
+        else : updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Congrats to {user.mention()} for ranking up from Rank " +
                      f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
         ))
 
     # check completion count
     COMPLETION_INCREMENT = 25
     if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
-        updates.append(UpdateMessage(
+        if NEW_MESSAGES : updates.append(UpdateMessage(
             location="userlog",
             message=(f"Amazing! {discord_user} ({user.mention()}) has passed the milestone of " +
+                     f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+        ))
+        else : updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Amazing! {user.mention()} has passed the milestone of " +
                      f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
         ))
 
