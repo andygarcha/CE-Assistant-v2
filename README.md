@@ -7,7 +7,7 @@ Challenge Enthusiasts is an online community made to curate and categorize video
 ## Purpose 1: Game Updates
 This bot will send detailed updates to the [Discord server](https://discord.gg/spKdVZTZ6c) whenever a game on the site is added, updated, or removed.
 
-<img src="https://imgur.com/rXGjnuc.png" width="450" alt="Screenshot of a game, Battletoads, being added to Challenge Enthusiasts.">
+<img width="450" alt="Screenshot of Mario Kart: Double Dash being added to the site." src="https://github.com/user-attachments/assets/8ac5b960-af2f-44e4-a79b-5458e5ed93ea">
 
 When a game is updated, the bot gives a run down of everything that was changed.
 
@@ -20,7 +20,7 @@ When a game has a longer amount of objectives (seven or more), the bot will scre
 ## Purpose 2: Casino
 This bot allows users in the [Discord server](https://discord.gg/spKdVZTZ6c) to participate in roll events. Users who participate in these will have a set number of games that fit certain parameters (difficulty, category, etc.) randomly selected for them, depending on the event. Once they complete these events (usually within a time limit, but some events go on forever), they're awarded a badge on the site, and the bot sends an update to the server.
 
-<img src="https://imgur.com/XNCDYDn.png" width="450" alt ="Screenshot of a message showing that a user, Kyara, has completed the roll event 'One Hell of a Day'.">
+<img width="450" alt="Screenshot of a user completing Two 'Two Week T2 Streak' Streak." src="https://github.com/user-attachments/assets/5f17be5a-0806-4e68-aecb-29c4e0fd21e2">
 
 The bot keeps track of all previously completed rolls as well, so anyone can view their previous accomplishments.
 
@@ -36,17 +36,18 @@ Users can use `/profile`, with an optional parameter of another `discord.User`, 
 
 ### 2. Return information on any CE game
 Users can use `/ce-game` with one parameter for the name of the game, and the bot will return information from CE about it.
-> Insert image
+
+<img width="450" alt="A message showing CE information about Celeste" src="https://github.com/user-attachments/assets/9a3e73f9-5f07-47db-adc9-33662fe0d705">
 
 ### 3. Return information on any Steam game
 Users can use `/steam-game` with one parameter for the name of the game, and the bot will return information from Steam about it.
-
+> This feature is outdated, and likely will not return in the future.
 <img src="https://imgur.com/k6UO0aQ.png" width="450" alt="Requested Steam information on Celeste.">
 
 ### 4. Steam curator
 The [Steam curator](https://store.steampowered.com/curator/36185934/) for Challenge Enthusiasts is updated with games that are cleared and popular on the site. Any time the curator is updated, the bot will send a message.
 
-<img src="https://imgur.com/7LIzjYY.png" width="450" alt="A curator message showing that RefleX has been added to the curator.">
+<img width="450" alt="A curator message showing that Crisis Wing has been added to the Curator." src="https://github.com/user-attachments/assets/c5789708-855a-4e54-b52a-062f71515760">
 
 ### 5. Setting user color
 Challenge Enthusiast users are awarded ranks based on how many points they have. The higher rank they are, the more colors they have access to within the Discord server. `/set-color` presents users with the options they have available to them and changes their colors on request.
@@ -64,13 +65,14 @@ Administrators in the server have access to other commands to help with the bot.
 
 ### 8. Add notes
 Administrators have the option to add notes to any game update message, in case there's any added context needed.
-> Insert image
+
+<img width="450" alt="A game update with additional notes added." src="https://github.com/user-attachments/assets/b84ee09f-bac1-46f7-b85c-510430e16e7e">
 
 ### 9. Purge roll
 In the event that something happens with a roll event, administrators can manually remove a roll from a user (without initiating a cooldown) so that they can re-roll.
 
 ## How this gets done (for nerd losers)
-The previous version of this code, [CE-Assistant](https://github.com/andykasen13/CE-Assistant), was not object-oriented. While it also used `discord.py`, it held all of its data in `.json` files and simply edited them raw. This became a huge issue whenever we, the developers, had to go back in and fix something, because as time went on, dealing with just the raw data got more and more confusing. In this version, we made classes for every type of object we were working with.
+The previous version of this code, [CE-Assistant-v1](https://github.com/andykasen13/CE-Assistant-v1), was not object-oriented. While it also used `discord.py`, it held all of its data in `.json` files and simply edited them raw. This became a huge issue whenever we, the developers, had to go back in and fix something, because as time went on, dealing with just the raw data got more and more confusing. In this version, we made classes for every type of object we were working with.
 
 This bot utilizes the APIs for [Steam](https://store.steampowered.com), [RetroAchievements](https://retroachievements.org), [SteamHunters](https://steamhunters.com), and [Challenge Enthusiasts](https://cedb.me). It stores its information using [MongoDB](https://mongodb.com).
 
