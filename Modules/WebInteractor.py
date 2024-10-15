@@ -204,7 +204,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
         else : 
             updates.append(UpdateMessage(
                 location="userlog",
-                messsage=(f"Wow {user.mention()}! You've completed {game.game_name}, " +
+                message=(f"Wow {user.mention()}! You've completed {game.game_name}, " +
                         f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
             ))
 
