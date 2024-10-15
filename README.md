@@ -32,7 +32,8 @@ While CE-Assistant has its own main purposes, it also can do a lot of smaller st
 ### 1. Return user information
 Users can use `/profile`, with an optional parameter of another `discord.User`, and the bot will return information about this user.
 
-<img src="https://imgur.com/O85pItz.png" width="450" alt="An example of a profile embed, requested by user 'wantarou'.">
+<img width="250" alt="Screenshot of Folkius's profile page." src="https://github.com/user-attachments/assets/ab41bf77-dda3-4df6-9977-397ae0ca9e96">
+<img width="450" alt="Screenshot of Folkius's profile page." src="https://github.com/user-attachments/assets/52cffe04-018e-412b-9396-84f64866622d">
 
 ### 2. Return information on any CE game
 Users can use `/ce-game` with one parameter for the name of the game, and the bot will return information from CE about it.
