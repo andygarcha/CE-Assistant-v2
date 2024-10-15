@@ -813,7 +813,7 @@ async def loop(interaction : discord.Interaction) :
     await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
                              allowed_mentions=discord.AllowedMentions.none())
 
-    await master_loop(client)
+    await master_loop(client, guild_id)
 
     return await interaction.followup.send('loop complete.')
 
