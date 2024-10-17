@@ -323,7 +323,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     
     # jarvis's random event!
     if random.randint(0, 99) == 0 : 
-        user_log_channel.send(
+        await user_log_channel.send(
             f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +
             "Please DM him for your prize :)"
         )
