@@ -552,6 +552,7 @@ class CEValueInput :
         # imports
         from Classes.CE_Game import CEGame
         import Modules.hm as hm
+        
         database_name : list[CEGame] = database_name
         game_object = hm.get_item_from_list(game_id, database_name)
         objective_object = game_object.get_objective(self.objective_ce_id)
@@ -560,6 +561,10 @@ class CEValueInput :
         VALID_RANGE = 50
 
         return hm.is_within_percentage(self.average(), VALID_RANGE, objective_object.point_value)
+    
+    def input_count(self) -> int :
+        "Returns the number of inputs for this specific objective."
+        return len(self.__individual_value_inputs)
     
     # == to dict and to string ==
     
@@ -755,10 +760,14 @@ class CEInput :
 
     def average_curate(self) -> str :
         "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
-        if (self.curator_count() == 0) : return "N/A"
+        return f"{self.average_curate_float()}%"
+    
+    def average_curate_float(self) -> float :
+        "Returns the percentage of people who think this game should be curated. Example: 62.35"
+        if (self.curator_count() == 0) : return 0.0
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
         average = float(inputs.count(True)) / float(len(inputs)) * 100
-        return f"{round(average, 2)}%"
+        return round(average, 2)
 
     def curator_count(self) -> int :
         "Returns the number of people who have given curator inputs."
@@ -821,7 +830,7 @@ class CEInput :
         MINIMUM_CURATE_VOTES = 20
         MINIMUM_CURATE_PERCENTAGE = 80
         
-        return self.curator_count() >= MINIMUM_CURATE_VOTES and self.average_curate() >= MINIMUM_CURATE_PERCENTAGE
+        return self.curator_count() >= MINIMUM_CURATE_VOTES and self.average_curate_float() >= MINIMUM_CURATE_PERCENTAGE
 
     
     # == to dict and to string ==

@@ -323,7 +323,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     
     # jarvis's random event!
     if random.randint(0, 99) == 0 : 
-        user_log_channel.send(
+        await user_log_channel.send(
             f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +
             "Please DM him for your prize :)"
         )
@@ -1433,14 +1433,6 @@ class ValueModal(discord.ui.Modal) :
                 + "or DM a mod if you believe this is wrong.",
                 ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
             )
-
-        if float(abs(objective_point_value - proposed_value)) > (float(objective_point_value) / 2.0) :
-            return await interaction.followup.send(
-                f"Your evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
-                f"{self.__objective.name} at {self.new_value} is outside of the 50% range. Please try again or " +
-                "DM a mod if you believe this is wrong.",
-                ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
-            )
         
         # make sure its divisible by 5 too lol
         if (int(self.new_value.value) % 5 != 0) :
@@ -1459,9 +1451,11 @@ class ValueModal(discord.ui.Modal) :
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
 
         # we now need to check if our average has changed enough to enter scary territory
-        old_average = value_input.average_is_okay(
-            database_name, self.__game.ce_id
-        )
+        if value_input is not None :
+            old_average = value_input.average_is_okay(
+                database_name, self.__game.ce_id
+            )
+        else : old_average = True
 
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
@@ -1474,17 +1468,20 @@ class ValueModal(discord.ui.Modal) :
         await Mongo_Reader.dump_input(curr_input)
 
         # now lets grab the new average
+        value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
         new_average = value_input.average_is_okay(
             database_name, self.__game.ce_id
         )
 
         # and if the old average was okay, but the new average is not, send a message to the input channel.
-        if old_average and not new_average :
+        INPUT_MINIMUM = 5
+        if old_average and not new_average and value_input.input_count() >= INPUT_MINIMUM :
             log_channel = client.get_channel(hm.INPUT_LOG_ID)
 
             await log_channel.send(
                 f":bell: Alert! {self.__game.name_with_link()}'s PO {self.__objective.name} " +
-                f"({self.__objective.point_value} points) has an average evaluation of {value_input.average()} points."
+                f"({self.__objective.point_value} points) has an average evaluation of {value_input.average()} points" +
+                f" from {value_input.input_count()} evaluation(s)."
             )
 
         # return a quick little confirmation message
