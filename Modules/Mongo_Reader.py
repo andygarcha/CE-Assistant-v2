@@ -205,8 +205,8 @@ def _mongo_to_user(user : dict) -> CEUser :
         completed_rolls=completed_rolls,
         cooldowns=cooldowns,
         pending_rolls=pending_rolls,
-        display_name=user['display-name'],
-        avatar=user['avatar']
+        display_name=(user['display-name'] if 'display-name' in user else ''),
+        avatar=(user['avatar'] if 'avatar' in user else '')
     )
 
 
