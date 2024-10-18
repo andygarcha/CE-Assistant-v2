@@ -41,10 +41,20 @@ class CEUser:
         "Returns the display name of this user."
         return self._display_name
     
+    def set_display_name(self, display_name : str) :
+        "Setter."
+        self._display_name = display_name
+        pass
+    
     @property
     def avatar(self) :
         "Returns the avatar of this user."
         return self._avatar
+
+    def set_avatar(self, avatar : str) :
+        "Setter."
+        self._avatar = avatar
+        pass
 
     @property
     def ce_id(self) :

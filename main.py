@@ -757,6 +757,8 @@ async def scrape(interaction : discord.Interaction) :
         if c_user is None : continue
 
         database_user[i].owned_games = c_user.owned_games
+        database_user[i].set_display_name(c_user.display_name)
+        database_user[i].set_avatar(c_user.avatar)
         
 
     await Mongo_Reader.dump_games(database_name)
