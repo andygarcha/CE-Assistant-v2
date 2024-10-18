@@ -306,7 +306,9 @@ def _ce_to_user(json_response : dict) -> CEUser :
         current_rolls = [],
         completed_rolls = [],
         pending_rolls = [],
-        cooldowns = []
+        cooldowns = [],
+        display_name=json_response['displayName'],
+        avatar=json_response['avatar']
     )
 
 

@@ -20,7 +20,9 @@ class CEUser:
                  current_rolls : list[CERoll], 
                  completed_rolls : list[CERoll], 
                  pending_rolls : list[CERoll], 
-                 cooldowns : list[CERoll]):
+                 cooldowns : list[CERoll],
+                 display_name : str,
+                 avatar : str):
         self._discord_id : int = discord_id
         self._ce_id : str = ce_id
         self._casino_score : int = casino_score
@@ -29,8 +31,20 @@ class CEUser:
         self._completed_rolls : list[CERoll] = completed_rolls
         self._pending_rolls : list[CERoll] = pending_rolls
         self._cooldowns : list[CERoll] = cooldowns
+        self._display_name = display_name
+        self._avatar = avatar
 
     # ------------ getters -------------
+
+    @property
+    def display_name(self) :
+        "Returns the display name of this user."
+        return self._display_name
+    
+    @property
+    def avatar(self) :
+        "Returns the avatar of this user."
+        return self._avatar
 
     @property
     def ce_id(self) :
@@ -374,7 +388,9 @@ class CEUser:
             "Current Rolls" : current_rolls_array,
             "Completed Rolls" : completed_rolls_array,
             "Cooldowns" : cooldowns_array,
-            "Pending Rolls" : pendings_array
+            "Pending Rolls" : pendings_array,
+            "display-name" : self.display_name,
+            "avatar" : self.avatar
         }
 
         return user_dict

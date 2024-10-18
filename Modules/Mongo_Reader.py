@@ -204,7 +204,9 @@ def _mongo_to_user(user : dict) -> CEUser :
         current_rolls=current_rolls,
         completed_rolls=completed_rolls,
         cooldowns=cooldowns,
-        pending_rolls=pending_rolls
+        pending_rolls=pending_rolls,
+        display_name=user['display-name'],
+        avatar=user['avatar']
     )
 
 
