@@ -16,7 +16,7 @@ roll_cooldowns : dict[str, int] = {
     'Winner Takes All' : hm.months_to_days(3),
     'Game Theory' : hm.months_to_days(1),
 
-    'One Hell of a Day' : 14,
+    'One Hell of a Day' : 7,
     'One Hell of a Week' : hm.months_to_days(1),
     'One Hell of a Month' : hm.months_to_days(3),
     'Two Week T2 Streak' : None,
