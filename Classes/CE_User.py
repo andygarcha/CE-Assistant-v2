@@ -359,7 +359,9 @@ class CEUser:
             completed_rolls=self.completed_rolls,
             pending_rolls=self.pending_rolls,
             cooldowns=self.cooldowns,
-            full_data=data
+            full_data=data,
+            display_name=self.display_name,
+            avatar=self.avatar
         )
         
     def completions(self, database_name : list[CEGame]) -> int :
@@ -448,19 +450,17 @@ class CEAPIUser(CEUser) :
             completed_rolls : list[CERoll], 
             pending_rolls : list[CERoll], 
             cooldowns : list[CERoll],
-            full_data):
-        super().__init__(discord_id, ce_id, casino_score, owned_games, current_rolls, completed_rolls, pending_rolls, cooldowns)
+            full_data,
+            display_name : str,
+            avatar : str):
+        super().__init__(discord_id, ce_id, casino_score, owned_games, current_rolls, completed_rolls, pending_rolls, 
+                         cooldowns, display_name, avatar)
         self.__full_data = full_data
 
     @property
     def full_data(self) :
         "Return the full API data."
         return self.__full_data
-    
-    @property
-    def display_name(self) -> str :
-        "Return this user's display name."
-        return self.full_data['displayName']
     
     @property
     def is_admin(self) -> bool :
