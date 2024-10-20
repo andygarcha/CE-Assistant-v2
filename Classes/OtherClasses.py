@@ -70,7 +70,10 @@ class SteamData() :
     def current_price_formatted(self) -> str :
         "Returns this game's base price as a string - e.g. $19.99."
         if self.is_free : return "$0.00"
-        return self.raw_data['price_overview']['final_formatted']
+        try :
+            return self.raw_data['price_overview']['final_formatted']
+        except :
+            return "Price Error."
     
     @property
     def release_date(self) -> str :
