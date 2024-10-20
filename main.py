@@ -962,6 +962,8 @@ async def check_rolls(interaction : discord.Interaction) :
     # defer the message
     await interaction.response.defer()
 
+    
+
     # create the view
     view = discord.ui.View(timeout=None)
 
@@ -976,6 +978,8 @@ async def check_rolls(interaction : discord.Interaction) :
             user = u
             break
     if user is None : return await interaction.followup.send(content="You're not registered! Please run /register.")
+
+    return await interaction.followup.send(f'[click me :)](https://ce-assistant-frontend.vercel.app/users/{user.ce_id})')
 
     class CheckRollsDropdown(discord.ui.Select) :
         def __init__(self, user : CEUser) :
