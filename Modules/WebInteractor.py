@@ -239,7 +239,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
     # check cooldowns
     for i, cooldown in enumerate(user.cooldowns) :
-        if cooldown.end_time <= hm.get_unix('now') :
+        if cooldown.end_time is None or cooldown.end_time <= hm.get_unix('now') :
             updates.append(UpdateMessage(
                 location="casino",
                 message=f"{user.mention()}, your {cooldown.roll_name} cooldown has ended."
