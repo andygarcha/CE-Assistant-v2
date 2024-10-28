@@ -1180,6 +1180,29 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
     await Mongo_Reader.dump_user(user)
     return await interaction.followup.send("Done!")
 
+@tree.command(name='force-add', description="Force add a roll to a user's completed rolls section.", guild=guild)
+async def force_add(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+    await interaction.response.defer()
+
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /force-add, "
+                     + f"params: member=<@{member.id}>, roll_name={roll_name}", 
+                     allowed_mentions=discord.AllowedMentions.none())
+    
+    # get database user and the user
+    database_user = await Mongo_Reader.get_mongo_users()
+    user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
+
+    user.add_completed_roll(CERoll(
+        roll_name=roll_name,
+        user_ce_id=user.ce_id,
+        games=None
+    ))
+
+    await Mongo_Reader.dump_user(user)
+    return await interaction.followup.send("Done!")
+
 """
 
 #   _____   ______   _______            _____     ____    _        _                  _____              __  __   ______ 
