@@ -259,7 +259,7 @@ class CEGame:
     
     def has_an_uncleared(self) -> bool :
         """Returns true if this game has an uncleared objective."""
-        for objective in self.get_primary_objectives() :
+        for objective in self.all_objectives :
             if objective.is_uncleared() : return True
         return False
     
