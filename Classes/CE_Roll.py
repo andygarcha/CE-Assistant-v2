@@ -100,6 +100,9 @@ class CERoll:
     is_current : `bool`
         Set this to true if you're declaring a
         new current roll.
+
+    tier_num : `int`
+        This is only for Soul Mates. They get to choose their tier.
     """
 
     def __init__(self,
@@ -112,7 +115,8 @@ class CERoll:
                  completed_time = None,
                  rerolls = None,
                  winner = None,
-                 is_current : bool = False):
+                 is_current : bool = False,
+                 tier_num : int = None):
         self._roll_name : str = roll_name
         self._user_ce_id : str = user_ce_id
         self._games : list[str] = games
@@ -138,7 +142,8 @@ class CERoll:
 
         # set the due time to the correct time
         if due_time == None and roll_due_times[self._roll_name] is not None:
-            self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
+            if roll_name == "Soul Mates" : self._due_time = hm.get_unix(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
+            else : self._due_time = hm.get_unix(days=roll_due_times[self._roll_name])
         elif due_time == None and roll_due_times[self._roll_name] is None :
             self._due_time = None
         else :
