@@ -333,10 +333,17 @@ def get_rollable_game(
         if tier_number != None and game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
             continue
+        
+        if (type(user) is list) :
+            "If there's more than one user..."
+            for u in user :
+                "...one of them has completed the game."
+                if u.has_completed_game(game.ce_id, database_name) : continue
+        else :
+            "User has completed the game already."
+            if user.has_completed_game(game.ce_id, database_name) : 
+                continue
 
-        if (user.has_completed_game(game.ce_id, database_name)) :
-            "User has completed game already."
-            continue
 
         if game.ce_id in already_rolled_games :
             "This game has already been rolled."

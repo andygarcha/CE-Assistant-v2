@@ -778,7 +778,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         self.__user.add_current_roll(CERoll(
             roll_name="Destiny Alignment",
             user_ce_id=self.__user.ce_id,
-            games=[game_for_user],
+            games=[game_for_user, game_for_partner],
             partner_ce_id=self.__partner.ce_id,
             is_current=True
         ))
@@ -787,7 +787,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         self.__partner.add_current_roll(CERoll(
             roll_name="Destiny Alignment",
             user_ce_id=self.__partner.ce_id,
-            games=[game_for_partner],
+            games=[game_for_partner, game_for_user],
             partner_ce_id=self.__user.ce_id,
             is_current=True
         ))
@@ -802,9 +802,11 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         game_for_partner_object = hm.get_item_from_list(game_for_partner, database_name)
 
         return await interaction.followup.edit_message(
-            f"{self.__user.mention()} must complete {game_for_user_object.name_with_link()} and " +
-            f"{self.__partner.mention()} must complete {game_for_partner_object.name_with_link()} by " +
-            f"<t:{hm.get_unix(months=1)}>.",
+            content=(
+                f"{self.__user.mention()} must complete {game_for_user_object.name_with_link()} and " +
+                f"{self.__partner.mention()} must complete {game_for_partner_object.name_with_link()} by " +
+                f"<t:{hm.get_unix(months=1)}>."
+            ),
             message_id=interaction.message.id,
             view=discord.ui.View()
         )
@@ -945,6 +947,90 @@ class SoulMatesAgreeView(discord.ui.View) :
         return await interaction.response.edit_message(content="Roll cancelled.", view=self)
     pass
 
+class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
+    "The agree-button view for Teamwork Makes the Dream Work. Only `partner` can select the buttons."
+    def __init__(self, user : CEUser, partner : CEUser) :
+        self.__user = user
+        self.__partner = partner
+        super().__init__(timeout=600)
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # make sure the right person clicked
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        database_name = await Mongo_Reader.get_mongo_games()
+
+        rolled_games : list[str] = []
+        for i in range(4) :
+            rolled_games.append(hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=40,
+                price_limit=20,
+                tier_number=3,
+                user=[self.__user, self.__partner],
+                already_rolled_games=rolled_games,
+                has_points_restriction=True
+            ))
+
+        if None in rolled_games :
+            return await interaction.followup.edit_message(
+                content="It looks like there aren't enough rollable games at this time. Please alert Andy.",
+                message_id=interaction.message.id
+            )
+        
+        user_roll = CERoll(
+            roll_name="Teamwork Makes the Dream Work",
+            user_ce_id=self.__user.ce_id,
+            games=rolled_games,
+            partner_ce_id=self.__partner.ce_id,
+            is_current=True
+        )
+        self.__user.add_current_roll(user_roll)
+        self.__partner.add_current_roll(CERoll(
+            roll_name="Teamwork Makes the Dream Work",
+            user_ce_id=self.__partner.ce_id,
+            games=rolled_games,
+            partner_ce_id=self.__user.ce_id,
+            is_current=True
+        ))
+        await Mongo_Reader.dump_user(self.__user)
+        await Mongo_Reader.dump_user(self.__partner)
+
+        rolled_games_objects = [hm.get_item_from_list(game_id, database_name) for game_id in rolled_games]
+
+        content = (
+                f"{self.__user.mention()} and {self.__user.mention()} must complete the following games by " +
+                f"<t:{user_roll.due_time}>: "
+            )
+        for i, game in enumerate(rolled_games_objects) :
+            content += (f"{game.name_with_link()}")
+            if i != 3 : content += ", "
+        content += "."
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content=content,
+            view=discord.ui.View()
+        )
+
+    
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure it was the right person who clicked it
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        # clear items
+        self.clear_items()
+        return await interaction.response.edit_message(content="Roll cancelled.", view=self)
+    pass
 
 
 @tree.command(name="coop-roll", description="Roll a Co-Op or PvP roll with a friend!", guild=guild)
@@ -1049,6 +1135,10 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             )
 
         case "Teamwork Makes the Dream Work" :
+            return await interaction.followup.send(
+                f"{partner.mention()}, would you like to enter into Teamwork Makes the Dream Work with {user.mention()}?",
+                view=TeamworkMakesTheDreamWorkAgreeView(user, partner)
+            )
             pass
 
         case "Winner Takes All" | "Game Theory" :

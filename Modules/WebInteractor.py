@@ -579,6 +579,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
         database_user = await Mongo_Reader.get_mongo_users()
         try :
             new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
+            database_user = await Mongo_Reader.get_mongo_users()
 
             # guild
             guild = await client.fetch_guild(guild_id)
