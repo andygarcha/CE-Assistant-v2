@@ -1027,7 +1027,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
         rolled_games_objects = [hm.get_item_from_list(game_id, database_name) for game_id in rolled_games]
 
         content = (
-                f"{self.__user.mention()} and {self.__user.mention()} must complete the following games by " +
+                f"{self.__user.mention()} and {self.__partner.mention()} must complete the following games by " +
                 f"<t:{user_roll.due_time}>: "
             )
         for i, game in enumerate(rolled_games_objects) :
@@ -1104,6 +1104,16 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             "Please have them run `/register` first!"
         )
     
+    if user.has_current_roll(event_name) :
+        return await interaction.followup.send(
+            f"You are currently attempting {event_name}!"
+        )
+    
+    if partner.has_current_roll(event_name) :
+        return await interaction.followup.send(
+            f"Your partner is currently attempting {event_name}!"
+        )
+    
     # user has cooldown
     if user.has_cooldown(event_name) :
         return await interaction.followup.send(
@@ -1136,6 +1146,12 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             f"Congratulations to {user.mention()} and {partner.mention()}! " +
             "You've won Jarvis's super secret reward! Please DM him for your prize :)"
         )
+
+    user.add_pending(CECooldown(event_name, hm.get_unix(minutes=10)))
+    partner.add_pending(CECooldown(event_name, hm.get_unix(minutes=10)))
+    await Mongo_Reader.dump_user(user)
+    await Mongo_Reader.dump_user(partner)
+
 
     match(event_name) :
         case "Destiny Alignment" :
