@@ -330,6 +330,10 @@ def get_rollable_game(
             continue
         """
 
+        if tier_number == 6 and not game.is_t5plus() :
+            "Incorrect tier."
+            continue
+        
         if tier_number != None and game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
             continue
