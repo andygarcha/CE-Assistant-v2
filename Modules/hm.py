@@ -354,9 +354,15 @@ def get_rollable_game(
             continue
 
         price = game.get_price()
-        if price is not None and price > price_limit and price_restriction and not user.owns_game(game.ce_id) :
+        if price_restriction and price is not None and price > price_limit :
+            if type(user) is list :
+                "If there's more than one user..."
+                for u in user :
+                    "One of the users doesn't own the game."
+                    if not u.owns_game(game.ce_id) : continue
+            else :
+                if not user.owns_game(game.ce_id) : continue
             "The price is too high (and the price is restricted) and the user doesn't own the game."
-            continue
 
         sh_data = game.get_steamhunters_data()
         if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
