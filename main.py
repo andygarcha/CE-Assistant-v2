@@ -838,7 +838,7 @@ class SoulMatesDropdown(discord.ui.Select) :
                 label=f"Tier {i+1}", value=f"{i+1}", description=f"Roll a Tier {i+1}", emoji=hm.get_emoji(f'Tier {i+1}')
             ))
         options.append(discord.SelectOption(
-            label="Tier 5+", value="5", description="Roll a Tier 5 (or above)"
+            label="Tier 5+", value="6", description="Roll a Tier 5 (or above)"
         ))
 
         super().__init__(placeholder="Choose a Tier.", min_values=1, max_values=1, options=options)
