@@ -330,13 +330,20 @@ def get_rollable_game(
             continue
         """
 
-        if game.get_tier() != f"Tier {tier_number}" :
+        if tier_number != None and game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
             continue
+        
+        if (type(user) is list) :
+            "If there's more than one user..."
+            for u in user :
+                "...one of them has completed the game."
+                if u.has_completed_game(game.ce_id, database_name) : continue
+        else :
+            "User has completed the game already."
+            if user.has_completed_game(game.ce_id, database_name) : 
+                continue
 
-        if (user.has_completed_game(game.ce_id, database_name)) :
-            "User has completed game already."
-            continue
 
         if game.ce_id in already_rolled_games :
             "This game has already been rolled."
@@ -359,10 +366,17 @@ def get_rollable_game(
         if game.ce_id in banned_games :
             "This game is in the Banned Games section."
             continue
-
-        if has_points_restriction and user.has_points(game.ce_id) :
-            "This user is not allowed to have points in this game."
-            continue
+        
+        if has_points_restriction :
+            "If the user isn't allowed to have points in the game..."
+            if type(user) is list :
+                "One of the users passed has points in the game."
+                for u in user :
+                    u : CEUser = u
+                    if u.has_points(game.ce_id) : continue
+            else :
+                "The user passed has points in the game."
+                if user.has_points(game.ce_id) : continue
 
         return game.ce_id
     

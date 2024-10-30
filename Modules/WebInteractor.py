@@ -292,12 +292,21 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
             del user.current_rolls[index]
 
             if roll.is_co_op() :
+                # get the partner and their roll
                 partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
                 partner_roll = partner.get_current_roll(roll.roll_name)
+
+                # set the partner roll's winner tag
                 if roll.is_pvp() : partner_roll.winner = not roll.winner
+
+                # remove their current roll
                 partner.remove_current_roll(partner_roll.roll_name)
+
+                # set the completion time and add it to the completed rolls
                 partner_roll.completed_time = hm.get_unix('now')
                 partner.add_completed_roll(partner_roll)
+
+                # and append it to partners
                 partners.append(partner)
 
         
@@ -570,6 +579,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
         database_user = await Mongo_Reader.get_mongo_users()
         try :
             new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
+            database_user = await Mongo_Reader.get_mongo_users()
 
             # guild
             guild = await client.fetch_guild(guild_id)

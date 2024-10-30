@@ -324,7 +324,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     # jarvis's random event!
     if random.randint(0, 99) == 0 : 
         await user_log_channel.send(
-            f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret random thing! " +
+            f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret reward! " +
             "Please DM him for your prize :)"
         )
         
@@ -716,6 +716,435 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     return await interaction.followup.send(embed=embeds[0], view=view)
 
 
+
+
+class DestinyAlignmentAgreeView(discord.ui.View) :
+    "The agree-button view for Destiny Alignment. Only `partner` can click these buttons."
+    def __init__(self, user : CEUser, partner : CEUser) :
+        self.__user = user
+        self.__partner = partner
+        super().__init__(timeout=600)
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure only the partner can touch the buttons.
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        # defer
+        await interaction.response.defer()
+
+        # pull database name
+        database_name = await Mongo_Reader.get_mongo_games()
+
+        # get the game for the user from the partner's library
+        game_for_user = hm.get_rollable_game(
+            self.__partner.get_completed_games_2(database_name),
+            completion_limit=None,
+            price_limit=20,
+            tier_number=None,
+            user=self.__user,
+            has_points_restriction=True
+        )
+
+        # check to make sure one exists
+        if game_for_user == None :
+            return await interaction.followup.send(
+                f"There are no completed games in {self.__partner.mention()}'s library that are rollable " +
+                f"to {self.__user.mention()}."
+            )
+        
+        # get the game for the partner from the user's library
+        game_for_partner = hm.get_rollable_game(
+            self.__user.get_completed_games_2(database_name),
+            completion_limit=None,
+            price_limit=20,
+            tier_number=None,
+            user=self.__partner,
+            has_points_restriction=True
+        )
+
+        # check to make sure one exists
+        if game_for_partner == None :
+            return await interaction.followup.send(
+                f"There are no completed games in {self.__user.mention()}'s library that are rollable " +
+                f"to {self.__partner.mention()}."
+            )
+
+        # add the roll to the user...
+        self.__user.add_current_roll(CERoll(
+            roll_name="Destiny Alignment",
+            user_ce_id=self.__user.ce_id,
+            games=[game_for_user, game_for_partner],
+            partner_ce_id=self.__partner.ce_id,
+            is_current=True
+        ))
+
+        # ...and the partner.
+        self.__partner.add_current_roll(CERoll(
+            roll_name="Destiny Alignment",
+            user_ce_id=self.__partner.ce_id,
+            games=[game_for_partner, game_for_user],
+            partner_ce_id=self.__user.ce_id,
+            is_current=True
+        ))
+
+        # and then dump them both.
+        await Mongo_Reader.dump_user(self.__user)
+        await Mongo_Reader.dump_user(self.__partner)
+
+        self.clear_items()
+
+        game_for_user_object = hm.get_item_from_list(game_for_user, database_name)
+        game_for_partner_object = hm.get_item_from_list(game_for_partner, database_name)
+
+        return await interaction.followup.edit_message(
+            content=(
+                f"{self.__user.mention()} must complete {game_for_user_object.name_with_link()} and " +
+                f"{self.__partner.mention()} must complete {game_for_partner_object.name_with_link()} by " +
+                f"<t:{hm.get_unix(months=1)}>."
+            ),
+            message_id=interaction.message.id,
+            view=discord.ui.View()
+        )
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure only the partner can touch the buttons
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        # clear the items
+        self.clear_items()
+        return await interaction.response.edit_message(content="Roll cancelled.", view=self)
+    pass
+
+
+
+class SoulMatesDropdown(discord.ui.Select) :
+    "The dropdown-select for choosing a Tier in Soul Mates. Only `user` can select the tier."
+    def __init__(self, user : CEUser, partner : CEUser) :
+        self.__user = user
+        self.__partner = partner
+        options : list[discord.SelectOption] = []
+        for i in range(5) :
+            options.append(discord.SelectOption(
+                label=f"Tier {i+1}", value=f"{i}", description=f"Roll a Tier {i+1}", emoji=hm.get_emoji(f'Tier {i+1}')
+            ))
+        options.append(discord.SelectOption(
+            label="Tier 5+", value="5", description="Roll a Tier 5 (or above)"
+        ))
+
+        super().__init__(placeholder="Choose a Tier.", min_values=1, max_values=1, options=options)
+    
+    async def callback(self, interaction : discord.Interaction) :
+
+        # make sure only the user can pick the tier
+        if interaction.user.id != self.__user.discord_id :
+            return await interaction.response.send_message(
+                "You cannot select this.", ephemeral=True
+            )
+        
+        # send message
+        return await interaction.response.edit_message(
+            content=(f"{self.__partner.mention()}, would you like to enter a Tier {self.values[0]} Soul Mates " +
+            f"with {self.__user.mention()}?"),
+            view=SoulMatesAgreeView(self.__user, self.__partner, self.values[0])
+        )
+    pass
+
+
+    
+
+class SoulMatesAgreeView(discord.ui.View) :
+    "The agree-button view for Soul Mates. Only `partner` can push the buttons."
+    def __init__(self, user : CEUser, partner : CEUser, tier : str) :
+        self.__user = user
+        self.__partner = partner
+        self.__tier = tier
+        super().__init__(timeout=600)
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure only the partner can click this.
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        # defer
+        await interaction.response.defer()
+
+        hour_limit = [15, 40, 80, 160, None, None]
+
+        tier_num = int(self.__tier)
+
+        database_name = await Mongo_Reader.get_mongo_games()
+
+        rolled_game = hm.get_rollable_game(
+            database_name=database_name,
+            completion_limit=hour_limit[tier_num],
+            price_limit=20,
+            tier_number=tier_num,
+            user=[self.__user, self.__partner],
+            has_points_restriction=True
+        )
+
+        if rolled_game == None :
+            return await interaction.followup.send(
+                "It seems no rollable games are available right now. Please ping andy!"
+            )
+
+        user_roll = CERoll(
+            roll_name="Soul Mates",
+            user_ce_id=self.__user.ce_id,
+            games=[rolled_game],
+            partner_ce_id=self.__partner.ce_id,
+            is_current=True
+        )
+
+        partner_roll = CERoll(
+            roll_name="Soul Mates",
+            user_ce_id=self.__partner.ce_id,
+            games=[rolled_game],
+            partner_ce_id=self.__user.ce_id,
+            is_current=True
+        )
+
+        self.__user.add_current_roll(user_roll)
+        self.__partner.add_current_roll(partner_roll)
+
+        await Mongo_Reader.dump_user(self.__user)
+        await Mongo_Reader.dump_user(self.__partner)
+
+        game_object = hm.get_item_from_list(rolled_game, database_name)
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content=(f"{self.__user.mention()} and {self.__partner.mention()} have until <t:{user_roll.due_time}> "
+            + f"to complete {game_object.name_with_link()}."),
+            view = discord.ui.View()
+        )
+
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure it was the right person who clicked it
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        # clear items
+        self.clear_items()
+        return await interaction.response.edit_message(content="Roll cancelled.", view=self)
+    pass
+
+class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
+    "The agree-button view for Teamwork Makes the Dream Work. Only `partner` can select the buttons."
+    def __init__(self, user : CEUser, partner : CEUser) :
+        self.__user = user
+        self.__partner = partner
+        super().__init__(timeout=600)
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # make sure the right person clicked
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        database_name = await Mongo_Reader.get_mongo_games()
+
+        rolled_games : list[str] = []
+        for i in range(4) :
+            rolled_games.append(hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=40,
+                price_limit=20,
+                tier_number=3,
+                user=[self.__user, self.__partner],
+                already_rolled_games=rolled_games,
+                has_points_restriction=True
+            ))
+
+        if None in rolled_games :
+            return await interaction.followup.edit_message(
+                content="It looks like there aren't enough rollable games at this time. Please alert Andy.",
+                message_id=interaction.message.id
+            )
+        
+        user_roll = CERoll(
+            roll_name="Teamwork Makes the Dream Work",
+            user_ce_id=self.__user.ce_id,
+            games=rolled_games,
+            partner_ce_id=self.__partner.ce_id,
+            is_current=True
+        )
+        self.__user.add_current_roll(user_roll)
+        self.__partner.add_current_roll(CERoll(
+            roll_name="Teamwork Makes the Dream Work",
+            user_ce_id=self.__partner.ce_id,
+            games=rolled_games,
+            partner_ce_id=self.__user.ce_id,
+            is_current=True
+        ))
+        await Mongo_Reader.dump_user(self.__user)
+        await Mongo_Reader.dump_user(self.__partner)
+
+        rolled_games_objects = [hm.get_item_from_list(game_id, database_name) for game_id in rolled_games]
+
+        content = (
+                f"{self.__user.mention()} and {self.__user.mention()} must complete the following games by " +
+                f"<t:{user_roll.due_time}>: "
+            )
+        for i, game in enumerate(rolled_games_objects) :
+            content += (f"{game.name_with_link()}")
+            if i != 3 : content += ", "
+        content += "."
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content=content,
+            view=discord.ui.View()
+        )
+
+    
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        # make sure it was the right person who clicked it
+        if interaction.user.id != self.__partner.discord_id :
+            return await interaction.response.send_message(
+                "You cannot touch these buttons.", ephemeral=True
+            )
+        
+        # clear items
+        self.clear_items()
+        return await interaction.response.edit_message(content="Roll cancelled.", view=self)
+    pass
+
+
+@tree.command(name="coop-roll", description="Roll a Co-Op or PvP roll with a friend!", guild=guild)
+async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL_EVENT_NAMES, partner : discord.Member) :
+    await interaction.response.defer()
+
+    # helps with variable names
+    partner_discord = partner
+    del partner
+    partner = None
+
+    # make the view
+    view = discord.ui.View()
+
+    # pull mongo database
+    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_mongo_games()
+
+    # define channel
+    user_log_channel = client.get_channel(hm.USER_LOG_ID)
+
+    # check they didn't roll with themselves
+    if interaction.user.id == partner_discord.id :
+        return await interaction.followup.send(
+            "You can't roll with yourself!"
+        )
+
+    # grab the user
+    user = None
+    partner : CEUser = None
+    for i, u in enumerate(database_user) :
+        if u.discord_id == interaction.user.id :
+            user = u
+        elif u.discord_id == partner_discord.id :
+            partner = u
+
+    # user doesn't exist
+    if user == None :
+        return await interaction.followup.send(
+            "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
+        )
+    
+    # partner doesn't exist
+    if partner == None :
+        return await interaction.followup.send(
+            "Sorry, your partner is not registered in the CE Assistant database. " + 
+            "Please have them run `/register` first!"
+        )
+    
+    # user has cooldown
+    if user.has_cooldown(event_name) :
+        return await interaction.followup.send(
+            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name)}>. "
+        )
+    
+    # partner has cooldown
+    if partner.has_cooldown(event_name) :
+        return await interaction.followup.send(
+            f"Your partner is currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name)}>. "
+        )
+
+    # user has pending
+    if user.has_pending(event_name) :
+        return await interaction.followup.send(
+            f"You just tried rolling this event. Please wait about 10 minutes before trying again." +
+            " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+    
+    # partner has pending
+    if partner.has_pending(event_name) :
+        return await interaction.followup.send(
+            f"Your partner just tried rolling this event. Please wait about 10 minutes before trying again." +
+            " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+    
+    # jarvis's random event!
+    if random.randint(0, 99) == 0 : 
+        await user_log_channel.send(
+            f"Congratulations to {user.mention()} and {partner.mention()}! " +
+            "You've won Jarvis's super secret reward! Please DM him for your prize :)"
+        )
+
+    match(event_name) :
+        case "Destiny Alignment" :
+            # check if the users are the same rank
+            if (user.rank_num() < 6 and partner.rank_num() < 6) and (user.get_rank() != partner.get_rank()) :
+                return await interaction.followup.send(
+                    "For Destiny Alignment, both you and your partner have to be the same rank " +
+                    f"(or both be SS Rank or above). You are {user.get_rank()} and your partner is {partner.get_rank()}."
+                )
+            return await interaction.followup.send(
+                f"{partner.mention()}, would you like to enter into Destiny Alignment with {user.mention()}?",
+                view=DestinyAlignmentAgreeView(user, partner)
+            )
+
+        case "Soul Mates" :
+            view = discord.ui.View(timeout=600)
+            view.add_item(SoulMatesDropdown(user, partner))
+            return await interaction.followup.send(
+                f"{user.mention()}, select a Tier.",
+                view=view
+            )
+
+        case "Teamwork Makes the Dream Work" :
+            return await interaction.followup.send(
+                f"{partner.mention()}, would you like to enter into Teamwork Makes the Dream Work with {user.mention()}?",
+                view=TeamworkMakesTheDreamWorkAgreeView(user, partner)
+            )
+            pass
+
+        case "Winner Takes All" | "Game Theory" :
+            return await interaction.followup.send(
+                f"{event_name} has retired. Look forward to future events!"
+            )
 
 
 #   _____    _____   _____               _____    ______ 

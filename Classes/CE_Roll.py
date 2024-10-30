@@ -324,7 +324,8 @@ class CERoll:
         return list(set([hm.get_item_from_list(game, database_name).category for game in self.games]))
     
     def get_win_message(self, database_name : list, database_user : list) -> str :
-        """Returns a string to send to #casino-log if this roll is won."""
+        """Returns a string to send to #casino-log if this roll is won.
+        This also sets the winner property if the roll is co-op."""
         import Modules.Mongo_Reader as Mongo_Reader
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
