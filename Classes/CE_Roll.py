@@ -47,7 +47,8 @@ roll_due_times = {
         'Tier 5' : None,
         'Tier 5+' : None,
         'Tier 6' : None
-    }
+    },
+    'Teamwork Makes the Dream Work' : hm.months_to_days(1)
 }
 
 def relative(tier_num : int) -> int :
