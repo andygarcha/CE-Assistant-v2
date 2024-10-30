@@ -44,7 +44,9 @@ roll_due_times = {
         'Tier 2' : 10,
         'Tier 3' : hm.months_to_days(1),
         'Tier 4' : hm.months_to_days(2),
-        'Tier 5' : None
+        'Tier 5' : None,
+        'Tier 5+' : None,
+        'Tier 6' : None
     }
 }
 

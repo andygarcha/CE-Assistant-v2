@@ -835,7 +835,7 @@ class SoulMatesDropdown(discord.ui.Select) :
         options : list[discord.SelectOption] = []
         for i in range(5) :
             options.append(discord.SelectOption(
-                label=f"Tier {i+1}", value=f"{i}", description=f"Roll a Tier {i+1}", emoji=hm.get_emoji(f'Tier {i+1}')
+                label=f"Tier {i+1}", value=f"{i+1}", description=f"Roll a Tier {i+1}", emoji=hm.get_emoji(f'Tier {i+1}')
             ))
         options.append(discord.SelectOption(
             label="Tier 5+", value="5", description="Roll a Tier 5 (or above)"
@@ -852,6 +852,12 @@ class SoulMatesDropdown(discord.ui.Select) :
             )
         
         # send message
+        if self.values[0] == "6" :
+            return await interaction.response.edit_message(
+                content=(f"{self.__partner.mention()}, would you like to enter a Tier 5+ Soul Mates " +
+                f"with {self.__user.mention()}?"),
+                view=SoulMatesAgreeView(self.__user, self.__partner, self.values[0])
+            )
         return await interaction.response.edit_message(
             content=(f"{self.__partner.mention()}, would you like to enter a Tier {self.values[0]} Soul Mates " +
             f"with {self.__user.mention()}?"),
@@ -881,7 +887,7 @@ class SoulMatesAgreeView(discord.ui.View) :
         # defer
         await interaction.response.defer()
 
-        hour_limit = [15, 40, 80, 160, None, None]
+        hour_limit = [None, 15, 40, 80, 160, None, None]
 
         tier_num = int(self.__tier)
 
@@ -906,7 +912,8 @@ class SoulMatesAgreeView(discord.ui.View) :
             user_ce_id=self.__user.ce_id,
             games=[rolled_game],
             partner_ce_id=self.__partner.ce_id,
-            is_current=True
+            is_current=True,
+            tier_num=tier_num
         )
 
         partner_roll = CERoll(
@@ -914,7 +921,8 @@ class SoulMatesAgreeView(discord.ui.View) :
             user_ce_id=self.__partner.ce_id,
             games=[rolled_game],
             partner_ce_id=self.__user.ce_id,
-            is_current=True
+            is_current=True,
+            tier_num=tier_num
         )
 
         self.__user.add_current_roll(user_roll)
