@@ -984,6 +984,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
                 "You cannot touch these buttons.", ephemeral=True
             )
         
+        await interaction.response.defer()
+        
         database_name = await Mongo_Reader.get_mongo_games()
 
         rolled_games : list[str] = []
