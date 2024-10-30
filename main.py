@@ -723,10 +723,14 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
     def __init__(self, user : CEUser, partner : CEUser) :
         self.__user = user
         self.__partner = partner
+        self.__button_clicked = False
         super().__init__(timeout=600)
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        if self.__button_clicked : return
+        self.__button_clicked = True
 
         # make sure only the partner can touch the buttons.
         if interaction.user.id != self.__partner.discord_id :
@@ -965,10 +969,15 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
     def __init__(self, user : CEUser, partner : CEUser) :
         self.__user = user
         self.__partner = partner
+        self.__button_clicked = False
         super().__init__(timeout=600)
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+
+        if self.__button_clicked : return
+        self.__button_clicked = True
+
         # make sure the right person clicked
         if interaction.user.id != self.__partner.discord_id :
             return await interaction.response.send_message(
