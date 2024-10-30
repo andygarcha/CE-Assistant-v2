@@ -838,7 +838,7 @@ class SoulMatesDropdown(discord.ui.Select) :
                 label=f"Tier {i+1}", value=f"{i}", description=f"Roll a Tier {i+1}", emoji=hm.get_emoji(f'Tier {i+1}')
             ))
         options.append(discord.SelectOption(
-            label="Tier 5+", value="5", description="Roll a Tier 5 (or above)", emoji=":bangbang:"
+            label="Tier 5+", value="5", description="Roll a Tier 5 (or above)"
         ))
 
         super().__init__(placeholder="Choose a Tier.", min_values=1, max_values=1, options=options)
@@ -853,8 +853,8 @@ class SoulMatesDropdown(discord.ui.Select) :
         
         # send message
         return await interaction.response.edit_message(
-            f"{self.__partner.mention()}, would you like to enter a Tier {self.values[0]} Soul Mates " +
-            f"with {self.__user.mention()}?",
+            content=(f"{self.__partner.mention()}, would you like to enter a Tier {self.values[0]} Soul Mates " +
+            f"with {self.__user.mention()}?"),
             view=SoulMatesAgreeView(self.__user, self.__partner, self.values[0])
         )
     pass
