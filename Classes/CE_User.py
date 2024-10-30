@@ -95,6 +95,20 @@ class CEUser:
         elif total_points >= 50 : return "D Rank"
         else : return "E Rank"
 
+    def rank_num(self) -> int :
+        "Returns the rank as a user. E Rank is 0, D Rank is 1, etc."
+        match(self.get_rank()) :
+            case "E Rank" : return 0
+            case "D Rank" : return 1
+            case "C Rank" : return 2
+            case "B Rank" : return 3
+            case "A Rank" : return 4
+            case "S Rank" : return 5
+            case "SS Rank" : return 6
+            case "SSS Rank" : return 7
+            case "EX Rank" : return 8
+        return None
+
     @property
     def owned_games(self):
         """Returns a list of :class:`CEUserGame`s that this user owns."""
@@ -106,6 +120,15 @@ class CEUser:
         for game in self.owned_games :
             if game.ce_id == ce_id : return game
         return None
+
+    def owned_games_as_cegames(self, database_name : list[CEGame]) -> list[CEGame] :
+        "Returns a list of this user's owned games as `CEGame`s."
+        o : list[CEGame] = []
+        for game in database_name :
+            for owned_game in self.owned_games :
+                if game.ce_id == owned_game.ce_id :
+                    o.append(game)
+        return o
 
     def get_completed_games(self) -> list[CEUserGame] :
         """Returns a list of :class:`CEUserGame`'s that this user has completed.
