@@ -555,7 +555,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 await Mongo_Reader.dump_game(new_game)
             
             for removed_game in game_list :
-                old_game = await Mongo_Reader.get_game(new_game.ce_id)
+                old_game = await Mongo_Reader.get_game(removed_game)
 
                 # get the update
                 game_returns = await thread_single_game_update(
