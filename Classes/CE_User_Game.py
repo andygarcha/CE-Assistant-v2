@@ -120,9 +120,9 @@ class CEUserGame():
         for objective in self.user_objectives :
             objectives.append(objective.to_dict())
         return {
-            'Name' : self.name,
-            'CE ID' : self.ce_id,
-            'Objectives' : objectives
+            'name' : self.name,
+            'ce_id' : self.ce_id,
+            'objectives' : objectives
         }
     
     def __str__(self) :

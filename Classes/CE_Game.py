@@ -317,13 +317,13 @@ class CEGame:
         for objective in self.all_objectives :
             objectives.append(objective.to_dict())
         return {
-            "Name" : self.game_name,
-            "CE ID" : self.ce_id,
-            "Platform" : self.platform,
-            "Platform ID" : self.platform_id,
-            "Category" : self.category,
-            "Objectives" : objectives,
-            "Last Updated" : self.last_updated
+            "name" : self.game_name,
+            "ce_id" : self.ce_id,
+            "platform" : self.platform,
+            "platform_id" : self.platform_id,
+            "category" : self.category,
+            "objectives" : objectives,
+            "last_updated" : self.last_updated
         }
     
     def __str__(self) :

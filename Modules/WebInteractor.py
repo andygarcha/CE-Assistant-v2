@@ -236,20 +236,11 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
                 message=(f"Amazing! {user.mention()} has passed the milestone of " +
                         f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
             ))
-
-    # check cooldowns
-    for i, cooldown in enumerate(user.cooldowns) :
-        if cooldown.end_time is None or cooldown.end_time <= hm.get_unix('now') :
-            updates.append(UpdateMessage(
-                location="casino",
-                message=f"{user.mention()}, your {cooldown.roll_name} cooldown has ended."
-            ))
-            del user.cooldowns[i]
     
     # check pendings
-    for i, pending in enumerate(user.pending_rolls) :
-        if pending.end_time <= hm.get_unix('now') :
-            del user.pending_rolls[i]
+    for i, roll in enumerate(user.rolls) :
+        if roll.status == "pending" and roll.due_time <= hm.get_unix("now") :
+            del user._rolls[i]
 
     # check rolls
     for index, roll in enumerate(user.current_rolls) :
@@ -289,7 +280,7 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
             # add the object to completed rolls, and
             # remove it from current
             user.add_completed_roll(roll)
-            del user.current_rolls[index]
+            user.remove_current_roll(roll.roll_name)
 
             if roll.is_co_op() :
                 # get the partner and their roll
@@ -538,18 +529,45 @@ async def master_loop(client : discord.Client, guild_id : int) :
     # ---- game ----
     SKIP_GAME_SCRAPE = False
     if not SKIP_GAME_SCRAPE :
-        database_name = await Mongo_Reader.get_mongo_games()
         try :
-            new_games = await CEAPIReader.get_api_games_full()
-            # get the embeds
-            game_returns : tuple[list[EmbedMessage], list[UpdateMessage]] = await thread_game_update(
-                old_games=database_name, new_games=new_games
-            )
-            if game_returns == "No valid machine option available." :
-                await private_log_channel.send("No valid machine option available for selenium.")
-                return
-            embeds = game_returns[0]
-            exceptions = game_returns[1]
+            new_games : list[CEAPIGame] = await CEAPIReader.get_api_games_full()
+            game_list = await Mongo_Reader.list("name")
+            embeds : list[EmbedMessage] = []
+            exceptions : list[UpdateMessage] = []
+            for new_game in new_games :
+                # grab the old game
+                old_game = await Mongo_Reader.get_game(new_game.ce_id)
+
+                # get the update
+                game_returns = await thread_single_game_update(
+                    old_game=old_game, new_game = new_game, driver=None
+                )
+
+                # save the returns
+                embeds.append(game_returns[0])
+                exceptions.append(r for r in game_returns[1])
+
+                # and the game list (which keeps track of all the old games)
+                # needs to be updated.
+                game_list.remove(new_game.ce_id)
+
+                # and dump the new game
+                await Mongo_Reader.dump_game(new_game)
+            
+            for removed_game in game_list :
+                old_game = await Mongo_Reader.get_game(new_game.ce_id)
+
+                # get the update
+                game_returns = await thread_single_game_update(
+                    old_game=old_game, new_game=None, driver=None
+                )
+
+                # save the returns
+                embeds.append(game_returns[0])
+                exceptions.append(r for r in game_returns[1])
+
+                # delete the game
+                await Mongo_Reader.delete_game(old_game.ce_id)
 
             # send embeds
             for embed in embeds :
@@ -562,9 +580,6 @@ async def master_loop(client : discord.Client, guild_id : int) :
             for exc in exceptions :
                 await private_log_channel.send(f"{exc.message} \n<@413427677522034727>")
 
-            # dump the games
-            await Mongo_Reader.dump_games(new_games)
-        
         except FailedScrapeException as e :
             await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching games failed.')
@@ -640,6 +655,11 @@ async def master_loop(client : discord.Client, guild_id : int) :
 def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
     "Threaded."
     return Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
+
+@to_thread
+def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None, driver) :
+    "Threaded."
+    return Discord_Helper.game_addition_single_update(old_game, new_game, driver)
 
 
 

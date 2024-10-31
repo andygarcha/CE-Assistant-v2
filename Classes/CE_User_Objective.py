@@ -62,11 +62,11 @@ class CEUserObjective:
             "User Points" : 20
         }"""
         d = {
-            'Name' : self.name,
-            'CE ID' : self.ce_id,
-            'Game CE ID' : self.game_ce_id,
-            'Type' : self.type,
-            'User Points' : self.user_points
+            'name' : self.name,
+            'ce_id' : self.ce_id,
+            'game_ce_id' : self.game_ce_id,
+            'type' : self.type,
+            'user_points' : self.user_points
         }
         return d
     

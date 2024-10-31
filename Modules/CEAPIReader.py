@@ -301,12 +301,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
     return CEUser(
         discord_id=0,
         ce_id = json_response['id'],
-        casino_score = 0,
         owned_games = user_games,
-        current_rolls = [],
-        completed_rolls = [],
-        pending_rolls = [],
-        cooldowns = [],
+        rolls=[],
         display_name=json_response['displayName'],
         avatar=json_response['avatar']
     )
