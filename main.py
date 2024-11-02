@@ -547,6 +547,16 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         category=category
                     )
 
+                    if rolled_game_id == None :
+                        user.remove_pending("Let Fate Decide")
+                        await Mongo_Reader.dump_user(user)
+
+                        return await interaction.followup.edit_message(
+                            message_id=interaction.message.id,
+                            content="There are no rollable games right now. Try again later.",
+                            view=discord.ui.View()
+                        )
+
                     roll : CERoll = CERoll(
                         roll_name="Let Fate Decide",
                         user_ce_id=user.ce_id,
@@ -656,6 +666,16 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         category=category,
                         price_restriction=price_restriction
                     )
+
+                    if game_id == None :
+                        user.remove_pending("Fourward Thinking")
+                        await Mongo_Reader.dump_user(user)
+
+                        return await interaction.followup.edit_message(
+                            message_id=interaction.message.id,
+                            content="There are no rollable games right now. Try again later.",
+                            view=discord.ui.View()
+                        )
 
                     # add the new game and reset the due time.
                     past_roll.add_game(game_id)
