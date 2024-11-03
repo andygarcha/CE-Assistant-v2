@@ -491,11 +491,6 @@ def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | 
     
     return (message, exceptions)
 
-        
-
-
-    pass
-
 
 
 def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :

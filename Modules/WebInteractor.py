@@ -7,7 +7,7 @@ from discord.ext import tasks
 import discord
 import requests
 from Classes.CE_Cooldown import CECooldown
-from Classes.CE_User import CEUser
+from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEAPIGame, CEGame
@@ -530,10 +530,12 @@ async def master_loop(client : discord.Client, guild_id : int) :
     SKIP_GAME_SCRAPE = False
     if not SKIP_GAME_SCRAPE :
         try :
+            old_database_name : list[CEGame] = []
             new_games : list[CEAPIGame] = await CEAPIReader.get_api_games_full()
-            game_list = await Mongo_Reader.list("name")
+            game_list = await Mongo_Reader.get_list("name")
             embeds : list[EmbedMessage] = []
             exceptions : list[UpdateMessage] = []
+
             for new_game in new_games :
                 # grab the old game
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
@@ -553,6 +555,9 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
                 # and dump the new game
                 await Mongo_Reader.dump_game(new_game)
+
+                # and add it to database name
+                old_database_name.append(old_game)
             
             for removed_game in game_list :
                 old_game = await Mongo_Reader.get_game(removed_game)
@@ -563,11 +568,14 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 )
 
                 # save the returns
-                embeds.append(game_returns[0])
-                exceptions.append(r for r in game_returns[1])
+                embeds += (game_returns[0])
+                exceptions += (r for r in game_returns[1])
 
                 # delete the game
                 await Mongo_Reader.delete_game(old_game.ce_id)
+
+                # and add it to database name
+                old_database_name.append(old_game)
 
             # send embeds
             for embed in embeds :
@@ -591,31 +599,45 @@ async def master_loop(client : discord.Client, guild_id : int) :
     SKIP_USER_SCRAPE = False
     if not SKIP_USER_SCRAPE :
         if SKIP_GAME_SCRAPE : return
-        database_user = await Mongo_Reader.get_mongo_users()
         try :
-            new_users = await CEAPIReader.get_api_users_all(database_user=database_user)
-            database_user = await Mongo_Reader.get_mongo_users()
+            database_user = await Mongo_Reader.get_database_user()
+            new_users : list[CEAPIUser] = await CEAPIReader.get_api_users_all(database_user)
 
             # guild
             guild = await client.fetch_guild(guild_id)
 
-            # get the updates
-            print('starting returns')
-            user_returns : tuple[list[UpdateMessage], list[CEUser]] = await thread_user_update(
-                database_user, new_users, database_name, new_games, guild
-            )
+            # updates
+            updates : list[UpdateMessage] = []
 
-            # send update messages
-            for update_message in user_returns[0] :
+            # get the updates
+            # we can iterate over old or new here, the amount of users in both places will be the same.
+            for new_user in new_users :
+                # re update database user
+                database_user = await Mongo_Reader.get_database_user()
+
+                # grab old user
+                old_user = await Mongo_Reader.get_user(new_user.ce_id)
+
+                # grab the update
+                updates += (await single_user_update_v2(
+                    user=old_user,
+                    site_data=new_user,
+                    old_database_name=old_database_name,
+                    new_database_name=new_games,
+                    database_user=database_user
+                ))
+
+                # the user was already dumped, so we can just loop again
+                continue
+
+            for update_message in updates :
                 match(update_message.location) :
                     case "userlog" : await user_log_channel.send(update_message.message)
                     case "casinolog" : await casino_log_channel.send(update_message.message)
                     case "gameadditions" : await game_additions_channel.send(update_message.message)
                     case "casino" : await casino_channel.send(update_message.message)
                     case "privatelog" : await private_log_channel.send(update_message.message)
-                    
-            # and dump updated users
-            await Mongo_Reader.dump_users(user_returns[1])
+
         except FailedScrapeException as e :
             await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching users failed.')
@@ -625,14 +647,13 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
     # pull the data
     print("checking curator")
-    mongo_curator_count = await Mongo_Reader.get_mongo_curator_count()
+    mongo_curator_count = await Mongo_Reader.get_curator_count()
     steam_curator_count = get_curator_count()
-    database_name = await Mongo_Reader.get_mongo_games()
 
     # if steam didn't fail and the numbers are different
     if steam_curator_count is not None and mongo_curator_count != steam_curator_count :
         print(f"curating {steam_curator_count - mongo_curator_count} update(s)")
-        curator_embeds = await thread_curator(steam_curator_count - mongo_curator_count, database_name)
+        curator_embeds = await thread_curator(steam_curator_count - mongo_curator_count, new_games)
         for embed in curator_embeds :
             await game_additions_channel.send(embed=embed)
         
@@ -670,6 +691,176 @@ def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None
 #    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |__| |  ____) | | |____  | | \ \ 
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \____/  |_____/  |______| |_|  \_\
 
+
+async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_name : list[CEGame],
+                                    new_database_name : list[CEAPIGame], database_user : list[CEUser]
+                                    ) -> list[UpdateMessage] :
+    """Updates a user using the 'multiple documents' style of backend.
+    The whole point of this is to no longer have a "database-user". However,
+    this is only being used for reading, not for writing, so it's okay to pass it in here."""
+    
+    updates : list[UpdateMessage] = []
+
+    original_points = user.get_total_points()
+    # NOTE: we use old database name here for a specific reason. Say there was a T5,
+    #       Celeste for example. if celeste goes from 250 points to 251 points,
+    #       passing the new database would mark celeste as "incomplete" before
+    #       and "complete" now, and thus every user who has completed celeste
+    #       will get a message that says they've recompleted the game.
+    #       by passing in the old database name, we can see that the game was complete
+    #       before, and therefore a message won't be sent.
+    original_completed_games = user.get_completed_games_2(old_database_name)
+    original_rank = user.get_rank()
+    original_games = user.owned_games
+
+    user.owned_games = site_data.owned_games
+
+    new_points = user.get_total_points()
+    new_completed_games = user.get_completed_games_2(new_database_name)
+    new_rank = user.get_rank()
+    new_games = user.owned_games
+
+    # get the role messages
+    updates += (check_category_roles(original_games, new_games, new_database_name, user))
+
+    # search for newly completed games
+    for game in new_completed_games :
+
+        # if game is too low anyway, skip it
+        TIER_MINIMUM = 4
+        """int: The minimum tier for a game to be reported."""
+        
+        if not game.get_tier_num() >= TIER_MINIMUM : continue
+
+        # check to see if it was completed before
+        completed_before = False
+        for old_game in original_completed_games :
+            # it was completed before, so skip this
+            if game.ce_id == old_game.ce_id : 
+                completed_before = True
+        if completed_before : continue
+        
+        
+        updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Wow {user.mention()} ({user.display_name})! You've completed {game.game_name}, " +
+                    f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
+        ))
+
+    # rank update
+    if new_rank != original_rank and new_points > original_points :
+        updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank " +
+                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
+            ))
+
+    # check completion count
+    COMPLETION_INCREMENT = 25
+    if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
+        updates.append(UpdateMessage(
+            location="userlog",
+            message=(f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of " +
+                    f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+        ))
+    
+    # check pendings
+    for i, roll in enumerate(user.rolls[:]) :
+        if roll.status == "pending" and roll.due_time <= hm.get_unix("now") :
+            user.remove_pending(roll.roll_name)
+
+    # check rolls
+    for index, roll in enumerate(user.current_rolls[:]) :
+        # step 0: check multistage rolls
+        # if the roll is multi stage AND its not in the final stage...
+        # note: skip this if we're in the final stage because
+        #       if it's in its final stage we can finish it out,
+        #       this if statement just preps for the next one.
+        if (roll.is_multi_stage() and not roll.in_final_stage() and 
+            (roll.is_won(database_name=new_database_name, database_user=database_user))) :
+            # if we've already hit this roll before, keep moving
+            if roll.due_time == None : continue
+
+            # add the update message
+            updates.append(UpdateMessage(
+                location="casino",
+                message=(
+                    f"{user.mention()}, you've finished your current stage in {roll.roll_name}. " +
+                    f"To roll your next stage, type `/solo-roll {roll.roll_name}` in <#{hm.CASINO_ID}>."
+                )
+            ))
+
+            # and kill the due time
+            roll.due_time = None
+
+        elif roll.is_won(database_name=new_database_name, database_user=database_user) :
+            # add the update message
+            updates.append(UpdateMessage(
+                location="casinolog",
+                message=(
+                    roll.get_win_message(database_name=new_database_name, database_user=database_user)
+                )
+            ))
+            # set the completed time to now
+            roll.completed_time = hm.get_unix("now")
+
+            # add the object to completed rolls, and
+            # remove it from current
+            user.add_completed_roll(roll)
+            user.remove_current_roll(roll.roll_name)
+
+            """
+            Let's talk about why this works.
+            database-user is being constantly updated. Let's say we have two players, A and B.
+            Since the last update, they have completed their requirements for their co-op roll.
+            Player A joined the bot first, so their update is processed first. But since Player
+            B hasn't been updated yet, the roll doesn't register as "won". So, we pass through
+            Player A without removing the roll. But, when we get to Player B, both players have
+            updated.
+            """
+            if roll.is_co_op() :
+                # get the partner and their roll
+                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                if partner.has_current_roll(roll.roll_name) :
+                    partner_roll = partner.get_current_roll(roll.roll_name)
+
+                    # set the partner roll's winner tag
+                    if roll.is_pvp() : partner_roll.winner = not roll.winner
+
+                    # remove their current roll
+                    partner.remove_current_roll(partner_roll.roll_name)
+
+                    # set the completion time and add it to the completed rolls
+                    partner_roll.completed_time = hm.get_unix('now')
+                    partner.add_completed_roll(partner_roll)
+
+                    # and append it to partners
+                    await Mongo_Reader.dump_user(partner)
+
+        
+        elif roll.is_expired() :
+            # add the update message
+            updates.append(UpdateMessage(
+                location="casino",
+                message=(
+                    roll.get_fail_message(database_name=new_database_name, database_user=database_user)
+                )
+            ))
+            
+            # remove this roll from current rolls
+            user.remove_current_roll(roll.roll_name)
+            if roll.is_co_op() :
+                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                if partner.has_current_roll(roll.roll_name) :
+                    partner.remove_current_roll(roll.roll_name)
+                    await Mongo_Reader.dump_user(user)
+    
+
+    await Mongo_Reader.dump_user(user)
+
+    return updates
+
+    
 
 @to_thread
 def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],

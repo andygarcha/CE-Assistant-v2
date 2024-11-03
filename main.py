@@ -2371,7 +2371,7 @@ async def on_ready() :
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
 
     # send online update
-    await private_log_channel.send(f":arrows_counterclockwise: bot started at <t:{hm.get_unix('now')}>")
+    await private_log_channel.send(f":arrow_right_hook: bot started at <t:{hm.get_unix('now')}>")
     
     # master loop
     if hm.IN_CE :

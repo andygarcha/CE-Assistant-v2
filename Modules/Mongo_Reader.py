@@ -35,19 +35,11 @@ _mongo_client = AsyncIOMotorClient(_uri)
 V3NAMETITLE = "database-name-v3"
 V3USERTITLE = "database-user-v3"
 V3INPUTTITLE = "database-input-v3"
+V3MISCTITLE = "database-misc-v3"
 
 
 # VERSION 3
-async def get_game(ce_id : str) -> CEGame | None :
-    "Gets a game associated with `ce_id`."
-    collection = _mongo_client['database_name'][V3NAMETITLE]
-    
-    db = await collection.find_one({"ce_id" : ce_id})
-    if db is None : return None
-
-    return __mongo_to_game(db)
-
-async def list(database : Literal["name", "user", "input"]) -> list[str] :
+async def get_list(database : Literal["name", "user", "input"]) -> list[str] :
     if database == "name" :
         collection = _mongo_client['database_name'][V3NAMETITLE]
     elif database == "user" :
@@ -60,6 +52,31 @@ async def list(database : Literal["name", "user", "input"]) -> list[str] :
 
     ce_id_values = [doc["ce_id"] for doc in ce_ids if "ce_id" in doc]
     return ce_id_values
+
+
+
+# -- games -- #
+async def get_game(ce_id : str) -> CEGame | None :
+    "Gets a game associated with `ce_id`."
+    collection = _mongo_client['database_name'][V3NAMETITLE]
+    
+    db = await collection.find_one({"ce_id" : ce_id})
+    if db is None : return None
+
+    return __mongo_to_game(db)
+
+async def get_database_name() -> list[CEGame] :
+    collection = _mongo_client['database_name'][V3NAMETITLE]
+
+    cursor = collection.find({}, {"_id" : 0})
+    objects = await cursor.to_list(length=None)
+
+    database_user : list[CEUser] = []
+    for o in objects :
+        try : database_user.append(__mongo_to_game(o))
+        except : continue
+    
+    return database_user
 
 async def dump_game(game : CEGame) :
     "Dumps a game."
@@ -80,8 +97,6 @@ async def delete_game(ce_id : str) :
         raise Exception("Game not deleted properly.")
 
 
-
-# -- games -- #
 def __mongo_to_game(game : dict) -> CEGame :
     return CEGame(
         ce_id=game['ce_id'],
@@ -126,6 +141,19 @@ async def dump_user(user : CEUser) :
         await collection.replace_one({"ce_id" : user.ce_id}, user.to_dict())
     pass
 
+async def get_database_user() -> list[CEUser] :
+    collection = _mongo_client['database_name'][V3USERTITLE]
+
+    cursor = collection.find({}, {"_id" : 0})
+    objects = await cursor.to_list(length=None)
+
+    database_user : list[CEUser] = []
+    for o in objects :
+        try : database_user.append(__mongo_to_user(o))
+        except : continue
+    
+    return database_user
+
 def __mongo_to_user(user : dict) -> CEUser :
     return CEUser(
         discord_id=user['discord_id'],
@@ -165,6 +193,33 @@ def __mongo_to_user_objective(obj : dict) -> CEUserObjective :
         user_points=obj['user_points']
     )
 
+
+# -- inputs -- #
 async def get_input(ce_id : str) -> CEInput :
     "Gets an input associated with `ce_id`."
+    pass
+
+
+# -- curator count -- #
+async def get_curator_count() -> int :
+    "Gets the current curator count."
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    db = await collection.find_one({"curator_count" : {"$exists": True}})
+    return db['curator_count']
+
+async def dump_curator_count(cc : int) :
+    "Dumps the curator count."
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    result = await collection.update_one(
+        {"curator_count": {"$exists": True}},  # Filter to find a document with "curator_count"
+        {"$set": {"curator_count": cc}}  # Update to set "curator_count" to new_value
+    )
+
+    # Check if the document was found and updated
+    if result.matched_count > 0:
+        print("Document updated successfully.")
+    else:
+        print("No document with 'curator_count' found.")
     pass
