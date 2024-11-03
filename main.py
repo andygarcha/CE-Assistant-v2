@@ -126,7 +126,7 @@ async def register(interaction : discord.Interaction, ce_id : str) :
     if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
 
     # get database_user
-    users = await Mongo_Reader.get_mongo_users()
+    users = await Mongo_Reader.get_database_user()
     
     # make sure they're not already registered
     for user in users :
@@ -191,7 +191,7 @@ async def register_other(interaction : discord.Interaction, ce_link : str, user 
     if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
 
     # get users
-    users = await Mongo_Reader.get_mongo_users()
+    users = await Mongo_Reader.get_database_user()
     
     # make sure they're not already registered
     for mongo_user in users :
@@ -258,8 +258,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     view = discord.ui.View()
 
     # pull mongo database
-    database_user = await Mongo_Reader.get_mongo_users()
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_database_user()
+    database_name = await Mongo_Reader.get_database_name()
 
     # define channel
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -297,7 +297,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
             async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
                 # pull database user and get user
-                database_user = await Mongo_Reader.get_mongo_users()
+                database_user = await Mongo_Reader.get_database_user()
                 user = hm.get_item_from_list(self.__user_ce_id, database_user)
 
                 user.remove_current_roll(self.__event_name) # remove the current roll
@@ -536,7 +536,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     await interaction.response.defer()
 
                     # pull database user
-                    database_user = await Mongo_Reader.get_mongo_users()
+                    database_user = await Mongo_Reader.get_database_user()
                     user = hm.get_item_from_list(self.__user.ce_id, database_user)
 
                     # define our category
@@ -565,7 +565,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     user.add_cooldown(CECooldown("Let Fate Decide", hm.get_unix(months=3)))
                     await Mongo_Reader.dump_user(user)
 
-                    database_user = await Mongo_Reader.get_mongo_users()
+                    database_user = await Mongo_Reader.get_database_user()
 
                     view.clear_items()
                     embeds = Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
@@ -637,7 +637,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     await interaction.response.defer()
                     
                     # pull database user
-                    database_user = await Mongo_Reader.get_mongo_users()
+                    database_user = await Mongo_Reader.get_database_user()
                     user = hm.get_item_from_list(self.__user.ce_id, database_user)
 
                     # get past_roll
@@ -748,7 +748,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull database name
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_name = await Mongo_Reader.get_database_name()
 
         # get the game for the user from the partner's library
         game_for_user = hm.get_rollable_game(
@@ -906,7 +906,7 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         tier_num = int(self.__tier)
 
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_name = await Mongo_Reader.get_database_name()
 
         rolled_game = hm.get_rollable_game(
             database_name=database_name,
@@ -992,7 +992,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
         
         await interaction.response.defer()
         
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_name = await Mongo_Reader.get_database_name()
 
         rolled_games : list[str] = []
         for i in range(4) :
@@ -1076,8 +1076,8 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
     view = discord.ui.View()
 
     # pull mongo database
-    database_user = await Mongo_Reader.get_mongo_users()
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_user = await Mongo_Reader.get_database_user()
+    database_name = await Mongo_Reader.get_database_name()
 
     # define channel
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -1213,7 +1213,7 @@ async def scrape(interaction : discord.Interaction) :
     await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /scrape",
                              allowed_mentions=discord.AllowedMentions.none())
 
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_database_user()
 
     try :
         database_name = await CEAPIReader.get_api_games_full()
@@ -1372,7 +1372,7 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
 async def get_game_auto(interaction : discord.Interaction, current : str) -> typing.List[app_commands.Choice[str]]:
     """Function that autocompletes whatever the user is trying to type in.
     The game's name will appear on the user's screen, but the game's CE ID will be passed."""
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name = await Mongo_Reader.get_database_name()
     choices : list = []
 
     for game in database_name :
@@ -1390,7 +1390,7 @@ async def get_game(interaction : discord.Interaction, game : str) :
     await interaction.response.defer()
 
     # pull database name
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name = await Mongo_Reader.get_database_name()
 
     # you were only given the game's name, so go find it.
     chosen_game = hm.get_item_from_list(game, database_name)
@@ -1417,7 +1417,7 @@ async def get_game(interaction : discord.Interaction, game : str) :
 async def get_game_data(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
 
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name = await Mongo_Reader.get_database_name()
 
     for game in database_name :
         if game.ce_id == ce_id : return await interaction.followup.send(f"{str(game)}")
@@ -1443,8 +1443,8 @@ async def check_rolls(interaction : discord.Interaction) :
     view = discord.ui.View(timeout=None)
 
     # pull database_name and database_user
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_database_name()
+    database_user = await Mongo_Reader.get_database_user()
 
     # find the user
     user : CEUser = None
@@ -1540,7 +1540,7 @@ async def set_color(interaction : discord.Interaction) :
     await interaction.response.defer(ephemeral=True)
 
     # pull database_user and get the user
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_database_user()
     user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
 
     # set up ranks values
@@ -1597,8 +1597,8 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
     await interaction.response.defer()
 
     # pull databases
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_database_name()
+    database_user = await Mongo_Reader.get_database_user()
 
     # check to see if they asked for info on another person.
     asked_for_friend : bool = True
@@ -1644,7 +1644,7 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
                      + f"cooldown={cooldown}, pending={pending}", allowed_mentions=discord.AllowedMentions.none())
 
     # get database user and the user
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_database_user()
     user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
 
     if current : user.remove_current_roll(roll_name)
@@ -1666,7 +1666,7 @@ async def force_add(interaction : discord.Interaction, member : discord.Member, 
                      allowed_mentions=discord.AllowedMentions.none())
     
     # get database user and the user
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_database_user()
     user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
 
     user.add_completed_roll(CERoll(
@@ -1693,8 +1693,8 @@ async def set_roll_game(interaction : discord.Interaction, member : discord.Memb
     await interaction.response.defer(ephemeral=True)
 
     # pull databases
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_database_name()
+    database_user = await Mongo_Reader.get_database_user()
 
     # get objects
     game = hm.get_item_from_list(game_id, database_name)
@@ -1725,14 +1725,14 @@ async def set_roll_game(interaction : discord.Interaction, member : discord.Memb
             # get the id of the game they want to swap out
             game_id = self.values[0]
 
-            database_name = await Mongo_Reader.get_mongo_games()
+            database_name = await Mongo_Reader.get_database_name()
 
             # go through and find that id and swap it out
             for i, rollgameid in enumerate(self.__roll.games) :
                 if rollgameid == game_id : self.__roll._games[i] = self.__replacement_id
             
             # pull database name
-            database_user = await Mongo_Reader.get_mongo_users()
+            database_user = await Mongo_Reader.get_database_user()
 
             # get the user and replace the roll
             user = hm.get_item_from_list(self.__roll.user_ce_id, database_user)
@@ -1771,7 +1771,7 @@ async def on_message(message : discord.Message) :
         "The message is in the #proof-submissions channel."
 
         # pull the user
-        database_user = await Mongo_Reader.get_mongo_users()
+        database_user = await Mongo_Reader.get_database_user()
         user = Discord_Helper.get_user_by_discord_id(message.author.id, database_user)
         
         # scenario 2: is registered but forget link
@@ -1955,8 +1955,8 @@ class ValueModal(discord.ui.Modal) :
         
         # pull databases
         database_inputs = await Mongo_Reader.get_inputs()
-        database_user = await Mongo_Reader.get_mongo_users()
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_database_user()
+        database_name = await Mongo_Reader.get_database_name()
 
         # grab the current input. we can guarantee this exists because we set it up previously.
         curr_input = hm.get_item_from_list(self.__game.ce_id, database_inputs)
@@ -2060,8 +2060,8 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
-        database_user = await Mongo_Reader.get_mongo_users()
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_database_user()
+        database_name = await Mongo_Reader.get_database_name()
         input_object = hm.get_item_from_list(self.game_id, database_input)
         game_object = hm.get_item_from_list(self.game_id, database_name)
 
@@ -2099,8 +2099,8 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 
         # pull from mongo
         database_input = await Mongo_Reader.get_inputs()
-        database_user = await Mongo_Reader.get_mongo_users()
-        database_name = await Mongo_Reader.get_mongo_games()
+        database_user = await Mongo_Reader.get_database_user()
+        database_name = await Mongo_Reader.get_database_name()
         input_object = hm.get_item_from_list(self.game_id, database_input)
         game_object = hm.get_item_from_list(self.game_id, database_name)
 
@@ -2189,8 +2189,8 @@ class GameInputView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        database_name = await Mongo_Reader.get_mongo_games()
-        database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_database_name()
+        database_user = await Mongo_Reader.get_database_user()
         database_input = await Mongo_Reader.get_inputs()
         game = hm.get_item_from_list(self.ce_id, database_name)
         user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
@@ -2233,8 +2233,8 @@ class GameInputView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        database_name = await Mongo_Reader.get_mongo_games()
-        database_user = await Mongo_Reader.get_mongo_users()
+        database_name = await Mongo_Reader.get_database_name()
+        database_user = await Mongo_Reader.get_database_user()
         database_input = await Mongo_Reader.get_inputs()
         game = hm.get_item_from_list(self.ce_id, database_name)
         user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
@@ -2275,8 +2275,8 @@ class GameInputView(discord.ui.View) :
 async def game_input(interaction : discord.Interaction, game : str) :
     await interaction.response.defer(ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
 
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_database_name()
+    database_user = await Mongo_Reader.get_database_user()
     game_object = hm.get_item_from_list(game, database_name)
     user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
 
@@ -2315,8 +2315,8 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
 
     # pull from mongo
     database_inputs = await Mongo_Reader.get_inputs()
-    database_name = await Mongo_Reader.get_mongo_games()
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_name = await Mongo_Reader.get_database_name()
+    database_user = await Mongo_Reader.get_database_user()
     game_object = hm.get_item_from_list(game, database_name)
     input_object = hm.get_item_from_list(game, database_inputs)
 

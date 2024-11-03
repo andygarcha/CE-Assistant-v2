@@ -54,7 +54,7 @@ async def reformat_database_name_v2_to_v3() :
     "Takes in database name version 2 and turns it into version 3."
     from Modules import Mongo_Reader
 
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name = await Mongo_Reader.get_database_name()
     V3DATABASENAME = "database-name-v3"
 
     _mongo_client = AsyncIOMotorClient(_uri)
@@ -103,7 +103,7 @@ async def reformat_database_user_v2_to_v3() :
     "Takes in database user version 2 and turns it to version 3."
     from Modules import Mongo_Reader
 
-    database_user = await Mongo_Reader.get_mongo_users()
+    database_user = await Mongo_Reader.get_database_user()
     V3DATABASENAME = "database-user-v3"
 
     _mongo_client = AsyncIOMotorClient(_uri)

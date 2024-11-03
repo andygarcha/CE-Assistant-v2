@@ -398,7 +398,7 @@ async def name_to_steamid(name : str) -> str :
 
     # -- check CE first --
     import Modules.Mongo_Reader as Mongo_Reader
-    database_name = await Mongo_Reader.get_mongo_games()
+    database_name = await Mongo_Reader.get_database_name()
     for game in database_name :
         if game.game_name.lower() == name.lower() and game.platform == "steam" : return game.platform_id
     
