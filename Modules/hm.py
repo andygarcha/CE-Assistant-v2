@@ -274,12 +274,14 @@ def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:
 def get_banned_games() -> list[str] :
     "Returns the list of CE IDs of banned rollable games."
     import Modules.SpreadsheetHandler as SpreadsheetHandler
-    banned_games = SpreadsheetHandler.get_sheet_data(SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, 
+
+    BANNED_GAMES = SpreadsheetHandler.get_sheet_data(SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, 
                                                      SpreadsheetHandler.CE_SHEET_ID)
     "Returns as [CE ID, Game Name, Reason]"
+
     banned_games_ids = []
 
-    for item in banned_games :
+    for item in BANNED_GAMES :
         banned_games_ids.append(item[0])
     return banned_games_ids
 
@@ -302,7 +304,24 @@ def get_rollable_game(
 
     # avoid circular imports
     database_name : list[CEGame] = database_name
-    user : CEUser = user
+    user : CEUser | list[CEUser] = user
+
+    # turn this on to see what's happening
+    VIEW_CONSOLE_MESSAGES = True
+
+    if VIEW_CONSOLE_MESSAGES :
+        print(f"get_rollable_game() called with the following parameters: ")
+        print(f"database_name: {"passed correctly" if (database_name is not None or len(database_name) == 0) else "passed incorrectly"}")
+        print(f"completion limit: {completion_limit}")
+        print(f"price_limit: {price_limit}")
+        print(f"tier_number: {tier_number}")
+        print(f"user: {user.ce_id}")
+        print(f"category: {category}")
+        print(f"already_rolled_games: {already_rolled_games}")
+        print(f"has_points_restriction: {has_points_restriction}")
+        print(f"price_restriction: {price_restriction}")
+
+
 
     # randomize database_name :
     random.shuffle(database_name)
@@ -316,12 +335,15 @@ def get_rollable_game(
 
     # ---- iterate through all the games ----
     for game in database_name :
+        if VIEW_CONSOLE_MESSAGES: print(f"evaluating {game.name_with_link()}... ", end="")
         if category != None and game.category not in category :
             "Incorrect category."
+            if VIEW_CONSOLE_MESSAGES: print("Incorrect category.")
             continue
 
         if game.platform != "steam" :
             "Non-steam game."
+            if VIEW_CONSOLE_MESSAGES: print("Non-steam game.")
             continue
 
         """
@@ -332,29 +354,36 @@ def get_rollable_game(
 
         if tier_number == 6 and not game.is_t5plus() :
             "Incorrect tier."
+            if VIEW_CONSOLE_MESSAGES: print("Requested a T6 and did not get one.")
             continue
         
         if tier_number != None and game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
+            if VIEW_CONSOLE_MESSAGES: print("Incorrect tier.")
             continue
         
         if (type(user) is list) :
             "If there's more than one user..."
             for u in user :
                 "...one of them has completed the game."
-                if u.has_completed_game(game.ce_id, database_name) : continue
+                if u.has_completed_game(game.ce_id, database_name) : 
+                    if VIEW_CONSOLE_MESSAGES : print("Multiple users passed, and one of them has completed this game.")
+                    continue
         else :
             "User has completed the game already."
             if user.has_completed_game(game.ce_id, database_name) : 
+                if VIEW_CONSOLE_MESSAGES : print("One user passed, and they have already completed this game.")
                 continue
 
 
         if game.ce_id in already_rolled_games :
             "This game has already been rolled."
+            if VIEW_CONSOLE_MESSAGES : print("Game has already been rolled.")
             continue
 
         if game.has_an_uncleared() :
             "This game has an uncleared objective."
+            if VIEW_CONSOLE_MESSAGES : print("Has an uncleared.")
             continue
 
         price = game.get_price()
@@ -363,18 +392,24 @@ def get_rollable_game(
                 "If there's more than one user..."
                 for u in user :
                     "One of the users doesn't own the game."
-                    if not u.owns_game(game.ce_id) : continue
+                    if not u.owns_game(game.ce_id) : 
+                        if VIEW_CONSOLE_MESSAGES : print("The price is too high and one of the user's doesn't own the game.")
+                        continue
             else :
-                if not user.owns_game(game.ce_id) : continue
+                if not user.owns_game(game.ce_id) : 
+                    if VIEW_CONSOLE_MESSAGES : print("The price is too high, and the user doesn't own the game.")
+                    continue
             "The price is too high (and the price is restricted) and the user doesn't own the game."
 
         sh_data = game.get_steamhunters_data()
         if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
             "The SteamHunters median-completion-time is too high."
+            if VIEW_CONSOLE_MESSAGES: print(f"The steamhunters median completion time was {sh_data}")
             continue
 
         if game.ce_id in banned_games :
             "This game is in the Banned Games section."
+            if VIEW_CONSOLE_MESSAGES: print("Game is banned.")
             continue
         
         if has_points_restriction :
@@ -382,12 +417,16 @@ def get_rollable_game(
             if type(user) is list :
                 "One of the users passed has points in the game."
                 for u in user :
-                    u : CEUser = u
-                    if u.has_points(game.ce_id) : continue
+                    if u.has_points(game.ce_id) : 
+                        if VIEW_CONSOLE_MESSAGES: print("One of the passed users has points in the game.")
+                        continue
             else :
                 "The user passed has points in the game."
-                if user.has_points(game.ce_id) : continue
+                if user.has_points(game.ce_id) : 
+                    if VIEW_CONSOLE_MESSAGES : print("The user has points in this game.")
+                    continue
 
+        if VIEW_CONSOLE_MESSAGES : print("Passed!!!")
         return game.ce_id
     
     return None

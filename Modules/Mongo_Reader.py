@@ -11,7 +11,7 @@ from bson import ObjectId
 
 # -- local --
 from Classes.CE_Cooldown import CECooldown
-from Classes.CE_Game import CEGame
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
@@ -40,6 +40,7 @@ V3MISCTITLE = "database-misc-v3"
 
 # VERSION 3
 async def get_list(database : Literal["name", "user", "input"]) -> list[str] :
+    "Returns a list of CE IDs in the specified database."
     if database == "name" :
         collection = _mongo_client['database_name'][V3NAMETITLE]
     elif database == "user" :
@@ -62,24 +63,34 @@ async def get_game(ce_id : str) -> CEGame | None :
     
     db = await collection.find_one({"ce_id" : ce_id})
     if db is None : return None
+        #raise ValueError(f"No game with id {ce_id} found in mongo.")
 
     return __mongo_to_game(db)
 
 async def get_database_name() -> list[CEGame] :
     collection = _mongo_client['database_name'][V3NAMETITLE]
 
+    documents = []
+
+    async for document in collection.find() :
+        documents.append(__mongo_to_game(document))
+    
+    print(len(documents))
+
     cursor = collection.find({}, {"_id" : 0})
     objects = await cursor.to_list(length=None)
 
-    database_user : list[CEUser] = []
+    database_name : list[CEGame] = []
     for o in objects :
-        try : database_user.append(__mongo_to_game(o))
-        except : continue
+        database_name.append(__mongo_to_game(o))
     
-    return database_user
+    return database_name
 
-async def dump_game(game : CEGame) :
+async def dump_game(game : CEGame | CEAPIGame) :
     "Dumps a game."
+    if type(game) is not CEGame and type(game) is not CEAPIGame :
+        raise TypeError(f"Argument 'game' is of type {type(game)}, not CEGame.")
+    
     collection = _mongo_client['database_name'][V3NAMETITLE]
 
     if (await collection.find_one({"ce_id" : game.ce_id})) == None :
@@ -104,7 +115,8 @@ def __mongo_to_game(game : dict) -> CEGame :
         platform=game['platform'],
         platform_id=game['platform_id'],
         category=game['category'],
-        objectives=[__mongo_to_objective(obj) for obj in game['objectives']]
+        objectives=[__mongo_to_objective(obj) for obj in game['objectives']],
+        last_updated=game['last_updated']
     )
 
 def __mongo_to_objective(obj : dict) -> CEObjective :
@@ -122,17 +134,25 @@ def __mongo_to_objective(obj : dict) -> CEObjective :
 
 # -- users -- #
 
-async def get_user(ce_id : str) -> CEUser :
+async def get_user(ce_id : str, use_discord_id : bool = False) -> CEUser :
     "Gets a user associated with `ce_id`."
     collection = _mongo_client['database_name'][V3USERTITLE]
-
-    db = await collection.find_one({"ce_id" : ce_id})
-    if db is None : return None
+    if not use_discord_id :
+        db = await collection.find_one({"ce_id" : ce_id})
+    else :
+        db = await collection.find_one({"discord_id" : ce_id})
+    
+    if db is None : 
+        raise ValueError(f"No user found with id {ce_id} (use_discord_id: {use_discord_id}) in mongo.")
 
     return __mongo_to_user(db)
 
 async def dump_user(user : CEUser) :
     "Dumps a user back to the backend."
+
+    if type(user) is not CEUser :
+        raise TypeError(f"Argument 'user' is of type {type(user)}, not CEUser.")
+
     collection = _mongo_client['database_name'][V3USERTITLE]
 
     if (await collection.find_one({"ce_id" : user.ce_id})) == None :
@@ -155,10 +175,13 @@ async def get_database_user() -> list[CEUser] :
     return database_user
 
 def __mongo_to_user(user : dict) -> CEUser :
+    display_name : str = None
+    if 'display-name' in user : display_name = user['display-name']
+    elif 'display_name' in user : display_name = user['display_name']
     return CEUser(
         discord_id=user['discord_id'],
         ce_id=user['ce_id'],
-        display_name=user['display_name'],
+        display_name=display_name,
         avatar=user['avatar'],
         rolls=[__mongo_to_roll(roll) for roll in user['rolls']],
         owned_games=[__mongo_to_user_game(game) for game in user['owned_games']]
@@ -197,7 +220,53 @@ def __mongo_to_user_objective(obj : dict) -> CEUserObjective :
 # -- inputs -- #
 async def get_input(ce_id : str) -> CEInput :
     "Gets an input associated with `ce_id`."
+    collection = _mongo_client['database_name'][V3INPUTTITLE]
+    db = await collection.find_one({"ce_id" : ce_id})
+    if db is None : 
+        raise ValueError(f"Input with ID {ce_id} not found.")
+
+    return __mongo_to_input(db)
+
+async def dump_input(input : CEInput) :
+    "Dumps an input."
+    collection = _mongo_client['database_name'][V3INPUTTITLE]
+    if (await collection.find_one({"ce_id" : input.ce_id})) == None :
+        await collection.insert_one(input.to_dict())
+    else :
+        await collection.replace_one({"ce_id" : input.ce_id}, input.to_dict())
     pass
+
+def __mongo_to_input(i : dict) -> CEInput :
+    CEInput(
+        game_ce_id=i['ce_id'],
+        value_inputs=[__mongo_to_value_input(j) for j in i['value']],
+        curate_inputs=[__mongo_to_curate_input(k) for k in i['curate']],
+        tag_inputs=[__mongo_to_tag_input(l) for l in i['tags']]
+    )
+
+def __mongo_to_tag_input(i : dict) -> CETagInput :
+    return CETagInput(
+        user_ce_id=i['user_ce_id'],
+        tags=i['tags']
+    )
+
+def __mongo_to_curate_input(i : dict) -> CECurateInput :
+    return CECurateInput(
+        user_ce_id=i['user_ce_id'],
+        curate=i['curate']
+    )
+
+def __mongo_to_value_input(i : dict) -> CEValueInput :
+    return CEValueInput(
+        objective_ce_id=i['objective_ce_id'],
+        individual_value_inputs=[__mongo_to_individual_value_input(j) for j in i['evaluations']]
+    )
+
+def __mongo_to_individual_value_input(i : dict) -> CEIndividualValueInput :
+    return CEIndividualValueInput(
+        i['user_ce_id'],
+        i['recommendation']
+    )
 
 
 # -- curator count -- #

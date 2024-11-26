@@ -160,28 +160,6 @@ class CEUser:
         return self._rolls
     
     @property
-    def current_rolls(self) -> list[CERoll] :
-        """Returns an array of :class:`CERoll`'s 
-        that this user is currently participating in."""
-        return [roll for roll in self.rolls if roll.status == "current"]
-
-    @property
-    def completed_rolls(self) -> list[CERoll] :
-        """Returns an array of :class:`CERoll`'s
-        that this user has previously completed."""
-        return [roll for roll in self.rolls if roll.status == "won"]
-    
-    @property
-    def pending_rolls(self) -> list[CERoll] :
-        """Returns an array of :class:`CECooldown`'s
-        that this user stores in their Pending Rolls section."""
-        return [roll for roll in self.rolls if roll.status == "pending"]
-    
-    @property
-    def failed_rolls(self) -> list[CERoll] :
-        return [roll for roll in self.rolls if roll.status == "failed"]
-    
-    @property
     def past_rolls(self) -> list[CERoll] :
         return [roll for roll in self.rolls if (roll.status == "won" or roll.status == "failed")]
     
@@ -198,84 +176,70 @@ class CEUser:
         """Sets the 'owned games' to `games`."""
         self._owned_games = games
 
-    # == rolls cooldowns and pendings ==
+    # ======== rolls ======== #
 
+    # ==== current rolls ==== #
+    
+    @property
+    def current_rolls(self) -> list[CERoll] :
+        """Returns an array of :class:`CERoll`'s 
+        that this user is currently participating in."""
+        return [roll for roll in self.rolls if roll.status == "current"]
+    
     def add_current_roll(self, roll : CERoll) -> None :
         """Adds `roll` to this user's Current Rolls section."""
-        roll.status = "current"
+        roll.set_status("current")
         self._rolls.append(roll)
+        pass
+
+    def fail_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "Fails a current roll associated with `roll_name`."
+        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+            raise ValueError(f"Argument 'roll_name' in fail_current_roll is {roll_name}. User: {self.ce_id}")
+        
+        for i, roll in enumerate(self.rolls) :
+            if roll.roll_name == roll_name and roll.status == "current" :
+                self._rolls[i].status = "failed"
+                return
+        
+        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
     
-    def add_completed_roll(self, roll : CERoll) -> None :
-        """Adds `roll` to this user's Completed Rolls section."""
-        roll.status = "won"
-        self._rolls.append(roll)
+    def win_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "Wins a current roll associated with `roll_name`. Also sets completion time."
+        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+            raise ValueError(f"Argument 'roll_name' in win_current_roll is {roll_name}. User: {self.ce_id}")
+        
+        for i, roll in enumerate(self.rolls) :
+            if roll.roll_name == roll_name and roll.status == "current" :
+                self._rolls[i].status = "won"
+                self._rolls[i].completed_time = hm.get_unix("now")
+                return
+        
+        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
 
-    def add_pending(self, event_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
-        """Adds `pending` to this user's Pending section."""
-        self._rolls.append(CERoll(
-            roll_name=event_name,
-            user_ce_id=self.ce_id,
-            games=[""],
-            status="pending",
-            init_time=hm.get_unix("now"),
-            due_time=hm.get_unix(minutes=10)
-        ))
-
+    
     def remove_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
         "Removes `roll_name` from this user."
+        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES) :
+            raise ValueError(f"Argument 'roll_name' in remove_current_roll is {roll_name}. User: {self.ce_id}")
+
         for i, roll in enumerate(self.rolls) :
             if roll.roll_name == roll_name and roll.status == "current" : 
-                del self._rolls[i]
+                self._rolls[i].status = "removed"
                 return
     
-    def remove_pending(self, pending : hm.ALL_ROLL_EVENT_NAMES) :
-        "Removes the pending from this user."
-        for i, p in enumerate(self.rolls) :
-            if p.roll_name == pending and p.status == "pending" :
-                del self._rolls[i]
-                break
-
-    def remove_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
-        "Removes all completed rolls associated with roll_name."
-        for i, roll in enumerate(self.rolls) :
-            if roll.roll_name == roll_name and roll.status == "won" :
-                del self._rolls[i]
-
-    def remove_failed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
-        "removes all failed rolls associated with roll_name."
-        for i, roll in enumerate(self.rolls) :
-            if roll.roll_name == roll_name and roll.status == "failed" :
-                del self._rolls[i]
-
-    def clear_cooldowns(self) :
-        "Removes all cooldowns."
-        return NotImplemented
-
-    # ----------- other methods ------------
-
-    # -- rolls --
-    def replace_current_roll(self, roll : CERoll) -> bool :
+        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
+    
+    def update_current_roll(self, roll : CERoll) -> bool :
         "Replaces the user's roll with a new one. Returns true if it works, false if not."
+        if type(roll) is not CERoll :
+            raise TypeError(f"Argument 'roll' is of type {type(roll)}. User: {self.ce_id}")
         for i, event in enumerate(self.rolls) :
             if event.roll_name == roll.roll_name and event.status == "current" :
                 self._rolls[i] = roll
                 return True
-        self.add_current_roll(roll)
-        return False
-
-    def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
-        """Returns true if this user has completed `roll_name`."""
-        for event in self.completed_rolls :
-            if event.roll_name == roll_name : return True
-        return False
-    
-    def get_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> list[CERoll] :
-        """Returns the `CERoll` associated with `roll_name`."""
-        r = []
-        for event in self.completed_rolls :
-            if event.roll_name == roll_name : r.append(event)
-        if len(r) != 0 : return r
-        return None
+            
+        raise ValueError(f"No current roll was found with name {roll.roll_name} to be replaced.")
     
     def has_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently working on `roll_name`."""
@@ -288,23 +252,96 @@ class CEUser:
         for event in self.current_rolls :
             if event.roll_name == roll_name : return event
         return None
+
+    # ==== completed rolls ==== #
+
+    @property
+    def completed_rolls(self) -> list[CERoll] :
+        """Returns an array of :class:`CERoll`'s
+        that this user has previously completed."""
+        return [roll for roll in self.rolls if roll.status == "won"]
+
+    def add_completed_roll(self, roll : CERoll) -> None :
+        """Adds `roll` to this user's Completed Rolls section."""
+        roll.status = "won"
+        self._rolls.append(roll)
+        pass
+
+    def remove_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "Removes all completed rolls associated with roll_name."
+        for i, roll in enumerate(self.rolls) :
+            if roll.roll_name == roll_name and roll.status == "won" :
+                del self._rolls[i]
+        pass
+
+    def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
+        """Returns true if this user has completed `roll_name`."""
+        for event in self.completed_rolls :
+            if event.roll_name == roll_name : return True
+        return False
     
+    def get_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> list[CERoll] | None :
+        """Returns the `CERoll` associated with `roll_name`."""
+        r = [event for event in self.completed_rolls if event.roll_name == roll_name]
+        if len(r) != 0 : return r
+        return None
+
+    # ==== pending rolls ==== #
+
+    @property
+    def pending_rolls(self) -> list[CERoll] :
+        """Returns an array of :class:`CECooldown`'s
+        that this user stores in their Pending Rolls section."""
+        return [roll for roll in self.rolls if roll.status == "pending"]
+
+    def add_pending(self, event_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
+        """Adds `pending` to this user's Pending section."""
+        self._rolls.append(CERoll(
+            roll_name=event_name,
+            user_ce_id=self.ce_id,
+            games=[""],
+            status="pending",
+            init_time=hm.get_unix("now"),
+            due_time=hm.get_unix(minutes=10)
+        ))
+        pass
+    
+    def remove_pending(self, pending : hm.ALL_ROLL_EVENT_NAMES) :
+        "Removes the pending from this user."
+        for i, p in enumerate(self.rolls) :
+            if p.roll_name == pending and p.status == "pending" :
+                del self._rolls[i]
+                break
+        pass
+
+    def has_pending(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
+        """Returns true if this user is currently on pending for `roll_name`."""
+        for pending in self.pending_rolls :
+            if pending.roll_name == roll_name : return True
+        return False
+
+    # ==== failed rolls ==== #
+
+    @property
+    def failed_rolls(self) -> list[CERoll] :
+        return [roll for roll in self.rolls if roll.status == "failed"]
+
+    def remove_failed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
+        "removes all failed rolls associated with roll_name."
+        for i, roll in enumerate(self.rolls) :
+            if roll.roll_name == roll_name and roll.status == "failed" :
+                del self._rolls[i]
+        pass
+
+    # ==== cooldowns ==== #
+
     def has_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame]) -> bool :
         """Returns true if this user is currently on cooldown for `roll_name`."""
         # check infinite time rolls
-        for roll in self.current_rolls :
-            if roll.roll_name == roll_name :
-                if roll.ends() : break
-                cooldown_date = roll.calculate_cooldown_date(database_name)
-                return cooldown_date is not None and cooldown_date > hm.get_unix("now")
-
-        for roll in self.failed_rolls :
-            if roll.roll_name == roll_name : 
-                cooldown_date = roll.calculate_cooldown_date(database_name)
-                if cooldown_date is not None and cooldown_date > hm.get_unix("now") : return True
-        return False
+        cooldown_time = self.get_cooldown_time(roll_name, database_name)
+        return cooldown_time is not None and cooldown_time > hm.get_unix("now")
     
-    def get_cooldown_time(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame]) -> int :
+    def get_cooldown_time(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame]) -> int | None :
         """Returns the unix timestamp of the date `roll_name`'s cooldown ends
         (or `None` if not applicable.)"""
         # check infinite time rolls
@@ -319,11 +356,14 @@ class CEUser:
                 if cooldown_date is not None and cooldown_date > hm.get_unix("now") : return cooldown_date
         return None
     
-    def has_pending(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
-        """Returns true if this user is currently on pending for `roll_name`."""
-        for pending in self.pending_rolls :
-            if pending.roll_name == roll_name : return True
-        return False
+    def clear_cooldowns(self) :
+        "Removes all cooldowns."
+        raise NotImplementedError("There is no way to clear cooldowns anymore.")
+
+    # ----------- other methods ------------
+
+    # -- rolls --
+
     
     def get_ce_rolls(self) -> list[CERoll] :
         "Returns a list of CERolls pulled from CE."
@@ -392,12 +432,8 @@ class CEUser:
         return CEAPIUser(
             discord_id=self.discord_id,
             ce_id=self.ce_id,
-            casino_score=self.casino_score,
             owned_games=self.owned_games,
-            current_rolls=self.current_rolls,
-            completed_rolls=self.completed_rolls,
-            pending_rolls=self.pending_rolls,
-            cooldowns=self.cooldowns,
+            rolls=self.rolls,
             full_data=data,
             display_name=self.display_name,
             avatar=self.avatar

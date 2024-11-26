@@ -171,7 +171,56 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
 
     #view.on_timeout = disable
 
-async def get_user_embeds(user, database_name : list, database_user : list) -> tuple[discord.Embed, discord.ui.View] :
+
+
+
+# set up the view
+class ProfileView(discord.ui.View) :
+    def __init__(self, summary_embed : discord.Embed, recent_embed : discord.Embed) :
+        super().__init__(timeout=None)
+        self.__summary_embed = summary_embed
+        self.__recent_embed = recent_embed
+    
+    @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
+    async def summary_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # defer the message
+        await interaction.response.defer()
+
+        # un-disable everything
+        for child in self.children :
+            child.disabled = False
+        
+        # and disable this one
+        button.disabled = True
+
+        # and now edit the message and return
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            embed=self.__summary_embed,
+            view=self
+        )
+
+    @discord.ui.button(label="Recent", style=discord.ButtonStyle.gray)
+    async def recent_buttton(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # defer the message
+        await interaction.response.defer()
+
+        # un-disable everything
+        for child in self.children :
+            child.disabled = False
+
+        # but disable this one
+        button.disabled = True
+
+        # and now edit the mesasge
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            embed=self.__recent_embed,
+            view=self
+        )
+
+
+def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.ui.View] :
     """Returns a `discord.Embed` that represents this user.""" 
 
     # imports and type hintin
@@ -179,7 +228,6 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
     from Classes.CE_Game import CEGame
     user : CEUser = user
     database_name : list[CEGame] = database_name
-    database_user : list[CEUser] = database_user
 
     # pull api data
     api_user = user.get_api_user()
@@ -217,51 +265,8 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
         name="Monthly Breakdown", value=api_user.monthly_report_str()
     )
 
-    # set up the view
-    class ProfileView(discord.ui.View) :
-        def __init__(self) :
-            super().__init__(timeout=None)
-        
-        @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
-        async def summary_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
-            # defer the message
-            await interaction.response.defer()
 
-            # un-disable everything
-            for child in self.children :
-                child.disabled = False
-            
-            # and disable this one
-            button.disabled = True
-
-            # and now edit the message and return
-            return await interaction.followup.edit_message(
-                message_id=interaction.message.id,
-                embed=summary_embed,
-                view=self
-            )
-
-        @discord.ui.button(label="Recent", style=discord.ButtonStyle.gray)
-        async def recent_buttton(self, interaction : discord.Interaction, button : discord.ui.Button) :
-            # defer the message
-            await interaction.response.defer()
-
-            # un-disable everything
-            for child in self.children :
-                child.disabled = False
-
-            # but disable this one
-            button.disabled = True
-
-            # and now edit the mesasge
-            return await interaction.followup.edit_message(
-                message_id=interaction.message.id,
-                embed=recent_embed,
-                view=self
-            )
-
-
-    return (summary_embed, ProfileView())
+    return (summary_embed, ProfileView(summary_embed, recent_embed))
 
 
 
@@ -276,15 +281,15 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
 #  \_____| /_/    \_\ |_|  |_| |______|   /_/    \_\ |_____/  |_____/  |_____|    |_|    |_____|  \____/  |_| \_| |_____/ 
 
 def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | None) -> tuple[EmbedMessage, list[UpdateMessage]] :
-    from Classes.CE_Game import CEGame
+    from Classes.CE_Game import CEGame, CEAPIGame
 
     old_game : CEGame | None = old_game
-    new_game : CEGame | None = new_game
+    new_game : CEAPIGame | None = new_game
 
     exceptions : list[UpdateMessage] = []
 
 
-    SELENIUM_ENABLE = type(driver) is not None
+    SELENIUM_ENABLE = driver is not None
 
     if old_game is None :
         "🟢 New game 🟢"

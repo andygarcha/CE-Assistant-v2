@@ -531,8 +531,11 @@ async def master_loop(client : discord.Client, guild_id : int) :
     if not SKIP_GAME_SCRAPE :
         try :
             old_database_name : list[CEGame] = []
+            d = await Mongo_Reader.get_database_name()
+            print(len(d))
             new_games : list[CEAPIGame] = await CEAPIReader.get_api_games_full()
             game_list = await Mongo_Reader.get_list("name")
+            print(f"games: {len(game_list)}")
             embeds : list[EmbedMessage] = []
             exceptions : list[UpdateMessage] = []
 
@@ -540,18 +543,23 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 # grab the old game
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
 
+                # and the game list (which keeps track of all the old games)
+                # needs to be updated.
+                if new_game.ce_id in game_list : 
+                    game_list.remove(new_game.ce_id)
+
+                if old_game is not None and old_game.last_updated == new_game.last_updated : continue
+
                 # get the update
                 game_returns = await thread_single_game_update(
                     old_game=old_game, new_game = new_game, driver=None
                 )
 
                 # save the returns
-                embeds.append(game_returns[0])
-                exceptions.append(r for r in game_returns[1])
-
-                # and the game list (which keeps track of all the old games)
-                # needs to be updated.
-                game_list.remove(new_game.ce_id)
+                if game_returns is not None :
+                    if game_returns[0] is not None :
+                        embeds.append(game_returns[0])
+                    exceptions += game_returns[1]
 
                 # and dump the new game
                 await Mongo_Reader.dump_game(new_game)
@@ -559,6 +567,10 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 # and add it to database name
                 old_database_name.append(old_game)
             
+            # now at this point, game_list only has the list of games that were in old_games
+            # but not in new_games.
+            print(game_list)
+            print(f'removed games: {len(game_list)}')
             for removed_game in game_list :
                 old_game = await Mongo_Reader.get_game(removed_game)
 
@@ -568,8 +580,10 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 )
 
                 # save the returns
-                embeds += (game_returns[0])
-                exceptions += (r for r in game_returns[1])
+                if game_returns is not None :
+                    if game_returns[0] is not None :
+                        embeds.append(game_returns[0])
+                    exceptions += game_returns[1]
 
                 # delete the game
                 await Mongo_Reader.delete_game(old_game.ce_id)
@@ -585,6 +599,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                     await game_additions_channel.send(embed=embed.embed)
             
             # send exceptions
+            print(exceptions)
             for exc in exceptions :
                 await private_log_channel.send(f"{exc.message} \n<@413427677522034727>")
 
@@ -593,14 +608,14 @@ async def master_loop(client : discord.Client, guild_id : int) :
             print('fetching games failed.')
             return
     
-    
+    print(f"old database name: {len(old_database_name)}")
 
     # ---- users ----
     SKIP_USER_SCRAPE = False
     if not SKIP_USER_SCRAPE :
         if SKIP_GAME_SCRAPE : return
         try :
-            database_user = await Mongo_Reader.get_database_user()
+            database_user = await Mongo_Reader.get_list("user")
             new_users : list[CEAPIUser] = await CEAPIReader.get_api_users_all(database_user)
 
             # guild
@@ -612,8 +627,6 @@ async def master_loop(client : discord.Client, guild_id : int) :
             # get the updates
             # we can iterate over old or new here, the amount of users in both places will be the same.
             for new_user in new_users :
-                # re update database user
-                database_user = await Mongo_Reader.get_database_user()
 
                 # grab old user
                 old_user = await Mongo_Reader.get_user(new_user.ce_id)
@@ -624,7 +637,6 @@ async def master_loop(client : discord.Client, guild_id : int) :
                     site_data=new_user,
                     old_database_name=old_database_name,
                     new_database_name=new_games,
-                    database_user=database_user
                 ))
 
                 # the user was already dumped, so we can just loop again
@@ -693,8 +705,7 @@ def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None
 
 
 async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_name : list[CEGame],
-                                    new_database_name : list[CEAPIGame], database_user : list[CEUser]
-                                    ) -> list[UpdateMessage] :
+                                    new_database_name : list[CEAPIGame]) -> list[UpdateMessage] :
     """Updates a user using the 'multiple documents' style of backend.
     The whole point of this is to no longer have a "database-user". However,
     this is only being used for reading, not for writing, so it's okay to pass it in here."""
@@ -770,14 +781,17 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
             user.remove_pending(roll.roll_name)
 
     # check rolls
-    for index, roll in enumerate(user.current_rolls[:]) :
+    for index, roll in enumerate(user.rolls) :
         # step 0: check multistage rolls
         # if the roll is multi stage AND its not in the final stage...
         # note: skip this if we're in the final stage because
         #       if it's in its final stage we can finish it out,
         #       this if statement just preps for the next one.
+        if not roll.status == "current" : continue
+        partner = None
+        if roll.partner_ce_id is not None : partner = await Mongo_Reader.get_user(roll.partner_ce_id)
         if (roll.is_multi_stage() and not roll.in_final_stage() and 
-            (roll.is_won(database_name=new_database_name, database_user=database_user))) :
+            (roll.is_won(database_name=new_database_name, user=user, partner=partner))) :
             # if we've already hit this roll before, keep moving
             if roll.due_time == None : continue
 
@@ -792,13 +806,15 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
 
             # and kill the due time
             roll.due_time = None
+            roll.set_status("waiting")
+            user._rolls[index] = roll
 
-        elif roll.is_won(database_name=new_database_name, database_user=database_user) :
+        elif roll.is_won(database_name=new_database_name, user=user, partner=partner) :
             # add the update message
             updates.append(UpdateMessage(
                 location="casinolog",
                 message=(
-                    roll.get_win_message(database_name=new_database_name, database_user=database_user)
+                    roll.get_win_message(database_name=new_database_name, user=user, partner=partner)
                 )
             ))
             # set the completed time to now
@@ -806,8 +822,8 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
 
             # add the object to completed rolls, and
             # remove it from current
-            user.add_completed_roll(roll)
-            user.remove_current_roll(roll.roll_name)
+            roll.set_status("won")
+            user._rolls[index] = roll
 
             """
             Let's talk about why this works.
@@ -824,15 +840,13 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                 if partner.has_current_roll(roll.roll_name) :
                     partner_roll = partner.get_current_roll(roll.roll_name)
 
-                    # set the partner roll's winner tag
-                    if roll.is_pvp() : partner_roll.winner = not roll.winner
-
-                    # remove their current roll
-                    partner.remove_current_roll(partner_roll.roll_name)
-
-                    # set the completion time and add it to the completed rolls
-                    partner_roll.completed_time = hm.get_unix('now')
-                    partner.add_completed_roll(partner_roll)
+                    # update their current roll
+                    if roll.is_pvp() and roll.status == "won" :
+                        partner.fail_current_roll(partner_roll.roll_name)
+                    elif roll.is_pvp() and roll.status == "failed" :
+                        partner.win_current_roll(partner_roll.roll_name)
+                    else :
+                        partner.win_current_roll(partner_roll.roll_name)
 
                     # and append it to partners
                     await Mongo_Reader.dump_user(partner)
@@ -843,16 +857,16 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
             updates.append(UpdateMessage(
                 location="casino",
                 message=(
-                    roll.get_fail_message(database_name=new_database_name, database_user=database_user)
+                    roll.get_fail_message(database_name=new_database_name, user=user, partner=partner)
                 )
             ))
             
             # remove this roll from current rolls
-            user.remove_current_roll(roll.roll_name)
+            user.fail_current_roll(roll.roll_name)
             if roll.is_co_op() :
                 partner = await Mongo_Reader.get_user(roll.partner_ce_id)
                 if partner.has_current_roll(roll.roll_name) :
-                    partner.remove_current_roll(roll.roll_name)
+                    partner.fail_current_roll(roll.roll_name)
                     await Mongo_Reader.dump_user(user)
     
 

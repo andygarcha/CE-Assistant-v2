@@ -62,12 +62,14 @@ def relative(tier_num : int) -> int :
 
 
 
-ROLL_STATUS = Literal["current", "won", "failed", "pending", "waiting"]
-"""The status of rolls. Current means currently active,
-Won means the roll has been completed and was won,
+ROLL_STATUS = Literal["current", "won", "failed", "pending", "waiting", "removed"]
+"""The status of rolls. 
+Current means currently active.
+Won means the roll has been completed and was won.
 Failed means the roll was failed and was lost.
 Pending is our normal 10-minute thing for discord.
-Waiting is for multi-stage rolls."""
+Waiting is for multi-stage rolls.
+Removed means the roll has been manually removed."""
 
 class CERoll:
     """Roll event.
@@ -219,11 +221,14 @@ class CERoll:
     def status(self) -> ROLL_STATUS :
         "The status of this roll."
         return self._status
-    
+
+    def set_status(self, new_status : ROLL_STATUS) :
+        "Setter for status"
+        self._status = new_status
+
     @status.setter
     def status(self, new_status : ROLL_STATUS) :
         self._status = new_status
-
     
     @property
     def winner(self) -> bool :
@@ -349,7 +354,7 @@ class CERoll:
 
         return list(set([hm.get_item_from_list(game, database_name).category for game in self.games]))
     
-    def get_win_message(self, database_name : list, database_user : list) -> str :
+    def get_win_message(self, database_name : list, user, partner) -> str :
         """Returns a string to send to #casino-log if this roll is won.
         This also sets the winner property if the roll is co-op."""
         import Modules.Mongo_Reader as Mongo_Reader
@@ -358,13 +363,11 @@ class CERoll:
 
         # pull the databases
         database_name : list[CEGame] = database_name
-        database_user : list[CEUser] = database_user
+        user : CEUser = user
+        partner : CEUser = partner
 
         # and grab the objects
-        user : CEUser = hm.get_item_from_list(self.user_ce_id, database_user)
-        if self.is_co_op() : 
-            partner : CEUser = hm.get_item_from_list(self.partner_ce_id, database_user)
-        else :
+        if not self.is_co_op() : 
             partner = None
         
         if self.roll_name == "Destiny Alignment" :
@@ -438,7 +441,7 @@ class CERoll:
             # determine winner
             user_wins, partner_wins = False, False
             user_game = self.games[0]
-            partner_game = hm.get_item_from_list(self.partner_ce_id, database_user).get_current_roll(self.roll_name).games[0]
+            partner_game = partner.get_current_roll(self.roll_name).games[0]
             for game in user.get_completed_games_2(database_name) :
                 if game.ce_id == user_game : user_wins = True
             for game in user.get_completed_games_2(database_name) :
@@ -495,7 +498,7 @@ class CERoll:
             return s
 
             
-    def get_fail_message(self, database_name : list, database_user : list) -> str :
+    def get_fail_message(self, database_name : list, user, partner) -> str :
         """Returns a string to send to #casino if this roll is failed."""
         #TODO: finish this function
 
@@ -503,13 +506,11 @@ class CERoll:
         from Classes.CE_Game import CEGame
         from Classes.CE_User import CEUser
         database_name : list[CEGame] = database_name
-        database_user : list[CEUser] = database_user
+        user : CEUser = user
+        partner : CEUser = partner
 
         # and grab the objects
-        user : CEUser = hm.get_item_from_list(self.user_ce_id, database_user)
-        if self.is_co_op() : 
-            partner : CEUser = hm.get_item_from_list(self.partner_ce_id, database_user)
-        else :
+        if not self.is_co_op() : 
             partner = None
 
         if self.roll_name == "Fourward Thinking" :
@@ -555,23 +556,20 @@ class CERoll:
         if roll_cooldowns[self.roll_name] is None : return None
         return hm.get_unix(days=roll_cooldowns[self.roll_name], old_unix=self.init_time)
 
-    def is_won(self, database_name : list, database_user : list) -> bool :
+    def is_won(self, database_name : list, user, partner = None) -> bool :
         """Returns true if this roll instance has been won."""
         # imports
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
-        import Modules.Mongo_Reader as Mongo_Reader
+        from Modules import Mongo_Reader
 
         # if expired, return false
         if (self.is_expired()) : return False
 
         # type hinting
-        database_user : list[CEUser] = database_user
+        partner : CEUser = partner
+        user : CEUser = user
         database_name : list[CEGame] = database_name
-
-        # get objects
-        user = hm.get_item_from_list(self.user_ce_id, database_user)
-        if self.is_co_op() : partner = hm.get_item_from_list(self.partner_ce_id, database_user)
         
         # one hell of a month
         if(self.roll_name == "One Hell of a Month") :
@@ -722,14 +720,13 @@ class CERoll:
             f"\nStatus: {self.status}"
         )
     
-    def display_str(self, database_name : list, database_user : list) -> str :
+    def display_str(self, database_name : list) -> str :
         "Turns this object into a string representation to be sent to discord."
 
         # import and type hinting
         from Classes.CE_Game import CEGame
         from Classes.CE_User import CEUser
         database_name : list[CEGame] = database_name
-        database_user : list[CEUser] = database_user
 
         if (
             self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls == None
@@ -752,8 +749,7 @@ class CERoll:
         
         # partner?
         if self.is_co_op() :
-            partner = hm.get_item_from_list(self.partner_ce_id, database_user)
-            string += f"partnered with <@{partner.discord_id}>, "
+            string += f"partnered with <@{self.partner_ce_id}>, "
 
             # winner?
             if self.is_completed() :
