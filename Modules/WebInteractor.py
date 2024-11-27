@@ -539,7 +539,9 @@ async def master_loop(client : discord.Client, guild_id : int) :
             embeds : list[EmbedMessage] = []
             exceptions : list[UpdateMessage] = []
 
-            for new_game in new_games :
+            for i, new_game in enumerate(new_games) :
+                if i % 50 == 0 : print(f"game {i} of {len(new_games)}")
+
                 # grab the old game
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
 
@@ -626,7 +628,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
             # get the updates
             # we can iterate over old or new here, the amount of users in both places will be the same.
-            for new_user in new_users :
+            for i, new_user in enumerate(new_users) :
+                if i % 50 == 0 : print(f"user {i} of {len(new_users)}")
 
                 # grab old user
                 old_user = await Mongo_Reader.get_user(new_user.ce_id)

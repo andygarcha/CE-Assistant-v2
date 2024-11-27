@@ -35,7 +35,7 @@ async def reformat_database_input_v2_to_v3() :
     "Takes in database input version 2 and turns it into version 3."
     from Modules import Mongo_Reader
 
-    database_input = await Mongo_Reader.get_inputs()
+    database_input = await Mongo_Reader.get_inputs_v2()
     V3DATABASENAME = "database-input-v3"
 
     _mongo_client = AsyncIOMotorClient(_uri)
@@ -54,7 +54,7 @@ async def reformat_database_name_v2_to_v3() :
     "Takes in database name version 2 and turns it into version 3."
     from Modules import Mongo_Reader
 
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = await Mongo_Reader.get_mongo_games_v2()
     V3DATABASENAME = "database-name-v3"
 
     _mongo_client = AsyncIOMotorClient(_uri)
@@ -103,7 +103,7 @@ async def reformat_database_user_v2_to_v3() :
     "Takes in database user version 2 and turns it to version 3."
     from Modules import Mongo_Reader
 
-    database_user = await Mongo_Reader.get_database_user()
+    database_user = await Mongo_Reader.get_mongo_users_v2()
     V3DATABASENAME = "database-user-v3"
 
     _mongo_client = AsyncIOMotorClient(_uri)
@@ -128,9 +128,7 @@ def user_v2_to_dict_v3(user : CEUser) -> dict :
         "display_name" : user.display_name,
         "avatar" : user.avatar,
         "rolls" : rolls,
-        "owned_games" : [user_game_v2_to_dict_v3(game) for game in user.owned_games],
-        "cooldowns" : [cooldown_v2_to_dict_v3(cooldown) for cooldown in user.cooldowns],
-        "pendings" : [cooldown_v2_to_dict_v3(pending) for pending in user.pending_rolls]
+        "owned_games" : [user_game_v2_to_dict_v3(game) for game in user.owned_games]
     }
 
 def roll_v2_to_dict_v3(roll : CERoll, current : bool) -> dict :
@@ -142,12 +140,13 @@ def roll_v2_to_dict_v3(roll : CERoll, current : bool) -> dict :
         "games" : roll.games,
         "user_ce_id" : roll.user_ce_id,
         "partner_ce_id" : roll.partner_ce_id,
-        "rerolls" : roll.rerolls
+        "rerolls" : roll.rerolls,
+        "status" : roll.status
     }
     if current : 
         d['status'] = 'current'
     elif roll.winner == False :
-        d['status'] = 'lost'
+        d['status'] = 'failed'
     else :
         d['status'] = 'won'
     return d

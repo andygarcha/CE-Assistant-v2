@@ -109,7 +109,7 @@ class CERoll:
 
     status : `str`
         The status of this roll. Can be one of these:
-        'current', 'won', 'failed', 'pending', 'waiting'
+        'current', 'won', 'failed', 'pending', 'waiting', 'removed'
 
     tier_num : `int`
         This is only for Soul Mates. They get to choose their tier.

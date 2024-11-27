@@ -97,7 +97,7 @@ async def test(interaction : discord.Interaction) :
 
     #await Reformatter.reformat_database_input_v2_to_v3()
     #await Reformatter.reformat_database_name_v2_to_v3()
-    #await Reformatter.reformat_database_user_v2_to_v3()
+    await Reformatter.reformat_database_user_v2_to_v3()
 
     return await interaction.followup.send('test done')
 
