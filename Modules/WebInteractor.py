@@ -715,7 +715,6 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
     """Updates a user using the 'multiple documents' style of backend.
     The whole point of this is to no longer have a "database-user". However,
     this is only being used for reading, not for writing, so it's okay to pass it in here."""
-    print('\n-- updating user... --')
     
     updates : list[UpdateMessage] = []
 
@@ -742,8 +741,6 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
     updates += (check_category_roles(original_games, new_games, new_database_name, user))
 
     # search for newly completed games
-    print(f"new completed games: {len(new_completed_games)}")
-    print(f"old completed games: {len(original_completed_games)}")
     for game in new_completed_games :
 
         # if game is too low anyway, skip it
