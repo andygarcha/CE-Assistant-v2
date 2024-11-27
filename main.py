@@ -95,12 +95,7 @@ async def test(interaction : discord.Interaction) :
 
     from Modules import Reformatter
 
-    database_userv2 = await Mongo_Reader.get_mongo_users_v2()
 
-    for userv2 in database_userv2 :
-        userv3 = await Mongo_Reader.get_user(userv2.ce_id)
-        userv3.discord_id = userv2.discord_id
-        await Mongo_Reader.dump_user(userv3)
 
     return await interaction.followup.send('test done')
 
@@ -434,13 +429,14 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
 
     # grab the user
-    user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
-
-    # user doesn't exist
-    if user == None :
+    try :
+        user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    except ValueError as e :
+        print(e.with_traceback())
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
+
     # user has cooldown
     if user.has_cooldown(event_name, database_name) :
         return await interaction.followup.send(
