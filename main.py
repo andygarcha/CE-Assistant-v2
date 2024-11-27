@@ -727,14 +727,18 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
 
         if self.__button_clicked : return
         self.__button_clicked = True
+        
 
         # make sure only the partner can touch the buttons.
         user = await Mongo_Reader.get_user(self.__user_ce_id)
         partner = await Mongo_Reader.get_user(self.__partner_ce_id)
         if interaction.user.id != partner.discord_id :
+            self.__button_clicked = False
             return await interaction.response.send_message(
                 "You cannot touch these buttons.", ephemeral=True
             )
+        
+        
         
         # defer
         await interaction.response.defer()
