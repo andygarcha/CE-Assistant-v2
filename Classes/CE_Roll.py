@@ -516,17 +516,17 @@ class CERoll:
         if self.roll_name == "Fourward Thinking" :
             return (
                 f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. " +
-                f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_date()}>."
+                f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_date(database_name)}>."
             )
         elif self.is_co_op() :
             return (
                 f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. " +
-                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
             )
         else :
             return (
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. " +
-                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
             )
     
     def calculate_cooldown_date(self, database_name : list = None) -> int | None :
