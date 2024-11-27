@@ -522,7 +522,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5) :
                 selected_category = random.choice(valid_categories)
-                for j in range(j) :
+                for j in range(5) :
                     rolled_games.append(hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=10,
