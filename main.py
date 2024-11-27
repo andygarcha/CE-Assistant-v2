@@ -95,9 +95,12 @@ async def test(interaction : discord.Interaction) :
 
     from Modules import Reformatter
 
-    #await Reformatter.reformat_database_input_v2_to_v3()
-    #await Reformatter.reformat_database_name_v2_to_v3()
-    await Reformatter.reformat_database_user_v2_to_v3()
+    database_userv2 = await Mongo_Reader.get_mongo_users_v2()
+
+    for userv2 in database_userv2 :
+        userv3 = await Mongo_Reader.get_user(userv2.ce_id)
+        userv3.discord_id = userv2.discord_id
+        await Mongo_Reader.dump_user(userv3)
 
     return await interaction.followup.send('test done')
 
