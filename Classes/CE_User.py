@@ -135,6 +135,11 @@ class CEUser:
     
     def get_completed_games_2(self, database_name : list[CEGame]) -> list[CEGame] :
         """Returns a list of :class:`CEGame`'s that this user has completed."""
+        if (database_name is None) :
+            raise ValueError("Argument 'database_name' is None.")
+        if None in database_name :
+            raise ValueError("Argument 'database_name' contains None.")
+        
         completed_games : list[CEGame] = []
         for game in database_name :
             for user_game in self.owned_games :
