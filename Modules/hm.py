@@ -327,7 +327,10 @@ def get_rollable_game(
     random.shuffle(database_name)
 
     # get banned games
-    banned_games = get_banned_games()
+    try :
+        banned_games = get_banned_games()
+    except :
+        return None
 
     # if only one category was sent, put it in an array so we can use `in`.
     if type(category) == str :

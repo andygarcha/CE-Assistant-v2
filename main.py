@@ -645,6 +645,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 ))
         case "Let Fate Decide" :
             
+
             # add the pending
             user.add_pending("Let Fate Decide")
             await Mongo_Reader.dump_user(user)
@@ -667,8 +668,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             # check to make sure this person is ready for the next iteration of their roll
             if past_roll is not None and not past_roll.ready_for_next() :
                 return await interaction.followup.send("You need to finish your previous game first! Run /check-rolls to check them.")
-            
-            
+
                 
             # add the pending and dump it
             user.add_pending("Fourward Thinking")
