@@ -1207,7 +1207,7 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
 
 
 # ---- scrape function ----
-"""
+
 @tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
 async def scrape(interaction : discord.Interaction) :
     await interaction.response.defer()
@@ -1217,34 +1217,18 @@ async def scrape(interaction : discord.Interaction) :
     await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /scrape",
                              allowed_mentions=discord.AllowedMentions.none())
 
-    database_user = await Mongo_Reader.get_database_user()
+    user_list = await Mongo_Reader.get_list("user")
+    database_user = await CEAPIReader.get_api_users_all(user_list)
+    database_name = await CEAPIReader.get_api_games_full()
 
-    try :
-        database_name = await CEAPIReader.get_api_games_full()
-        ce_users : list[CEUser] = await CEAPIReader.get_api_users_all(database_user=database_user)
-    except FailedScrapeException as e :
-        return await interaction.followup.send(f"Error FailedScrapeException: {e.get_message()}")
-    
-    for i, user in enumerate(database_user) :
-        # find the user from api
-        c_user = None
-        for ce_user in ce_users :
-            if ce_user.ce_id == user.ce_id :
-                c_user = ce_user
-                break
-        
-        if c_user is None : continue
+    for user in database_user :
+        await Mongo_Reader.dump_user(user)
 
-        database_user[i].owned_games = c_user.owned_games
-        database_user[i].set_display_name(c_user.display_name)
-        database_user[i].set_avatar(c_user.avatar)
-        
-
-    await Mongo_Reader.dump_games(database_name)
-    await Mongo_Reader.dump_users(database_user)
+    for game in database_name :
+        await Mongo_Reader.dump_game(game)
 
     return await interaction.followup.send("Database replaced.")
-"""
+
 
 
 #   _____               _____   _____   _   _    ____       _____    _____    ____    _____    ______ 
