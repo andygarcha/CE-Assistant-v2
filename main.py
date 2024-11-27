@@ -752,7 +752,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
             completion_limit=None,
             price_limit=20,
             tier_number=None,
-            user=self.__user,
+            user=user,
             has_points_restriction=True
         )
 
@@ -898,6 +898,7 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         # make sure only the partner can click this.
         if interaction.user.id != partner.discord_id :
+            self.__button_clicked = False
             return await interaction.response.send_message(
                 "You cannot touch these buttons.", ephemeral=True
             )
