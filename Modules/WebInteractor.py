@@ -546,7 +546,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
 
                 # and add it to database name
-                old_database_name.append(old_game)
+                if old_game is not None :
+                    old_database_name.append(old_game)
 
                 # and the game list (which keeps track of all the old games)
                 # needs to be updated.
