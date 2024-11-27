@@ -315,7 +315,10 @@ def get_rollable_game(
         print(f"completion limit: {completion_limit}")
         print(f"price_limit: {price_limit}")
         print(f"tier_number: {tier_number}")
-        print(f"user: {user.ce_id}")
+        if (type(user) != list) :
+            print(f"user: {user.ce_id}")
+        else :
+            print(f"user: {[u.ce_id for u in user]}")
         print(f"category: {category}")
         print(f"already_rolled_games: {already_rolled_games}")
         print(f"has_points_restriction: {has_points_restriction}")
