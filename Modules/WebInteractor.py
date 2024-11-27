@@ -545,6 +545,9 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 # grab the old game
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
 
+                # and add it to database name
+                old_database_name.append(old_game)
+
                 # and the game list (which keeps track of all the old games)
                 # needs to be updated.
                 if new_game.ce_id in game_list : 
@@ -566,8 +569,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 # and dump the new game
                 await Mongo_Reader.dump_game(new_game)
 
-                # and add it to database name
-                old_database_name.append(old_game)
+
             
             # now at this point, game_list only has the list of games that were in old_games
             # but not in new_games.
