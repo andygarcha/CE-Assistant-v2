@@ -1,0 +1,56 @@
+{
+    "ce_id" : "test",
+    "discord_id" : 0,
+    "display_name" : "test",
+    "avatar" : "test",
+    "owned_games" : [
+        {
+            "name" : "game name",
+            "ce_id" : "test",
+            "objectives" : [
+                {
+                    "name" : "objective name",
+                    "ce_id" : "test",
+                    "game_ce_id" : "test",
+                    "type" : "test",
+                    "user_points" : 0
+                },
+                {
+                    "name" : "objective name",
+                    "ce_id" : "test",
+                    "game_ce_id" : "test",
+                    "type" : "test",
+                    "user_points" : 0
+                }
+            ]
+        }
+    ],
+    "rolls" : [
+        {
+            "name" : "test",
+            "init_time" : 0,
+            "due_time" : 0,
+            "completed_time" : 0,
+            "games" : [
+                "test",
+                "test",
+                "test"
+            ],
+            "user_ce_id" : "test",
+            "partner_ce_id" : "test",
+            "rerolls" : 0,
+            "status" : "current | won | failed"
+        }
+    ],
+    "cooldowns" : [
+        {
+            "event_name" : "test",
+            "due_time" : 0
+        },
+        {
+            "event_name" : "test",
+            "due_time" : 0
+        }
+    ],
+    "pendings" : []
+}

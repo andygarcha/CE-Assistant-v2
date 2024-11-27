@@ -148,3 +148,9 @@ pip install --upgrade discord selenium pillow requests bs4 apscheduler pymongo m
 - `webdriver_manager`: screenshotting
 - `google-api-python-client`, `google-auth-httplib2`, and `google-auth-oauthlib`: google api access
 - `pandas`: manual google sheets collector (out of date)
+
+### milestones for database-misc
+- category points (mod 100)
+- category completions (mod 20?)
+- category cr (mod 100)
+- overall cr (mod 100)

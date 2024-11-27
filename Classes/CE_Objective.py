@@ -148,15 +148,15 @@ class CEObjective:
             "Partial Points" : 10
         }"""
         objective_dict = {
-            "Name" : self.name,
-            "Point Value" : self.point_value,
-            "Description" : self.description,
-            "CE ID" : self.ce_id,
-            "Game CE ID" : self.game_ce_id,
-            'Type' : self.type,
-            "Achievements" : self.achievement_ce_ids,
-            "Requirements" : self.requirements,
-            "Partial Points" : self.partial_points
+            "name" : self.name,
+            "ce_id" : self.ce_id,
+            "value" : self.point_value,
+            "description" : self.description,
+            "game_ce_id" : self.game_ce_id,
+            'type' : self.type,
+            "achievements" : self.achievement_ce_ids,
+            "requirements" : self.requirements,
+            "partial_value" : self.partial_points
         }
         return objective_dict
     

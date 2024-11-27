@@ -3,7 +3,11 @@ This module simply exists to move over the existing database_user
 to the new database_user. It will take in the old database,
 make CEUser objects out of them, and then dump that into the new 
 MongoDB databases.
+Version 1: Not object oriented.
+Version 2: Object oriented, but used only one document in MongoDB.
+Version 3: Each user and game gets their own document in MongoDB.
 """
+import json
 import bson.objectid
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
@@ -12,6 +16,169 @@ from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+---- Everything from this line down was moving from database v2 to v3. ----
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+from motor.motor_asyncio import AsyncIOMotorClient
+
+with open('secret_info.json') as f :
+    """The :class:`ObjectID` values stored under the `_id` value in each document."""
+    local_json_data = json.load(f)
+    _uri = local_json_data['mongo_uri']
+
+# ---------- inputs ----------
+async def reformat_database_input_v2_to_v3() :
+    "Takes in database input version 2 and turns it into version 3."
+    from Modules import Mongo_Reader
+
+    database_input = await Mongo_Reader.get_inputs_v2()
+    V3DATABASENAME = "database-input-v3"
+
+    _mongo_client = AsyncIOMotorClient(_uri)
+    _collection = _mongo_client['database_name'][V3DATABASENAME]
+
+    for input in database_input :
+        if (await _collection.find_one({'ce_id' : input.ce_id})) == None :
+            await _collection.insert_one(input.to_dict())
+        else :
+            await _collection.replace_one({'ce_id' : input.ce_id}, input.to_dict())
+        print(f"dumped {input.ce_id}")
+
+
+# ---------- games ----------
+async def reformat_database_name_v2_to_v3() :
+    "Takes in database name version 2 and turns it into version 3."
+    from Modules import Mongo_Reader
+
+    database_name = await Mongo_Reader.get_mongo_games_v2()
+    V3DATABASENAME = "database-name-v3"
+
+    _mongo_client = AsyncIOMotorClient(_uri)
+    _collection = _mongo_client['database_name'][V3DATABASENAME]
+
+    for game in database_name :
+        if (await _collection.find_one({"ce_id" : game.ce_id})) == None :
+            await _collection.insert_one(game_v2_to_dict_v3(game))
+        else :
+            await _collection.replace_one({"ce_id" : game.ce_id}, game_v2_to_dict_v3(game))
+        print(f"dumped {game.game_name}")
+        pass
+    pass
+
+def game_v2_to_dict_v3(game : CEGame) :
+    "Takes in a v2 game and returns the way it should be stored in v3."
+    return {
+        "name" : game.game_name,
+        "ce_id" : game.ce_id,
+        "platform" : game.platform,
+        "platform_id" : game.platform_id,
+        "category" : game.category,
+        "last_updated" : game.last_updated,
+        "objectives" : [objective_v2_to_dict_v3(obj) for obj in game.all_objectives]
+    }
+
+def objective_v2_to_dict_v3(obj : CEObjective) :
+    ""
+    return {
+        "name" : obj.name,
+        "ce_id" : obj.ce_id,
+        "value" : obj.point_value,
+        "description" : obj.description,
+        "game_ce_id" : obj.game_ce_id,
+        "type" : obj.type,
+        "achievements" : obj.achievement_ce_ids,
+        "requirements" : obj.requirements,
+        "partial_value" : obj.partial_points
+    }
+
+
+
+# ---------- users ----------
+
+async def reformat_database_user_v2_to_v3() :
+    "Takes in database user version 2 and turns it to version 3."
+    from Modules import Mongo_Reader
+
+    database_user = await Mongo_Reader.get_mongo_users_v2()
+    V3DATABASENAME = "database-user-v3"
+
+    _mongo_client = AsyncIOMotorClient(_uri)
+    _collection = _mongo_client['database_name'][V3DATABASENAME]
+
+    for user in database_user :
+        if (await _collection.find_one({'ce_id' : user.ce_id})) == None :
+            await _collection.insert_one(user_v2_to_dict_v3(user))
+        else :
+            await _collection.replace_one({'ce_id' : user.ce_id}, user_v2_to_dict_v3(user))
+        print(f"dumped {user.display_name}")
+
+def user_v2_to_dict_v3(user : CEUser) -> dict :
+    rolls : list[dict] = []
+    for roll in user.current_rolls :
+        rolls.append(roll_v2_to_dict_v3(roll, True))
+    for roll in user.completed_rolls :
+        rolls.append(roll_v2_to_dict_v3(roll, False))
+    return {
+        "ce_id" : user.ce_id,
+        "discord_id" : user.discord_id,
+        "display_name" : user.display_name,
+        "avatar" : user.avatar,
+        "rolls" : rolls,
+        "owned_games" : [user_game_v2_to_dict_v3(game) for game in user.owned_games]
+    }
+
+def roll_v2_to_dict_v3(roll : CERoll, current : bool) -> dict :
+    d = {
+        "name" : roll.roll_name,
+        "init_time" : roll.init_time,
+        "due_time" : roll.due_time,
+        "completed_time" : roll.completed_time,
+        "games" : roll.games,
+        "user_ce_id" : roll.user_ce_id,
+        "partner_ce_id" : roll.partner_ce_id,
+        "rerolls" : roll.rerolls,
+        "status" : roll.status
+    }
+    if current : 
+        d['status'] = 'current'
+    elif roll.winner == False :
+        d['status'] = 'failed'
+    else :
+        d['status'] = 'won'
+    return d
+
+def user_game_v2_to_dict_v3(game : CEUserGame) -> dict :
+    return {
+        "name" : game.name,
+        "ce_id" : game.ce_id,
+        "objectives" : [user_objective_v2_to_dict_v3(obj) for obj in game.user_objectives]
+    }
+
+def user_objective_v2_to_dict_v3(objective : CEUserObjective) -> dict :
+    return {
+        "name" : objective.name,
+        "ce_id" : objective.ce_id,
+        "game_ce_id" : objective.game_ce_id,
+        "type" : objective.type,
+        "user_points" : objective.user_points
+    }
+
+def cooldown_v2_to_dict_v3(cooldown : CECooldown) -> dict :
+    return {
+        "event_name" : cooldown.roll_name,
+        "end_time" : cooldown.end_time
+    }
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+---- Everything from this line down was moving from database v1 to v2. ----
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 
 def reformat_objective(dict, ce_id, is_community, game_ce_id) -> CEObjective :
     """Takes in a dict of an objective and returns a CEObjective object."""

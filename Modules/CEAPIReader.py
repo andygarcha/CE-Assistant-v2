@@ -156,7 +156,8 @@ def get_api_games_full() -> list[CEAPIGame] :
 @to_thread
 def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[CEUser]:
     """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all.
-    Note: if `database_user` is passed, this will only return the users who are CEA Registered."""
+    NOTE: if `database_user` is passed, this will only return the users who are CEA Registered.
+    You can pass in the entire database_user here, or just a list of registered ids. Either work."""
 
     # Step 0: check if database_user was passed
     if database_user is not None and len(database_user) > 0 :
@@ -301,12 +302,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
     return CEUser(
         discord_id=0,
         ce_id = json_response['id'],
-        casino_score = 0,
         owned_games = user_games,
-        current_rolls = [],
-        completed_rolls = [],
-        pending_rolls = [],
-        cooldowns = [],
+        rolls=[],
         display_name=json_response['displayName'],
         avatar=json_response['avatar']
     )

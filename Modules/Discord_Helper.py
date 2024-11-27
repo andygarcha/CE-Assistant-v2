@@ -171,7 +171,56 @@ async def get_buttons(view : discord.ui.View, embeds : list[discord.Embed]):
 
     #view.on_timeout = disable
 
-async def get_user_embeds(user, database_name : list, database_user : list) -> tuple[discord.Embed, discord.ui.View] :
+
+
+
+# set up the view
+class ProfileView(discord.ui.View) :
+    def __init__(self, summary_embed : discord.Embed, recent_embed : discord.Embed) :
+        super().__init__(timeout=None)
+        self.__summary_embed = summary_embed
+        self.__recent_embed = recent_embed
+    
+    @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
+    async def summary_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # defer the message
+        await interaction.response.defer()
+
+        # un-disable everything
+        for child in self.children :
+            child.disabled = False
+        
+        # and disable this one
+        button.disabled = True
+
+        # and now edit the message and return
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            embed=self.__summary_embed,
+            view=self
+        )
+
+    @discord.ui.button(label="Recent", style=discord.ButtonStyle.gray)
+    async def recent_buttton(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # defer the message
+        await interaction.response.defer()
+
+        # un-disable everything
+        for child in self.children :
+            child.disabled = False
+
+        # but disable this one
+        button.disabled = True
+
+        # and now edit the mesasge
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            embed=self.__recent_embed,
+            view=self
+        )
+
+
+def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.ui.View] :
     """Returns a `discord.Embed` that represents this user.""" 
 
     # imports and type hintin
@@ -179,7 +228,6 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
     from Classes.CE_Game import CEGame
     user : CEUser = user
     database_name : list[CEGame] = database_name
-    database_user : list[CEUser] = database_user
 
     # pull api data
     api_user = user.get_api_user()
@@ -217,51 +265,8 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
         name="Monthly Breakdown", value=api_user.monthly_report_str()
     )
 
-    # set up the view
-    class ProfileView(discord.ui.View) :
-        def __init__(self) :
-            super().__init__(timeout=None)
-        
-        @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
-        async def summary_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
-            # defer the message
-            await interaction.response.defer()
 
-            # un-disable everything
-            for child in self.children :
-                child.disabled = False
-            
-            # and disable this one
-            button.disabled = True
-
-            # and now edit the message and return
-            return await interaction.followup.edit_message(
-                message_id=interaction.message.id,
-                embed=summary_embed,
-                view=self
-            )
-
-        @discord.ui.button(label="Recent", style=discord.ButtonStyle.gray)
-        async def recent_buttton(self, interaction : discord.Interaction, button : discord.ui.Button) :
-            # defer the message
-            await interaction.response.defer()
-
-            # un-disable everything
-            for child in self.children :
-                child.disabled = False
-
-            # but disable this one
-            button.disabled = True
-
-            # and now edit the mesasge
-            return await interaction.followup.edit_message(
-                message_id=interaction.message.id,
-                embed=recent_embed,
-                view=self
-            )
-
-
-    return (summary_embed, ProfileView())
+    return (summary_embed, ProfileView(summary_embed, recent_embed))
 
 
 
@@ -275,6 +280,221 @@ async def get_user_embeds(user, database_name : list, database_user : list) -> t
 # | |__| |  / ____ \  | |  | | | |____     / ____ \  | |__| | | |__| |  _| |_     | |     _| |_  | |__| | | |\  |  ____) |
 #  \_____| /_/    \_\ |_|  |_| |______|   /_/    \_\ |_____/  |_____/  |_____|    |_|    |_____|  \____/  |_| \_| |_____/ 
 
+def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | None) -> tuple[EmbedMessage, list[UpdateMessage]] :
+    from Classes.CE_Game import CEGame, CEAPIGame
+
+    old_game : CEGame | None = old_game
+    new_game : CEAPIGame | None = new_game
+
+    exceptions : list[UpdateMessage] = []
+
+
+    SELENIUM_ENABLE = driver is not None
+
+    if old_game is None :
+        "🟢 New game 🟢"
+
+        # set up the embed
+        embed = discord.Embed(
+            title=f"__ {new_game.game_name} __ added to the site:",
+            color=0x48b474,
+            timestamp=datetime.datetime.now(),
+            description=(
+                f"\n- {new_game.get_emojis()}"
+            ),
+            url=f"https://cedb.me/game/{new_game.ce_id}"
+        )
+
+        # set up embed description
+        if len(new_game.get_primary_objectives())!= 0 :
+            num_pos = len(new_game.get_primary_objectives())
+            embed.description += (
+                    f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} " +
+                    f"worth {new_game.get_po_points()} {hm.get_emoji('Points')}"
+                )
+        if len(new_game.get_uncleared_objectives()) != 0 :
+            num_uncleareds = len(new_game.get_uncleared_objectives())
+            embed.description += (f"\n- {num_uncleareds} Uncleared Objective{'s' if num_uncleareds != 1 else ''}")
+        if len(new_game.get_community_objectives()) != 0 :
+            num_cos = len(new_game.get_community_objectives())
+            embed.description += (f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''}")
+        if len(new_game.get_secondary_objectives()) != 0 :
+            num_sos = len(new_game.get_secondary_objectives())
+            embed.description += (
+                    f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}" +
+                    f"worth {new_game.get_so_points()} {hm.get_emoji('Points')}"
+                )
+        if len(new_game.get_badge_objectives()) != 0 :
+            num_bos = len(new_game.get_badge_objectives())
+            embed.description += f"\n- {num_bos} Badge Objective{'s' if num_bos != 1 else ''}"
+
+        # other embed shit
+        embed.set_image(url="attachment://image.png")
+        embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
+        embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
+
+        if SELENIUM_ENABLE : 
+            try :
+                image = WebInteractor.get_image(driver=driver, new_game=new_game)
+                if isinstance(image, tuple) :
+                    file = image[0]
+                    exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+                else :
+                    file = image
+            except :
+                file = "Assets/image_failed_v2.png"
+            message = (EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
+        else : 
+            embed.set_image(url=new_game.get_ce_api_game().header)
+            message = (EmbedMessage(embed=embed, file=None))
+
+        return (message, exceptions)
+    
+    elif new_game is None :
+        "🔴 Removed game 🔴"
+
+        embed = discord.Embed(
+            title=f"__{old_game.game_name}__ removed from the site",
+            color=0xce4e2c,
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_image(url="attachment://image.png")
+        
+        message = EmbedMessage(embed=embed, file=discord.File("Assets/removed.png", filename="image.png"))
+        return (message, exceptions)
+    
+    "🟡 Updated game 🟡"
+
+    # set up embed
+    embed = discord.Embed(
+        title=f"__ {new_game.game_name} __ updated on the site:",
+        color=0xefd839,
+        timestamp=datetime.datetime.now(),
+        description="",
+        url=f"https://cedb.me/game/{new_game.ce_id}/"
+    )
+    embed.set_image(url="attachment://image.png")
+    embed.set_author(name='Challenge Enthusiasts', icon_url=new_game.icon)
+    embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
+
+    # ----- actual update -----
+    # point/tier changes
+    if old_game.get_total_points() != new_game.get_total_points() :
+        embed.description += (
+            f"\n- {old_game.get_total_points()} {hm.get_emoji('Points')} " +                            # 75 points
+            f"{hm.get_emoji('Arrow')} " +                                                               # -->
+            f"{new_game.get_total_points()} {hm.get_emoji('Points')}"                                   # 220 points
+        )
+        if old_game.get_tier() != new_game.get_tier() :
+            embed.description += (
+                f" ({old_game.get_tier_emoji()} {hm.get_emoji('Arrow')} {new_game.get_tier_emoji()})"
+            )
+    else :
+        embed.description += "\n- Total points unchanged"
+
+    # category changes
+    if old_game.category != new_game.category :
+        embed.description += f"\n- {old_game.get_category_emoji()} {hm.get_emoji('Arrow')} {new_game.get_category_emoji()}"
+
+    # objective changes...
+    old_objective_ce_ids = [old_objective.ce_id for old_objective in old_game.all_objectives]
+    for new_objective in new_game.all_objectives :
+
+        # if objective is new
+        if new_objective.ce_id not in old_objective_ce_ids :
+            "Objective is new!"
+            embed.description += (
+                f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
+            )
+            if new_objective.type == "Primary" or new_objective.type == "Secondary" :
+                embed.description += f"\n  - {new_objective.point_value} {hm.get_emoji('Points')}"
+            embed.description += f"\n  - {new_objective.description}"
+            continue
+        
+        # update objective tracker and get the old objective
+        old_objective_ce_ids.remove(new_objective.ce_id)
+        old_objective = hm.get_item_from_list(new_objective.ce_id, old_game.all_objectives)
+        
+        # if objective is updated
+        if not new_objective.equals(old_objective) :
+            "Objective is updated."
+            # if the points have changed
+            if old_objective.is_uncleared() and not new_objective.is_uncleared() :
+                embed.description += (f"\n- '**{new_objective.name}**' cleared, valued at {new_objective.point_value} {hm.get_emoji('Points')}")
+            elif old_objective.point_value > new_objective.point_value :
+                embed.description += (f"\n- '**{new_objective.name}**' decreased from {old_objective.point_value} {hm.get_emoji('Points')} " + 
+                                    f"to {new_objective.point_value} {hm.get_emoji('Points')}")
+            elif old_objective.point_value < new_objective.point_value :
+                embed.description += (f"\n- '**{new_objective.name}**' increased from {old_objective.point_value} {hm.get_emoji('Points')} " + 
+                                    f"to {new_objective.point_value} {hm.get_emoji('Points')}")
+            else :
+                embed.description += (f"\n- {new_objective.get_type_short()} '**{new_objective.name}**' updated")
+            
+            # if the type has changed
+            if old_objective.type != new_objective.type :
+                embed.description += (f"\n  - Type changed from {old_objective.type} to {new_objective.type}")
+
+            # if the description was updated
+            if old_objective.description != new_objective.description :
+                embed.description += f"\n  - Description updated"
+            
+            # if the requirements were updated
+            if old_objective.requirements != new_objective.requirements :
+                embed.description += "\n  - Requirements updated"
+        
+            # if the achievements were updated
+            # TODO: this can be made more specific in 2.1
+            if (not hm.achievements_are_equal(old_objective.achievement_ce_ids, new_objective.achievement_ce_ids)) :
+                embed.description += "\n  - Achievements updated"
+
+            # if the partial points were updated
+            if old_objective.partial_points != new_objective.partial_points :
+                embed.description += (f"\n  - Partial points changed from {old_objective.partial_points} {hm.get_emoji('Points')} " +
+                                        f"to {new_objective.partial_points} {hm.get_emoji('Points')}")
+                
+            # if the name was changed
+            if old_objective.name != new_objective.name :
+
+                # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
+                if (old_objective.is_uncleared() and not new_objective.is_uncleared() and
+                    (old_objective.uncleared_name() != new_objective.name)) :
+                        embed.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
+                elif not old_objective.is_uncleared() or new_objective.is_uncleared() :
+                    embed.description += (f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'")
+    # -- end objective changes --
+    
+    for old_objective_ce_id in old_objective_ce_ids :
+        old_objective = old_game.get_objective(old_objective_ce_id)
+        embed.description += (f"\n- {old_objective.get_type_short()} {old_objective.name} removed.")
+
+    # all objectives have been reflected
+    description_test = embed.description
+    description_test = description_test.replace('\n','').replace('\t','').replace('- Total points unchanged','')
+
+    # if there wasn't any real change, ignore this embed
+    if description_test == "" : return (None, [])
+
+    if SELENIUM_ENABLE :
+        try :
+            image = WebInteractor.get_image(driver=driver, new_game=new_game)
+            if isinstance(image, tuple):
+                file = image[0]
+                exceptions.append(UpdateMessage("privatelog", f":red_square: {image[1]}"))
+            else :
+                file = image
+        except :
+            file = "Assets/image_failed_v2.png"
+        
+        message = (EmbedMessage(
+            embed=embed, file=discord.File(file, filename="image.png")
+        ))
+    else : 
+        embed.set_image(url=new_game.get_ce_api_game().header)
+        message = (EmbedMessage(
+            embed=embed, file=None
+        ))
+    
+    return (message, exceptions)
 
 
 

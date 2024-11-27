@@ -471,7 +471,7 @@ class CEIndividualValueInput :
     
     def to_dict(self) :
         return {
-            "user-ce-id" : self.user_ce_id,
+            "user_ce_id" : self.user_ce_id,
             "recommendation" : self.value
         }
     
@@ -569,7 +569,7 @@ class CEValueInput :
     def to_dict(self) :
         value_array = [value.to_dict() for value in self.individual_value_inputs]
         return {
-            "objective-ce-id" : self.objective_ce_id,
+            "objective_ce_id" : self.objective_ce_id,
             "evaluations" : value_array
         }
     
@@ -632,7 +632,7 @@ class CECurateInput :
     
     def to_dict(self) :
         return {
-            'user-ce-id' : self.user_ce_id,
+            'user_ce_id' : self.user_ce_id,
             'curate' : self.curate
         }
     
@@ -668,7 +668,7 @@ class CETagInput :
     
     def to_dict(self) :
         return {
-            'user-ce-id' : self.user_ce_id,
+            'user_ce_id' : self.user_ce_id,
             'tags' : self.tags
         }
     
@@ -834,7 +834,7 @@ class CEInput :
         # curate_array = [curate.to_dict() for curate in self.curate_inputs]
         # tag_array = [tag.to_dict() for tag in self.tag_inputs]
         return {
-            'ce-id' : self.ce_id,
+            'ce_id' : self.ce_id,
             'value' : [value.to_dict() for value in self.value_inputs],
             'curate' : [curate.to_dict() for curate in self.curate_inputs],
             'tags' : [tag.to_dict() for tag in self.tag_inputs]
