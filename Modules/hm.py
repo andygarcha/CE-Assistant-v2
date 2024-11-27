@@ -311,7 +311,7 @@ def get_rollable_game(
 
     if VIEW_CONSOLE_MESSAGES :
         print(f"get_rollable_game() called with the following parameters: ")
-        print(f"database_name: {"passed correctly" if (database_name is not None or len(database_name) == 0) else "passed incorrectly"}")
+        print(f"database_name: {'passed correctly' if (database_name is not None or len(database_name) == 0) else 'passed incorrectly'}")
         print(f"completion limit: {completion_limit}")
         print(f"price_limit: {price_limit}")
         print(f"tier_number: {tier_number}")
