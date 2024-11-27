@@ -268,6 +268,8 @@ def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:
     # return the months
     elif (months != None) : return get_unix(days=months_to_days(months))
     # return the days
+    elif (days == None) : return -1
+    
     else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days=days)).timetuple()))
 
 
