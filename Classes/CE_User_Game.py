@@ -90,6 +90,13 @@ class CEUserGame():
         """Returns the category of this game.\n**NOTE**: uses bad method"""
         return self.get_regular_game().category
     
+    def get_category_v2(self, database_name : list[CEGame]) :
+        """Returns the category of this game."""
+        for game in database_name :
+            if game.ce_id == self.ce_id :
+                return game.category
+        return None
+    
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.
         Example:

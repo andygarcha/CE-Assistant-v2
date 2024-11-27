@@ -577,8 +577,8 @@ class CERoll:
             for category in get_args(hm.CATEGORIES) :
                 categories[category] = 0
             for game in user.owned_games :
-                if (game.ce_id in self.games and game.is_completed()) :
-                    categories[game.get_category()] += 1
+                if (game.ce_id in self.games and game.is_completed(database_name)) :
+                    categories[game.get_category_v2(database_name)] += 1
             completed_categories = 0
             for category in categories :
                 if categories[category] >= 3 : completed_categories += 1
