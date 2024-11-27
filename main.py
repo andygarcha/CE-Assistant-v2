@@ -1205,7 +1205,7 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
 
 
 
-
+"""
 # ---- scrape function ----
 
 @tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
@@ -1228,7 +1228,7 @@ async def scrape(interaction : discord.Interaction) :
         await Mongo_Reader.dump_game(game)
 
     return await interaction.followup.send("Database replaced.")
-
+"""
 
 
 #   _____               _____   _____   _   _    ____       _____    _____    ____    _____    ______ 
