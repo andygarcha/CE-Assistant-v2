@@ -41,8 +41,10 @@ async def test(interaction : discord.Interaction) :
     from Modules import hm
 
     database_user = await Mongo_Reader.get_database_user()
+    print(len(database_user))
     for user in database_user :
+        print(f"updating {user.ce_id} {user.avatar}")
         user.set_last_updated(hm.get_unix("now"))
         await Mongo_Reader.dump_user(user)
 
-    return await interaction.followup.send('test done')
+    return await interaction.followup.send('testsss done')

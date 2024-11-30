@@ -875,7 +875,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                     partner.fail_current_roll(roll.roll_name)
                     await Mongo_Reader.dump_user(user)
     
-
+    user.set_last_updated(hm.get_unix("now"))
     await Mongo_Reader.dump_user(user)
 
     return updates

@@ -178,7 +178,9 @@ async def get_database_user() -> list[CEUser] :
     database_user : list[CEUser] = []
     for o in objects :
         try : database_user.append(__mongo_to_user(o))
-        except : continue
+        except Exception as e : 
+            print(e)
+            continue
     
     return database_user
 
