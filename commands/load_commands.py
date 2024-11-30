@@ -1,3 +1,4 @@
+"""This module imports all commands from the `/commands` directory and loads them into the bot."""
 import importlib
 import os
 

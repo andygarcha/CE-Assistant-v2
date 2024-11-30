@@ -338,6 +338,20 @@ class CEUser:
                 del self._rolls[i]
         pass
 
+    # ==== failed rolls ==== #
+
+    def has_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
+        "Returns true if this user has a waiting roll."
+        for roll in self.rolls :
+            if roll.roll_name == roll_name and roll.status == "waiting" : return True
+        return False
+    
+    def get_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None :
+        "Returns the waiting roll."
+        for roll in self.rolls :
+            if roll.roll_name == roll_name and roll.status == "waiting" : return roll
+        return None
+
     # ==== cooldowns ==== #
 
     def has_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame]) -> bool :

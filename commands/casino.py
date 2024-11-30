@@ -10,13 +10,11 @@ from Modules import Discord_Helper, Mongo_Reader, hm
 
 """ === GETTING CLIENT TO WORK === """
 client : discord.Client = None
-tree : app_commands.CommandTree = None
 guild : discord.Guild = None
 
-def setup(cli : discord.Client, tre : app_commands.CommandTree, gui : discord.Guild) :
-    global client, tree, guild
+def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
+    global client, guild
     client = cli
-    tree = tre
     guild = gui
 
     # ---- solo roll command ----
@@ -157,7 +155,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         await interaction.response.defer()
 
         # get past_roll
-        past_roll = user.get_current_roll("Fourward Thinking")
+        past_roll = user.get_waiting_roll("Fourward Thinking")
         if past_roll is None :
             past_roll = CERoll(
                 roll_name="Fourward Thinking",
@@ -183,6 +181,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         # add the new game and reset the due time.
         past_roll.add_game(game_id)
         past_roll.reset_due_time()
+        past_roll.set_status("current")
 
         # replace the roll and push the user to mongo
         user.update_current_roll(past_roll)
@@ -197,7 +196,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
             view=discord.ui.View()
         )
     
-    
+
 class RerollView(discord.ui.View) :
     def __init__(self, user_ce_id : str, event_name : str) :
         self.__user_ce_id = user_ce_id
@@ -483,7 +482,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if past_roll is not None and not past_roll.ready_for_next() :
                 return await interaction.followup.send("You need to finish your previous game first! Run /check-rolls to check them.")
 
-                
+            past_roll = user.get_waiting_roll("Fourward Thinking")
+            
             # add the pending and dump it
             user.add_pending("Fourward Thinking")
             await Mongo_Reader.dump_user(user)
