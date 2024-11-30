@@ -18,13 +18,15 @@ class CEUser:
                  owned_games : list[CEUserGame],
                  rolls : list[CERoll],
                  display_name : str,
-                 avatar : str):
+                 avatar : str,
+                 last_updated : int):
         self._discord_id : int = discord_id
         self._ce_id : str = ce_id
         self._owned_games : list[CEUserGame] = owned_games
         self._rolls : list[CERoll] = rolls
         self._display_name = display_name
         self._avatar = avatar
+        self._last_updated = last_updated
 
     # ------------ getters -------------
 
@@ -34,7 +36,7 @@ class CEUser:
         return self._display_name
     
     def set_display_name(self, display_name : str) :
-        "Setter."
+        "Setter for display name."
         self._display_name = display_name
         pass
     
@@ -61,6 +63,16 @@ class CEUser:
     def mention(self) :
         "Returns the Discord ID with brackets (Example: '<@1234>')."
         return f"<@{self.discord_id}>"
+    
+    @property
+    def last_updated(self) :
+        "Returns the last updated time."
+        return self._last_updated
+    
+    def set_last_updated(self, last_updated : int) :
+        "Setter for last updated."
+        self._last_updated = last_updated
+        pass
     
     @property
     def casino_score(self) :
@@ -481,7 +493,8 @@ class CEUser:
             "owned_games" : owned_games_array,
             "rolls" : rolls_array,
             "display-name" : self.display_name,
-            "avatar" : self.avatar
+            "avatar" : self.avatar,
+            "last_updated" : self.last_updated
         }
 
         return user_dict
@@ -523,9 +536,10 @@ class CEAPIUser(CEUser) :
             rolls : list[CERoll],
             full_data,
             display_name : str,
-            avatar : str):
+            avatar : str,
+            last_updated : int):
         super().__init__(discord_id, ce_id, owned_games, rolls, 
-                          display_name, avatar)
+                          display_name, avatar, last_updated)
         self.__full_data = full_data
 
     @property

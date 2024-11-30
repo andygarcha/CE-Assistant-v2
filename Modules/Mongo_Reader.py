@@ -192,7 +192,8 @@ def __mongo_to_user(user : dict) -> CEUser :
         display_name=display_name,
         avatar=user['avatar'],
         rolls=[__mongo_to_roll(roll) for roll in user['rolls']],
-        owned_games=[__mongo_to_user_game(game) for game in user['owned_games']]
+        owned_games=[__mongo_to_user_game(game) for game in user['owned_games']],
+        last_updated=user['last_updated']
     )
 
 def __mongo_to_roll(roll : dict) -> CERoll :

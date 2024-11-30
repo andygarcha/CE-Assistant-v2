@@ -128,7 +128,7 @@ OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
 PLATFORM_NAMES = Literal['steam', 'retroachievements']
 
 # ------------- discord channel numbers -------------
-IN_CE = True
+IN_CE = False
 # ce ids
 __CE_OLD_LOG_ID = 1208259110638985246          # old log
 __CE_CASINO_TEST_ID = 1208259878381031485      # fake casino (old)
@@ -372,11 +372,14 @@ def get_rollable_game(
         
         if (type(user) is list) :
             "If there's more than one user..."
+            must_continue = False
             for u in user :
                 "...one of them has completed the game."
                 if u.has_completed_game(game.ce_id, database_name) : 
                     if VIEW_CONSOLE_MESSAGES : print("Multiple users passed, and one of them has completed this game.")
-                    continue
+                    must_continue = True
+            if must_continue : continue
+
         else :
             "User has completed the game already."
             if user.has_completed_game(game.ce_id, database_name) : 
@@ -398,11 +401,13 @@ def get_rollable_game(
         if price_restriction and price is not None and price > price_limit :
             if type(user) is list :
                 "If there's more than one user..."
+                must_continue = False
                 for u in user :
                     "One of the users doesn't own the game."
                     if not u.owns_game(game.ce_id) : 
                         if VIEW_CONSOLE_MESSAGES : print("The price is too high and one of the user's doesn't own the game.")
-                        continue
+                        must_continue = True
+                if must_continue : continue
             else :
                 if not user.owns_game(game.ce_id) : 
                     if VIEW_CONSOLE_MESSAGES : print("The price is too high, and the user doesn't own the game.")
@@ -424,10 +429,12 @@ def get_rollable_game(
             "If the user isn't allowed to have points in the game..."
             if type(user) is list :
                 "One of the users passed has points in the game."
+                must_continue = False
                 for u in user :
                     if u.has_points(game.ce_id) : 
                         if VIEW_CONSOLE_MESSAGES: print("One of the passed users has points in the game.")
-                        continue
+                        must_continue = True
+                if must_continue : continue
             else :
                 "The user passed has points in the game."
                 if user.has_points(game.ce_id) : 

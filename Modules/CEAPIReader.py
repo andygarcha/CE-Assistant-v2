@@ -305,7 +305,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
         owned_games = user_games,
         rolls=[],
         display_name=json_response['displayName'],
-        avatar=json_response['avatar']
+        avatar=json_response['avatar'],
+        last_updated=0
     )
 
 

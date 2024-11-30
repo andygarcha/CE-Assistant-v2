@@ -37,4 +37,12 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    from Modules import Mongo_Reader
+    from Modules import hm
+
+    database_user = await Mongo_Reader.get_database_user()
+    for user in database_user :
+        user.set_last_updated(hm.get_unix("now"))
+        await Mongo_Reader.dump_user(user)
+
     return await interaction.followup.send('test done')
