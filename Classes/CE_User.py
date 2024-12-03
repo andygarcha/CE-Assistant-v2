@@ -387,6 +387,11 @@ class CEUser:
                 if cooldown_date is not None and cooldown_date > hm.get_unix("now") : return cooldown_date
         return None
     
+    def had_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame], old_time : int) -> bool :
+        """Returns true if this user was on cooldown for `roll_name` at `old_time`."""
+        cooldown_time = self.get_cooldown_time(roll_name, database_name)
+        return cooldown_time is not None and cooldown_time > old_time
+    
     def clear_cooldowns(self) :
         "Removes all cooldowns."
         raise NotImplementedError("There is no way to clear cooldowns anymore.")
@@ -467,7 +472,8 @@ class CEUser:
             rolls=self.rolls,
             full_data=data,
             display_name=self.display_name,
-            avatar=self.avatar
+            avatar=self.avatar,
+            last_updated=self.last_updated
         )
         
     def completions(self, database_name : list[CEGame]) -> int :
