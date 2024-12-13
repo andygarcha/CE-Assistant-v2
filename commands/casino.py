@@ -1022,7 +1022,7 @@ async def check_rolls(interaction : discord.Interaction) :
     # defer the message
     await interaction.response.defer()
 
-    return await interaction.followup.send("sorry this does not work rn :( shouyld be back up by thursday night...")
+    #return await interaction.followup.send("sorry this does not work rn :( shouyld be back up by thursday night...")
 
     # create the view
     view = discord.ui.View(timeout=None)
