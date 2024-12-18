@@ -615,7 +615,7 @@ class CEAPIUser(CEUser) :
         
         # pull the data
         objective_tuples = self.most_recent_objectives()
-        if objective_tuples is None : return "Error. Please try again or ping andy."
+        if objective_tuples is None : return "Database out of sync! if this continues ping andy"
 
         # set up return
         return_str : str = ""

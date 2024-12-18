@@ -80,8 +80,6 @@ async def get_database_name() -> list[CEGame] :
 
     async for document in collection.find() :
         documents.append(__mongo_to_game(document))
-    
-    print(len(documents))
 
     cursor = collection.find({}, {"_id" : 0})
     objects = await cursor.to_list(length=None)
