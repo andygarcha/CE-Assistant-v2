@@ -326,6 +326,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
         case "One Hell of a Month" :
             # -- if user doesn't have week, return --
+            return await interaction.followup.send("roll under construction for a few days...")
             if not user.has_completed_roll('One Hell of a Week') :
                 return await interaction.followup.send(
                     f"You need to complete One Hell of a Week before rolling {event_name}!"
