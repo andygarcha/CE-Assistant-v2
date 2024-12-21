@@ -85,9 +85,9 @@ class TripleThreatDropdown(discord.ui.Select) :
         for _ in range(3) :
             rolled_games.append(hm.get_rollable_game(
                 database_name=database_name,
-                completion_limit=None,
+                completion_limit=40,
                 price_limit=20,
-                tier_number=4,
+                tier_number=3,
                 user=user,
                 price_restriction=self.__price_restriction,
                 category=category,
@@ -508,20 +508,20 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 user=user,
                 price_restriction=price_restriction
             )]
+            
         case "Triple Threat" :
             if not user.has_completed_roll("Never Lucky") :
                 return await interaction.followup.send(f"You need to complete Never Lucky before rolling Triple Threat!")
-            rolled_games = []
-            for i in range(3) :
-                rolled_games.append(hm.get_rollable_game(
-                    database_name=database_name,
-                    completion_limit=40,
-                    price_limit=20,
-                    tier_number=3,
-                    user=user,
-                    already_rolled_games=rolled_games,
-                    price_restriction=price_restriction
-                ))
+            user.add_pending("Triple Threat")
+            await Mongo_Reader.dump_user(user)
+
+            view.add_item(TripleThreatDropdown(user.ce_id, price_restriction))
+            view.timeout = 600
+
+            return await interaction.followup.send(
+                "Choose your category.", view=view
+            )
+        
         case "Let Fate Decide" :
             # add the pending
             user.add_pending("Let Fate Decide")
