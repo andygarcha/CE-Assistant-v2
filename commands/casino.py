@@ -48,6 +48,76 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 
 
 """ === CLASSES === """
+class TripleThreatDropdown(discord.ui.Select) :
+    def __init__(self, user_ce_id : str, price_restriction : bool) :
+        # store the user
+        self.__user_ce_id = user_ce_id
+        self.__price_restriction = price_restriction
+
+        # initialize and set options
+        options : list[discord.SelectOption] = []
+        for category in get_args(hm.CATEGORIES) :
+            options.append(discord.SelectOption(label=category, emoji=hm.get_emoji(category)))
+
+        # init the superclass
+        super().__init__(placeholder="Select a category.", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction : discord.Interaction) :
+        "The callback."
+
+        user = await Mongo_Reader.get_user(self.__user_ce_id)
+
+        # stop other users from clicking the dropdown
+        if interaction.user.id != user.discord_id : 
+            return await interaction.response.send_message(
+                "Stop that! This isn't your roll.", ephemeral=True
+            )
+
+        # defer the message
+        await interaction.response.defer()
+
+        # define our category
+        category = self.values[0]
+
+        # roll a game with these parameters
+        database_name = await Mongo_Reader.get_database_name()
+        rolled_games : list[str] = []
+        for _ in range(3) :
+            rolled_games.append(hm.get_rollable_game(
+                database_name=database_name,
+                completion_limit=None,
+                price_limit=20,
+                tier_number=4,
+                user=user,
+                price_restriction=self.__price_restriction,
+                category=category,
+                already_rolled_games=rolled_games
+            ))
+
+        roll : CERoll = CERoll(
+            roll_name="Triple Threat",
+            user_ce_id=user.ce_id,
+            games=rolled_games,
+            is_current=True
+        )
+
+        user.remove_pending("Triple Threat")
+        user.add_current_roll(roll)
+        await Mongo_Reader.dump_user(user)
+
+        database_user = await Mongo_Reader.get_database_user()
+
+        view = discord.ui.View()
+        embeds = Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
+        await Discord_Helper.get_buttons(view, embeds)
+
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            #content=f"Your rolled game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
+            embed=embeds[0],
+            view=view
+        )
+
 class LetFateDecideDropdown(discord.ui.Select) :
     def __init__(self, user : CEUser, price_restriction : bool) :
         # store the user
