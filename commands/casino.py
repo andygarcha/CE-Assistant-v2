@@ -181,10 +181,10 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         # add the new game and reset the due time.
         past_roll.add_game(game_id)
         past_roll.reset_due_time()
-        past_roll.set_status("current")
 
         # replace the roll and push the user to mongo
-        user.update_current_roll(past_roll)
+        user.update_waiting_roll(past_roll)
+        user.unwait_waiting_roll("Fourward Thinking")
         user.remove_pending("Fourward Thinking")
         await Mongo_Reader.dump_user(user)
 
@@ -264,8 +264,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
         view = RerollView(user.ce_id, event_name)
         return await interaction.followup.send(f"Would you like to reset your {event_name} roll?", view=view)       
     
-    if user.has_current_roll(event_name) and event_name not in ["Two Week T2 Streak", "Two \"Two Week T2 Streak\" Streak"
-                                                                , "Fourward Thinking"] :
+    if user.has_current_roll(event_name) :
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
         )
@@ -351,7 +350,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 valid_categories.remove(selected_category)
     
         case "Two Week T2 Streak" :
-            if user.has_current_roll('Two Week T2 Streak') :
+            if user.has_waiting_roll('Two Week T2 Streak') :
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll
                 past_roll_index : int
@@ -373,7 +372,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     past_roll.add_game(new_game_id)
                     past_roll.reset_due_time()
                     new_game_object = hm.get_item_from_list(new_game_id, database_name)
-                    user.update_current_roll(past_roll)
+                    user.update_waiting_roll(past_roll)
+                    user.unwait_waiting_roll("Two Week T2 Streak")
                     await Mongo_Reader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
@@ -399,9 +399,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 return await interaction.followup.send(
                     f"You need to complete Two Week T2 Steak before rolling {event_name}!"
                 )
-            if user.has_current_roll("Two \"Two Week T2 Streak\" Streak") :
+            if user.has_waiting_roll("Two \"Two Week T2 Streak\" Streak") :
                 # if the user is currently working 
-                past_roll = user.get_current_roll("Two \"Two Week T2 Streak\" Streak")
+                past_roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
                 if past_roll.ready_for_next() :
                     new_game_id = hm.get_rollable_game(
                         database_name=database_name,
@@ -415,7 +415,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     past_roll.add_game(new_game_id)
                     past_roll.reset_due_time()
                     new_game_object = hm.get_item_from_list(new_game_id, database_name)
-                    user.update_current_roll(past_roll)
+                    user.update_waiting_roll(past_roll)
+                    user.unwait_waiting_roll("Two \"Two Week T2 Streak\" Streak")
                     await Mongo_Reader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
@@ -458,8 +459,6 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     price_restriction=price_restriction
                 ))
         case "Let Fate Decide" :
-            
-
             # add the pending
             user.add_pending("Let Fate Decide")
             await Mongo_Reader.dump_user(user)

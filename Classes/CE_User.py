@@ -350,7 +350,7 @@ class CEUser:
                 del self._rolls[i]
         pass
 
-    # ==== failed rolls ==== #
+    # ==== waiting rolls ==== #
 
     def has_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         "Returns true if this user has a waiting roll."
@@ -363,6 +363,24 @@ class CEUser:
         for roll in self.rolls :
             if roll.roll_name == roll_name and roll.status == "waiting" : return roll
         return None
+    
+    def update_waiting_roll(self, roll : CERoll) -> None :
+        "Updates a waiting roll."
+        for i, self_roll in enumerate(self.rolls) :
+            if roll.roll_name == self_roll.roll_name and self_roll.status == "waiting" :
+                self._rolls[i] = roll
+                return
+            
+        raise ValueError(f"No waiting roll of name {roll.roll_name} was found.")
+    
+    def unwait_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
+        "Sets the waiting roll to current."
+        for i, roll in enumerate(self.rolls) :
+            if roll.roll_name == roll_name and roll.status == "waiting" :
+                self._rolls[i].status = "current"
+                return
+        
+        raise ValueError(f"No waiting roll of name {roll_name} was found.")
 
     # ==== cooldowns ==== #
 
