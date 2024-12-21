@@ -352,13 +352,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
         case "Two Week T2 Streak" :
             if user.has_waiting_roll('Two Week T2 Streak') :
                 "If user's current roll is ready for next stage, roll it for them."
-                past_roll : CERoll
-                past_roll_index : int
-                for i, r in enumerate(user.current_rolls) :
-                    if r.roll_name == event_name : 
-                        past_roll = r
-                        past_roll_index = i
-                        break
+                past_roll : CERoll = user.get_waiting_roll("Two Week T2 Streak")
                 if past_roll.ready_for_next() :
                     new_game_id = hm.get_rollable_game(
                         database_name=database_name,
