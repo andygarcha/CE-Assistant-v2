@@ -360,7 +360,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         price_limit=20,
                         tier_number=2,
                         user=user,
-                        already_rolled_games=r.games,
+                        already_rolled_games=past_roll.games,
                         price_restriction=price_restriction
                     )
                     past_roll.add_game(new_game_id)
