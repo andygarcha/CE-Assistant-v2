@@ -533,7 +533,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             user.add_pending("Triple Threat")
             await Mongo_Reader.dump_user(user)
 
-            view.add_item(TripleThreatDropdown(user.ce_id, price_restriction))
+            view.add_item(TripleThreatDropdown(user.ce_id, price_restriction, hours_restriction))
             view.timeout = 600
 
             return await interaction.followup.send(
@@ -545,7 +545,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             user.add_pending("Let Fate Decide")
             await Mongo_Reader.dump_user(user)
 
-            view.add_item(LetFateDecideDropdown(user, price_restriction))
+            view.add_item(LetFateDecideDropdown(user, price_restriction, hours_restriction))
             view.timeout = 600
 
             return await interaction.followup.send(
@@ -571,7 +571,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             await Mongo_Reader.dump_user(user)
             
             view.timeout = 600
-            view.add_item(FourwardThinkingDropdown(past_roll, database_name, price_restriction))
+            view.add_item(FourwardThinkingDropdown(past_roll, database_name, price_restriction, hours_restriction))
             
             return await interaction.followup.send(
                 "Choose your category.", view=view
