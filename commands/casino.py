@@ -98,6 +98,11 @@ class TripleThreatDropdown(discord.ui.Select) :
                 hours_restriction=self.__hours_restriction
             ))
 
+        if None in rolled_games :
+            user.remove_pending("Triple Threat")
+            await Mongo_Reader.dump_user(user)
+            return await interaction.followup.send("Not enough qualifiable games. Please try again later!")
+
         roll : CERoll = CERoll(
             roll_name="Triple Threat",
             user_ce_id=user.ce_id,
