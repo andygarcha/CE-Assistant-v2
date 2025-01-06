@@ -296,7 +296,8 @@ def get_rollable_game(
         category : str | list[str] = None,
         already_rolled_games : list = [],
         has_points_restriction : bool = False,
-        price_restriction : bool = True
+        price_restriction : bool = True,
+        hours_restriction : bool = True
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -313,20 +314,19 @@ def get_rollable_game(
 
     if VIEW_CONSOLE_MESSAGES :
         print(f"get_rollable_game() called with the following parameters: ")
-        print(f"database_name: {'passed correctly' if (database_name is not None or len(database_name) == 0) else 'passed incorrectly'}")
+        print(f"database_name: {'passed correctly' if (database_name is not None or len(database_name) == 0) else '!!! passed incorrectly !!!'}")
         print(f"completion limit: {completion_limit}")
         print(f"price_limit: {price_limit}")
         print(f"tier_number: {tier_number}")
         if (type(user) != list) :
             print(f"user: {user.ce_id}")
         else :
-            print(f"user: {[u.ce_id for u in user]}")
+            print(f"users: {[u.ce_id for u in user]}")
         print(f"category: {category}")
         print(f"already_rolled_games: {already_rolled_games}")
         print(f"has_points_restriction: {has_points_restriction}")
         print(f"price_restriction: {price_restriction}")
-
-
+        print(f"hours_restriction: {hours_restriction}")
 
     # randomize database_name :
     random.shuffle(database_name)
@@ -340,6 +340,10 @@ def get_rollable_game(
     # if only one category was sent, put it in an array so we can use `in`.
     if type(category) == str :
         category = [category]
+
+    # if the hours restriction was turned off, we can just set completion_limit to None so that everything gets rolled!
+    if not hours_restriction :
+        completion_limit = None
 
     # ---- iterate through all the games ----
     for game in database_name :

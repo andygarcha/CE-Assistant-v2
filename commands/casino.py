@@ -24,9 +24,11 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     @app_commands.describe(event_name = "The event you'd like to roll.")
     @app_commands.describe(price_restriction=
                            "Set this to false if you'd like to be able to roll any game, regardless of price.")
+    @app_commands.describe(hours_restriction =
+                           "Set this to false if you'd like to be able to roll any game, regardless of SH hours.")
     async def solo_roll_command(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, 
-                                price_restriction : bool = True) :
-        await solo_roll(interaction, event_name, price_restriction)
+                                price_restriction : bool = True, hours_restriction : bool = True) :
+        await solo_roll(interaction, event_name, price_restriction, hours_restriction)
         pass
 
     # ---- coop roll command ----
@@ -49,10 +51,11 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 
 """ === CLASSES === """
 class TripleThreatDropdown(discord.ui.Select) :
-    def __init__(self, user_ce_id : str, price_restriction : bool) :
+    def __init__(self, user_ce_id : str, price_restriction : bool, hours_restriction : bool) :
         # store the user
         self.__user_ce_id = user_ce_id
         self.__price_restriction = price_restriction
+        self.__hours_restriction = hours_restriction
 
         # initialize and set options
         options : list[discord.SelectOption] = []
@@ -91,7 +94,8 @@ class TripleThreatDropdown(discord.ui.Select) :
                 user=user,
                 price_restriction=self.__price_restriction,
                 category=category,
-                already_rolled_games=rolled_games
+                already_rolled_games=rolled_games,
+                hours_restriction=self.__hours_restriction
             ))
 
         roll : CERoll = CERoll(
@@ -119,10 +123,11 @@ class TripleThreatDropdown(discord.ui.Select) :
         )
 
 class LetFateDecideDropdown(discord.ui.Select) :
-    def __init__(self, user : CEUser, price_restriction : bool) :
+    def __init__(self, user : CEUser, price_restriction : bool, hours_restriction : bool) :
         # store the user
         self.__user = user
         self.__price_restriction = price_restriction
+        self.__hours_restriction = hours_restriction
 
         # initialize and set options
         options : list[discord.SelectOption] = []
@@ -158,7 +163,8 @@ class LetFateDecideDropdown(discord.ui.Select) :
             tier_number=4,
             user=user,
             price_restriction=self.__price_restriction,
-            category=category
+            category=category,
+            hours_restriction=self.__hours_restriction
         )
 
         roll : CERoll = CERoll(
@@ -187,10 +193,12 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
 
 class FourwardThinkingDropdown(discord.ui.Select) :
-    def __init__(self, past_roll : CERoll, database_name : list[CEGame], price_restriction : bool) :
+    def __init__(self, past_roll : CERoll, database_name : list[CEGame], price_restriction : bool,
+                 hours_restriction : bool) :
         # store the user
         self.__past_roll = past_roll
         self.__price_restriction = price_restriction
+        self.__hours_restriction = hours_restriction
 
         # initialize options
         options : list[discord.SelectOption] = []
@@ -245,7 +253,8 @@ class FourwardThinkingDropdown(discord.ui.Select) :
             tier_number=next_phase_num,
             user=user,
             category=category,
-            price_restriction=self.__price_restriction
+            price_restriction=self.__price_restriction,
+            hours_restriction=self.__hours_restriction
         )
 
         # add the new game and reset the due time.
@@ -300,7 +309,8 @@ class RerollView(discord.ui.View) :
 
 
 
-async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, price_restriction : bool = True) :
+async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL_EVENT_NAMES, 
+                    price_restriction : bool = True, hours_restriction : bool = True) :
     await interaction.response.defer()
 
     #return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
@@ -365,7 +375,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 price_limit=10,
                 tier_number=1,
                 user=user,
-                price_restriction=price_restriction
+                price_restriction=price_restriction,
+                hours_restriction=hours_restriction
             )]
         
         case "One Hell of a Week" :
@@ -387,7 +398,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     user=user,
                     category=valid_categories,
                     already_rolled_games=rolled_games,
-                    price_restriction=price_restriction
+                    price_restriction=price_restriction,
+                    hours_restriction=hours_restriction
                 ))
                 valid_categories.remove(
                     hm.get_item_from_list(rolled_games[i], database_name).category
@@ -415,7 +427,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         user=user,
                         category=selected_category,
                         already_rolled_games=rolled_games,
-                        price_restriction=price_restriction
+                        price_restriction=price_restriction,
+                        hours_restriction=hours_restriction
                     ))
                 valid_categories.remove(selected_category)
     
@@ -431,7 +444,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         tier_number=2,
                         user=user,
                         already_rolled_games=past_roll.games,
-                        price_restriction=price_restriction
+                        price_restriction=price_restriction,
+                        hours_restriction=hours_restriction
                     )
                     past_roll.add_game(new_game_id)
                     past_roll.reset_due_time()
@@ -456,7 +470,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     price_limit=20,
                     tier_number = 2,
                     user=user,
-                    price_restriction=price_restriction
+                    price_restriction=price_restriction,
+                    hours_restriction=hours_restriction
                 )]
         case "Two \"Two Week T2 Streak\" Streak" :
             if not user.has_completed_roll("Two Week T2 Streak") :
@@ -474,7 +489,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         tier_number=2,
                         user=user,
                         already_rolled_games=past_roll.games,
-                        price_restriction=price_restriction
+                        price_restriction=price_restriction,
+                        hours_restriction=hours_restriction
                     )
                     past_roll.add_game(new_game_id)
                     past_roll.reset_due_time()
@@ -497,7 +513,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     price_limit=20,
                     tier_number=2,
                     user=user,
-                    price_restriction=price_restriction
+                    price_restriction=price_restriction,
+                    hours_restriction=hours_restriction
                 )]
         case "Never Lucky" :
             rolled_games = [hm.get_rollable_game(
@@ -506,7 +523,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 price_limit=20,
                 tier_number=3,
                 user=user,
-                price_restriction=price_restriction
+                price_restriction=price_restriction,
+                hours_restriction=hours_restriction
             )]
             
         case "Triple Threat" :
