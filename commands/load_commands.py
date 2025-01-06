@@ -3,6 +3,7 @@ import importlib
 import os
 
 def load_commands(client, tree, guild):
+    """Imports all the commands in this directory."""
     for filename in os.listdir("./commands"):
         if filename.endswith(".py"):
             module_name = f"commands.{filename[:-3]}"

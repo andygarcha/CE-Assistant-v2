@@ -48,6 +48,8 @@ import io
 from PIL import Image
 from webdriver_manager.core.os_manager import ChromeType
 
+from commands.games import get_game_auto
+
 
 # -------------------------------- normal bot code -----------------------------------
 
@@ -103,39 +105,7 @@ load_commands.load_commands(client, tree, guild)
 
 
 
-#   _____    _____   _____               _____    ______ 
-#  / ____|  / ____| |  __ \      /\     |  __ \  |  ____|
-# | (___   | |      | |__) |    /  \    | |__) | | |__   
-#  \___ \  | |      |  _  /    / /\ \   |  ___/  |  __|  
-#  ____) | | |____  | | \ \   / ____ \  | |      | |____ 
-# |_____/   \_____| |_|  \_\ /_/    \_\ |_|      |______|
 
-
-
-"""
-# ---- scrape function ----
-
-@tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
-async def scrape(interaction : discord.Interaction) :
-    await interaction.response.defer()
-
-    # log this interaction
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /scrape",
-                             allowed_mentions=discord.AllowedMentions.none())
-
-    user_list = await Mongo_Reader.get_list("user")
-    database_user = await CEAPIReader.get_api_users_all(user_list)
-    database_name = await CEAPIReader.get_api_games_full()
-
-    for user in database_user :
-        await Mongo_Reader.dump_user(user)
-
-    for game in database_name :
-        await Mongo_Reader.dump_game(game)
-
-    return await interaction.followup.send("Database replaced.")
-"""
 
 
 #   _____               _____   _____   _   _    ____       _____    _____    ____    _____    ______ 
@@ -158,142 +128,14 @@ async def manual_update_casino_score(interaction : discord.Interaction, member :
 
 
 
-#  _____   _   _   _____   _______   _____              _______   ______     _         ____     ____    _____  
-# |_   _| | \ | | |_   _| |__   __| |_   _|     /\     |__   __| |  ____|   | |       / __ \   / __ \  |  __ \ 
-#   | |   |  \| |   | |      | |      | |      /  \       | |    | |__      | |      | |  | | | |  | | | |__) |
-#   | |   | . ` |   | |      | |      | |     / /\ \      | |    |  __|     | |      | |  | | | |  | | |  ___/ 
-#  _| |_  | |\  |  _| |_     | |     _| |_   / ____ \     | |    | |____    | |____  | |__| | | |__| | | |     
-# |_____| |_| \_| |_____|    |_|    |_____| /_/    \_\    |_|    |______|   |______|  \____/   \____/  |_|     
 
 
 
 
-# ---- initiate loop ----
-@tree.command(name="initiate-loop", description="Initiate the loop. ONLY RUN WHEN NECESSARY.", guild=guild)
-async def loop(interaction : discord.Interaction) :
-    await interaction.response.defer()
-
-    if hm.IN_CE :
-        if datetime.datetime.now().minute < 30 and datetime.datetime.now().minute >= 25 :
-            return await interaction.followup.send('this loop will run in less than five minutes. please wait!')
-        if datetime.datetime.now().minute >= 30 and datetime.datetime.now().minute < 35 :
-            return await interaction.followup.send('this loop is probably running now! please wait...')
-
-    await interaction.followup.send("looping...")
-
-    # log this interaction
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
-                             allowed_mentions=discord.AllowedMentions.none())
-
-    await master_loop(client, guild_id)
-
-    return await interaction.followup.send('loop complete.')
-
-
-
-#             _____    _____      _   _    ____    _______   ______    _____ 
-#     /\     |  __ \  |  __ \    | \ | |  / __ \  |__   __| |  ____|  / ____|
-#    /  \    | |  | | | |  | |   |  \| | | |  | |    | |    | |__    | (___  
-#   / /\ \   | |  | | | |  | |   | . ` | | |  | |    | |    |  __|    \___ \ 
-#  / ____ \  | |__| | | |__| |   | |\  | | |__| |    | |    | |____   ____) |
-# /_/    \_\ |_____/  |_____/    |_| \_|  \____/     |_|    |______| |_____/ 
 
 
 
 
-@tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
-@app_commands.describe(embed_id="The Message ID of the message you'd like to add notes to.")
-@app_commands.describe(notes="The notes you'd like to append.")
-@app_commands.describe(clear="Set this to true if you want to replace all previous notes with this one.")
-async def add_notes(interaction : discord.Interaction, embed_id : str, notes : str, clear : bool) :
-    "Adds notes to game additions posts."
-    # defer and make ephemeral
-    await interaction.response.defer(ephemeral=True)
-
-    # log this interaction
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /add-notes, "
-                     + f"params: embed_id={embed_id}, notes={notes}, clear={clear}", allowed_mentions=discord.AllowedMentions.none())
-
-    # grab the site additions channel
-    site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
-
-    # try to get the message
-    try :
-        message = await site_additions_channel.fetch_message(int(embed_id))
-
-    # if it errors, message is not in the site-additions channel
-    except :
-        return await interaction.followup.send(f"This message is not in the <#{hm.GAME_ADDITIONS_ID}> channel.")
-    
-    if message.author.id != 1108618891040657438 : return await interaction.followup.send("This message was not sent by the bot!")
-
-    # grab the embed
-    embed = message.embeds[0]
-
-    # try and see if the embed already has a reason field
-    try :
-        if(embed.fields[-1].name == "Note") :
-            # if clear has been set, set the value to only the new notes
-            if clear :
-                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=notes)
-            
-            # else, add the new notes to the end and keep the old notes
-            else :
-                old_notes = embed.fields[-1].value
-                embed.set_field_at(index=len(embed.fields)-1, name="Note", value=f"{old_notes}\n{notes}")
-    
-    # if it errors, then just add a reason field
-    except :
-        embed.add_field(name="Note", value=notes, inline=False)
-
-    # edit the message
-    await message.edit(embed=embed, attachments="")
-
-    # and send a response to the original interaction
-    await interaction.followup.send("Notes added!", ephemeral=True)
-
-
-
-
-#   _____   ______   _______             _____              __  __   ______ 
-#  / ____| |  ____| |__   __|           / ____|     /\     |  \/  | |  ____|
-# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__   
-# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|  
-# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____ 
-#  \_____| |______|    |_|              \_____| /_/    \_\ |_|  |_| |______|
-
-
-async def get_game_auto(interaction : discord.Interaction, current : str) -> typing.List[app_commands.Choice[str]]:
-    """Function that autocompletes whatever the user is trying to type in.
-    The game's name will appear on the user's screen, but the game's CE ID will be passed."""
-    database_name = await Mongo_Reader.get_database_name()
-    choices : list = []
-
-    for game in database_name :
-        if current.lower() in game.game_name.lower() :
-            choices.append(app_commands.Choice(name=game.game_name, value=game.ce_id))
-        if len(choices) >= 25 : break
-
-    return choices[0:25]
-
-@tree.command(name="get-game", description="Get information about any game on CE!", guild=guild)
-@app_commands.autocomplete(game=get_game_auto)
-async def get_game(interaction : discord.Interaction, game : str) :
-
-    # defer
-    await interaction.response.defer()
-
-    chosen_game = await Mongo_Reader.get_game(game)
-    if chosen_game is None : return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
-
-    # pull the game embed
-    database_name = await Mongo_Reader.get_database_name()
-    game_embed = Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
-
-    # and return
-    return await interaction.followup.send(embed=game_embed)
 
 
 
@@ -370,95 +212,10 @@ async def set_color(interaction : discord.Interaction) :
 
 
 
-#  _____    _____     ____    ______   _____   _        ______ 
-# |  __ \  |  __ \   / __ \  |  ____| |_   _| | |      |  ____|
-# | |__) | | |__) | | |  | | | |__      | |   | |      | |__   
-# |  ___/  |  _  /  | |  | | |  __|     | |   | |      |  __|  
-# | |      | | \ \  | |__| | | |       _| |_  | |____  | |____ 
-# |_|      |_|  \_\  \____/  |_|      |_____| |______| |______|
-
-@tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
-@app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
-async def profile(interaction : discord.Interaction, user : discord.User = None) :
-    await interaction.response.defer()
-
-    # pull databases
-    database_name = await Mongo_Reader.get_database_name()
-
-    # check to see if they asked for info on another person.
-    asked_for_friend : bool = True
-    if user is None :
-        user = interaction.user
-        asked_for_friend = False
-
-    # make sure they're registered
-    ce_user = await Mongo_Reader.get_user(user.id, use_discord_id=True)
-    if ce_user is None and asked_for_friend : 
-        return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
-                                               allowed_mentions=discord.AllowedMentions.none())
-    if ce_user is None and not asked_for_friend :
-        return await interaction.followup.send("Sorry! You are not registered. Please run /register and try again!")
-    
-    # get the embed and the view
-    returns = Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name)
-    summary_embed = returns[0]
-    view = returns[1]
-
-    # and send
-    return await interaction.followup.send(view=view, embed=summary_embed)
 
 
 
-#   _____   _        ______              _____  
-#  / ____| | |      |  ____|     /\     |  __ \ 
-# | |      | |      | |__       /  \    | |__) |
-# | |      | |      |  __|     / /\ \   |  _  / 
-# | |____  | |____  | |____   / ____ \  | | \ \ 
-#  \_____| |______| |______| /_/    \_\ |_|  \_\
 
-
-@tree.command(name="clear-roll", description="Clear any user's current/completed rolls, cooldowns, or pendings.", guild=guild)
-async def clear_roll(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES, 
-                     current : bool = False, completed : bool = False, pending : bool = False) :
-    await interaction.response.defer()
-
-    # log this interaction
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /clear-roll, "
-                     + f"params: member=<@{member.id}>, roll_name={roll_name}, current={current}, completed={completed}, "
-                     + f"pending={pending}", allowed_mentions=discord.AllowedMentions.none())
-
-    # get database user and the user
-    user = await Mongo_Reader.get_user(member.id, use_discord_id=True)
-
-    if current : user.remove_current_roll(roll_name)
-    if completed : user.remove_completed_rolls(roll_name)
-    if pending : user.remove_pending(roll_name)
-
-    await Mongo_Reader.dump_user(user)
-    return await interaction.followup.send("Done!")
-
-@tree.command(name='force-add', description="Force add a roll to a user's completed rolls section.", guild=guild)
-async def force_add(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
-    await interaction.response.defer()
-
-    # log this interaction
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /force-add, "
-                     + f"params: member=<@{member.id}>, roll_name={roll_name}", 
-                     allowed_mentions=discord.AllowedMentions.none())
-    
-    # get database user and the user
-    user = await Mongo_Reader.get_user(member.id, use_discord_id=True)
-
-    user.add_completed_roll(CERoll(
-        roll_name=roll_name,
-        user_ce_id=user.ce_id,
-        games=None
-    ))
-
-    await Mongo_Reader.dump_user(user)
-    return await interaction.followup.send("Done!")
 
 """
 

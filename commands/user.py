@@ -19,6 +19,11 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def register_command(interaction : discord.Interaction, ce_id : str) :
         await register(interaction, ce_id)
         pass
+
+    @tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
+    @app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
+    async def profile_command(interaction : discord.Interaction, user : discord.User = None) :
+        await profile(interaction, user) 
     pass
 
 
@@ -92,3 +97,42 @@ async def register(interaction : discord.Interaction, ce_id : str, discord_user 
 
     # and return.
     return await interaction.followup.send(f"<@{ce_user.discord_id}> has been successfully registered!")
+
+
+
+#  _____    _____     ____    ______   _____   _        ______ 
+# |  __ \  |  __ \   / __ \  |  ____| |_   _| | |      |  ____|
+# | |__) | | |__) | | |  | | | |__      | |   | |      | |__   
+# |  ___/  |  _  /  | |  | | |  __|     | |   | |      |  __|  
+# | |      | | \ \  | |__| | | |       _| |_  | |____  | |____ 
+# |_|      |_|  \_\  \____/  |_|      |_____| |______| |______|
+
+
+async def profile(interaction : discord.Interaction, user : discord.User = None) :
+    await interaction.response.defer()
+
+    # pull databases
+    database_name = await Mongo_Reader.get_database_name()
+
+    # check to see if they asked for info on another person.
+    asked_for_friend : bool = True
+    if user is None :
+        user = interaction.user
+        asked_for_friend = False
+
+    # make sure they're registered
+    ce_user = await Mongo_Reader.get_user(user.id, use_discord_id=True)
+    if ce_user is None and asked_for_friend : 
+        return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
+                                               allowed_mentions=discord.AllowedMentions.none())
+    if ce_user is None and not asked_for_friend :
+        return await interaction.followup.send("Sorry! You are not registered. Please run /register and try again!")
+    
+    # get the embed and the view
+    returns = Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name)
+    summary_embed = returns[0]
+    view = returns[1]
+
+    # and send
+    return await interaction.followup.send(view=view, embed=summary_embed)
+
