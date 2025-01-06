@@ -29,6 +29,14 @@ CHANNELS = CE_CHANNELS if IN_CE else TEST_CHANNELS
 
 CHANNEL_NAMES = Literal["game_additions", "casino", "casino_log", "private_log", "user_log", "proof_submissions", "input_log"]
 
+GAME_ADDITIONS_ID = CHANNELS["game_additions"]
+CASINO_ID = CHANNELS["casino"]
+CASINO_LOG_ID = CHANNELS["casino_log"]
+PRIVATE_LOG_ID = CHANNELS['private_log']
+USER_LOG_ID = CHANNELS["user_log"]
+PROOF_SUBMISSIONS_ID = CHANNELS['proof_submissions']
+INPUT_LOG_ID = CHANNELS['input_log']
+
 def id_num(channel_name : CHANNEL_NAMES) :
     """
     Returns the channel ID for a given key.
