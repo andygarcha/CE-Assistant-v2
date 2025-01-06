@@ -3,7 +3,7 @@ import discord
 from discord import app_commands
 
 from Classes.CE_User import CEUser
-from Modules import CEAPIReader, Mongo_Reader, hm
+from Modules import CEAPIReader, Discord_Helper, Mongo_Reader, hm
 
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :

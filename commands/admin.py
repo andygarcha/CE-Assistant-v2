@@ -2,6 +2,7 @@
 import datetime
 import discord
 from discord import app_commands
+from Classes.CE_Roll import CERoll
 from Modules.WebInteractor import master_loop
 from commands.user import register
 from Modules import CEAPIReader, Mongo_Reader, hm
