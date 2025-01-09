@@ -51,7 +51,7 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     @tree.command(name="clear-roll", description="Clear any user's current/completed rolls, cooldowns, or pendings.", guild=guild)
     async def clear_roll_command(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES, 
                      current : bool = False, completed : bool = False, pending : bool = False) :
-        clear_roll(interaction, member, roll_name, current, completed, pending)
+        await clear_roll(interaction, member, roll_name, current, completed, pending)
 
     
     # ---- force add command ----
