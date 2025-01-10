@@ -147,6 +147,8 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
         user = await Mongo_Reader.get_user(self.__user.ce_id)
 
+        if user is None : raise ValueError("User is not registered!")
+
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id : 
             return await interaction.response.send_message(
@@ -199,11 +201,12 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
 class FourwardThinkingDropdown(discord.ui.Select) :
     def __init__(self, past_roll : CERoll, database_name : list[CEGame], price_restriction : bool,
-                 hours_restriction : bool) :
+                 hours_restriction : bool, user_id : str) :
         # store the user
         self.__past_roll = past_roll
         self.__price_restriction = price_restriction
         self.__hours_restriction = hours_restriction
+        self.__user_ce_id = user_id
 
         # initialize options
         options : list[discord.SelectOption] = []
@@ -226,7 +229,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
     async def callback(self, interaction : discord.Interaction) :
         "The callback."
 
-        user = await Mongo_Reader.get_user(self.__past_roll.user_ce_id)
+        user = await Mongo_Reader.get_user(self.__user_ce_id)
 
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id :
@@ -576,7 +579,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             await Mongo_Reader.dump_user(user)
             
             view.timeout = 600
-            view.add_item(FourwardThinkingDropdown(past_roll, database_name, price_restriction, hours_restriction))
+            view.add_item(FourwardThinkingDropdown(past_roll, database_name, price_restriction, hours_restriction, 
+                                                   user.ce_id))
             
             return await interaction.followup.send(
                 "Choose your category.", view=view
