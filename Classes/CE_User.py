@@ -371,7 +371,8 @@ class CEUser:
                 self._rolls[i] = roll
                 return
             
-        raise ValueError(f"No waiting roll of name {roll.roll_name} was found.")
+        roll.set_status("waiting")
+        self._rolls.append(roll)
     
     def unwait_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> None :
         "Sets the waiting roll to current."
