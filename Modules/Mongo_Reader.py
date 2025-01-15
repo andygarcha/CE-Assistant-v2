@@ -271,25 +271,25 @@ def __mongo_to_input(i : dict) -> CEInput :
 
 def __mongo_to_tag_input(i : dict) -> CETagInput :
     return CETagInput(
-        user_ce_id=i['user_ce_id'],
+        user_ce_id=i['user-ce-id'],
         tags=i['tags']
     )
 
 def __mongo_to_curate_input(i : dict) -> CECurateInput :
     return CECurateInput(
-        user_ce_id=i['user_ce_id'],
+        user_ce_id=i['user-ce-id'],
         curate=i['curate']
     )
 
 def __mongo_to_value_input(i : dict) -> CEValueInput :
     return CEValueInput(
-        objective_ce_id=i['objective_ce_id'],
+        objective_ce_id=i['objective-ce-id'],
         individual_value_inputs=[__mongo_to_individual_value_input(j) for j in i['evaluations']]
     )
 
 def __mongo_to_individual_value_input(i : dict) -> CEIndividualValueInput :
     return CEIndividualValueInput(
-        i['user_ce_id'],
+        i['user-ce-id'],
         i['recommendation']
     )
 
