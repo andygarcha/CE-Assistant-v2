@@ -686,6 +686,7 @@ async def dump_inputs_v2(inputs : list[CEInput]) :
     await dump_mongo_v2('input', {'inputs' : input_dict_array})
     return
 
+"""
 async def dump_input(input : CEInput) :
     inputs = await get_inputs_v2()
     for i, input_object in enumerate(inputs) :
@@ -694,3 +695,4 @@ async def dump_input(input : CEInput) :
 
     await dump_inputs_v2(inputs)
     return
+"""
