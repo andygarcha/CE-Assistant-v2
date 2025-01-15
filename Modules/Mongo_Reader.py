@@ -263,7 +263,7 @@ async def get_database_input() -> list[CEInput] :
 
 def __mongo_to_input(i : dict) -> CEInput :
     return CEInput(
-        game_ce_id=i['ce-id'],
+        game_ce_id=i['ce_id'],
         value_inputs=[__mongo_to_value_input(j) for j in i['value']],
         curate_inputs=[__mongo_to_curate_input(k) for k in i['curate']],
         tag_inputs=[__mongo_to_tag_input(l) for l in i['tags']]
@@ -271,25 +271,25 @@ def __mongo_to_input(i : dict) -> CEInput :
 
 def __mongo_to_tag_input(i : dict) -> CETagInput :
     return CETagInput(
-        user_ce_id=i['user-ce-id'],
+        user_ce_id=i['user_ce_id'],
         tags=i['tags']
     )
 
 def __mongo_to_curate_input(i : dict) -> CECurateInput :
     return CECurateInput(
-        user_ce_id=i['user-ce-id'],
+        user_ce_id=i['user_ce_id'],
         curate=i['curate']
     )
 
 def __mongo_to_value_input(i : dict) -> CEValueInput :
     return CEValueInput(
-        objective_ce_id=i['objective-ce-id'],
+        objective_ce_id=i['objective_ce_id'],
         individual_value_inputs=[__mongo_to_individual_value_input(j) for j in i['evaluations']]
     )
 
 def __mongo_to_individual_value_input(i : dict) -> CEIndividualValueInput :
     return CEIndividualValueInput(
-        i['user-ce-id'],
+        i['user_ce_id'],
         i['recommendation']
     )
 
