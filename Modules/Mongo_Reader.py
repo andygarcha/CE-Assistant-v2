@@ -230,8 +230,9 @@ def __mongo_to_user_objective(obj : dict) -> CEUserObjective :
 async def get_input(ce_id : str) -> CEInput :
     "Gets an input associated with `ce_id`."
     collection = _mongo_client['database_name'][V3INPUTTITLE]
-    db = await collection.find_one({"ce_id" : ce_id})
+    db = await collection.find_one({"ce-id" : ce_id})
     if db is None : 
+        return None
         raise ValueError(f"Input with ID {ce_id} not found.")
 
     return __mongo_to_input(db)
@@ -239,15 +240,30 @@ async def get_input(ce_id : str) -> CEInput :
 async def dump_input(input : CEInput) :
     "Dumps an input."
     collection = _mongo_client['database_name'][V3INPUTTITLE]
-    if (await collection.find_one({"ce_id" : input.ce_id})) == None :
+    if (await collection.find_one({"ce-id" : input.ce_id})) == None :
         await collection.insert_one(input.to_dict())
     else :
-        await collection.replace_one({"ce_id" : input.ce_id}, input.to_dict())
+        await collection.replace_one({"ce-id" : input.ce_id}, input.to_dict())
     pass
+
+async def get_database_input() -> list[CEInput] :
+    collection = _mongo_client['database_name'][V3INPUTTITLE]
+
+    cursor = collection.find({}, {"_id" : 0})
+    objects = await cursor.to_list(length=None)
+
+    database_input : list[CEInput] = []
+    for o in objects :
+        try : database_input.append(__mongo_to_input(o))
+        except Exception as e : 
+            print(e)
+            continue
+    
+    return database_input
 
 def __mongo_to_input(i : dict) -> CEInput :
     CEInput(
-        game_ce_id=i['ce_id'],
+        game_ce_id=i['ce-id'],
         value_inputs=[__mongo_to_value_input(j) for j in i['value']],
         curate_inputs=[__mongo_to_curate_input(k) for k in i['curate']],
         tag_inputs=[__mongo_to_tag_input(l) for l in i['tags']]
