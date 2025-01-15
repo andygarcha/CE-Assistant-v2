@@ -230,7 +230,7 @@ def __mongo_to_user_objective(obj : dict) -> CEUserObjective :
 async def get_input(ce_id : str) -> CEInput :
     "Gets an input associated with `ce_id`."
     collection = _mongo_client['database_name'][V3INPUTTITLE]
-    db = await collection.find_one({"ce-id" : ce_id})
+    db = await collection.find_one({"ce_id" : ce_id})
     if db is None : 
         return None
         raise ValueError(f"Input with ID {ce_id} not found.")
