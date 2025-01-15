@@ -218,7 +218,11 @@ class CEGame:
         api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
         if api_response.text == "null" or api_response.text == None :
             return None
-        json_response = json.loads(api_response.text)
+        try :
+            json_response = json.loads(api_response.text)
+        except :
+            print(f"SteamHunters response failed for {self.name_with_link()}")
+            return 999999
 
         if 'medianCompletionTime' in json_response :
             return int(int(json_response['medianCompletionTime']) / 60)
