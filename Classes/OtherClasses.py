@@ -604,7 +604,7 @@ class CEValueInput :
 
         return (f"- Objective: {game.get_objective(self.objective_ce_id).name} " +
                 f"({game.get_objective(self.objective_ce_id).point_value} {hm.get_emoji('Points')})\n" +
-                f"  - Average: {self.average()}\n")
+                f"  - Average: {self.average()} ({len(self.individual_value_inputs)} valuation(s)\n")
 
 
 
