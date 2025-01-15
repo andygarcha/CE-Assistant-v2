@@ -256,7 +256,7 @@ async def get_database_input() -> list[CEInput] :
     for o in objects :
         try : database_input.append(__mongo_to_input(o))
         except Exception as e : 
-            print(e)
+            print(e.with_traceback())
             continue
     
     return database_input
