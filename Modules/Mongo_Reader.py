@@ -262,7 +262,7 @@ async def get_database_input() -> list[CEInput] :
     return database_input
 
 def __mongo_to_input(i : dict) -> CEInput :
-    CEInput(
+    return CEInput(
         game_ce_id=i['ce-id'],
         value_inputs=[__mongo_to_value_input(j) for j in i['value']],
         curate_inputs=[__mongo_to_curate_input(k) for k in i['curate']],
