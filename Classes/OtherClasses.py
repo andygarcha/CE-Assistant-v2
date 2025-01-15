@@ -485,7 +485,7 @@ class CEIndividualValueInput :
         user = hm.get_item_from_list(self.user_ce_id, database_user)
         
         # now return
-        return f"  - {user.mention()}: {self.value}\n"
+        return f"  - [{user.display_name()}]({user.get_ce_link()}): {self.value}\n"
     
 
 
