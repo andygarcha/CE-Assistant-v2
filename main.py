@@ -878,7 +878,7 @@ async def monitor_loop():
         logging.warning("Main task loop is not running. Restarting...")
         await master_loop.start(client, guild_id)
 
-monitor_loop.start()
+
 
 
 
@@ -904,6 +904,7 @@ async def on_ready() :
     # master loop
     if hm.IN_CE :
         await master_loop.start(client, guild_id)
+        await monitor_loop.start()
 
 
 client.run(discord_token)
