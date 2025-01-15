@@ -81,6 +81,9 @@ async def test(interaction : discord.Interaction) :
     database_input = await Mongo_Reader.get_database_input()
     print(database_input)
 
+    for input in database_input :
+        await Mongo_Reader.dump_input(input)
+
     return await interaction.followup.send('testsss done')
 
 
