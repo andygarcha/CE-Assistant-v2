@@ -612,6 +612,9 @@ async def master_loop(client : discord.Client, guild_id : int) :
             await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching games failed.')
             return
+
+        except Exception as e :
+            await private_log_channel.send(f":warning: {e.with_traceback()}")
     
     print(f"old database name: {len(old_database_name)}")
 
@@ -660,6 +663,9 @@ async def master_loop(client : discord.Client, guild_id : int) :
             await private_log_channel.send(f":warning: {e.get_message()}")
             print('fetching users failed.')
             return
+        
+        except Exception as e :
+            await private_log_channel.send(f":warning: {e.with_traceback()}")
     
     # ---- curator ----
 

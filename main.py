@@ -1,6 +1,7 @@
 # -------- discord imports -----------
 import datetime
 from enum import Enum
+import logging
 import math
 import time
 from types import NoneType
@@ -36,6 +37,7 @@ from commands import load_commands
 # ----------- to-be-sorted imports -------------
 import random
 from functools import partial
+from discord.ext import tasks
 
 # ----------- selenium and beautiful soup stuff -----------
 from bs4 import BeautifulSoup
@@ -867,6 +869,16 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
     return await interaction.followup.send(
         input_object_string
     )
+
+
+
+@tasks.loop(minutes=1)
+async def monitor_loop():
+    if not master_loop.is_running():
+        logging.warning("Main task loop is not running. Restarting...")
+        await master_loop.start(client, guild_id)
+
+monitor_loop.start()
 
 
 
