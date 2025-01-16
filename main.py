@@ -479,6 +479,8 @@ class ValueModal(discord.ui.Modal) :
                 ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
             )
 
+        """
+        # old method of checking - 50 percent
         if float(abs(objective_point_value - proposed_value)) > (float(objective_point_value) / 2.0) :
             return await interaction.followup.send(
                 f"Your evaluation of {self.__game.game_name}'s {self.__objective.get_type_short()} " +
@@ -486,6 +488,7 @@ class ValueModal(discord.ui.Modal) :
                 "DM a mod if you believe this is wrong.",
                 ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
             )
+        """
         
         # make sure its divisible by 5 too lol
         if (int(self.new_value.value) % 5 != 0) :
