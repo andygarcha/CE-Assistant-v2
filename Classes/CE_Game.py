@@ -177,8 +177,8 @@ class CEGame:
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
         total_points = self.get_total_points()
-        if total_points >= 1000 : return "Tier 7"
-        if total_points >= 500 : return "Tier 6"
+        if total_points >= 800 : return "Tier 7"
+        if total_points >= 400 : return "Tier 6"
         if total_points >= 200 : return "Tier 5"
         elif total_points >= 80 : return "Tier 4"
         elif total_points >= 40 : return "Tier 3"
