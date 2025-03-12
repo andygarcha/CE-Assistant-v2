@@ -86,7 +86,7 @@ class TripleThreatDropdown(discord.ui.Select) :
         database_name = await Mongo_Reader.get_database_name()
         rolled_games : list[str] = []
         for _ in range(3) :
-            rolled_games.append(hm.get_rollable_game(
+            rolled_games.append(await hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=40,
                 price_limit=20,
@@ -163,7 +163,7 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
         # roll a game with these parameters
         database_name = await Mongo_Reader.get_database_name()
-        rolled_game_id = hm.get_rollable_game(
+        rolled_game_id = await hm.get_rollable_game(
             database_name=database_name,
             completion_limit=None,
             price_limit=20,
@@ -254,7 +254,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         database_name = await Mongo_Reader.get_database_name()
         next_phase_num = len(past_roll.games) + 1
         category = self.values[0]
-        game_id = hm.get_rollable_game(
+        game_id = await hm.get_rollable_game(
             database_name=database_name,
             completion_limit=40*next_phase_num,
             price_limit=20,
@@ -377,7 +377,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     match(event_name) :
         case "One Hell of a Day" :
             # -- grab games --
-            rolled_games = [hm.get_rollable_game(
+            rolled_games = [await hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=10,
                 price_limit=10,
@@ -398,7 +398,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             rolled_games : list[str] = []
             valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5) :
-                rolled_games.append(hm.get_rollable_game(
+                rolled_games.append(await hm.get_rollable_game(
                     database_name=database_name,
                     completion_limit=10,
                     price_limit=10,
@@ -415,7 +415,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
         case "One Hell of a Month" :
             # -- if user doesn't have week, return --
-            return await interaction.followup.send("roll under construction for a few days...")
+            #return await interaction.followup.send("roll under construction for a few days...")
             if not user.has_completed_roll('One Hell of a Week') :
                 return await interaction.followup.send(
                     f"You need to complete One Hell of a Week before rolling {event_name}!"
@@ -427,7 +427,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             for i in range(5) :
                 selected_category = random.choice(valid_categories)
                 for j in range(5) :
-                    rolled_games.append(hm.get_rollable_game(
+                    rolled_games.append(await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=10,
                         price_limit=10,
@@ -445,7 +445,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll = user.get_waiting_roll("Two Week T2 Streak")
                 if past_roll.ready_for_next() :
-                    new_game_id = hm.get_rollable_game(
+                    new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=40,
                         price_limit=20,
@@ -472,7 +472,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     )
                 
             else :
-                rolled_games = [hm.get_rollable_game(
+                rolled_games = [await hm.get_rollable_game(
                     database_name=database_name,
                     completion_limit=40,
                     price_limit=20,
@@ -490,7 +490,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 # if the user is currently working 
                 past_roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
                 if past_roll.ready_for_next() :
-                    new_game_id = hm.get_rollable_game(
+                    new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=40,
                         price_limit=20,
@@ -515,7 +515,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     return await interaction.followup.send("You need to finish your current games before you roll your next one!")
             
             else :
-                rolled_games = [hm.get_rollable_game(
+                rolled_games = [await hm.get_rollable_game(
                     database_name=database_name,
                     completion_limit=40,
                     price_limit=20,
@@ -525,7 +525,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     hours_restriction=hours_restriction
                 )]
         case "Never Lucky" :
-            rolled_games = [hm.get_rollable_game(
+            rolled_games = [await hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=None,
                 price_limit=20,
@@ -653,7 +653,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         database_name = await Mongo_Reader.get_database_name()
 
         # get the game for the user from the partner's library
-        game_for_user = hm.get_rollable_game(
+        game_for_user = await hm.get_rollable_game(
             partner.get_completed_games_2(database_name),
             completion_limit=None,
             price_limit=20,
@@ -670,7 +670,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
             )
         
         # get the game for the partner from the user's library
-        game_for_partner = hm.get_rollable_game(
+        game_for_partner = await hm.get_rollable_game(
             user.get_completed_games_2(database_name),
             completion_limit=None,
             price_limit=20,
@@ -815,7 +815,7 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         database_name = await Mongo_Reader.get_database_name()
 
-        rolled_game = hm.get_rollable_game(
+        rolled_game = await hm.get_rollable_game(
             database_name=database_name,
             completion_limit=hour_limit[tier_num],
             price_limit=20,
@@ -909,7 +909,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
 
         rolled_games : list[str] = []
         for i in range(4) :
-            rolled_games.append(hm.get_rollable_game(
+            rolled_games.append(await hm.get_rollable_game(
                 database_name=database_name,
                 completion_limit=40,
                 price_limit=20,

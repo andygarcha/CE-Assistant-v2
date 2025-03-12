@@ -2,6 +2,7 @@ import json
 from typing import Literal
 
 import requests
+import aiohttp
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion, SteamData
 import Modules.hm as hm
@@ -211,6 +212,25 @@ class CEGame:
             else :
                 return None
         return None
+    
+    async def get_price_async(self) -> float | None :
+        """Returns the current price (in USD) on the platform of this game."""
+        if self.platform != "steam" : return None
+
+        async with aiohttp.ClientSession() as session :
+            async with session.get('https://store.steampowered.com/api/appdetails?',
+                                   params={'appids': self.platform_id, 'cc' : 'US'}) as response :
+                json_response = await response.json()
+
+                steam_id = str(self.platform_id)
+                
+                if json_response[steam_id]['data']['is_free'] : return 0
+                elif 'price_overview' in json_response[steam_id]['data'] :
+                    return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
+                else :
+                    return None
+        return None
+
             
     def get_steamhunters_data(self) -> int | None :
         """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""

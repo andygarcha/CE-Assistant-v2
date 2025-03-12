@@ -23,7 +23,7 @@ def get_banned_games() -> list[str] :
 
 
 
-def get_rollable_game(
+async def get_rollable_game(
         database_name : list,
         completion_limit : int,
         price_limit : int,
@@ -137,7 +137,7 @@ def get_rollable_game(
             if VIEW_CONSOLE_MESSAGES : print("Has an uncleared.")
             continue
 
-        price = game.get_price()
+        price = await game.get_price_async()
         if price_restriction and price is not None and price > price_limit :
             if type(user) is list :
                 "If there's more than one user..."
