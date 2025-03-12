@@ -249,6 +249,23 @@ class CEGame:
         else :
             return None
         
+    async def get_steamhunters_data_async(self) -> int | None :
+        if self.platform != "steam" : return None
+        async with aiohttp.ClientSession() as session :
+            async with session.get(f"https://steamhunters.com/api/apps/{self.platform_id}") as response :
+                if await response.text() == "null" or await response.text() == None :
+                    return None
+                try :
+                    json_response = await response.json()
+                except :
+                    print(f"SteamHunters response failed for {self.name_with_link()}")
+                    return 999999
+
+                if 'medianCompletionTime' in json_response :
+                    return int(int(json_response['medianCompletionTime']) / 60)
+                else :
+                    return None
+        
     def get_steam_data(self) -> SteamData | None : 
         """Returns the steam data for this game."""
         if self.platform != 'steam' : return None
