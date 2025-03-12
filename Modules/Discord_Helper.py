@@ -31,7 +31,7 @@ import io
 from PIL import Image
 from webdriver_manager.core.os_manager import ChromeType
 
-def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
+async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from Classes.CE_Game import CEGame
 
@@ -69,7 +69,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
     # -- now grab all the other embeds --
     for i, id in enumerate(roll.games) :
-        embeds.append(get_game_embed(game_id=id, database_name=database_name))
+        embeds.append(await get_game_embed(game_id=id, database_name=database_name))
         embeds[i+1].set_footer(
             text=f"Page {i+2} of {len(roll.games) + 1}",
             icon_url = hm.FINAL_CE_ICON

@@ -950,29 +950,28 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
 #  \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\    \_____|  \____/   \____/  |_| \_|    |_|   
 
 async def get_curator_count() -> int | None :
-    "Returns the current curator count."
+    "Returns the current curator count. Uses `requests` but I don't care!"
 
     # set the payload and pull from the curator
     payload = {"cc" : "us", "l" : "english"}
-    async with aiohttp.ClientSession() as session :
-        async with session.get('https://store.steampowered.com/curator/35185934', params=payload) as data :
+    data = requests.get("https://store.steampowered.com/curator/36185934", params=payload)
 
-            # beautiful soupify
-            soup_data = BeautifulSoup(await data.text(), features="html.parser")
+    # beautiful soupify
+    soup_data = BeautifulSoup(data.text, features="html.parser")
 
-            # get all spans
-            spans = soup_data.find_all("span")
+    # get all spans
+    spans = soup_data.find_all("span")
 
-            # iterate through them
-            for item in spans :
-                try : 
-                    if item['id'] == "Recommendations_total" :
-                        return int(item.string)
-                except :
-                    continue
+    # iterate through them
+    for item in spans :
+        try : 
+            if item['id'] == "Recommendations_total" :
+                return int(item.string)
+        except :
+            continue
 
-            # return None if this fails.
-            return None
+    # return None if this fails.
+    return None
 
 
 
@@ -984,8 +983,7 @@ async def get_curator_count() -> int | None :
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\
 
 
-@to_thread
-def thread_curator(num_updates : int, database_name : list[CEGame]) -> list[discord.Embed] :
+async def thread_curator(num_updates : int, database_name : list[CEGame]) -> list[discord.Embed] :
     "Returns embed descriptions for the last `num_updates` curator posts. Max of 10."
 
     # adjust in case of max
@@ -1022,7 +1020,7 @@ def thread_curator(num_updates : int, database_name : list[CEGame]) -> list[disc
     # and now return the embeds
     embeds : list[discord.Embed] = []
     for i in range(num_updates) :
-        embed = Discord_Helper.get_game_embed(game_id=ce_ids[i], database_name=database_name)
+        embed = await Discord_Helper.get_game_embed(game_id=ce_ids[i], database_name=database_name)
         #TODO: change header image to hex
         embed.title = f"New curator update: {embed.title}"
         embed.add_field(name="Curator Description", value=descriptions[i])

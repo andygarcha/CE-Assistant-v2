@@ -52,7 +52,7 @@ async def get_game(interaction : discord.Interaction, game : str) :
 
     # pull the game embed
     database_name = await Mongo_Reader.get_database_name()
-    game_embed = Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
+    game_embed = await Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
 
     # and return
     return await interaction.followup.send(embed=game_embed)
