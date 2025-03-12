@@ -140,7 +140,8 @@ pip install --upgrade discord selenium pillow requests bs4 apscheduler pymongo m
 ```
 - `discord`: discord api manager
 - `selenium` and `pillow`: screenshotting
-- `requests`: api access
+- `requests`: api access (out of date soon hopefully)
+- `aiohttp`: non-blocking api access
 - `bs4`: html sorting
 - `apscheduler`: task scheduler (out of date)
 - `pymongo` and `motor`: mongodb access

@@ -7,7 +7,7 @@ It will:
 import datetime
 import json
 import time
-import requests
+
 import discord
 
 # -- local --
@@ -81,7 +81,7 @@ def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -
 
 
 
-def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
+async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     """This function returns a `discord.Embed` that holds all information about a game."""
 
     # imports and type hinting
@@ -107,20 +107,20 @@ def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
 
     # -- get steam data and set and description --
     if game.platform == "steam" :
-        steam_data = game.get_steam_data()
+        price = await game.get_price_async()
     embed.description = (
         f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
     # -- set up price --
-    if game.platform == "retroachievements" or steam_data.is_free :
+    if game.platform == "retroachievements" or price == None or price == 0.0 :
         embed.description += "- Price: Free!\n"
     else :
-        embed.description += (f"- Price: {steam_data.current_price_formatted}\n")
+        embed.description += (f"- Price: ${price}\n")
 
     # -- add steamhunters data --
-    sh_data = game.get_steamhunters_data()
+    sh_data = await game.get_steamhunters_data_async()
     if sh_data == None : sh_data = "N/A"
     embed.description += f"- SteamHunters Median Completion Time: {sh_data} hours\n"
     

@@ -73,11 +73,11 @@ class CEUserGame():
         
     # ----------- other methods ------------
 
-    def get_regular_game(self) -> CEGame :
+    async def get_regular_game(self) -> CEGame :
         """Returns the regular :class:`CEGame` object associated with this game.
         \n**NOTE**: uses bad method"""
         import Modules.CEAPIReader as CEAPIReader
-        return CEAPIReader.get_api_page_data("game", self.ce_id)
+        return await CEAPIReader.get_api_page_data("game", self.ce_id)
     
     def is_completed(self, database_name : list[CEGame]) -> bool :
         """Returns true if this game has been completed, false if not."""
@@ -85,10 +85,6 @@ class CEUserGame():
             if game.ce_id == self.ce_id :
                 return game.get_total_points() == self.get_user_points()# and not game.is_t0()
         return False
-
-    def get_category(self) -> str :
-        """Returns the category of this game.\n**NOTE**: uses bad method"""
-        return self.get_regular_game().category
     
     def get_category_v2(self, database_name : list[CEGame]) :
         """Returns the category of this game."""

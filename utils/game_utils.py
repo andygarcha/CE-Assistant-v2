@@ -2,6 +2,7 @@ import json
 import random
 from typing import Literal
 
+import aiohttp
 import requests
 
 
@@ -154,7 +155,7 @@ async def get_rollable_game(
                     continue
             "The price is too high (and the price is restricted) and the user doesn't own the game."
 
-        sh_data = game.get_steamhunters_data()
+        sh_data = await game.get_steamhunters_data_async()
         if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
             "The SteamHunters median-completion-time is too high."
             if VIEW_CONSOLE_MESSAGES: print(f"The steamhunters median completion time was {sh_data}")
@@ -200,15 +201,16 @@ async def name_to_steamid(name : str) -> str :
     
     # -- now check steam instead --
     payload = {"term" : name, "cc" : "US"}
-    response = requests.get("https://store.steampowered.com/api/storesearch/?", params=payload)
-    json_response = json.loads(response)
+    async with aiohttp.ClientSession() as session :
+        async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
+            json_response = await response.json()
 
-    # look through all the games
-    for item in json_response['items'] :
-        if item['name'].lower() == name.lower() : return item['id']
-    
-    # if no exact match is found, return the first one
-    return json_response['items'][0]['id']
+            # look through all the games
+            for item in json_response['items'] :
+                if item['name'].lower() == name.lower() : return item['id']
+            
+            # if no exact match is found, return the first one
+            return json_response['items'][0]['id']
 
 
 

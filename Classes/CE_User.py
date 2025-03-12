@@ -1,7 +1,7 @@
 import datetime
 import json
 from typing import get_args
-import requests
+import aiohttp
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
 from Classes.CE_Game import CEGame
@@ -133,17 +133,6 @@ class CEUser:
                 if game.ce_id == owned_game.ce_id :
                     o.append(game)
         return o
-
-    def get_completed_games(self) -> list[CEUserGame] :
-        """Returns a list of :class:`CEUserGame`'s that this user has completed.
-        This is so fucking inefficient. Please don't use this."""
-        completed_games : list[CEUserGame] = []
-
-        for game in self._owned_games :
-            if game.get_regular_game().get_total_points() == game.get_user_points() : 
-                completed_games.append(game)
-        
-        return completed_games
     
     def get_completed_games_2(self, database_name : list[CEGame]) -> list[CEGame] :
         """Returns a list of :class:`CEGame`'s that this user has completed."""
@@ -479,21 +468,23 @@ class CEUser:
         "Returns the link to this user's Challenge Enthusiasts page."
         return f"https://cedb.me/user/{self.ce_id}"
     
-    def get_api_user(self) -> 'CEAPIUser' :
+    async def get_api_user(self) -> 'CEAPIUser' :
         "Returns the CEAPIUser."
-        data = requests.get(f'https://cedb.me/api/user/{self.ce_id}/')
-        data = json.loads(data.text)
+        async with aiohttp.ClientSession() as session :
+            async with session.get(f'https://cedb.me/api/user/{self.ce_id}/') as response :
+                data = await response.json()
 
-        return CEAPIUser(
-            discord_id=self.discord_id,
-            ce_id=self.ce_id,
-            owned_games=self.owned_games,
-            rolls=self.rolls,
-            full_data=data,
-            display_name=self.display_name,
-            avatar=self.avatar,
-            last_updated=self.last_updated
-        )
+
+                return CEAPIUser(
+                    discord_id=self.discord_id,
+                    ce_id=self.ce_id,
+                    owned_games=self.owned_games,
+                    rolls=self.rolls,
+                    full_data=data,
+                    display_name=self.display_name,
+                    avatar=self.avatar,
+                    last_updated=self.last_updated
+                )
         
     def completions(self, database_name : list[CEGame]) -> int :
         "Returns the number of completions this user has."

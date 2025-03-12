@@ -9,7 +9,6 @@ import datetime
 import time
 from typing import Literal
 import random
-import requests
 import json
 
 

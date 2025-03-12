@@ -15,6 +15,8 @@ import time
 from typing import Literal
 import typing
 
+import aiohttp
+
 # -- local --
 from Classes.CE_Game import CEAPIGame
 from Classes.CE_Objective import CEObjective
@@ -311,16 +313,19 @@ def _ce_to_user(json_response : dict) -> CEUser :
 
 
 
-def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
+async def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
     """Returns either a :class:`CEUser` or a :class:`CEAPIGame` 
     from `ce_id` depending on `type`."""
-    # if type is user
-    if type == "user" :
-        json_response = json.loads((requests.get(f"https://cedb.me/api/user/{ce_id}")).text)
-        if len(json_response) == 0 : return None
-        return _ce_to_user(json_response=json_response)
+    async with aiohttp.ClientSession() as session :
+        # if type is user
+        if type == "user" :
+            async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
+                json_response = await response.json()
+                if len(json_response) == 0 : return None
+                return _ce_to_user(json_response=json_response)
 
-    elif type == "game" :
-        json_response = json.loads((requests.get(f"https://cedb.me/api/game/{ce_id}")).text)
-        if len(json_response) == 0 : return None
-        return _ce_to_game(json_response=json_response)
+        elif type == "game" :
+            async with session.get(f"https://cedb.me/api/game/{ce_id}") as response :
+                json_response = await response.json()
+                if len(json_response) == 0 : return None
+                return _ce_to_game(json_response=json_response)

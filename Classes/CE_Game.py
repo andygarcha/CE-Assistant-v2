@@ -1,7 +1,6 @@
 import json
 from typing import Literal
 
-import requests
 import aiohttp
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion, SteamData
@@ -136,9 +135,11 @@ class CEGame:
         """Returns the unix timestamp of the last time this game was updated."""
         return self._last_updated
     
-    def get_raw_ce_data(self) -> dict :
+    async def get_raw_ce_data(self) -> dict :
         "Returns the raw CE data."
-        return json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}').text)
+        async with aiohttp.ClientSession() as session :
+            async with session.get(f'https://cedb.me/api/game/{self.ce_id}') as response :
+                return await response.json()
     
     def get_ce_api_game(self) -> 'CEAPIGame' :
         "Returns the CEAPIGame."
@@ -196,22 +197,25 @@ class CEGame:
         #          tier num        >= 5
         return self.get_tier_num() >= 5
 
-    def get_price(self) -> float :
-        """Returns the current price (in USD) on the platform of choice."""
-        if self.platform == "steam" :
-            api_response = requests.get("https://store.steampowered.com/api/appdetails?",
-                                        params = {'appids' : self.platform_id, 'cc' : 'US'})
-            json_response = json.loads(api_response.text)
+    # def get_price(self) -> float :
+    #     """Returns the current price (in USD) on the platform of choice."""
+    #     print("⚠️ The 'CEGame.get_price()' method is deprecated. Use 'CEGame.get_price_async' instead.")
+    #     return None 
+    
+    #     if self.platform == "steam" :
+    #         api_response = requests.get("https://store.steampowered.com/api/appdetails?",
+    #                                     params = {'appids' : self.platform_id, 'cc' : 'US'})
+    #         json_response = json.loads(api_response.text)
 
-            steam_id = str(self.platform_id)
+    #         steam_id = str(self.platform_id)
 
-            if json_response[steam_id]['data']['is_free'] : 
-                return 0
-            elif 'price_overview' in json_response[steam_id]['data'] :
-                return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
-            else :
-                return None
-        return None
+    #         if json_response[steam_id]['data']['is_free'] : 
+    #             return 0
+    #         elif 'price_overview' in json_response[steam_id]['data'] :
+    #             return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
+    #         else :
+    #             return None
+    #     return None
     
     async def get_price_async(self) -> float | None :
         """Returns the current price (in USD) on the platform of this game."""
@@ -232,22 +236,22 @@ class CEGame:
         return None
 
             
-    def get_steamhunters_data(self) -> int | None :
-        """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
-        if self.platform != "steam" : return None
-        api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
-        if api_response.text == "null" or api_response.text == None :
-            return None
-        try :
-            json_response = json.loads(api_response.text)
-        except :
-            print(f"SteamHunters response failed for {self.name_with_link()}")
-            return 999999
+    # def get_steamhunters_data(self) -> int | None :
+    #     """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
+    #     if self.platform != "steam" : return None
+    #     api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
+    #     if api_response.text == "null" or api_response.text == None :
+    #         return None
+    #     try :
+    #         json_response = json.loads(api_response.text)
+    #     except :
+    #         print(f"SteamHunters response failed for {self.name_with_link()}")
+    #         return 999999
 
-        if 'medianCompletionTime' in json_response :
-            return int(int(json_response['medianCompletionTime']) / 60)
-        else :
-            return None
+    #     if 'medianCompletionTime' in json_response :
+    #         return int(int(json_response['medianCompletionTime']) / 60)
+    #     else :
+    #         return None
         
     async def get_steamhunters_data_async(self) -> int | None :
         if self.platform != "steam" : return None
@@ -266,37 +270,40 @@ class CEGame:
                 else :
                     return None
         
-    def get_steam_data(self) -> SteamData | None : 
-        """Returns the steam data for this game."""
-        if self.platform != 'steam' : return None
-        try :
-            payload = {'appids' : self.platform_id, 'cc' : 'US'}
-            response = requests.get("https://store.steampowered.com/api/appdetails?", 
-                                    params = payload)
-            return SteamData(json.loads(response.text))
-        except Exception as e :
-            print(e)
-            return None
+    # def get_steam_data(self) -> SteamData | None : 
+    #     """Returns the steam data for this game."""
+    #     if self.platform != 'steam' : return None
+    #     try :
+    #         payload = {'appids' : self.platform_id, 'cc' : 'US'}
+    #         response = requests.get("https://store.steampowered.com/api/appdetails?", 
+    #                                 params = payload)
+    #         return SteamData(json.loads(response.text))
+    #     except Exception as e :
+    #         print(e)
+    #         return None
         
-    def get_completion_data(self) -> CECompletion :
+    async def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
-        json_response = json.loads(requests.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard').text)
-        #json_response = json_response['entries']
-        completions, started, owners = (0,)*3
 
-        total_points = self.get_total_points()
-        for user in json_response :
-            if user['points'] == total_points : completions += 1
-            elif user['points'] != 0 : started += 1
-            owners += 1
+        async with aiohttp.ClientSession() as session :
+            async with session.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard') as response :
+                json_response = await response.json()
 
-        return CECompletion(
-            {
-                'completed' : completions,
-                'started' : started,
-                'total' : owners
-            }
-        )
+                completions, started, owners = (0,)*3
+
+                total_points = self.get_total_points()
+                for user in json_response :
+                    if user['points'] == total_points : completions += 1
+                    elif user['points'] != 0 : started += 1
+                    owners += 1
+
+                return CECompletion(
+                    {
+                        'completed' : completions,
+                        'started' : started,
+                        'total' : owners
+                    }
+                )
     
     def has_an_uncleared(self) -> bool :
         """Returns true if this game has an uncleared objective."""

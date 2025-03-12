@@ -3,6 +3,7 @@ import datetime
 import functools
 import time
 import typing
+import aiohttp
 from discord.ext import tasks
 import discord
 import requests
@@ -672,7 +673,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
     # pull the data
     print("checking curator")
     mongo_curator_count = await Mongo_Reader.get_curator_count()
-    steam_curator_count = get_curator_count()
+    steam_curator_count = await get_curator_count()
 
     # if steam didn't fail and the numbers are different
     if steam_curator_count is not None and mongo_curator_count != steam_curator_count :
@@ -950,29 +951,30 @@ def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_dat
 # | |____  | |__| | | | \ \   / ____ \     | |    | |__| | | | \ \    | |____  | |__| | | |__| | | |\  |    | |   
 #  \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\    \_____|  \____/   \____/  |_| \_|    |_|   
 
-def get_curator_count() -> int | None :
+async def get_curator_count() -> int | None :
     "Returns the current curator count."
 
     # set the payload and pull from the curator
     payload = {"cc" : "us", "l" : "english"}
-    data = requests.get("https://store.steampowered.com/curator/36185934", params=payload)
+    async with aiohttp.ClientSession() as session :
+        async with session.get('https://store.steampowered.com/curator/35185934', params=payload) as data :
 
-    # beautiful soupify
-    soup_data = BeautifulSoup(data.text, features="html.parser")
+            # beautiful soupify
+            soup_data = BeautifulSoup(await data.text(), features="html.parser")
 
-    # get all spans
-    spans = soup_data.find_all("span")
+            # get all spans
+            spans = soup_data.find_all("span")
 
-    # iterate through them
-    for item in spans :
-        try : 
-            if item['id'] == "Recommendations_total" :
-                return int(item.string)
-        except :
-            continue
+            # iterate through them
+            for item in spans :
+                try : 
+                    if item['id'] == "Recommendations_total" :
+                        return int(item.string)
+                except :
+                    continue
 
-    # return None if this fails.
-    return None
+            # return None if this fails.
+            return None
 
 
 

@@ -13,8 +13,6 @@ from discord import app_commands
 import json
 from typing import Literal, get_args
 
-import requests
-
 # --------- local class imports --------
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_User import CEUser
