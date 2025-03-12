@@ -141,7 +141,7 @@ class CEGame:
             async with session.get(f'https://cedb.me/api/game/{self.ce_id}') as response :
                 return await response.json()
     
-    def get_ce_api_game(self) -> 'CEAPIGame' :
+    async def get_ce_api_game(self) -> 'CEAPIGame' :
         "Returns the CEAPIGame."
         return CEAPIGame(
             ce_id=self.ce_id,
@@ -151,7 +151,7 @@ class CEGame:
             category=self.category,
             objectives=self.all_objectives,
             last_updated=self.last_updated,
-            full_data=self.get_raw_ce_data()
+            full_data=await self.get_raw_ce_data()
         )
     
     # ----------- setters -----------

@@ -697,15 +697,13 @@ async def master_loop(client : discord.Client, guild_id : int) :
 #    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |__| |  / ____ \  | |  | | | |____ 
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____| /_/    \_\ |_|  |_| |______|
 
-@to_thread
-def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
+async def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
     "Threaded."
-    return Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
+    return await Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
 
-@to_thread
-def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None, driver) :
+async def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None, driver) :
     "Threaded."
-    return Discord_Helper.game_addition_single_update(old_game, new_game, driver)
+    return await Discord_Helper.game_addition_single_update(old_game, new_game, driver)
 
 
 

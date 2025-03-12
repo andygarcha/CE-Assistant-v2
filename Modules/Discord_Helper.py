@@ -103,7 +103,7 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
 
     # -- set the image to the ce header --
-    embed.set_image(url=game.get_ce_api_game().header)
+    embed.set_image(url= (await game.get_ce_api_game()).header)
 
     # -- get steam data and set and description --
     if game.platform == "steam" :
@@ -280,7 +280,7 @@ def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.
 # | |__| |  / ____ \  | |  | | | |____     / ____ \  | |__| | | |__| |  _| |_     | |     _| |_  | |__| | | |\  |  ____) |
 #  \_____| /_/    \_\ |_|  |_| |______|   /_/    \_\ |_____/  |_____/  |_____|    |_|    |_____|  \____/  |_| \_| |_____/ 
 
-def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | None) -> tuple[EmbedMessage, list[UpdateMessage]] :
+async def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | None) -> tuple[EmbedMessage, list[UpdateMessage]] :
     from Classes.CE_Game import CEGame, CEAPIGame
 
     old_game : CEGame | None = old_game
@@ -345,7 +345,7 @@ def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | 
                 file = "Assets/image_failed_v2.png"
             message = (EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
         else : 
-            embed.set_image(url=new_game.get_ce_api_game().header)
+            embed.set_image(url=(await new_game.get_ce_api_game()).header)
             message = (EmbedMessage(embed=embed, file=None))
 
         return (message, exceptions)
@@ -489,7 +489,7 @@ def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | 
             embed=embed, file=discord.File(file, filename="image.png")
         ))
     else : 
-        embed.set_image(url=new_game.get_ce_api_game().header)
+        embed.set_image(url=(await new_game.get_ce_api_game()).header)
         message = (EmbedMessage(
             embed=embed, file=None
         ))
@@ -498,7 +498,7 @@ def game_addition_single_update(old_game, new_game, driver : webdriver.Chrome | 
 
 
 
-def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :
+async def game_additions_updates(old_games : list, new_games : list) -> tuple[list[EmbedMessage], list[UpdateMessage]] :
     "Returns a list of `discord.Embed`s to send to #game-additions."
 
     print('start')
@@ -623,7 +623,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                     file = "Assets/image_failed_v2.png"
                 messages.append(EmbedMessage(embed=embed, file=discord.File(file, filename="image.png")))
             else : 
-                embed.set_image(url=new_game.get_ce_api_game().header)
+                embed.set_image(url=(await new_game.get_ce_api_game()).header)
                 messages.append(EmbedMessage(embed=embed, file=None))
 
             #TODO: fix this?
@@ -778,7 +778,7 @@ def game_additions_updates(old_games : list, new_games : list) -> tuple[list[Emb
                 embed=embed, file=discord.File(file, filename="image.png")
             ))
         else : 
-            embed.set_image(url=new_game.get_ce_api_game().header)
+            embed.set_image(url=(await new_game.get_ce_api_game()).header)
             messages.append(EmbedMessage(
                 embed=embed, file=None
             ))
