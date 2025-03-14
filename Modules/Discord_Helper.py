@@ -125,7 +125,7 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     embed.description += f"- SteamHunters Median Completion Time: {sh_data} hours\n"
     
     # -- get ce data --
-    completion_data = game.get_completion_data()
+    completion_data = await game.get_completion_data()
     embed.description += f"- {completion_data.description()}\n"
 
     return embed
