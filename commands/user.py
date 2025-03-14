@@ -129,7 +129,7 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
         return await interaction.followup.send("Sorry! You are not registered. Please run /register and try again!")
     
     # get the embed and the view
-    returns = Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name)
+    returns = await Discord_Helper.get_user_embeds(user=ce_user, database_name=database_name)
     summary_embed = returns[0]
     view = returns[1]
 

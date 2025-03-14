@@ -220,7 +220,7 @@ class ProfileView(discord.ui.View) :
         )
 
 
-def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.ui.View] :
+async def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.ui.View] :
     """Returns a `discord.Embed` that represents this user.""" 
 
     # imports and type hintin
@@ -230,7 +230,7 @@ def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, discord.
     database_name : list[CEGame] = database_name
 
     # pull api data
-    api_user = user.get_api_user()
+    api_user = await user.get_api_user()
 
     # -- two embeds: summary, completions --
     # summary
