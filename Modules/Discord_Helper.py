@@ -231,6 +231,7 @@ async def get_user_embeds(user, database_name : list) -> tuple[discord.Embed, di
 
     # pull api data
     api_user = await user.get_api_user()
+    if api_user is None : return (discord.Embed(title="Error!"), discord.ui.View)
 
     # -- two embeds: summary, completions --
     # summary

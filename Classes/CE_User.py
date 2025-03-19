@@ -472,7 +472,10 @@ class CEUser:
         "Returns the CEAPIUser."
         async with aiohttp.ClientSession() as session :
             async with session.get(f'https://cedb.me/api/user/{self.ce_id}/') as response :
-                data = await response.json()
+                try :
+                    data = await response.json()
+                except :
+                    return None
 
 
                 return CEAPIUser(
