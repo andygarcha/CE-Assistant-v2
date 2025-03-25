@@ -108,26 +108,27 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 
 
 
-@to_thread
-def get_api_games_full() -> list[CEAPIGame] :
+async def get_api_games_full() -> list[CEAPIGame] :
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
     PULL_LIMIT = 50
     json_response = []
     done_fetching : bool = False
     i = 1
-    try:
-        while (not done_fetching) :
-            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
-            api_response = requests.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&" 
-                                        + f"offset={(i-1)*PULL_LIMIT}")
-            j = json.loads(api_response.text)
-            json_response += j
-            done_fetching = len(j) == 0
-            i += 1
-    except : 
-        raise FailedScrapeException(f"Scraping failed from api/games/full " 
-                                    + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
+    async with aiohttp.ClientSession() as session :
+        
+        try:
+            while (not done_fetching) :
+                print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
+                async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&" 
+                                                + f"offset={(i-1)*PULL_LIMIT}") as response :
+                    j = await response.json()
+                    json_response += j
+                    done_fetching = len(j) == 0
+                    i += 1
+        except : 
+            raise FailedScrapeException(f"Scraping failed from api/games/full " 
+                                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
     
     print(f"done fetching games! total games: {len(json_response)}")
 
@@ -155,8 +156,7 @@ def get_api_games_full() -> list[CEAPIGame] :
 
 
 
-@to_thread
-def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[CEUser]:
+async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[CEUser]:
     """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all.
     NOTE: if `database_user` is passed, this will only return the users who are CEA Registered.
     You can pass in the entire database_user here, or just a list of registered ids. Either work."""
@@ -177,70 +177,71 @@ def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[C
     total_response = []
     done_fetching : bool = False
     i = 1
-    try :
+    async with aiohttp.ClientSession() as session :
+        try :
 
-        # this will run if database user has been provided
-        if database_user is not None and False :
+            # this will run if database user has been provided
+            if database_user is not None and False :
+                while (not done_fetching) :
+                    
+                    # print
+                    print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
+
+                    # set up data
+                    data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
+
+                    # pull the data and json-ify it
+                    api_response = requests.post("https://cedb.me/api/users/query", data=data)
+                    current_response = json.loads(api_response.text)
+
+                    # check if you're done fetching
+                    done_fetching = len(current_response) == 0
+
+                    # add this to the total response and increment i
+                    total_response += current_response
+                    i += 1
+
+            # this will run if database user wasn't provided
             while (not done_fetching) :
-                
-                # print
-                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
 
-                # set up data
-                data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
+                # pull the data
+                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
+
+                # set up params
+                params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
+                """# if database_user has been provided, include the 'ids' in the payload.
+                if database_user is not None : params['ids'] = registered_ids"""
 
                 # pull the data and json-ify it
-                api_response = requests.post("https://cedb.me/api/users/query", data=data)
-                current_response = json.loads(api_response.text)
+                async with session.get(f"https://cedb.me/api/users/all", params=params) as response :
+                    current_response = await response.json()
 
-                # check if you're done fetching
-                done_fetching = len(current_response) == 0
+                    # check to see if this is the last one
+                    done_fetching = len(current_response) == 0
 
-                # add this to the total response and increment i
-                total_response += current_response
-                i += 1
+                    # go through and filter out users that aren't CEA registered if database_user is passed through
+                    if database_user is not None :
+                        removed_indexes = []
+                        # if the user isn't registered, add the index to remove indexes
+                        for index, user in enumerate(current_response) :
+                            if user['id'] not in registered_ids :
+                                removed_indexes.append(index)
+                        # remove all of the indexes in reverse order
+                        for index in reversed(removed_indexes) :
+                            del current_response[index]
+                        print(f"({len(removed_indexes)} removed)")
 
-        # this will run if database user wasn't provided
-        while (not done_fetching) :
+                    # print this so that there will be a new line
+                    else :
+                        print("")
 
-            # pull the data
-            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
-
-            # set up params
-            params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
-            """# if database_user has been provided, include the 'ids' in the payload.
-            if database_user is not None : params['ids'] = registered_ids"""
-
-            # pull the data and json-ify it
-            api_response = requests.get(f"https://cedb.me/api/users/all", params=params)
-            current_response = json.loads(api_response.text)
-
-            # check to see if this is the last one
-            done_fetching = len(current_response) == 0
-
-            # go through and filter out users that aren't CEA registered if database_user is passed through
-            if database_user is not None :
-                removed_indexes = []
-                # if the user isn't registered, add the index to remove indexes
-                for index, user in enumerate(current_response) :
-                    if user['id'] not in registered_ids :
-                        removed_indexes.append(index)
-                # remove all of the indexes in reverse order
-                for index in reversed(removed_indexes) :
-                    del current_response[index]
-                print(f"({len(removed_indexes)} removed)")
-
-            # print this so that there will be a new line
-            else :
-                print("")
-
-            # add to the total response and increment i
-            total_response += current_response
-            i += 1
-    except Exception as e : 
-        print(f"original exception: {e}")
-        raise FailedScrapeException("Failed scraping from api/users/all/ "
-                                    + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
+                    # add to the total response and increment i
+                    total_response += current_response
+                    i += 1
+        except Exception as e : 
+            print(f"original exception: {e}")
+            raise FailedScrapeException("Failed scraping from api/users/all/ "
+                                        + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     print(f"done fetching users! total users: {len(total_response)}")
 
     # convert to objects
