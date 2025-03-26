@@ -503,9 +503,11 @@ class ValueModal(discord.ui.Modal) :
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
 
         # we now need to check if our average has changed enough to enter scary territory
-        old_average = value_input.average_is_okay(
-            database_name, self.__game.ce_id
-        )
+        if value_input is None : old_average = None
+        else :
+            old_average = value_input.average_is_okay(
+                database_name, self.__game.ce_id
+            )
 
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
@@ -523,7 +525,7 @@ class ValueModal(discord.ui.Modal) :
         )
 
         # and if the old average was okay, but the new average is not, send a message to the input channel.
-        if old_average and not new_average :
+        if old_average is not None and old_average and not new_average :
             log_channel = client.get_channel(hm.INPUT_LOG_ID)
 
             await log_channel.send(
