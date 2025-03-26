@@ -588,10 +588,13 @@ class ValueButtonView(discord.ui.View) :
 
 # -- curate --
 class CurateButtonYesOrNoView(discord.ui.View) :
-    def __init__(self, has_selected_yes : bool, has_selected_no : bool, game_id : str) :
+    def __init__(self, has_selected_yes : bool, has_selected_no : bool, has_selected_indiff : bool, game_id : str,
+                 original_message : discord.Message) :
         self.__has_selected_yes = has_selected_yes
         self.__has_selected_no = has_selected_no
+        self.__has_selected_indiff = has_selected_indiff
         self.__game_id = game_id
+        self.__og_message = original_message
         super().__init__(timeout=None)
     
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
@@ -607,13 +610,19 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # add the curate input
         input_object.add_curate_input(
             (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
-            True
+            1
         )
 
         new_curatable = input_object.is_curatable()
 
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
+
+        """
+        # Update the original message to unlock "Value" and "Tags"
+        updated_view = GameInputView(self.game_id, has_submitted_before=True)
+        await self.__og_message.edit(view=updated_view)
+        """
 
         # log
         if not old_curatable and new_curatable :
@@ -630,6 +639,49 @@ class CurateButtonYesOrNoView(discord.ui.View) :
             view = discord.ui.View()
         )
     
+
+    @discord.ui.button(label="Indifferent", style=discord.ButtonStyle.gray)
+    async def indiff_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        await interaction.response.defer()
+
+        # pull from mongo
+        input_object = await Mongo_Reader.get_input(self.game_id)
+        game_object = await Mongo_Reader.get_game(self.game_id)
+
+        old_curatable = input_object.is_curatable()
+
+        # add the curate input
+        input_object.add_curate_input(
+            (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            2
+        )
+
+        new_curatable = input_object.is_curatable()
+
+        # and push back to mongo
+        await Mongo_Reader.dump_input(input_object)
+
+        """
+        # Update the original message to unlock "Value" and "Tags"
+        updated_view = GameInputView(self.game_id, has_submitted_before=True)
+        await self.__og_message.edit(view=updated_view)
+        """
+
+        # log
+        if not old_curatable and new_curatable :
+            input_channel = client.get_channel(hm.INPUT_LOG_ID)
+            await input_channel.send(
+                f":bell: Alert! {game_object.name_with_link()} has been voted curatable! " +
+                f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
+            )
+
+        # now return a confirmation message
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            content="You have voted 'Indifferent'!",
+            view = discord.ui.View()
+        )
+    
     @discord.ui.button(label="No", style=discord.ButtonStyle.red)
     async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
@@ -643,13 +695,20 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         # add the curate input
         input_object.add_curate_input(
             (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
-            False
+            0
         )
 
         new_curatable = input_object.is_curatable()
 
         # and push back to mongo
         await Mongo_Reader.dump_input(input_object)
+
+        """
+        # Update the original message to unlock "Value" and "Tags"
+        updated_view = GameInputView(self.game_id, has_submitted_before=True)
+        await self.__og_message.edit(view=updated_view)
+        """
+
 
         # log
         if old_curatable and not new_curatable :
@@ -672,6 +731,11 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         return self.__has_selected_yes
     
     @property
+    def has_selected_indiff(self) :
+        "This user has selected indifferent in the past"
+        return self.__has_selected_indiff
+    
+    @property
     def has_selected_no(self) :
         "This user has selected no in the past."
         return self.__has_selected_no
@@ -685,6 +749,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         "The message that should be sent with the curate message."
         if self.has_selected_yes : return "Would you recommend this game for the curator? (You previously said 'Yes')."
         if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
+        if self.has_selected_indiff : return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
         return "Would you recommend this game for the curator?"
         
 
@@ -697,9 +762,12 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 class GameInputView(discord.ui.View) :
     "This view will be sent along with any /input command."
 
-    def __init__(self, ce_id : str) :
+    def __init__(self, ce_id : str, has_submitted_before : bool) :
         self.__ce_id = ce_id
         super().__init__(timeout = None)
+
+        self.value_button.disabled = not has_submitted_before
+
 
     @property
     def ce_id(self) :
@@ -715,7 +783,7 @@ class GameInputView(discord.ui.View) :
                 tag_inputs=[]
             )
 
-    @discord.ui.button(label="Value")
+    @discord.ui.button(label="Value", disabled=True)
     async def value_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         await interaction.response.defer()
 
@@ -775,7 +843,9 @@ class GameInputView(discord.ui.View) :
         view = CurateButtonYesOrNoView(
             input_object.user_has_selected_yes(user.ce_id), 
             input_object.user_has_selected_no(user.ce_id),
-            game.ce_id
+            input_object.user_has_selected_indifferent(user.ce_id),
+            game.ce_id,
+            interaction.message
         )
         await interaction.followup.send(view.message(), view=view, ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
 
@@ -819,10 +889,13 @@ async def game_input(interaction : discord.Interaction, game : str) :
     if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
     content += "."
 
+    input = await Mongo_Reader.get_input(game)
+    has_submitted_before = input is not None and input.has_curate_input(user.ce_id)
+
     # and send it.
     return await interaction.followup.send(
         content, 
-        view=GameInputView(game),
+        view=GameInputView(game, has_submitted_before),
         ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
     )
 

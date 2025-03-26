@@ -37,11 +37,18 @@ V3USERTITLE = "database-user-v3"
 V3INPUTTITLE = "database-input-v3"
 V3MISCTITLE = "database-misc-v3"
 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ---- Everything from this line down is using database v3. ----
 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 # VERSION 3
@@ -240,10 +247,10 @@ async def get_input(ce_id : str) -> CEInput :
 async def dump_input(input : CEInput) :
     "Dumps an input."
     collection = _mongo_client['database_name'][V3INPUTTITLE]
-    if (await collection.find_one({"ce-id" : input.ce_id})) == None :
+    if (await collection.find_one({"ce_id" : input.ce_id})) == None :
         await collection.insert_one(input.to_dict())
     else :
-        await collection.replace_one({"ce-id" : input.ce_id}, input.to_dict())
+        await collection.replace_one({"ce_id" : input.ce_id}, input.to_dict())
     pass
 
 async def get_database_input() -> list[CEInput] :
@@ -321,13 +328,18 @@ async def dump_curator_count(cc : int) :
 
 
 
-
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ---- Everything from this line down is using database v2. ----
 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 _collection_v2 = _mongo_client['database_name']['ce-assistant-v2']

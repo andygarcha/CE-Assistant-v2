@@ -612,7 +612,7 @@ class CEValueInput :
 
 
 class CECurateInput :
-    def __init__(self, user_ce_id : str, curate : bool) :
+    def __init__(self, user_ce_id : str, curate : int) :
         self.__user_ce_id = user_ce_id
         self.__curate = curate
 
@@ -622,9 +622,19 @@ class CECurateInput :
         return self.__user_ce_id
     
     @property
-    def curate(self) -> bool :
-        "Whether or not this user thinks the game should be curated or not."
+    def curate(self) -> int :
+        """Whether or not this user thinks the game should be curated or not.
+        0: Don't Curate
+        1: Curate
+        2: Indifferent"""
         return self.__curate
+    
+    def curate_meaning(self) -> str :
+        match(self.curate) :
+            case 0 : return "Don't Curate"
+            case 1 : return "Curate"
+            case 2 : return "Indifferent"
+            case _ : return "Failure"
     
     def set_curate(self, curate) :
         "Sets this object's curate attribute to `curate` argument."
@@ -645,7 +655,7 @@ class CECurateInput :
         # grab user object
         user = hm.get_item_from_list(self.user_ce_id, database_user)
 
-        return f"- {user.mention()}: {self.curate}\n"
+        return f"- {user.mention()}: {self.curate_meaning()}\n"
     
 
 
@@ -760,7 +770,7 @@ class CEInput :
         "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
         if (self.curator_count() == 0) : return "N/A"
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
-        average = float(inputs.count(True)) / float(len(inputs)) * 100
+        average = float(inputs.count(1)) / float(len(inputs)) * 100
         return f"{round(average, 2)}%"
 
     def curator_count(self) -> int :
@@ -770,14 +780,21 @@ class CEInput :
     def user_has_selected_yes(self, user_id : str) -> bool :
         "Returns true if this user has selected yes in the past."
         for curate_input in self.__curate_inputs :
-            if curate_input.user_ce_id == user_id and curate_input.curate == True :
+            if curate_input.user_ce_id == user_id and curate_input.curate == 1 :
                 return True
         return False
     
     def user_has_selected_no(self, user_id : str) -> bool :
         "Returns true if this user has selected no in the past."
         for curate_input in self.__curate_inputs :
-            if curate_input.user_ce_id == user_id and curate_input.curate == False :
+            if curate_input.user_ce_id == user_id and curate_input.curate == 0 :
+                return True
+        return False
+    
+    def user_has_selected_indifferent(self, user_id : str) -> bool :
+        "Returns true if this user has selected no in the past."
+        for curate_input in self.__curate_inputs :
+            if curate_input.user_ce_id == user_id and curate_input.curate == 2 :
                 return True
         return False
     

@@ -78,6 +78,20 @@ async def test(interaction : discord.Interaction) :
     from Modules import Mongo_Reader
     from Modules import hm
 
+    database_input = await Mongo_Reader.get_database_input()
+
+    print(database_input)
+
+    for input in database_input :
+        i = 0
+        for curate in input.curate_inputs :
+            if not curate.curate : input.replace_curate_input(curate.user_ce_id, 0)
+            else : input.replace_curate_input(curate.user_ce_id, 1)
+            i+=1
+        await Mongo_Reader.dump_input(input)
+    
+
+
     return await interaction.followup.send('testsss done')
 
 
