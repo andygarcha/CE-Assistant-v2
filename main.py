@@ -520,6 +520,7 @@ class ValueModal(discord.ui.Modal) :
         await Mongo_Reader.dump_input(curr_input)
 
         # now lets grab the new average
+        value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
         new_average = value_input.average_is_okay(
             database_name, self.__game.ce_id
         )
