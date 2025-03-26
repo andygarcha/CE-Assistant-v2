@@ -765,7 +765,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         return "Would you recommend this game for the curator?"
     
     def voted_before(self) :
-        return not self.has_selected_indiff and not self.has_selected_no and not self.has_selected_yes
+        return self.has_selected_indiff or self.has_selected_no or self.has_selected_yes
         
 
 
