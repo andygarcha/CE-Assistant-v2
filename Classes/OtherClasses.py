@@ -770,7 +770,7 @@ class CEInput :
         "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
         if (self.curator_count() == 0) : return "N/A"
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
-        average = float(inputs.count(1)) / float(len(inputs)) * 100
+        average = float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
         return f"{round(average, 2)}%"
 
     def curator_count(self) -> int :
