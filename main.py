@@ -632,10 +632,14 @@ class CurateButtonYesOrNoView(discord.ui.View) :
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
 
+        string = "You have voted 'Yes'!"
+        if not self.voted_before() :
+            string += " Re-run `/input` to be able to access 'Value'."
+
         # now return a confirmation message
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            content="You have voted 'Yes'!",
+            content=string,
             view = discord.ui.View()
         )
     
@@ -675,10 +679,14 @@ class CurateButtonYesOrNoView(discord.ui.View) :
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
 
+        string = "You have voted 'Indifferent'!"
+        if not self.voted_before() :
+            string += " Re-run `/input` to be able to access 'Value'."
+
         # now return a confirmation message
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            content="You have voted 'Indifferent'!",
+            content=string,
             view = discord.ui.View()
         )
     
@@ -718,11 +726,15 @@ class CurateButtonYesOrNoView(discord.ui.View) :
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
         
-        # send a confirmation message
+        string = "You have voted 'Yes'!"
+        if not self.voted_before() :
+            string += " Re-run `/input` to be able to access 'Value'."
+
+        # now return a confirmation message
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            content="You have voted 'No'!",
-            view=discord.ui.View()
+            content=string,
+            view = discord.ui.View()
         )
 
     @property
@@ -751,6 +763,9 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
         if self.has_selected_indiff : return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
         return "Would you recommend this game for the curator?"
+    
+    def voted_before(self) :
+        return not self.has_selected_indiff and not self.has_selected_no and not self.has_selected_yes
         
 
 
