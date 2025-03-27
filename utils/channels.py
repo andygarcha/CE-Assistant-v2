@@ -1,7 +1,7 @@
 from typing import Literal
 
 
-IN_CE = False
+IN_CE = True
 
 CE_CHANNELS = {
     "game_additions" : 949482536726298666,
