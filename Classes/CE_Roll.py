@@ -429,7 +429,7 @@ class CERoll:
                 self._winner = True
                 return f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Winner Takes All!\n- {game_name}"
             elif user_wins and partner_wins :
-                return (f"<@{user.discord_id}> <@{partner.discord_id}> yall both won winner takes all?" + 
+                return (f"<@{user.discord_id}> <@{partner.discord_id}> y'all both won winner takes all?" + 
                         " i'm confused someone ping andy pls")
             elif not user_wins and partner_wins :
                 self._winner = False
@@ -459,7 +459,7 @@ class CERoll:
                 )
             elif user_wins and partner_wins :
                 return (
-                    f"<@{user.discord_id}> <@{partner.discord_id}>, yall both won game theory?" +
+                    f"<@{user.discord_id}> <@{partner.discord_id}>, y'all both won game theory?" +
                     " i'm confused someone please ping andy"
                 )
             elif not user_wins and partner_wins :
@@ -523,6 +523,12 @@ class CERoll:
                 f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. " +
                 f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
             )
+        elif self.roll_name == "One Hell of a Day" :
+            for game in self.games :
+                game_name = hm.get_item_from_list(game, database_name)
+            return(
+                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game_name.game_name})." +
+                f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
         else :
             return (
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. " +
