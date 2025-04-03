@@ -144,7 +144,7 @@ class CEUser:
         completed_games : list[CEGame] = []
         for game in database_name :
             for user_game in self.owned_games :
-                if game.ce_id == user_game.ce_id and game.get_total_points() == user_game.get_user_points() :
+                if game.ce_id == user_game.ce_id and game.get_total_points() > 0 and game.get_total_points() == user_game.get_user_points() :
                     completed_games.append(game)
         return completed_games
     
@@ -691,7 +691,7 @@ class CEAPIUser(CEUser) :
                 t3s = tier['tier3']
                 t4s = tier['tier4']
                 t5s = tier['tier5']
-                total = tier['total']
+                total = sum(t1s,t2s,t3s,t4s,t5s)
                 continue
             genre_name = hm.genre_id_to_name(tier['genreId'])
             genre_dict[genre_name] = tier['total']
