@@ -691,7 +691,7 @@ class CEAPIUser(CEUser) :
                 t3s = tier['tier3']
                 t4s = tier['tier4']
                 t5s = tier['tier5']
-                total = sum(t1s,t2s,t3s,t4s,t5s)
+                total = t1s + t2s + t3s + t4s + t5s
                 continue
             genre_name = hm.genre_id_to_name(tier['genreId'])
             genre_dict[genre_name] = tier['total']
