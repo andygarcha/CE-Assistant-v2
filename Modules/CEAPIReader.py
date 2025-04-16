@@ -280,7 +280,7 @@ def _ce_to_user(json_response : dict) -> CEUser :
     if it doesn't exist there anywya then skip!
     """
 
-    steam_id = None
+    steam_id = "None"
 
     for item in json_response['userConnections'] :
         if item['platform'] != 'steam' : continue

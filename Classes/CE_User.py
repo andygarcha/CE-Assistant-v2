@@ -20,7 +20,7 @@ class CEUser:
                  display_name : str,
                  avatar : str,
                  last_updated : int,
-                 steam_id : str = ""):
+                 steam_id : str = "a"):
         self._discord_id : int = discord_id
         self._ce_id : str = ce_id
         self._owned_games : list[CEUserGame] = owned_games
@@ -560,7 +560,7 @@ class CEAPIUser(CEUser) :
             display_name : str,
             avatar : str,
             last_updated : int,
-            steam_id = ""):
+            steam_id = "b"):
         super().__init__(discord_id, ce_id, owned_games, rolls, 
                           display_name, avatar, last_updated, steam_id)
         self.__full_data = full_data
