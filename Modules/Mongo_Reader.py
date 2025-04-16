@@ -127,7 +127,8 @@ def __mongo_to_game(game : dict) -> CEGame :
         platform_id=game['platform_id'],
         category=game['category'],
         objectives=[__mongo_to_objective(obj) for obj in game['objectives']],
-        last_updated=game['last_updated']
+        last_updated=game['last_updated'],
+        banner=game['banner']
     )
 
 def __mongo_to_objective(obj : dict) -> CEObjective :
@@ -200,7 +201,8 @@ def __mongo_to_user(user : dict) -> CEUser :
         avatar=user['avatar'],
         rolls=[__mongo_to_roll(roll) for roll in user['rolls']],
         owned_games=[__mongo_to_user_game(game) for game in user['owned_games']],
-        last_updated=user['last_updated']
+        last_updated=user['last_updated'],
+        steam_id=user['steam_id']
     )
 
 def __mongo_to_roll(roll : dict) -> CERoll :
