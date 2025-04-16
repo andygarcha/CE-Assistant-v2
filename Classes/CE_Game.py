@@ -15,7 +15,8 @@ class CEGame:
                  platform_id : str,
                  category : str,
                  objectives : list[CEObjective],
-                 last_updated : int):
+                 last_updated : int,
+                 banner : str = ""):
         self._ce_id = ce_id
         self._game_name = game_name
         self._platform = platform
@@ -23,6 +24,8 @@ class CEGame:
         self._category = category
         self._objectives = objectives
         self._last_updated = last_updated
+        self._banner = banner
+
 
     # ----------- getters -------------
     
@@ -371,7 +374,8 @@ class CEGame:
             "platform_id" : self.platform_id,
             "category" : self.category,
             "objectives" : objectives,
-            "last_updated" : self.last_updated
+            "last_updated" : self.last_updated,
+            "banner" : self._banner
         }
     
     def __str__(self) :
@@ -399,9 +403,10 @@ class CEAPIGame(CEGame) :
             category : hm.CATEGORIES,
             objectives : list[CEObjective],
             last_updated : int,
-            full_data
+            full_data,
+            banner = ""
         ) :
-        super().__init__(ce_id, game_name, platform, platform_id, category, objectives, last_updated)
+        super().__init__(ce_id, game_name, platform, platform_id, category, objectives, last_updated, banner)
         self.__full_data = full_data
 
     @property

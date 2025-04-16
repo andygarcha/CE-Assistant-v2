@@ -100,7 +100,8 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
         category=json_response['genre']['name'],
         objectives=all_objectives,
         last_updated=last_updated,
-        full_data=json_response
+        full_data=json_response,
+        banner=json_response['header']
     )
     
     # ... and return it.
