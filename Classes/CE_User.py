@@ -19,7 +19,8 @@ class CEUser:
                  rolls : list[CERoll],
                  display_name : str,
                  avatar : str,
-                 last_updated : int):
+                 last_updated : int,
+                 steam_id : str = ""):
         self._discord_id : int = discord_id
         self._ce_id : str = ce_id
         self._owned_games : list[CEUserGame] = owned_games
@@ -27,6 +28,7 @@ class CEUser:
         self._display_name = display_name
         self._avatar = avatar
         self._last_updated = last_updated
+        self._steam_id = steam_id
 
     # ------------ getters -------------
 
@@ -513,7 +515,8 @@ class CEUser:
             "rolls" : rolls_array,
             "display-name" : self.display_name,
             "avatar" : self.avatar,
-            "last_updated" : self.last_updated
+            "last_updated" : self.last_updated,
+            "steam_id" : self._steam_id
         }
 
         return user_dict
@@ -556,9 +559,10 @@ class CEAPIUser(CEUser) :
             full_data,
             display_name : str,
             avatar : str,
-            last_updated : int):
+            last_updated : int,
+            steam_id = ""):
         super().__init__(discord_id, ce_id, owned_games, rolls, 
-                          display_name, avatar, last_updated)
+                          display_name, avatar, last_updated, steam_id)
         self.__full_data = full_data
 
     @property

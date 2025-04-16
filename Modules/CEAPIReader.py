@@ -279,6 +279,12 @@ def _ce_to_user(json_response : dict) -> CEUser :
     that's just the way it is now
     if it doesn't exist there anywya then skip!
     """
+
+    steam_id = None
+
+    for item in json_response['userConnections'] :
+        if item['platform'] != 'steam' : continue
+        steam_id = item['platformId']
         
     # Now go through all their objectives and make CEUserObjective's out of them.
     for objective in json_response['userObjectives'] :
@@ -310,7 +316,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
         rolls=[],
         display_name=json_response['displayName'],
         avatar=json_response['avatar'],
-        last_updated=0
+        last_updated=0,
+        steam_id=steam_id
     )
 
 

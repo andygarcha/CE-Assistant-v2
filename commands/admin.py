@@ -75,8 +75,7 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-
-    
+    from Modules import CEAPIReader, Mongo_Reader
 
 
     return await interaction.followup.send('testsss done')
