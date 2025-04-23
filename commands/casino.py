@@ -1000,7 +1000,10 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
 
     # grab the user
     user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
-    partner : CEUser = await Mongo_Reader.get_user(partner_discord.id, use_discord_id=True)
+    try :
+        partner : CEUser = await Mongo_Reader.get_user(partner_discord.id, use_discord_id=True)
+    except ValueError :
+        partner = None
 
     # user doesn't exist
     if user == None :
