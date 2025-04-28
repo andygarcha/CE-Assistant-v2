@@ -79,7 +79,7 @@ async def test(interaction : discord.Interaction) :
     from Modules import CEAPIReader, Mongo_Reader
 
     x = requests.get('https://cedb.me/api/games')
-    x = json.load(x)
+    x = json.loads(x.text)
 
     print(x)
 
