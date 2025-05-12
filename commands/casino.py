@@ -1018,15 +1018,38 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             "Please have them run `/register` first!"
         )
     
-    if user.has_current_roll(event_name) :
-        return await interaction.followup.send(
-            f"You are currently attempting {event_name}!"
-        )
+    # destiny alignment allows for multiple concurrent rolls - apply different logic vs other co-op rolls
+    if event_name == "Destiny Alignment" :
+        
+        # check if the user / partner combo have an active DA roll underway
+        if user.has_DA_roll(partner.ce_id, event_name) :
+            return await interaction.followup.send(
+                f"You and your partner are currently attempting {event_name}!"
+            )
+        
+        # check if the user has the maximum number of concurrent DA rolls
+        if user.count_DA_rolls(event_name) == 5 :
+            return await interaction.followup.send(
+                f"You currently have the maximum number of concurrent {event_name} rolls!"
+            )
+        
+        # check if partner has the maximum number of concurrent DA rolls
+        if partner.count_DA_rolls(event_name) == 5 :
+            return await interaction.followup.send(
+                f"Your partner currently has the maximum number of concurrent {event_name} rolls!"
+            )
     
-    if partner.has_current_roll(event_name) :
-        return await interaction.followup.send(
-            f"Your partner is currently attempting {event_name}!"
-        )
+    else:
+
+        if user.has_current_roll(event_name) :
+            return await interaction.followup.send(
+                f"You are currently attempting {event_name}!"
+            )
+        
+        if partner.has_current_roll(event_name) :
+            return await interaction.followup.send(
+                f"Your partner is currently attempting {event_name}!"
+            )
     
     # user has cooldown
     database_name = await Mongo_Reader.get_database_name()
