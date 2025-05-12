@@ -1028,15 +1028,15 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             )
         
         # check if the user has the maximum number of concurrent DA rolls
-        if user.count_DA_rolls(event_name) == 5 :
+        if user.count_DA_rolls(event_name) >= 5 :
             return await interaction.followup.send(
-                f"You currently have the maximum number of concurrent {event_name} rolls!"
+                f"You currently have the maximum number [5] of concurrent {event_name} rolls!"
             )
         
         # check if partner has the maximum number of concurrent DA rolls
-        if partner.count_DA_rolls(event_name) == 5 :
+        if partner.count_DA_rolls(event_name) >= 5 :
             return await interaction.followup.send(
-                f"Your partner currently has the maximum number of concurrent {event_name} rolls!"
+                f"Your partner currently has the maximum number [5] of concurrent {event_name} rolls!"
             )
     
     else:
