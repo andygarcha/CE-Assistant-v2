@@ -1054,13 +1054,6 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             f"Your partner just tried rolling this event. Please wait about 10 minutes before trying again." +
             " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
-    
-    # jarvis's random event!
-    if random.randint(0, 99) == 0 : 
-        await user_log_channel.send(
-            f"Congratulations to {user.mention()} and {partner.mention()}! " +
-            "You've won Jarvis's super secret reward! Please DM him for your prize :)"
-        )
 
     user.add_pending(event_name)
     partner.add_pending(event_name)
