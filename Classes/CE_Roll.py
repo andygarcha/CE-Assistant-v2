@@ -520,7 +520,7 @@ class CERoll:
             )
         elif self.is_co_op() :
             return (
-                f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. " +
+                f"Sorry {user.mention()} and {partner.display_name}, you failed your {self.roll_name} roll. " +
                 f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
             )
         elif self.roll_name == "One Hell of a Day" :
