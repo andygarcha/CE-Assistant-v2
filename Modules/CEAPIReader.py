@@ -127,9 +127,11 @@ async def get_api_games_full() -> list[CEAPIGame] :
             
             #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
             for x in range(TRY_LIMIT):
-                
-                str_error = None #resets for each call to the full games api
-                
+
+                # set up a variable used to catch errors
+                str_error = None
+
+                # try to call the API
                 try:
                     async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
                         j = await response.json()
@@ -137,22 +139,23 @@ async def get_api_games_full() -> list[CEAPIGame] :
                         done_fetching = len(j) == 0
                         i += 1
               
-                # if an error, set "str_error" to a value, which will enable the error catch/retry below
+                # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
                 except Exception as e:
                     str_error = e
                     pass
+                
                 
                 # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
                 if str_error:
                     print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
             
-                    # if it's failed 'y' times, give up on the detailed scrape
+                    # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
                     if x+1 == TRY_LIMIT:
                         raise FailedScrapeException(f"Scraping failed from api/games/full " 
                                             + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
 
+                # if no error - continue on to the next block of "PULL LIMIT" games
                 else:
-                    # if no error - continue on to the next block of "PULL LIMIT" games
                     break
             
     print(f"done fetching games! total games: {len(json_response)}")
