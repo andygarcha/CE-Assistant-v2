@@ -117,7 +117,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
             if old_categories[i] < point_value and new_categories[i] >= point_value :
                 updates.append(UpdateMessage(
                     location="userlog",
-                    message=(f"Congratulations to <@{user.discord_id}>! " +
+                    message=(f"Congratulations to <@{user.discord_id}> ({user.mention()})! " +
                              f"You have unlocked {category} {CATEGORY_ROLE_NAMES[point_index]} ({point_value}+ points)")
                 ))
     # tiers
@@ -127,7 +127,7 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
             updates.append(UpdateMessage(
                 location="userlog",
                 message=(
-                    f"Congratulations to <@{user.discord_id}>! " +
+                    f"Congratulations to <@{user.discord_id}> ({user.mention()})! " +
                     f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
                 )
             ))
