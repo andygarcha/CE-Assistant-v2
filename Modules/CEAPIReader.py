@@ -112,25 +112,52 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 async def get_api_games_full() -> list[CEAPIGame] :
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
-    PULL_LIMIT = 50
+    PULL_LIMIT = 50 #grab this many games per API call
+    TRY_LIMIT = 3 # try each batch of 'PULL LIMIT' this many times
     json_response = []
     done_fetching : bool = False
     i = 1
-    async with aiohttp.ClientSession() as session :
-        
-        try:
-            while (not done_fetching) :
-                print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
-                async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&" 
-                                                + f"offset={(i-1)*PULL_LIMIT}") as response :
-                    j = await response.json()
-                    json_response += j
-                    done_fetching = len(j) == 0
-                    i += 1
-        except : 
-            raise FailedScrapeException(f"Scraping failed from api/games/full " 
-                                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
     
+    async with aiohttp.ClientSession() as session :
+
+        #overarching while statement - if not done, keep going
+        while (not done_fetching):
+            
+            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
+            
+            #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
+            for x in range(TRY_LIMIT):
+
+                # set up a variable used to catch errors
+                str_error = None
+
+                # try to call the API
+                try:
+                    async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
+                        j = await response.json()
+                        json_response += j
+                        done_fetching = len(j) == 0
+                        i += 1
+              
+                # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
+                except Exception as e:
+                    str_error = e
+                    pass
+                
+                
+                # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
+                if str_error:
+                    print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
+            
+                    # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
+                    if x+1 == TRY_LIMIT:
+                        raise FailedScrapeException(f"Scraping failed from api/games/full " 
+                                            + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
+
+                # if no error - continue on to the next block of "PULL LIMIT" games
+                else:
+                    break
+            
     print(f"done fetching games! total games: {len(json_response)}")
 
     """"
