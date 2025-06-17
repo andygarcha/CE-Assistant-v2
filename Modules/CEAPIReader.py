@@ -147,6 +147,7 @@ async def get_api_games_full() -> list[CEAPIGame] :
                 
                 # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
                 if str_error:
+                    print(str_error)
                     print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
             
                     # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
