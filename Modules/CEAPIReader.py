@@ -130,10 +130,12 @@ async def get_api_games_full() -> list[CEAPIGame] :
 
                 # set up a variable used to catch errors
                 str_error = None
+                outer_response = None
 
                 # try to call the API
                 try:
                     async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
+                        outer_response = response
                         j = await response.json()
                         json_response += j
                         done_fetching = len(j) == 0
@@ -148,6 +150,9 @@ async def get_api_games_full() -> list[CEAPIGame] :
                 # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
                 if str_error:
                     print(str_error)
+                    try :
+                        print(await outer_response.text())
+                    except : print('couldnt print response')
                     print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
             
                     # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
