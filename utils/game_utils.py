@@ -1,9 +1,7 @@
-import json
 import random
 from typing import Literal
 
 import aiohttp
-import requests
 
 
 def get_banned_games() -> list[str] :
@@ -50,7 +48,7 @@ async def get_rollable_game(
     VIEW_CONSOLE_MESSAGES = True
 
     if VIEW_CONSOLE_MESSAGES :
-        print(f"get_rollable_game() called with the following parameters: ")
+        print("get_rollable_game() called with the following parameters: ")
         print(f"database_name: {'passed correctly' if (database_name is not None or len(database_name) == 0) else '!!! passed incorrectly !!!'}")
         print(f"completion limit: {completion_limit}")
         print(f"price_limit: {price_limit}")

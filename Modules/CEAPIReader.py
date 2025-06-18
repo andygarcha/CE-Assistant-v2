@@ -23,7 +23,6 @@ from Classes.CE_Objective import CEObjective
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
-from Classes.CE_Cooldown import CECooldown
 from Exceptions.FailedScrapeException import FailedScrapeException
 
 # -- other --
@@ -157,7 +156,7 @@ async def get_api_games_full() -> list[CEAPIGame] :
             
                     # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
                     if x+1 == TRY_LIMIT:
-                        raise FailedScrapeException(f"Scraping failed from api/games/full " 
+                        raise FailedScrapeException("Scraping failed from api/games/full " 
                                             + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
 
                 # if no error - continue on to the next block of "PULL LIMIT" games
@@ -247,7 +246,7 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
                 if database_user is not None : params['ids'] = registered_ids"""
 
                 # pull the data and json-ify it
-                async with session.get(f"https://cedb.me/api/users/all", params=params) as response :
+                async with session.get("https://cedb.me/api/users/all", params=params) as response :
                     current_response = await response.json()
 
                     # check to see if this is the last one

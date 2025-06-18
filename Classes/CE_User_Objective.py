@@ -1,4 +1,3 @@
-from Classes.CE_Objective import CEObjective
 import Modules.hm as hm
 
 class CEUserObjective:

@@ -6,7 +6,8 @@ from Classes.CE_Roll import CERoll
 from Modules.WebInteractor import master_loop
 from commands.user import register
 from Modules import CEAPIReader, Mongo_Reader, hm
-import requests, json
+import requests
+import json
 
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
@@ -76,7 +77,6 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    from Modules import CEAPIReader, Mongo_Reader
 
     x = requests.get('https://cedb.me/api/games')
     x = json.loads(x.text)

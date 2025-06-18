@@ -1,7 +1,5 @@
-from typing import Literal
 
 # -- local --
-from Classes.CE_Objective import CEObjective
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEGame
 
@@ -131,8 +129,8 @@ class CEUserGame():
     def __str__(self) :
         "Returns a string version of this CEUserGame."
         return (
-            f"-- CEUserGame --" +
-            f"\nName: " + self.name +
-            f"\nGame CE ID: " + self.ce_id +
-            f"\nObjectives: " + str(self.user_objectives)
+            "-- CEUserGame --" +
+            "\nName: " + self.name +
+            "\nGame CE ID: " + self.ce_id +
+            "\nObjectives: " + str(self.user_objectives)
         )

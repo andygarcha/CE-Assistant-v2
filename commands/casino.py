@@ -359,7 +359,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     # user has pending
     if user.has_pending(event_name) :
         return await interaction.followup.send(
-            f"You just tried rolling this event. Please wait about 10 minutes before trying again." +
+            "You just tried rolling this event. Please wait about 10 minutes before trying again." +
             " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
     
@@ -509,7 +509,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
                         f"It is due on <t:{past_roll.due_time}>. " +
-                        f"Run /check-rolls to see more information."
+                        "Run /check-rolls to see more information."
                     )
                 else :
                     return await interaction.followup.send("You need to finish your current games before you roll your next one!")
@@ -537,7 +537,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             
         case "Triple Threat" :
             if not user.has_completed_roll("Never Lucky") :
-                return await interaction.followup.send(f"You need to complete Never Lucky before rolling Triple Threat!")
+                return await interaction.followup.send("You need to complete Never Lucky before rolling Triple Threat!")
             user.add_pending("Triple Threat")
             await Mongo_Reader.dump_user(user)
 
@@ -1067,14 +1067,14 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
     # user has pending
     if user.has_pending(event_name) :
         return await interaction.followup.send(
-            f"You just tried rolling this event. Please wait about 10 minutes before trying again." +
+            "You just tried rolling this event. Please wait about 10 minutes before trying again." +
             " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
     
     # partner has pending
     if partner.has_pending(event_name) :
         return await interaction.followup.send(
-            f"Your partner just tried rolling this event. Please wait about 10 minutes before trying again." +
+            "Your partner just tried rolling this event. Please wait about 10 minutes before trying again." +
             " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
 

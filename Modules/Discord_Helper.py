@@ -5,7 +5,6 @@ It will:
 - take in a `CERoll` object and return an array of `discord.Embed`s denoting exactly what's up.
 """
 import datetime
-import json
 import time
 
 import discord
@@ -13,22 +12,14 @@ import discord
 # -- local --
 from Classes.CE_Roll import CERoll
 from Classes.OtherClasses import EmbedMessage, UpdateMessage
-import Modules.Mongo_Reader as Mongo_Reader
-import Modules.CEAPIReader as CEAPIReader
 import Modules.hm as hm
-from Modules.Screenshot import Screenshot
 import Modules.WebInteractor as WebInteractor
 
 
 # selenium and beautiful soup stuff
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-import io
-from PIL import Image
 from webdriver_manager.core.os_manager import ChromeType
 
 async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
@@ -437,7 +428,7 @@ async def game_addition_single_update(old_game, new_game, driver : webdriver.Chr
 
             # if the description was updated
             if old_objective.description != new_objective.description :
-                embed.description += f"\n  - Description updated"
+                embed.description += "\n  - Description updated"
             
             # if the requirements were updated
             if old_objective.requirements != new_objective.requirements :
@@ -508,7 +499,6 @@ async def game_additions_updates(old_games : list, new_games : list) -> tuple[li
     from Classes.CE_Game import CEGame, CEAPIGame
     old_games : list[CEGame] = old_games
     new_games : list[CEAPIGame] = new_games
-    import Modules.Screenshot as Screenshot
 
     # the list to be returned
     messages : list[EmbedMessage] = []
@@ -724,7 +714,7 @@ async def game_additions_updates(old_games : list, new_games : list) -> tuple[li
                 # if the description was updated
                 if old_objective.description != new_objective.description :
                     if CONSOLE_MARKERS: print('huh')
-                    embed.description += f"\n  - Description updated"
+                    embed.description += "\n  - Description updated"
                 
                 # if the requirements were updated
                 if old_objective.requirements != new_objective.requirements :

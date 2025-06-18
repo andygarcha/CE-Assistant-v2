@@ -3,14 +3,12 @@ import datetime
 import functools
 import time
 import typing
-import aiohttp
 from discord.ext import tasks
 import discord
 import requests
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
-from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.OtherClasses import EmbedMessage, UpdateMessage
 from Exceptions.FailedScrapeException import FailedScrapeException
@@ -22,10 +20,7 @@ import Modules.hm as hm
 # selenium and beautiful soup stuff
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 import io
 from PIL import Image
 
@@ -342,7 +337,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
     # set type hinting
-    from Classes.CE_Game import CEGame, CEAPIGame
+    from Classes.CE_Game import CEGame
     new_game : CEGame = new_game
 
     OBJECTIVE_LIMIT = 7

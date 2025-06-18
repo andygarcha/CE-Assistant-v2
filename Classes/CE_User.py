@@ -1,5 +1,4 @@
 import datetime
-import json
 from typing import get_args
 import aiohttp
 from Classes.CE_Cooldown import CECooldown

@@ -19,8 +19,6 @@ from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import *
 
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 
 

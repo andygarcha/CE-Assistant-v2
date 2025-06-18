@@ -1,9 +1,7 @@
-import json
-from typing import Literal
 
 import aiohttp
 from Classes.CE_Objective import CEObjective
-from Classes.OtherClasses import CECompletion, SteamData
+from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
 
 class CEGame:
@@ -355,7 +353,7 @@ class CEGame:
             # use hm.get_emoji("Points")
             update_str += (f"\n- {self.get_total_points()} <:CE_points:1128420207329816597> " +
             f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
-            f"<:CE_points:1128420207329816597>")
+            "<:CE_points:1128420207329816597>")
         #TODO: finish this function
 
     def name_with_link(self) -> str :

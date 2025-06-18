@@ -1,9 +1,7 @@
-from enum import Enum
 from typing import Literal, get_args
 
 import discord
 
-from Exceptions.ItemNotFoundException import ItemNotFoundException
 
 
 class GameData() :
@@ -596,7 +594,6 @@ class CEValueInput :
         "Returns a much simpler string."
         # imports
         from Classes.CE_Game import CEGame
-        from Classes.CE_User import CEUser
         import Modules.hm as hm
         database_name : list[CEGame] = database_name
 
@@ -894,7 +891,6 @@ class CEInput :
         "Returns this Input as a simple string."
         # imports
         from Classes.CE_Game import CEGame
-        from Classes.CE_User import CEUser
         import Modules.hm as hm
         database_name : list[CEGame] = database_name
 

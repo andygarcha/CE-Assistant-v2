@@ -1,4 +1,3 @@
-import datetime
 from typing import Literal, get_args
 
 import Modules.hm as hm
@@ -357,7 +356,6 @@ class CERoll:
     def get_win_message(self, database_name : list, user, partner) -> str :
         """Returns a string to send to #casino-log if this roll is won.
         This also sets the winner property if the roll is co-op."""
-        import Modules.Mongo_Reader as Mongo_Reader
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
 
@@ -412,7 +410,7 @@ class CERoll:
                 elif game in user_wins and game not in partner_wins :
                     return_str += f" - <@{user.discord_id}>\n"
                 else :
-                    return_str += f"\n"
+                    return_str += "\n"
             return return_str
         elif self.roll_name == "Winner Takes All" :
             # determine winner
@@ -567,7 +565,6 @@ class CERoll:
         # imports
         from Classes.CE_User import CEUser
         from Classes.CE_Game import CEGame
-        from Modules import Mongo_Reader
 
         # if expired, return false
         if (self.is_expired()) : return False
@@ -731,7 +728,6 @@ class CERoll:
 
         # import and type hinting
         from Classes.CE_Game import CEGame
-        from Classes.CE_User import CEUser
         database_name : list[CEGame] = database_name
 
         if (
@@ -777,7 +773,7 @@ class CERoll:
             string += "\nRolled games: "
             for game in games :
                 if game is None :
-                    string += f"'ERROR', "
+                    string += "'ERROR', "
                 else :
                     string += f"[{game.game_name}](https://cedb.me/game/{game.ce_id}/), "
 

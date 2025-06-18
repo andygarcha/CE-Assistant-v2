@@ -1,52 +1,28 @@
 # -------- discord imports -----------
-import datetime
-from enum import Enum
 import logging
-import math
-import time
 from types import NoneType
-import typing
 import discord
 from discord import app_commands
 
 # -------- json imports ----------
 import json
-from typing import Literal, get_args
+from typing import Literal
 
 # --------- local class imports --------
-from Classes.CE_Cooldown import CECooldown
-from Classes.CE_User import CEUser
-from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEObjective
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import CEInput, SteamData, CECompletion, RAData
-from Modules import WebInteractor
-import Modules.CEAPIReader as CEAPIReader
+from Classes.OtherClasses import CEInput
 from Modules.WebInteractor import master_loop
 import Modules.hm as hm
 import Modules.Mongo_Reader as Mongo_Reader
-import Modules.Discord_Helper as Discord_Helper
-import Modules.SpreadsheetHandler as SpreadsheetHandler
-from Exceptions.FailedScrapeException import FailedScrapeException
 from commands import load_commands
 
 # ----------- to-be-sorted imports -------------
-import random
-from functools import partial
 from discord.ext import tasks
 
 # ----------- selenium and beautiful soup stuff -----------
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 import io
-from PIL import Image
-from webdriver_manager.core.os_manager import ChromeType
 
 from commands.games import get_game_auto
 
@@ -425,12 +401,12 @@ class ValueModal(discord.ui.Modal) :
         else : super().__init__(title=f"Value Input for {objective.name}")
 
     new_value = discord.ui.TextInput(
-        label=f"Revalue Objective",
+        label="Revalue Objective",
         style=discord.TextStyle.short,
         min_length=1,
         max_length=4,
         required=True,
-        placeholder=f"Proposed value"
+        placeholder="Proposed value"
     )
     
     def __is_valid_recommendation(self, input : int, value : int) -> bool :
@@ -466,7 +442,7 @@ class ValueModal(discord.ui.Modal) :
         # make sure we recommended a positive number
         if proposed_value < 0 :
             return await interaction.followup.send(
-                f"You cannot recommend a negative number! Please try again."
+                "You cannot recommend a negative number! Please try again."
             )
 
         # make sure the recommendation was within valid percentage range of the objective's value

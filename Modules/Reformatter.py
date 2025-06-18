@@ -8,7 +8,6 @@ Version 2: Object oriented, but used only one document in MongoDB.
 Version 3: Each user and game gets their own document in MongoDB.
 """
 import json
-import bson.objectid
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_User import CEUser
@@ -262,7 +261,6 @@ def reformat_game(dict) -> CEGame :
     )
 
 async def reformat_database_name() :
-    import pymongo
     import bson
     from motor.motor_asyncio import AsyncIOMotorClient
     import Modules.Mongo_Reader as Mongo_Reader
