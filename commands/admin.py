@@ -61,7 +61,7 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def force_add_command(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
         await force_add(interaction, member, roll_name)
 
-    @tree.command(name='force-unlink', description="Unlink someone from the bot.")
+    @tree.command(name='force-unlink', description="Unlink someone from the bot.", guild=guild)
     async def force_unlink_command(interaction: discord.Interaction, member: discord.Member):
         await force_unlink(interaction, member)
     pass
