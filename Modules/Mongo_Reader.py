@@ -189,6 +189,8 @@ async def get_database_user() -> list[CEUser] :
     return database_user
 
 def __mongo_to_user(user : dict) -> CEUser :
+    if user['discord_id'] is None :
+        raise ValueError(f"You either called 'get_user(None)' or this user {user['ce_id']} was removed.")
     display_name : str = None
     if 'display-name' in user : display_name = user['display-name']
     elif 'display_name' in user : display_name = user['display_name']
