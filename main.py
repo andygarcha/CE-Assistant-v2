@@ -9,7 +9,6 @@ import json
 from typing import Literal
 
 # --------- local class imports --------
-from Classes.CE_User_Objective import CEObjective
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CEInput
