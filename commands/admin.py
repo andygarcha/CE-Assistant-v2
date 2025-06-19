@@ -60,6 +60,10 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     @tree.command(name='force-add', description="Force add a roll to a user's completed rolls section.", guild=guild)
     async def force_add_command(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
         await force_add(interaction, member, roll_name)
+
+    @tree.command(name='force-unlink', description="Unlink someone from the bot.")
+    async def force_unlink_command(interaction: discord.Interaction, member: discord.Member):
+        await force_unlink(interaction, member)
     pass
 
 
@@ -268,3 +272,61 @@ async def force_add(interaction : discord.Interaction, member : discord.Member, 
 
     await Mongo_Reader.dump_user(user)
     return await interaction.followup.send("Done!")
+
+
+    
+class UnlinkView(discord.ui.View):
+    def __init__(self, member_id: int):
+        self._member_id = member_id
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user = await Mongo_Reader.get_user(self._member_id, use_discord_id=True)
+        user._discord_id = None
+        await Mongo_Reader.dump_user(user)
+
+        self.clear_items()
+        await interaction.response.edit_message(content=f"{user.display_name} has been removed.", view=self)
+
+    @discord.ui.button(label="No!", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.clear_items()
+        await interaction.response.edit_message(content="User was not removed.", view=self)
+
+async def force_unlink(interaction: discord.Interaction, member: discord.Member):
+    await interaction.response.defer()
+
+    # log this interaction
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /force-unlink, "
+                     + f"params: member=<@{member.id}>", 
+                     allowed_mentions=discord.AllowedMentions.none())
+    return await interaction.followup.send(
+        content=f"Are you absolutely sure you want to unlink {member.name}? This will clear all of their roll events.",
+        view=UnlinkView(member.id)
+    )
+""" 
+
+class RerollView(discord.ui.View) :
+    def __init__(self, user_ce_id : str, event_name : str) :
+        self.__user_ce_id = user_ce_id
+        self.__event_name = event_name
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        # pull database user and get user
+        user = await Mongo_Reader.get_user(self.__user_ce_id)
+
+        user.remove_current_roll(self.__event_name) # remove the current roll
+
+        await Mongo_Reader.dump_user(user)
+
+        self.clear_items()
+        await interaction.response.edit_message(content=f"You can now reroll {self.__event_name}.", view=self)
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
+        self.clear_items()
+        await interaction.response.edit_message(content="Reroll cancelled. Your old roll is still intact.", view=self)"""
