@@ -138,7 +138,7 @@ class CEGame:
     
     async def get_raw_ce_data(self) -> dict :
         "Returns the raw CE data."
-        async with aiohttp.ClientSession() as session :
+        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
             async with session.get(f'https://cedb.me/api/game/{self.ce_id}') as response :
                 return await response.json()
     
@@ -222,7 +222,7 @@ class CEGame:
         """Returns the current price (in USD) on the platform of this game."""
         if self.platform != "steam" : return None
 
-        async with aiohttp.ClientSession() as session :
+        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
             async with session.get('https://store.steampowered.com/api/appdetails?',
                                    params={'appids': self.platform_id, 'cc' : 'US'}) as response :
                 json_response = await response.json()
@@ -256,7 +256,7 @@ class CEGame:
         
     async def get_steamhunters_data_async(self) -> int | None :
         if self.platform != "steam" : return None
-        async with aiohttp.ClientSession() as session :
+        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
             async with session.get(f"https://steamhunters.com/api/apps/{self.platform_id}") as response :
                 if await response.text() == "null" or await response.text() == None :
                     return None
@@ -286,7 +286,7 @@ class CEGame:
     async def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
 
-        async with aiohttp.ClientSession() as session :
+        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
             async with session.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard') as response :
                 json_response = await response.json()
 

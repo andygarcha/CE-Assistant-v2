@@ -485,7 +485,7 @@ class CEUser:
     
     async def get_api_user(self) -> 'CEAPIUser' :
         "Returns the CEAPIUser."
-        async with aiohttp.ClientSession() as session :
+        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
             async with session.get(f'https://cedb.me/api/user/{self.ce_id}/') as response :
                 try :
                     data = await response.json()

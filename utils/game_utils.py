@@ -199,7 +199,7 @@ async def name_to_steamid(name : str) -> str :
     
     # -- now check steam instead --
     payload = {"term" : name, "cc" : "US"}
-    async with aiohttp.ClientSession() as session :
+    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
         async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
             json_response = await response.json()
 

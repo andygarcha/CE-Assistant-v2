@@ -117,7 +117,7 @@ async def get_api_games_full() -> list[CEAPIGame] :
     done_fetching : bool = False
     i = 1
     
-    async with aiohttp.ClientSession() as session :
+    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
 
         #overarching while statement - if not done, keep going
         while (not done_fetching):
@@ -210,7 +210,7 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
     total_response = []
     done_fetching : bool = False
     i = 1
-    async with aiohttp.ClientSession() as session :
+    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
         try :
 
             # this will run if database user has been provided
@@ -357,7 +357,7 @@ def _ce_to_user(json_response : dict) -> CEUser :
 async def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
     """Returns either a :class:`CEUser` or a :class:`CEAPIGame` 
     from `ce_id` depending on `type`."""
-    async with aiohttp.ClientSession() as session :
+    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
         # if type is user
         if type == "user" :
             async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
