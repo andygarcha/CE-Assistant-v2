@@ -1,4 +1,5 @@
 # -------- discord imports -----------
+import asyncio
 import logging
 from types import NoneType
 import discord
@@ -19,6 +20,7 @@ from commands import load_commands
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks
+from aiohttp import web
 
 # ----------- selenium and beautiful soup stuff -----------
 import io
@@ -54,6 +56,28 @@ tree = app_commands.CommandTree(client)
 guild = discord.Object(id=guild_id)
 
 load_commands.load_commands(client, tree, guild)
+
+# == webhook reception ==
+routes = web.RouteTableDef()
+
+@routes.post('/webhook')
+async def webhook_handler(request: web.Request):
+    data = await request.json()
+
+    channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    if channel:
+        await channel.send(f"webhook recieved: {data=}")
+
+async def start_webhook_server():
+    app = web.Application()
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    # bind to 0.0.0.0 to accept external connections on port 80
+    site = web.TCPSite(runner, '0.0.0.0', 80)
+    await site.start()
+    print('webhook running!')
 
 # ------------------------------ commands -------------------------------------
 
@@ -967,6 +991,8 @@ async def on_ready() :
 
     # send online update
     await private_log_channel.send(f":arrow_right_hook: bot started at <t:{hm.get_unix('now')}>")
+
+    asyncio.create_task(start_webhook_server())
     
     # master loop
     if hm.IN_CE :
