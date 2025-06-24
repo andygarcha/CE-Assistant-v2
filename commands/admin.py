@@ -1,11 +1,12 @@
 """This module contains all the admin commands for the bot."""
+import asyncio
 import datetime
 import discord
 from discord import app_commands
 from Classes.CE_Roll import CERoll
 from Modules.WebInteractor import master_loop
 from commands.user import register
-from Modules import CEAPIReader, Mongo_Reader, hm
+from Modules import CEAPIReader, Mongo_Reader, Reformatter, hm
 import requests
 import json
 
@@ -81,12 +82,16 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    _client = Mongo_Reader._mongo_client
+    db = _client['ce_v4']
 
-    x = requests.get('https://cedb.me/api/games')
-    x = json.loads(x.text)
-
-    print(x)
-
+    await db.command({
+        "collMod": "games",
+        "validator": {"$jsonSchema": Reformatter.create_games()},
+        "validationLevel": "moderate",
+        "validationAction": "error"
+    })
+    print('schema applied to "games"')
 
     return await interaction.followup.send('testsss done')
 

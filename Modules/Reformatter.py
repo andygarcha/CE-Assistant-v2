@@ -16,13 +16,265 @@ from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
 
+from motor.motor_asyncio import AsyncIOMotorClient
+
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+---- Creating a schema for database v4. ----
+
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+def create_games():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "name": {"bsonType": "string"},
+            # replacing platform and platformid with gamesConnection collection
+            "category": {"bsonType": "int"},
+            # action = 1 arcade = 2 bhell = 3 fps = 4 plat = 5 strat = 6
+            "last_updated": {"bsonType": "int"},
+            "banner": {"bsonType": "string"},
+            "icon": {"bsonType": "string"}
+        }
+    }
+    return schema
+    pass
+
+def create_games_connections():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "platform_number": {"bsonType": "int"},
+            # steam = 1 ra = 2
+            "platform_game_id": {"bsonType": "string"}
+        }
+    }
+    pass
+
+def create_objectives():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_objective": {"bsonType": "string"},
+            "ce_id_game": {"bsonType": "string"},
+            "name": {"bsonType": "string"},
+            "value_total": {"bsonType": "int"},
+            "value_partial": {"bsonType": "int"},
+            "type": {"bsonType": "int"},
+            # PO = 1 CO = 2 SO = 3
+            "description": {"bsonType": "string"}
+        }
+    }
+    pass
+
+def create_objective_requirements():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_objective": {"bsonType": "string"},
+            "requirement_type": {"bsonType": "int", "enum": [0, 1]},
+            # 0 = achievement, 1 = custom
+            "description": {"bsonType": "string"}
+            # this will either be achievement id or requirement text
+        }
+    }
+
+def create_user():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_user": {"bsonType": "string"},
+            "display_name": {"bsonType": "string"},
+            # replacing user steam id with userConnections
+            "discord_id": {"bsonType": "string"},
+            "avatar": {"bsonType": "string"},
+            "last_updated": {"bsonType": "int"}
+        }
+    }
+    pass
+
+def create_user_games():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "ce_id_user": {"bsonType": "string"}
+        }
+    }
+    pass
+
+def create_user_objectives():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "ce_id_user": {"bsonType": "string"},
+            "ce_id_objective": {"bsonType": "string"},
+            "partial": {"bsonType": "boolean"}
+        }
+    }
+    pass
+
+def create_user_connections():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_user": {"bsonType": "string"},
+            "platform_number": {"bsonType": "int"},
+            "platform_user_id": {"bsonType": "string"}
+        }
+    }
+    pass
+
+# do i maybe wanna do a user_accomplishments? just to track dates?
+# like a new entry every time the user accomplishes something so if they lose it
+# temporarily it can remember?
+def user_accomplishments():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_user": {"bsonType": "string"},
+            "ce_id_objective": {"bsonType": "string"},
+            "achieved_at": {"bsonType": "datetime"},
+            "partial": {"bsonType": "boolean"},
+            "points": {"bsonType": "int"}
+        }
+    }
+
+def create_platforms():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "platform_number": {"bsonType": "int"},
+            "platform_name": {"bsonType": "string"},
+        }
+    }
+    pass
+
+def create_user_rolls():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_user": {"bsonType": "string"},
+            "ce_id_partner": {"bsonType": "string"},
+            "roll_instance_id": {"bsonType": "string"},
+            "roll_event_id": {"bsonType": "int"},
+            #TODO: assign each event an ID
+            "time_created": {"bsonType": "datetime"},
+            "time_due": {"bsonType": "datetime"},
+            "time_completed": {"bsonType": "datetime"},
+            "cooldown_days": {"bsonType": "int"},
+            #TODO: when is this calculated?
+            "status": {"bsonType": "int", "enum": [0, 1, 2, 3, 4, 5]},
+            # "current", "won", "failed", "pending", "waiting", "removed"
+            "is_lucky": {"bsonType": "boolean"},
+            "chosen_tier": {"bsonType": ["int", "null"]}
+            #NOTE: for soul mates? iirc?
+        }
+    }
+    pass
+
+def create_roll_events():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "roll_event_id": {
+                "bsonType": "int",
+                "description": "A unique identifier for this TYPE of roll."
+            },
+            "description": {"bsonType": "string"},
+            "is_multi_stage": {"bsonType": "boolean"},
+            "static_cs": {"bsonType": "boolean"},
+            # this says that the casino score returned is either
+            #   dependent on tier (false) or not (true)
+            "cs_win": {"bsonType": "int"},
+            "cs_lose": {"bsonType": "int"},
+            # these will either act as direct increase/decreases if 
+            #   staticCS is true, or will act as divisors
+            #   if staticCS is false.
+            "hour_limit": {"bsonType": ["int", "null"]},
+            "price_limit": {"bsonType": ["int", "null"]},
+            "tier_min": {"bsonType": ["int", "null"]},
+            "tier_max": {"bsonType": ["int", "null"]},
+        }
+    }
+
+def create_user_roll_games():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "roll_instance_id": {"bsonType": "string"},
+            "ce_id_game": {"bsonType": "string"},
+            "group": {"bsonType": "int"}
+            # this can be used for a couple different things i just
+            #   wanted to put it in here
+        }
+    }
+    pass
+
+def create_value_inputs():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": ["string", "null"]},
+            "ce_id_user": {"bsonType": "string"},
+            "ce_id_objective": {"bsonType": ["string", "null"]},
+            "input_type": {"bsonType": "int", "enum": [0, 1]},
+            # 0 = objective value, 1 = game value
+            "value": {"bsonType": "int"}
+        }
+    }
+    pass
+
+def create_curate_inputs():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "ce_id_user": {"bsonType": "string"},
+            "curate": {"bsonType": "int"}
+            # 0 = no 1 = yes 2 = idk
+        }
+    }
+    pass
+
+def create_tag_inputs():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "ce_id_game": {"bsonType": "string"},
+            "ce_id_user": {"bsonType": "string"},
+            "tag_id": {"bsonType": "string"}
+        }
+    }
+    pass
+
+def create_tags():
+    schema = {
+        "bsonType": "object",
+        "properties": {
+            "tag_id": {"bsonType": "string"},
+            "tag_name": {"bsonType": "string"}
+        }
+    }
+    pass
+
+with open('secret_info.json') as f :
+    """The :class:`ObjectID` values stored under the `_id` value in each document."""
+    local_json_data = json.load(f)
+    _uri = local_json_data['mongo_uri']
+
+client = AsyncIOMotorClient(_uri)
+
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ---- Everything from this line down was moving from database v2 to v3. ----
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-from motor.motor_asyncio import AsyncIOMotorClient
+
 
 with open('secret_info.json') as f :
     """The :class:`ObjectID` values stored under the `_id` value in each document."""
