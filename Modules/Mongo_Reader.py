@@ -327,6 +327,25 @@ async def dump_curator_count(cc : int) :
         print("No document with 'curator_count' found.")
     pass
 
+async def dump_curator_ids(ids: list[str]):
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    result = await collection.find_one({"curated": {"$exists": True}})
+
+    mongoids: list[str] = result['curated']
+    for idnum in ids:
+        if idnum not in mongoids:
+            mongoids.append(idnum)
+    
+    print(mongoids)
+
+    await collection.replace_one({"curated": {"$exists": True}}, {"curated": mongoids})
+
+async def get_curator_ids():
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    db = await collection.find_one({"curated": {"$exists": True}})
+    return db['curated']
 
 
 
