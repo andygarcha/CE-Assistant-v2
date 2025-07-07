@@ -3,6 +3,7 @@ import datetime
 import functools
 import time
 import typing
+import aiohttp
 from discord.ext import tasks
 import discord
 import requests
@@ -667,22 +668,56 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
     # pull the data
     print("checking curator")
-    mongo_curator_count = await Mongo_Reader.get_curator_count()
-    steam_curator_count = await get_curator_count()
+    mongo_recent_curated = await Mongo_Reader.get_curator_ids()
+    steam_recent_curated, descriptions = await get_recent_curated()
+
+    uncurated: list[str] = []
+    for item in steam_recent_curated:
+        if item not in mongo_recent_curated:
+            uncurated.append(item)
 
     # if steam didn't fail and the numbers are different
-    if steam_curator_count is not None and mongo_curator_count != steam_curator_count :
-        print(f"curating {steam_curator_count - mongo_curator_count} update(s)")
-        curator_embeds = await thread_curator(steam_curator_count - mongo_curator_count, new_games)
+    if steam_recent_curated is not None and len(uncurated) != 0 :
+        print(f"curating {len(uncurated)} update(s)")
+        curator_embeds = await thread_curator(uncurated, new_games, descriptions)
         for embed in curator_embeds :
             await game_additions_channel.send(embed=embed)
         
-        await Mongo_Reader.dump_curator_count(steam_curator_count)
     
     else : print('no new curator updates.')
     
     print('---- loop complete. ----')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
+
+async def get_recent_curated():
+    # set the payload and pull from the curator
+    payload = {'cc' : 'us', 'l' : 'english'}
+    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
+        async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
+
+            # beautiful soupify
+            soup_data = BeautifulSoup(await response.text(), features="html.parser")
+
+            # set up variables
+            descriptions, ce_ids = [], []
+
+            # get all divs
+            divs = soup_data.find_all('div')
+
+            # iterate through them
+            for item in divs :
+                try :
+                    CONSOLE_MESSAGES = False
+                    if item['class'][0] == 'recommendation_readmore' :
+                        if CONSOLE_MESSAGES : print('-- readmore --')
+                        ce_ids.append(item.contents[0]['href'][-36:])
+                        if CONSOLE_MESSAGES : print(ce_ids[-1])
+                    if item['class'][0] == "recommendation_desc" :
+                        if CONSOLE_MESSAGES : print('-- description --')
+                        descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
+                        if CONSOLE_MESSAGES : print(descriptions[-1])
+                except : continue
+            return ce_ids, descriptions
 
 
 #  _______   _    _   _____    ______              _____       _____              __  __   ______ 
@@ -979,44 +1014,16 @@ async def get_curator_count() -> int | None :
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____|  \____/  |_|  \_\ /_/    \_\    |_|     \____/  |_|  \_\
 
 
-async def thread_curator(num_updates : int, database_name : list[CEGame]) -> list[discord.Embed] :
+async def thread_curator(uncurated : list[str], database_name : list[CEGame], descriptions: list[str]) -> list[discord.Embed] :
     "Returns embed descriptions for the last `num_updates` curator posts. Max of 10."
 
     # adjust in case of max
     MAXIMUM_UPDATES = 10
-    if num_updates > MAXIMUM_UPDATES : num_updates = MAXIMUM_UPDATES
-
-    # set the payload and pull from the curator
-    payload = {'cc' : 'us', 'l' : 'english'}
-    data = requests.get('https://store.steampowered.com/curator/36185934', params=payload)
-
-    # beautiful soupify
-    soup_data = BeautifulSoup(data.text, features="html.parser")
-
-    # set up variables
-    descriptions, ce_ids = [], []
-
-    # get all divs
-    divs = soup_data.find_all('div')
-
-    # iterate through them
-    for item in divs :
-        try :
-            CONSOLE_MESSAGES = False
-            if item['class'][0] == 'recommendation_readmore' :
-                if CONSOLE_MESSAGES : print('-- readmore --')
-                ce_ids.append(item.contents[0]['href'][-36:])
-                if CONSOLE_MESSAGES : print(ce_ids[-1])
-            if item['class'][0] == "recommendation_desc" :
-                if CONSOLE_MESSAGES : print('-- description --')
-                descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
-                if CONSOLE_MESSAGES : print(descriptions[-1])
-        except : continue
     
     # and now return the embeds
     embeds : list[discord.Embed] = []
-    for i in range(num_updates) :
-        embed = await Discord_Helper.get_game_embed(game_id=ce_ids[i], database_name=database_name)
+    for i in range(len(uncurated)) :
+        embed = await Discord_Helper.get_game_embed(game_id=uncurated[i], database_name=database_name)
         #TODO: change header image to hex
         embed.title = f"New curator update: {embed.title}"
         embed.add_field(name="Curator Description", value=descriptions[i])
