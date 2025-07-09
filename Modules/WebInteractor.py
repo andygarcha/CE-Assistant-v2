@@ -670,6 +670,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
     print("checking curator")
     mongo_recent_curated = await Mongo_Reader.get_curator_ids()
     steam_recent_curated, descriptions = await get_recent_curated()
+    print(f'{steam_recent_curated=}')
+    print(f'{mongo_recent_curated=}')
 
     uncurated: list[str] = []
     for item in steam_recent_curated:
