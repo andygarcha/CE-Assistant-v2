@@ -695,7 +695,7 @@ async def get_recent_curated():
     # set the payload and pull from the curator
     payload = {'cc' : 'us', 'l' : 'english'}
     async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-        async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
+        async with session.get("https://store.steampowered.com/curator/36185934", params=payload) as response :
 
             # beautiful soupify
             soup_data = BeautifulSoup(await response.text(), features="html.parser")
