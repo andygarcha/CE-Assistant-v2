@@ -684,6 +684,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
         curator_embeds = await thread_curator(uncurated, new_games, descriptions)
         for embed in curator_embeds :
             await game_additions_channel.send(embed=embed)
+        await Mongo_Reader.dump_curator_ids(uncurated)
         
     
     else : print('no new curator updates.')
