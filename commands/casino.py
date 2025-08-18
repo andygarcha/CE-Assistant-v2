@@ -427,7 +427,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             for i in range(5) :
                 selected_category = random.choice(valid_categories)
                 for j in range(5) :
-                    rolled_games.append(await hm.get_rollable_game(
+                    k = await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=10,
                         price_limit=10,
@@ -437,7 +437,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         already_rolled_games=rolled_games,
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction
-                    ))
+                    )
+                    if k == None:
+                        return await interaction.followup.send(
+                            f"There weren't enough rollable games in the category: {selected_category}."
+                            + f" Please try again later (and contact andy!)."
+                        )
+                    rolled_games.append(k)
                 valid_categories.remove(selected_category)
     
         case "Two Week T2 Streak" :
