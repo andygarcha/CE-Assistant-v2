@@ -220,19 +220,21 @@ def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGa
 
     # check completion count
     COMPLETION_INCREMENT = 25
-    if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
-        if NEW_MESSAGES : 
-            updates.append(UpdateMessage(
-                location="userlog",
-                message=(f"Amazing! {discord_user} ({user.mention()}) has passed the milestone of " +
-                        f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
-            ))
-        else : 
-            updates.append(UpdateMessage(
-                location="userlog",
-                message=(f"Amazing! {user.mention()} has passed the milestone of " +
-                        f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
-            ))
+    
+    if (len(new_completed_games) > len(original_completed_games)) and (len(new_completed_games) >= COMPLETION_INCREMENT): #prevent 'congrats for passing 0', and user losing completions
+        if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
+            if NEW_MESSAGES : 
+                updates.append(UpdateMessage(
+                    location="userlog",
+                    message=(f"Amazing! {discord_user} ({user.mention()}) has passed the milestone of " +
+                            f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+                ))
+            else : 
+                updates.append(UpdateMessage(
+                    location="userlog",
+                    message=(f"Amazing! {user.mention()} has passed the milestone of " +
+                            f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+                ))
     
     # check pendings
     for i, roll in enumerate(user.rolls) :
