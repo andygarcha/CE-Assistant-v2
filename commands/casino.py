@@ -437,7 +437,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         tier_number=1,
                         user=user,
                         category=selected_category,
-                        already_rolled_games=rolled_games,
+                        already_rolled_games=rolled_temp,
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction
                     ))
@@ -462,7 +462,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                             tier_number=1,
                             user=user,
                             category=selected_category,
-                            already_rolled_games=rolled_games,
+                            already_rolled_games=rolled_temp,
                             price_restriction=price_restriction,
                             hours_restriction=hours_restriction
                         ))
