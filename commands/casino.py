@@ -424,6 +424,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             # -- grab games --
             rolled_games : list[str] = []
             valid_categories = list(get_args(hm.CATEGORIES))
+            failed_category = None # initialise variable to catch 2x category fails
+            
             for i in range(5) :
                 
                 selected_category = random.choice(valid_categories)
@@ -437,20 +439,24 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         tier_number=1,
                         user=user,
                         category=selected_category,
-                        already_rolled_games=rolled_games,
+                        already_rolled_games=rolled_temp,
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction
                     ))
                 
-                if None in rolled_temp: #if not enough rolls in a given category, remove the category and try again
+                #debugging
+                print(f"User ({user}) rolled the {selected_category} category, with rolled games {rolled_temp}")
+                
+                if None in rolled_temp and failed_category == None: #if not enough rolls in a given category, and this is the first failed category, remove and try again
                     
-                    #for logging
+                    #remove failed category and reroll (without incrementing 'i')
                     failed_category = selected_category
-                    print(f"There were not enough valid rolls for this user in the {failed_category} category.")
-                    
-                    #remove from valid categories and reroll (without incrementing 'i')
                     valid_categories.remove(selected_category)
                     selected_category = random.choice(valid_categories)
+
+                    #debugging
+                    print(f"There were not enough valid rolls for user ({user}) in the {failed_category} category. "
+                          + f"Rerolled into {selected_category}")
 
                     rolled_temp : list[str] = []
                     
@@ -462,21 +468,29 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                             tier_number=1,
                             user=user,
                             category=selected_category,
-                            already_rolled_games=rolled_games,
+                            already_rolled_games=rolled_temp,
                             price_restriction=price_restriction,
                             hours_restriction=hours_restriction
                         ))
+
+                    #debugging                    
+                    print(f"User ({user}) re-rolled into the {selected_category} category, with rolled games {rolled_temp}")
                         
-                    if None in rolled_temp: #not enough rolls in two categories
-                        return await interaction.followup.send(
-                            f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. " 
-                            + f"The event is unrollable for you until enough new T1 games with valid criteria get added to the site.")
+                if None in rolled_temp and failed_category != None: #not enough rolls in category, and another category has already failed
+                    return await interaction.followup.send(
+                        f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. " 
+                        + f"The event is unrollable for you until enough new T1 games with valid criteria get added to the site, "
+                        + f"or you relax the roll criteria (hours/price restrictions).")
 
                 for j in range(5): #append the rolled games from the temp list to the main list
                     rolled_games.append(rolled_temp[j])
-
+                
+                #debugging
+                print(f"The following games from the {selected_category} category were added to the user's ({user}) Hell Month roll list: {rolled_temp}")
+                    
                 valid_categories.remove(selected_category)
-    
+
+
         case "Two Week T2 Streak" :
             if user.has_waiting_roll('Two Week T2 Streak') :
                 "If user's current roll is ready for next stage, roll it for them."
