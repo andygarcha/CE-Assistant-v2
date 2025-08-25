@@ -122,7 +122,7 @@ async def get_api_games_full() -> list[CEAPIGame] :
         #overarching while statement - if not done, keep going
         while (not done_fetching):
             
-            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...")
+            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...", end=" ")
             
             #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
             for x in range(TRY_LIMIT):
@@ -163,7 +163,7 @@ async def get_api_games_full() -> list[CEAPIGame] :
                 else:
                     break
             
-    print(f"done fetching games! total games: {len(json_response)}")
+    print(f"\ndone fetching games! total games: {len(json_response)}")
 
     """"
     BIG ASS FUCKING NOTE
@@ -262,7 +262,7 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
                         # remove all of the indexes in reverse order
                         for index in reversed(removed_indexes) :
                             del current_response[index]
-                        print(f"({len(removed_indexes)} removed)")
+                        print(f"({len(removed_indexes)} removed)", end=". ")
 
                     # print this so that there will be a new line
                     else :
