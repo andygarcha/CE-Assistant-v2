@@ -427,9 +427,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             for i in range(5) :
                 
                 selected_category = random.choice(valid_categories)
+                rolled_temp : list[str] = []
                 
                 for j in range(5) : #roll 5 games from the selected category
-                    rolled_temp : list[str] = []
                     rolled_temp.append(await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=10,
@@ -451,8 +451,10 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     #remove from valid categories and reroll (without incrementing 'i')
                     valid_categories.remove(selected_category)
                     selected_category = random.choice(valid_categories)
+
+                    rolled_temp : list[str] = []
+                    
                     for j in range(5) :
-                        rolled_temp : list[str] = []
                         rolled_temp.append(await hm.get_rollable_game(
                             database_name=database_name,
                             completion_limit=10,
@@ -464,6 +466,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                             price_restriction=price_restriction,
                             hours_restriction=hours_restriction
                         ))
+                        
                     if None in rolled_temp: #not enough rolls in two categories
                         return await interaction.followup.send(
                             f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. " 
