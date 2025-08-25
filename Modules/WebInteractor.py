@@ -539,7 +539,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
             exceptions : list[UpdateMessage] = []
 
             for i, new_game in enumerate(new_games) :
-                if i % 50 == 0 : print(f"game {i} of {len(new_games)}")
+                if i % 50 == 0 : print(f"game {i} of {len(new_games)}", end="... ")
 
                 # grab the old game
                 old_game = await Mongo_Reader.get_game(new_game.ce_id)
