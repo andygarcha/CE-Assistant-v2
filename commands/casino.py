@@ -496,12 +496,18 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll = user.get_waiting_roll("Two Week T2 Streak")
                 if past_roll.ready_for_next() :
+                    valid_categories = list(get_args(hm.CATEGORIES))
+                    for game in database_name:
+                        if game.ce_id in past_roll.games:
+                            valid_categories.remove(game.category)
+
                     new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=40,
                         price_limit=20,
                         tier_number=2,
                         user=user,
+                        category=valid_categories,
                         already_rolled_games=past_roll.games,
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction
@@ -515,7 +521,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
                         f"It is due on <t:{past_roll.due_time}>. "
-                        f"Run /check-rolls  to see more information."
+                        f"Run /check-rolls to see more information."
                     )
                 else :
                     return await interaction.followup.send(
@@ -541,12 +547,17 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 # if the user is currently working 
                 past_roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
                 if past_roll.ready_for_next() :
+                    valid_categories = list(get_args(hm.CATEGORIES))
+                    for game in database_name:
+                        if game.ce_id in past_roll.games:
+                            valid_categories.remove(game.category)
                     new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
                         completion_limit=40,
                         price_limit=20,
                         tier_number=2,
                         user=user,
+                        category=valid_categories,
                         already_rolled_games=past_roll.games,
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction
