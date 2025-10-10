@@ -275,6 +275,7 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     else :
         game_removed = game_removed.name_with_link()
     roll.set_status('waiting')
+    roll.due_time = None
 
     user.update_current_roll(roll)
 
