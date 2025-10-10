@@ -56,7 +56,11 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
                      current : bool = False, completed : bool = False, pending : bool = False) :
         await clear_roll(interaction, member, roll_name, current, completed, pending)
 
-    
+    @tree.command(name="clear-roll-portion", description="Clear the most recently rolled game in a multi-stage roll", guild=guild)
+    async def clear_roll_portion_command(interaction: discord.Interaction, member: discord.Member,
+                                         roll_name: hm.ALL_ROLL_EVENT_NAMES):
+        await clear_roll_portion(interaction, member, roll_name)
+
     # ---- force add command ----
     @tree.command(name='force-add', description="Force add a roll to a user's completed rolls section.", guild=guild)
     async def force_add_command(interaction : discord.Interaction, member : discord.Member, roll_name : hm.ALL_ROLL_EVENT_NAMES) :
@@ -251,6 +255,33 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
 
     await Mongo_Reader.dump_user(user)
     return await interaction.followup.send("Done!")
+
+
+async def clear_roll_portion(interaction: discord.Interaction, member: discord.Member,
+                             roll_name: hm.ALL_ROLL_EVENT_NAMES):
+    await interaction.response.defer()
+    
+    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
+    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /clear-roll_recent, "
+                     + f"params: member=<@{member.id}>, roll_name={roll_name}")
+    
+    user = await Mongo_Reader.get_user(member.id, use_discord_id=True)
+
+    roll = user.get_current_roll(roll_name)
+    game_removed = roll.remove_game_last()
+    game_removed = await Mongo_Reader.get_game(game_removed)
+    if game_removed is None :
+        game_removed = "<error, removed game was 'null'>"
+    else :
+        game_removed = game_removed.name_with_link()
+    roll.set_status('waiting')
+
+    user.update_current_roll(roll)
+
+    await Mongo_Reader.dump_user(user)
+    return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}." +
+                                           f"Status set to 'waiting'.")
+
 
 
 

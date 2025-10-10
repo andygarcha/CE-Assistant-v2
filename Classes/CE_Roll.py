@@ -275,6 +275,10 @@ class CERoll:
         to this roll's games array."""
         self._games.append(game)
 
+    def remove_game_last(self) -> str:
+        "Removes the most recently rolled game. Returns that game's ID."
+        return self._games.pop()
+
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
