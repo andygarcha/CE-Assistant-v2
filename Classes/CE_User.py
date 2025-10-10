@@ -242,7 +242,6 @@ class CEUser:
         if type(roll) is not CERoll :
             raise TypeError(f"Argument 'roll' is of type {type(roll)}. User: {self.ce_id}")
         for i, event in enumerate(self.rolls) :
-            print(event.to_dict())
             if event.roll_name == roll.roll_name and event.status == "current" :
                 self._rolls[i] = roll
                 return True
