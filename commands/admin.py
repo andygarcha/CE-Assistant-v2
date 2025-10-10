@@ -268,6 +268,8 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     user = await Mongo_Reader.get_user(member.id, use_discord_id=True)
 
     roll = user.get_current_roll(roll_name)
+    if roll is None:
+        return await interaction.followup.send("User does not have roll that is current")
     game_removed = roll.remove_game_last()
     game_removed = await Mongo_Reader.get_game(game_removed)
     if game_removed is None :
@@ -277,7 +279,12 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     roll.set_status('waiting')
     roll.due_time = None
 
-    await Mongo_Reader.dump_user(user)
+    print(roll.to_dict())
+
+    for roll in user.rolls:
+        print (roll.to_dict())
+
+    #await Mongo_Reader.dump_user(user)
     return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll." +
                                            f"Status set to 'waiting'.")
 
