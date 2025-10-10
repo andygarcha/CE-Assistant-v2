@@ -285,7 +285,7 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
         print (roll.to_dict())
 
     await Mongo_Reader.dump_user(user)
-    return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll." +
+    return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. " +
                                            f"Status set to 'waiting'.")
 
 
