@@ -241,6 +241,7 @@ class CEUser:
         "Replaces the user's roll with a new one. Returns true if it works, false if not."
         if type(roll) is not CERoll :
             raise TypeError(f"Argument 'roll' is of type {type(roll)}. User: {self.ce_id}")
+        print(self.rolls)
         for i, event in enumerate(self.rolls) :
             if event.roll_name == roll.roll_name and event.status == "current" :
                 self._rolls[i] = roll
