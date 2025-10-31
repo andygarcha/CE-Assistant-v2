@@ -24,6 +24,14 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     @app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
     async def profile_command(interaction : discord.Interaction, user : discord.User = None) :
         await profile(interaction, user) 
+        pass
+
+    @tree.command(name="set-color", description="Set your color to the colors you've unlocked!", guild=guild)
+    async def set_color_command(interaction: discord.Interaction):
+        await set_color(interaction)
+        pass
+
+
     pass
 
 
@@ -135,4 +143,86 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
 
     # and send
     return await interaction.followup.send(view=view, embed=summary_embed)
+
+async def set_color(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    # grab the user data
+    user_ce = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    user_rank_num = user_ce.rank_num()
+
+    # the actual assigning role function
+    async def assign_role(interaction: discord.Interaction, role: discord.Role) :
+        # check to see if they already have the color
+        if(role in interaction.user.roles) : 
+            return await interaction.response.edit_message(
+                embed = discord.Embed(
+                    title = f"You already have the {role.name} role!", 
+                    color = role.color
+                )
+            )
+
+        # remove all colors
+        for r in ROLES: 
+            if r in interaction.user.roles: 
+                await interaction.user.remove_roles(r) 
+
+        # add correct color
+        await interaction.user.add_roles(role)
+        
+        # update embed
+        return await interaction.response.edit_message(
+            content = f"You have been set to the {role.name} role!"
+        )
+    
+    # Keep these in order of lowest rank to highest rank
+    COLORS = [
+        "Gray",     # E Rank
+        "Brown",    # D Rank
+        "Green",    # C Rank
+        "Blue",     # B Rank
+        "Purple",   # A Rank
+        "Orange",   # S Rank
+        "Yellow",   # SS Rank
+        "Red",      # SSS Rank
+        "Black"     # EX Rank
+    ]
+    # These should be in order of highest to lowest
+    EMOJIS = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
+    ROLES: list[discord.Role] = [
+        discord.utils.get(interaction.guild.roles, name=i) for i in COLORS
+    ]
+
+    # instantiate the view
+    view = discord.ui.View()
+
+    # for each role, create a button and make sure each person can only do what theyre allowed
+    for i, role in enumerate(ROLES):
+        _button = discord.ui.Button(emoji=EMOJIS[i], disabled=(user_rank_num < i))
+        async def callback(interaction, role=role):
+            await assign_role(interaction, role)
+        _button.callback = callback
+        view.add_item(_button)
+    
+    # account for the clear button
+    async def clear_callback(interaction: discord.Interaction) :
+        for role in ROLES :
+            if role in interaction.user.roles : 
+                await interaction.user.remove_roles(role)
+        return await interaction.response.edit_message(
+            content = "Colors cleared! You are now set to your default role."
+        )
+    
+    # create and add the clear button
+    clear_button = discord.ui.Button(label="🚫")
+    clear_button.callback = clear_callback
+    view.add_item(clear_button)
+
+    # send the final message
+    await interaction.followup.send(
+        view = view,
+        ephemeral=True,
+        content = ("Select a color! (Note: the colors outside of your Rank are disabled). " +
+                   "Complete more objectives to unlock more colors!")
+    )
 
