@@ -29,10 +29,13 @@ class CEGame:
     
     def get_total_points(self) -> int :
         """Returns the total number of points this game has.\n
-        NOTE: This does not include uncleared points, but includes Primary and Secondary!"""
+        NOTE: This does include uncleared points, as well as Primary and Secondary!"""
+
+        SKIP_UNCLEAREDS: bool = True
+
         total_points = 0
         for objective in self.all_objectives :
-            if objective.is_uncleared() : continue
+            if objective.is_uncleared() and not SKIP_UNCLEAREDS : continue
             total_points += objective.point_value
         
         return total_points
