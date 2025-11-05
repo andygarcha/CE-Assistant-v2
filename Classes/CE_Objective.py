@@ -113,7 +113,11 @@ class CEObjective:
     
     def is_uncleared(self) -> bool :
         """Returns true if this game is UNCLEARED."""
-        return self._point_value == 1
+        return (
+            self._point_value == 1
+            or "(UNCLEARED)" in self.name 
+            or "(UNVALUED)" in self.name 
+        )
     
     def equals(self, new_objective : 'CEObjective') -> bool :
         "Returns true if the two objectives have the same values."
