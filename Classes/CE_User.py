@@ -143,9 +143,13 @@ class CEUser:
             raise ValueError("Argument 'database_name' contains None.")
         
         completed_games : list[CEGame] = []
-        for game in database_name :
-            for user_game in self.owned_games :
-                if game.ce_id == user_game.ce_id and game.get_total_points() > 0 and game.get_total_points() == user_game.get_user_points() :
+        for game in database_name:
+            for user_game in self.owned_games:
+                if (
+                    game.ce_id == user_game.ce_id 
+                    and game.get_total_points() > 0 
+                    and game.get_total_points() == user_game.get_user_points()
+                    ):
                     completed_games.append(game)
         return completed_games
     
