@@ -798,24 +798,29 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                 completed_before = True
         if completed_before : continue
         
-        print(f"new completed game: {game.game_name}")
-        updates.append(UpdateMessage(
-            location="userlog",
-            message=(f"Wow {user.mention()} ({user.display_name})! You've completed {game.game_name}, " +
-                    f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
-        ))
+        #print(f"new completed game: {game.game_name}")
+        if not user.on_mutelist():
+            updates.append(UpdateMessage(
+                location="userlog",
+                message=(f"Wow {user.mention()} ({user.display_name})! You've completed {game.game_name}, " +
+                        f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
+            ))
 
     # rank update
-    if new_rank != original_rank and new_points > original_points :
-        updates.append(UpdateMessage(
-            location="userlog",
-            message=(f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank " +
-                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
-            ))
+    if new_rank != original_rank and new_points > original_points:
+        if not user.on_mutelist():
+            updates.append(UpdateMessage(
+                location="userlog",
+                message=(f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank " +
+                        f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
+                ))
 
     # check completion count
     COMPLETION_INCREMENT = 25
-    if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
+    if ((int(len(original_completed_games) / COMPLETION_INCREMENT) 
+        != int(len(new_completed_games) / COMPLETION_INCREMENT))
+        and not user.on_mutelist()):
+
         updates.append(UpdateMessage(
             location="userlog",
             message=(f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of " +
