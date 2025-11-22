@@ -177,7 +177,7 @@ class CEUser:
     def past_rolls(self) -> list[CERoll] :
         return [roll for roll in self.rolls if (roll.status == "won" or roll.status == "failed")]
     
-    def on_banlist(self) -> bool:
+    def on_mutelist(self) -> bool:
         """Returns true if the user is on the banlist. Messages about this user should not
         be sent in #user-log or #casino-log."""
         return self.ce_id in MUTELIST_CEIDS
