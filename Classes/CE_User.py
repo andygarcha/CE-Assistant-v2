@@ -1,5 +1,5 @@
 import datetime
-from typing import get_args
+from typing import Literal, get_args
 import aiohttp
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
@@ -8,6 +8,9 @@ from Classes.CE_User_Game import CEUserGame
 import Modules.hm as hm
 from Classes.OtherClasses import CRData
 
+MUTELIST_CEIDS = [
+    "e790e8f0-f67e-4646-8fa9-de436b2c8d5e" # athenavenny
+]
 
 class CEUser:
     """Class for the Challenge Enthusiast user."""
@@ -173,6 +176,11 @@ class CEUser:
     @property
     def past_rolls(self) -> list[CERoll] :
         return [roll for roll in self.rolls if (roll.status == "won" or roll.status == "failed")]
+    
+    def on_banlist(self) -> bool:
+        """Returns true if the user is on the banlist. Messages about this user should not
+        be sent in #user-log or #casino-log."""
+        return self.ce_id in MUTELIST_CEIDS
     
 
     # ----------- setters -----------
