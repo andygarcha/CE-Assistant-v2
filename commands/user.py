@@ -240,6 +240,8 @@ async def set_color(interaction: discord.Interaction):
 async def show_summary(interaction: discord.Interaction, user: discord.User = None):
     await interaction.response.defer()
 
+    if user is None: user = interaction.user
+
     try: 
         user_ce = await Mongo_Reader.get_user(user.id, use_discord_id=True)
     except ValueError:
