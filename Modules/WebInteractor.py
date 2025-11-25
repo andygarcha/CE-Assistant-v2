@@ -585,6 +585,8 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
 
     user.owned_games = site_data.owned_games
     user._steam_id = site_data._steam_id
+    user._avatar = site_data.avatar
+    user._display_name = site_data.display_name
 
     new_points = user.get_total_points()
     new_completed_games = user.get_completed_games_2(new_database_name)
