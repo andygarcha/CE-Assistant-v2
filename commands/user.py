@@ -20,7 +20,11 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
         await register(interaction, ce_id)
         pass
 
-    @tree.command(name="profile", description="See information about you or anyone else in Challenge Enthusiasts!", guild=guild) 
+    @tree.command(
+            name="profile", 
+            description="See information about you or anyone else in Challenge Enthusiasts!", 
+            guild=guild
+            ) 
     @app_commands.describe(user="The user you'd like to see information about (leave blank to see yourself!)")
     async def profile_command(interaction : discord.Interaction, user : discord.User = None) :
         await profile(interaction, user) 
@@ -31,6 +35,10 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
         await set_color(interaction)
         pass
 
+    @tree.command(name='show-summary', description="Show the CE Summary links for all available years of a user", guild=guild)
+    async def show_summary_command(interaction: discord.Interaction, user: discord.User = None):
+        await show_summary(interaction, user)
+        pass
 
     pass
 
@@ -226,3 +234,24 @@ async def set_color(interaction: discord.Interaction):
                    "Complete more objectives to unlock more colors!")
     )
 
+
+
+
+async def show_summary(interaction: discord.Interaction, user: discord.User = None):
+    await interaction.response.defer()
+
+    try: 
+        user_ce = await Mongo_Reader.get_user(user.id, use_discord_id=True)
+    except ValueError:
+        return await interaction.followup.send(
+            "The user you requested is not registered with the bot."
+        )
+    
+    user_api = await user_ce.get_api_user()
+    join_year = int(user_api.join_date()[0:4])
+    
+    text = f"**CE Summary for user** {user_ce.display_name_with_link()}:\n\n"
+    for year in range(join_year, hm.current_year_num() + 1):
+        text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
+    
+    return await interaction.followup.send(text)
