@@ -256,4 +256,4 @@ async def show_summary(interaction: discord.Interaction, user: discord.User = No
     for year in range(join_year, hm.current_year_num() + 1):
         text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
     
-    return await interaction.followup.send(text)
+    return await interaction.followup.send(text, suppress_embeds=True)
