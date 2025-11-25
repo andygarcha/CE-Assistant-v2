@@ -51,6 +51,9 @@ def current_month_num() -> int :
     "The number of the current month."
     return datetime.datetime.now().month
 
+def current_year_num() -> int:
+    return datetime.datetime.now().year
+
 def previous_month_str() -> str :
     "Returns the name of the previous month."
     current_month_num = datetime.datetime.now().month
