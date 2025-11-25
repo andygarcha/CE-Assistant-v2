@@ -111,220 +111,36 @@ def check_category_roles(old_games : list[CEUserGame], new_games : list[CEUserGa
     for point_index, point_value in enumerate([500, 1000, 2000]) :
         for i, category in enumerate(list(typing.get_args(hm.CATEGORIES))) :
             if old_categories[i] < point_value and new_categories[i] >= point_value :
-                updates.append(UpdateMessage(
-                    location="userlog",
-                    message=(f"Congratulations to {user.mention()} ({user.display_name})! " +
-                             f"You have unlocked {category} {CATEGORY_ROLE_NAMES[point_index]} ({point_value}+ points)")
-                ))
+                if not user.on_mutelist():
+                    updates.append(UpdateMessage(
+                        location="userlog",
+                        message=(f"Congratulations to {user.mention()} ({user.display_name})! " +
+                                f"You have unlocked {category} {CATEGORY_ROLE_NAMES[point_index]} ({point_value}+ points)")
+                    ))
+                else:
+                    updates.append(UpdateMessage(
+                        location="privatelog",
+                        message=f"🤫 Muted user {user.display_name_with_link()} has unlocked {category} {CATEGORY_ROLE_NAMES[point_index]}"
+                    ))
     # tiers
     for i in range(1, 6) : # 1, 2, 3, 4, 5
         #if    oldt1s       < 500   and    newt1s        >= 500
         if old_tiers[i - 1] < i*500 and new_tiers[i - 1] >= i * 500 :
-            updates.append(UpdateMessage(
-                location="userlog",
-                message=(
-                    f"Congratulations to {user.mention()} ({user.display_name})! " +
-                    f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
-                )
-            ))
+            if not user.on_mutelist():
+                updates.append(UpdateMessage(
+                    location="userlog",
+                    message=(
+                        f"Congratulations to {user.mention()} ({user.display_name})! " +
+                        f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
+                    )
+                ))
+            else:
+                updates.append(UpdateMessage(
+                    location="privatelog",
+                    message=f"🤫 Muted user {user.display_name_with_link()} has unlocked Tier {i} Enthusiast"
+                ))
 
     return updates
-
-
-
-#  _    _    _____   ______   _____      _    _   _____    _____               _______   ______ 
-# | |  | |  / ____| |  ____| |  __ \    | |  | | |  __ \  |  __ \      /\     |__   __| |  ____|
-# | |  | | | (___   | |__    | |__) |   | |  | | | |__) | | |  | |    /  \       | |    | |__   
-# | |  | |  \___ \  |  __|   |  _  /    | |  | | |  ___/  | |  | |   / /\ \      | |    |  __|  
-# | |__| |  ____) | | |____  | | \ \    | |__| | | |      | |__| |  / ____ \     | |    | |____ 
-#  \____/  |_____/  |______| |_|  \_\    \____/  |_|      |_____/  /_/    \_\    |_|    |______|
-
-
-def user_update(user : CEUser, site_data : CEUser, old_database_name : list[CEGame], 
-                new_database_name : list[CEAPIGame], database_user : list[CEUser],
-                guild : discord.Guild) -> tuple[list[UpdateMessage], CEUser, list[CEUser]] :
-    """Takes in a user and updates it, and returns a list of things to send."""
-    updates : list[UpdateMessage] = []
-    # if a partner needs to be returned, it'll be placed here
-    partners : list[CEUser] = []
-
-    original_points = user.get_total_points()
-    # NOTE: we use old database name here for a specific reason. Say there was a T5,
-    #       Celeste for example. if celeste goes from 250 points to 251 points,
-    #       passing the new database would mark celeste as "incomplete" before
-    #       and "complete" now, and thus every user who has completed celeste
-    #       will get a message that says they've recompleted the game.
-    #       by passing in the old database name, we can see that the game was complete
-    #       before, and therefore a message won't be sent.
-    original_completed_games = user.get_completed_games_2(old_database_name)
-    original_rank = user.get_rank()
-    original_games = user.owned_games
-
-    user.owned_games = site_data.owned_games
-
-    new_points = user.get_total_points()
-    new_completed_games = user.get_completed_games_2(new_database_name)
-    new_rank = user.get_rank()
-    new_games = user.owned_games
-
-    NEW_MESSAGES = False
-
-    # get the role messages
-    updates += (check_category_roles(original_games, new_games, new_database_name, user))
-
-    # discord user
-    if NEW_MESSAGES : discord_user = guild.get_member(user.discord_id)
-
-    # search for newly completed games
-    for game in new_completed_games :
-
-        # if game is too low anyway, skip it
-        TIER_MINIMUM = 4
-        """int: The minimum tier for a game to be reported."""
-        
-        if not game.get_tier_num() >= TIER_MINIMUM : continue
-
-        # check to see if it was completed before
-        completed_before = False
-        for old_game in original_completed_games :
-            # it was completed before, so skip this
-            if game.ce_id == old_game.ce_id : 
-                completed_before = True
-        if completed_before : continue
-        
-        if NEW_MESSAGES : 
-            updates.append(UpdateMessage(
-                location="userlog",
-                message=(f"Wow {discord_user.global_name} ({user.mention()})! You've completed {game.game_name}, " + 
-                        f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
-            ))
-        else : 
-            updates.append(UpdateMessage(
-                location="userlog",
-                message=(f"Wow {user.mention()}! You've completed {game.game_name}, " +
-                        f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
-            ))
-
-    # rank update
-    if new_rank != original_rank and new_points > original_points :
-        if NEW_MESSAGES : updates.append(UpdateMessage(
-            location="userlog",
-            message=(f"Congrats to {discord_user.global_name} {user.mention()} for ranking up from Rank " +
-                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
-            ))
-        else : updates.append(UpdateMessage(
-            location="userlog",
-            message=(f"Congrats to {user.mention()} for ranking up from Rank " +
-                     f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
-            ))
-
-    # check completion count
-    COMPLETION_INCREMENT = 25
-    
-    if (len(new_completed_games) > len(original_completed_games)) and (len(new_completed_games) >= COMPLETION_INCREMENT): #prevent 'congrats for passing 0', and user losing completions
-        if int(len(original_completed_games) / COMPLETION_INCREMENT) != int(len(new_completed_games) / COMPLETION_INCREMENT) :
-            if NEW_MESSAGES : 
-                updates.append(UpdateMessage(
-                    location="userlog",
-                    message=(f"Amazing! {discord_user} ({user.mention()}) has passed the milestone of " +
-                            f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
-                ))
-            else : 
-                updates.append(UpdateMessage(
-                    location="userlog",
-                    message=(f"Amazing! {user.mention()} has passed the milestone of " +
-                            f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
-                ))
-    
-    # check pendings
-    for i, roll in enumerate(user.rolls) :
-        if roll.status == "pending" and roll.due_time <= hm.get_unix("now") :
-            del user._rolls[i]
-
-    # check rolls
-    for index, roll in enumerate(user.current_rolls) :
-        # step 0: check multistage rolls
-        # if the roll is multi stage AND its not in the final stage...
-        # note: skip this if we're in the final stage because
-        #       if it's in its final stage we can finish it out,
-        #       this if statement just preps for the next one.
-        if (roll.is_multi_stage() and not roll.in_final_stage() and 
-            (roll.is_won(database_name=new_database_name, database_user=database_user))) :
-            # if we've already hit this roll before, keep moving
-            if roll.due_time == None : continue
-
-            # add the update message
-            updates.append(UpdateMessage(
-                location="casino",
-                message=(
-                    f"{user.mention()}, you've finished your current stage in {roll.roll_name}. " +
-                    f"To roll your next stage, type `/solo-roll {roll.roll_name}` in <#{hm.CASINO_ID}>."
-                )
-            ))
-
-            # and kill the due time
-            roll.due_time = None
-
-        elif roll.is_won(database_name=new_database_name, database_user=database_user) :
-            # add the update message
-            updates.append(UpdateMessage(
-                location="casinolog",
-                message=(
-                    roll.get_win_message(database_name=new_database_name, database_user=database_user)
-                )
-            ))
-            # set the completed time to now
-            roll.completed_time = hm.get_unix("now")
-
-            # add the object to completed rolls, and
-            # remove it from current
-            user.add_completed_roll(roll)
-            user.remove_current_roll(roll.roll_name)
-
-            if roll.is_co_op() :
-                # get the partner and their roll
-                partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
-                partner_roll = partner.get_current_roll(roll.roll_name)
-
-                # set the partner roll's winner tag
-                if roll.is_pvp() : partner_roll.winner = not roll.winner
-
-                # remove their current roll
-                partner.remove_current_roll(partner_roll.roll_name)
-
-                # set the completion time and add it to the completed rolls
-                partner_roll.completed_time = hm.get_unix('now')
-                partner.add_completed_roll(partner_roll)
-
-                # and append it to partners
-                partners.append(partner)
-
-        
-        elif roll.is_expired() :
-            # add the update message
-            updates.append(UpdateMessage(
-                location="casino",
-                message=(
-                    roll.get_fail_message(database_name=new_database_name, database_user=database_user)
-                )
-            ))
-            
-            # remove this roll from current rolls
-            del user.current_rolls[index]
-            if roll.is_co_op() :
-                partner = hm.get_item_from_list(roll.partner_ce_id, database_user)
-                partner.remove_current_roll(roll.roll_name)
-                partners.append(partner)
-
-
-            # and add a cooldown
-            user.add_cooldown(CECooldown(
-                roll_name=roll.roll_name,
-                end_time=roll.calculate_cooldown_date(database_name=new_database_name)
-            ))
-    
-    return (updates, user, partners)
-
 
 #   _____   ______   _______     _____   __  __               _____   ______ 
 #  / ____| |  ____| |__   __|   |_   _| |  \/  |     /\      / ____| |  ____|
@@ -732,9 +548,6 @@ async def get_recent_curated():
 #    | |    | |  | | | | \ \  | |____   / ____ \  | |__| |   | |__| |  / ____ \  | |  | | | |____ 
 #    |_|    |_|  |_| |_|  \_\ |______| /_/    \_\ |_____/     \_____| /_/    \_\ |_|  |_| |______|
 
-async def thread_game_update(old_games : list[CEGame], new_games : list[CEAPIGame]) :
-    "Threaded."
-    return await Discord_Helper.game_additions_updates(old_games=old_games, new_games=new_games)
 
 async def thread_single_game_update(old_game : CEGame | None, new_game : CEGame | None, driver) :
     "Threaded."
@@ -805,6 +618,10 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                 message=(f"Wow {user.mention()} ({user.display_name})! You've completed {game.game_name}, " +
                         f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}!")
             ))
+        else:
+            updates.append(UpdateMessage(
+            location="privatelog",
+            message=f"🤫 Muted user {user.display_name_with_link()} completed {game.game_name}."))
 
     # rank update
     if new_rank != original_rank and new_points > original_points:
@@ -814,18 +631,28 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                 message=(f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank " +
                         f"{hm.get_emoji(original_rank)} to Rank {hm.get_emoji(new_rank)}!")
                 ))
+        else:
+            updates.append(UpdateMessage(
+                location="privatelog",
+                message=f"🤫 Muted user {user.display_name_with_link()} ranked up from {original_rank} to {new_rank}."
+            ))
 
     # check completion count
     COMPLETION_INCREMENT = 25
-    if ((int(len(original_completed_games) / COMPLETION_INCREMENT) 
-        != int(len(new_completed_games) / COMPLETION_INCREMENT))
-        and not user.on_mutelist()):
-
-        updates.append(UpdateMessage(
-            location="userlog",
-            message=(f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of " +
-                    f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
-        ))
+    if (int(len(original_completed_games) / COMPLETION_INCREMENT) 
+        != int(len(new_completed_games) / COMPLETION_INCREMENT)):
+        if not user.on_mutelist():
+            updates.append(UpdateMessage(
+                location="userlog",
+                message=(f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of " +
+                        f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!")
+            ))
+        else:
+            updates.append(UpdateMessage(
+                location="privatelog",
+                message=(f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of" + 
+                         f"{int(len(new_completed_games) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT}")
+            ))
     
     # check pendings
     for i, roll in enumerate(user.rolls[:]) :
@@ -926,60 +753,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
 
     return updates
 
-    
 
-@to_thread
-def thread_user_update(old_data : list[CEUser], new_data : list[CEUser], old_database_name : list[CEGame],
-                       new_database_name : list[CEAPIGame], guild : discord.Guild
-                       ) -> tuple[list[UpdateMessage], list[CEUser]] :
-    """Update the users."""
-    CONSOLE_UPDATES = False
-    if CONSOLE_UPDATES : print('thread began')
-    messages : list[UpdateMessage] = []
-    users : list[CEUser] = []
-    for old_user in old_data :
-        if CONSOLE_UPDATES : print('before grabbing user')
-        new_user = hm.get_item_from_list(old_user.ce_id, new_data)
-        if CONSOLE_UPDATES : print(f'updating user {old_user.ce_id}')
-
-        # if the old user isn't on the site, alert someone!
-        if new_user == None : 
-            messages.append(UpdateMessage(
-                location="privatelog",
-                message=f"user not found in scrape: {old_user}"
-            ))
-            continue
-        
-        if CONSOLE_UPDATES : print('update beginning...')
-        user_updates = user_update(
-            user=old_user,
-            site_data=new_user,
-            old_database_name=old_database_name,
-            new_database_name=new_database_name,
-            database_user=old_data,
-            guild=guild
-        )
-        if CONSOLE_UPDATES : print('update gotten')
-
-        messages += user_updates[0]
-        users.append(user_updates[1])
-        partners : list[CEUser] = user_updates[2]
-
-        # if some partners were sent back up, replace them!
-        for partner in partners :
-            index = hm.get_index_from_list(partner.ce_id, old_data)
-            old_data[index] = partner
-
-    return (messages, users)
-    """
-    how the fuck does this work?
-    andy and brooks enter winner takes all
-    andy wins
-    andy's code runs, a message is sent that his thing is completed, moves from current to completed
-    keep iterating...
-    get to brooks
-    sees he loses
-    """
 
 
 
