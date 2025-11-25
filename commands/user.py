@@ -250,7 +250,7 @@ async def show_summary(interaction: discord.Interaction, user: discord.User = No
         )
     
     user_api = await user_ce.get_api_user()
-    join_year = int(user_api.join_date()[0:4])
+    join_year = int(user_api.join_date[0:4])
     
     text = f"**CE Summary for user** {user_ce.display_name_with_link()}:\n\n"
     for year in range(join_year, hm.current_year_num() + 1):
