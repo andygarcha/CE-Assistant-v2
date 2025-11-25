@@ -39,6 +39,9 @@ class CEUser:
         "Returns the display name of this user."
         return self._display_name
     
+    def display_name_with_link(self):
+        return f"[{self.display_name}](https://cedb.me/user/{self.ce_id})"
+    
     def set_display_name(self, display_name : str) :
         "Setter for display name."
         self._display_name = display_name
@@ -599,6 +602,11 @@ class CEAPIUser(CEUser) :
     def is_admin(self) -> bool :
         "Returns true if this user is an admin."
         return self.full_data['isAdmin']
+    
+    @property
+    def join_date(self) -> str:
+        "Returns the string of when this user was created. Example: 2022-08-09T03:11:22.000Z"
+        return self.full_data['createdAt']
     
     @property
     def api_user_objectives(self) -> list :
