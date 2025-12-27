@@ -108,7 +108,28 @@ async def get_rollable_game(
             "Incorrect tier."
             if VIEW_CONSOLE_MESSAGES: print("Incorrect tier.")
             continue
+
+        if game.ce_id in banned_games :
+            "This game is in the Banned Games section."
+            if VIEW_CONSOLE_MESSAGES: print("Game is banned.")
+            continue
         
+        if has_points_restriction :
+            "If the user isn't allowed to have points in the game..."
+            if type(user) is list :
+                "One of the users passed has points in the game."
+                must_continue = False
+                for u in user :
+                    if u.has_points(game.ce_id) : 
+                        if VIEW_CONSOLE_MESSAGES: print("One of the passed users has points in the game.")
+                        must_continue = True
+                if must_continue : continue
+            else :
+                "The user passed has points in the game."
+                if user.has_points(game.ce_id) : 
+                    if VIEW_CONSOLE_MESSAGES : print("The user has points in this game.")
+                    continue
+                    
         if (type(user) is list) :
             "If there's more than one user..."
             must_continue = False
@@ -158,27 +179,6 @@ async def get_rollable_game(
             "The SteamHunters median-completion-time is too high."
             if VIEW_CONSOLE_MESSAGES: print(f"The steamhunters median completion time was {sh_data}")
             continue
-
-        if game.ce_id in banned_games :
-            "This game is in the Banned Games section."
-            if VIEW_CONSOLE_MESSAGES: print("Game is banned.")
-            continue
-        
-        if has_points_restriction :
-            "If the user isn't allowed to have points in the game..."
-            if type(user) is list :
-                "One of the users passed has points in the game."
-                must_continue = False
-                for u in user :
-                    if u.has_points(game.ce_id) : 
-                        if VIEW_CONSOLE_MESSAGES: print("One of the passed users has points in the game.")
-                        must_continue = True
-                if must_continue : continue
-            else :
-                "The user passed has points in the game."
-                if user.has_points(game.ce_id) : 
-                    if VIEW_CONSOLE_MESSAGES : print("The user has points in this game.")
-                    continue
 
         if VIEW_CONSOLE_MESSAGES : print("Passed!!!")
         return game.ce_id
