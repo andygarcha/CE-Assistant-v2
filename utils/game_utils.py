@@ -1,5 +1,5 @@
 import random
-from typing import Literal
+from typing import Literal, get_args
 
 import aiohttp
 
@@ -23,16 +23,17 @@ def get_banned_games() -> list[str] :
 
 
 async def get_rollable_game(
-        database_name : list,
-        completion_limit : int,
-        price_limit : int,
-        tier_number : int,
-        user,
-        category : str | list[str] = None,
-        already_rolled_games : list = [],
-        has_points_restriction : bool = False,
-        price_restriction : bool = True,
-        hours_restriction : bool = True
+    database_name : list,
+    completion_limit : int,
+    price_limit : int,
+    tier_number : int,
+    user,
+    category : str | list[str] = None,
+    already_rolled_games : list = [],
+    has_points_restriction : bool = False,
+    price_restriction : bool = True,
+    hours_restriction : bool = True,
+    database_tier: dict = None
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -185,7 +186,45 @@ async def get_rollable_game(
     
     return None
 
+async def get_rollable_game_v2(
+    database_name: list,
+    completion_limit : int,
+    price_limit : int,
+    tier_number : int,
+    user,
+    category : str | list[str] = None,
+    already_rolled_games : list = [],
+    has_points_restriction : bool = False,
+    price_restriction : bool = True,
+    hours_restriction : bool = True,
+    database_tier: dict = None
+):
+    """Takes in a slew of parameters and returns a `str` of 
+    Challenge Enthusiast ID that match the criteria.
+    """
+    from Classes.CE_Game import CEGame
+    from Classes.CE_User import CEUser
 
+    # avoid circular imports
+    database_name : list[CEGame] = database_name
+    user : CEUser | list[CEUser] = user
+
+    # TODO: fix the problem with multiple categories!
+    database_tier_games = []
+    if category != None and tier_number != None:
+        database_tier_games = database_tier[str(tier_number)][category]
+    elif category != None and tier_number == None:
+        for tn in range(1, 8):
+            database_tier_games.extend(database_tier[str(tn)][category])
+    elif category == None and tier_number != None:
+        for c in get_args(CATEGORIES):
+            database_tier_games.extend(database_tier[str(tier_number)][c])
+    else:
+        for tn in range(1, 8):
+            for c in get_args(CATEGORIES):
+                database_tier_games.extend(database_tier[str(tn)][c])
+    
+    random.shuffle(database_tier_games)
 
 
 async def name_to_steamid(name : str) -> str :
