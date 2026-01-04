@@ -81,6 +81,15 @@ class CEGame:
         """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
         return self._category
     
+    def category_num(self) -> int:
+        match(self.category):
+            case "Action": return 1
+            case "Arcade": return 2
+            case "Bullet Hell": return 3
+            case "First-Person": return 4
+            case "Platformer": return 5
+            case "Strategy": return 6
+    
     @property
     def all_objectives(self) -> list[CEObjective] :
         """Returns the array of all `CEObjectives` in this game."""
