@@ -16,6 +16,7 @@ from Exceptions.FailedScrapeException import FailedScrapeException
 from Modules import CEAPIReader, Discord_Helper, Mongo_Reader
 from Modules.Screenshot import Screenshot
 import Modules.hm as hm
+from web_scraper import scraper
 
 
 # selenium and beautiful soup stuff
@@ -506,6 +507,10 @@ async def master_loop(client : discord.Client, guild_id : int) :
         
     
     else : print('no new curator updates.')
+
+    # ---- database tier ----
+    database_tier = scraper.generate_database_tier(new_games)
+    await Mongo_Reader.dump_database_tier(database_tier)
     
     print('---- loop complete. ----')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")

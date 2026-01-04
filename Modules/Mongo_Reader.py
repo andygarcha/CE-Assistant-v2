@@ -347,6 +347,28 @@ async def get_curator_ids():
     db = await collection.find_one({"curated": {"$exists": True}})
     return db['curated']
 
+async def get_database_tier():
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    db = await collection.find_one({"database_tier" : {"$exists": True}})
+    return db['database_tier']
+    
+async def dump_database_tier(database_tier: dict) :
+    "Dumps the curator count."
+    collection = _mongo_client['database_name'][V3MISCTITLE]
+
+    result = await collection.update_one(
+        {"database_tier": {"$exists": True}},
+        {"$set": {"database_tier": database_tier}}
+    )
+
+    # Check if the document was found and updated
+    if result.matched_count > 0:
+        print("Database Tier document updated successfully.")
+    else:
+        print("No document with 'database_tier' found.")
+    pass
+
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
