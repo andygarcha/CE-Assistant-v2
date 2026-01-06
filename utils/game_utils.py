@@ -22,7 +22,7 @@ def get_banned_games() -> list[str] :
 
 
 
-async def get_rollable_game(
+async def get_rollable_game_v1(
     database_name : list,
     completion_limit : int,
     price_limit : int,
@@ -39,6 +39,8 @@ async def get_rollable_game(
     """
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
+
+    print("THIS FUNCTION IS SUPER OLD PLEASE DO NOT USE IT!!!")
 
     # avoid circular imports
     database_name : list[CEGame] = database_name
@@ -185,8 +187,9 @@ async def get_rollable_game(
     
     return None
 
-def get_rollable_game_v2(
+async def get_rollable_game(
     database_name: list,
+    database_tier: dict,
     completion_limit : int,
     price_limit : int,
     tier_number : int,
@@ -196,7 +199,7 @@ def get_rollable_game_v2(
     has_points_restriction : bool = False,
     price_restriction : bool = True,
     hours_restriction : bool = True,
-    database_tier: dict = None
+    
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -321,6 +324,8 @@ def get_rollable_game_v2(
             continue
 
         return game['ce_id']
+    
+    return None
 
 
         

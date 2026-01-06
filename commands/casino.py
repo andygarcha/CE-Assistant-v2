@@ -85,10 +85,12 @@ class TripleThreatDropdown(discord.ui.Select) :
 
         # roll a game with these parameters
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
         rolled_games : list[str] = []
         for _ in range(3) :
             rolled_games.append(await hm.get_rollable_game(
                 database_name=database_name,
+                database_tier=database_tier,
                 completion_limit=40,
                 price_limit=20,
                 tier_number=3,
@@ -164,8 +166,10 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
         # roll a game with these parameters
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
         rolled_game_id = await hm.get_rollable_game(
             database_name=database_name,
+            database_tier=database_tier,
             completion_limit=None,
             price_limit=20,
             tier_number=4,
@@ -253,10 +257,12 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         
         # get the data
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
         next_phase_num = len(past_roll.games) + 1
         category = self.values[0]
         game_id = await hm.get_rollable_game(
             database_name=database_name,
+            database_tier=database_tier,
             completion_limit=40*next_phase_num,
             price_limit=20,
             tier_number=next_phase_num,
@@ -382,15 +388,15 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     match(event_name) :
         case "One Hell of a Day" :
             # -- grab games --
-            rolled_games = [hm.get_rollable_game_v2(
+            rolled_games = [await hm.get_rollable_game(
                 database_name=database_name,
+                database_tier=database_tier,
                 completion_limit=10,
                 price_limit=10,
                 tier_number=1,
                 user=user,
                 price_restriction=price_restriction,
-                hours_restriction=hours_restriction,
-                database_tier=database_tier
+                hours_restriction=hours_restriction
             )]
         
         case "One Hell of a Week" :
@@ -406,6 +412,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             for i in range(5) :
                 rolled_games.append(await hm.get_rollable_game(
                     database_name=database_name,
+                    database_tier=database_tier,
                     completion_limit=10,
                     price_limit=10,
                     tier_number=1,
@@ -440,8 +447,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 
                 for j in range(5) : #roll 5 games from the selected category
                     print(f'rolling game {(i + 1) * (j + 1)}')
-                    rolled_temp.append(hm.get_rollable_game_v2(
+                    rolled_temp.append(hm.get_rollable_game(
                         database_name=database_name,
+                        database_tier=database_tier,
                         completion_limit=10,
                         price_limit=10,
                         tier_number=1,
@@ -449,8 +457,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         category=selected_category,
                         already_rolled_games=rolled_temp,
                         price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                        database_tier=database_tier
+                        hours_restriction=hours_restriction
                     ))
                 
                 #debugging
@@ -471,6 +478,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     for j in range(5) :
                         rolled_temp.append(await hm.get_rollable_game(
                             database_name=database_name,
+                            database_tier=database_tier,
                             completion_limit=10,
                             price_limit=10,
                             tier_number=1,
@@ -511,6 +519,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
                     new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
+                        database_tier=database_tier,
                         completion_limit=40,
                         price_limit=20,
                         tier_number=2,
@@ -539,6 +548,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             else :
                 rolled_games = [await hm.get_rollable_game(
                     database_name=database_name,
+                    database_tier=database_tier,
                     completion_limit=40,
                     price_limit=20,
                     tier_number = 2,
@@ -561,6 +571,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                             valid_categories.remove(game.category)
                     new_game_id = await hm.get_rollable_game(
                         database_name=database_name,
+                        database_tier=database_tier,
                         completion_limit=40,
                         price_limit=20,
                         tier_number=2,
@@ -587,6 +598,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             else :
                 rolled_games = [await hm.get_rollable_game(
                     database_name=database_name,
+                    database_tier=database_tier,
                     completion_limit=40,
                     price_limit=20,
                     tier_number=2,
@@ -597,6 +609,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
         case "Never Lucky" :
             rolled_games = [await hm.get_rollable_game(
                 database_name=database_name,
+                database_tier=database_tier,
                 completion_limit=None,
                 price_limit=20,
                 tier_number=3,
@@ -720,10 +733,12 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
 
         # pull database name
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
 
         # get the game for the user from the partner's library
         game_for_user = await hm.get_rollable_game(
             partner.get_completed_games_2(database_name),
+            database_tier=database_tier,
             completion_limit=None,
             price_limit=20,
             tier_number=None,
@@ -741,6 +756,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         # get the game for the partner from the user's library
         game_for_partner = await hm.get_rollable_game(
             user.get_completed_games_2(database_name),
+            database_tier=database_tier,
             completion_limit=None,
             price_limit=20,
             tier_number=None,
@@ -883,9 +899,11 @@ class SoulMatesAgreeView(discord.ui.View) :
         tier_num = int(self.__tier)
 
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
 
         rolled_game = await hm.get_rollable_game(
             database_name=database_name,
+            database_tier=database_tier,
             completion_limit=hour_limit[tier_num],
             price_limit=20,
             tier_number=tier_num,
@@ -975,11 +993,13 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
         await interaction.response.defer()
         
         database_name = await Mongo_Reader.get_database_name()
+        database_tier = await Mongo_Reader.get_database_tier()
 
         rolled_games : list[str] = []
         for i in range(4) :
             rolled_games.append(await hm.get_rollable_game(
                 database_name=database_name,
+                database_tier=database_tier,
                 completion_limit=40,
                 price_limit=20,
                 tier_number=3,
