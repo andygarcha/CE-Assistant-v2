@@ -326,6 +326,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
     # pull mongo database
     database_name = await Mongo_Reader.get_database_name()
+    database_tier = await Mongo_Reader.get_database_tier()
 
     # define channel
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -377,14 +378,15 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     match(event_name) :
         case "One Hell of a Day" :
             # -- grab games --
-            rolled_games = [await hm.get_rollable_game(
+            rolled_games = [hm.get_rollable_game_v2(
                 database_name=database_name,
                 completion_limit=10,
                 price_limit=10,
                 tier_number=1,
                 user=user,
                 price_restriction=price_restriction,
-                hours_restriction=hours_restriction
+                hours_restriction=hours_restriction,
+                database_tier=database_tier
             )]
         
         case "One Hell of a Week" :
