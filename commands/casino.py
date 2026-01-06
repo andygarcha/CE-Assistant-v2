@@ -494,7 +494,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     rolled_games.append(rolled_temp[j])
                 
                 #debugging
-                print(f"The following games from the {selected_category} category were added to the user's ({user}) Hell Month roll list: {rolled_temp}")
+                print(f"The following games from the {selected_category} category were added to the user's ({user.ce_id}) Hell Month roll list: {rolled_temp}")
                     
                 valid_categories.remove(selected_category)
 
