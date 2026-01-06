@@ -1,6 +1,6 @@
 import random
 from typing import Literal, get_args
-
+from utils.general_utils import get_item_from_list
 import aiohttp
 
 
@@ -32,8 +32,7 @@ async def get_rollable_game(
     already_rolled_games : list = [],
     has_points_restriction : bool = False,
     price_restriction : bool = True,
-    hours_restriction : bool = True,
-    database_tier: dict = None
+    hours_restriction : bool = True
 ):
     """Takes in a slew of parameters and returns a `str` of 
     Challenge Enthusiast ID that match the criteria.
@@ -186,7 +185,7 @@ async def get_rollable_game(
     
     return None
 
-async def get_rollable_game_v2(
+def get_rollable_game_v2(
     database_name: list,
     completion_limit : int,
     price_limit : int,
@@ -209,22 +208,125 @@ async def get_rollable_game_v2(
     database_name : list[CEGame] = database_name
     user : CEUser | list[CEUser] = user
 
-    # TODO: fix the problem with multiple categories!
+    # fix the problem with multiple categories (this is super gross)
+    if type(category) is str:
+        category = [category]
+    if type(user) is not list:
+        user: list[CEUser] = [user]
+
+    # NOTE: if tier_number == 6, then we need to be able to roll any t5, t6, or t7.
+
     database_tier_games = []
-    if category != None and tier_number != None:
-        database_tier_games = database_tier[str(tier_number)][category]
+    # YES category and YES tier (tier != 6)
+    if category != None and tier_number != None and tier_number != 6:
+        for c in category:
+            database_tier_games = database_tier[str(tier_number)][c]
+    # YES category and YES tier (tier == 6)
+    elif category != None and tier_number == 6:
+        for c in category:
+            for t in range(5, 8):
+                database_tier_games = database_tier[str(t)][c]
+    # YES category but NO tier
     elif category != None and tier_number == None:
-        for tn in range(1, 8):
-            database_tier_games.extend(database_tier[str(tn)][category])
-    elif category == None and tier_number != None:
+        for c in category:
+            for tn in range(1, 8):
+                database_tier_games.extend(database_tier[str(tn)][c])
+    # NO category and YES tier (tier != 6)
+    elif category == None and tier_number != None and tier_number != 6:
         for c in get_args(CATEGORIES):
             database_tier_games.extend(database_tier[str(tier_number)][c])
+    # NO category and YES tier (tier == 6)
+    elif category == None and tier_number == 6:
+        for c in get_args(CATEGORIES):
+            for t in range(5, 8):
+                database_tier_games = database_tier[str(t)][c]
+    # NO category and NO tier
     else:
         for tn in range(1, 8):
             for c in get_args(CATEGORIES):
                 database_tier_games.extend(database_tier[str(tn)][c])
     
     random.shuffle(database_tier_games)
+
+    # get banned games
+    try :
+        banned_games = get_banned_games()
+    except :
+        return None
+
+    """
+    Requirements to check:
+    - is on steam # done already
+    - correct category # done already
+    - correct tier # done already
+    - game not banned # accounted for
+    - if points_restriction, player doesn't have points in game # accounted for
+    - if multiple users, no one has completed the game # accounted for
+    - if one user, user has not completed game # accounted for
+    - game hasn't already been rolled # accounted for
+    - game doesn't have an uncleared # accounted for
+    - if price_restriction... # accounted for
+        - price is less than price_limit
+        - OR 
+        - user owns game
+    - if hours_restriction, sh median completion time is less than hour_limit # accounted for
+    """
+
+    for game in database_tier_games:
+        # banned
+        if game['ce_id'] in banned_games:
+            continue
+
+        # already rolled
+        if game['ce_id'] in already_rolled_games:
+            continue
+
+        # has uncleared
+        if get_item_from_list(game['ce_id'], database_name).has_an_uncleared():
+            continue
+
+        # has points
+        if has_points_restriction:
+            fails = False
+            for _user in user:
+                if _user.has_points(game['ce_id']):
+                    fails = True
+                    break
+            if fails:
+                continue
+        
+        # too pricey
+        if price_restriction:
+            if not game['price'] <= (price_limit * 100):
+                fails = False
+                for _user in user:
+                    if not _user.owns_game(game['ce_id']):
+                        fails = True
+                        break
+                if fails:
+                    continue
+        
+        # too many hours
+        if hours_restriction:
+            if game['sh_hours'] > (completion_limit * 60):
+                continue
+        
+        # already completed
+        fails = False
+        for _user in user:
+            if _user.has_completed_game(game['ce_id'], database_name):
+                fails = True
+                break
+        if fails: 
+            continue
+
+        return game['ce_id']
+
+
+        
+
+
+
 
 
 async def name_to_steamid(name : str) -> str :

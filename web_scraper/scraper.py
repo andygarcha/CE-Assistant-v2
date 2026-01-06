@@ -141,11 +141,11 @@ async def check_curator():
 
 def generate_database_tier(database_name: list[CEAPIGame]):
     # separate out games by tier and category
-    database_tier: dict[int, dict[str, list[dict]]] = {}
+    database_tier: dict[str, dict[str, list[dict]]] = {}
     for tier in range(1, 8):
-        database_tier[tier] = {}
+        database_tier[str(tier)] = {}
         for category in typing.get_args(hm.CATEGORIES):
-            database_tier[tier][category] = []
+            database_tier[str(tier)][category] = []
     
     steam_ids: list[int] = []
 
@@ -164,7 +164,7 @@ def generate_database_tier(database_name: list[CEAPIGame]):
     
     # grab all prices and hours
     for i in range(0, len(steam_ids), 100):
-        print(f'scraping for prices and hours at {i=} out of {len(steam_ids)}')
+        print(f'scraping for prices and hours at {i=} out of {len(steam_ids_copy)}')
 
         # prices
         response_prices = requests.get(
@@ -221,7 +221,7 @@ def generate_database_tier(database_name: list[CEAPIGame]):
         if game.platform_id not in prices or game.platform_id not in hours:
             continue #no success from api
 
-        database_tier[game.get_tier_num()][game.category].append(
+        database_tier[str(game.get_tier_num())][game.category].append(
             {
                 'ce_id': game.ce_id,
                 'name': game.game_name,
@@ -688,13 +688,14 @@ def check_completion_count():
     pass
 
 async def test():
-    print('pulling db name')
-    database_name = await Mongo_Reader.get_database_name()
+    # print('pulling db name')
+    # database_name = await Mongo_Reader.get_database_name()
 
-    print('generating db tier!')
-    database_tier = generate_database_tier(database_name)
+    # print('generating db tier!')
+    # database_tier = generate_database_tier(database_name)
 
-    with open("other2.json", "w") as file:
-        json.dump(database_tier, file, indent=4)
+    # await Mongo_Reader.dump_database_tier(database_tier)
 
-asyncio.run(test())
+    print(await Mongo_Reader.get_database_tier())
+
+#asyncio.run(test())
