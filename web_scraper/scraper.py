@@ -208,8 +208,8 @@ def generate_database_tier(database_name: list[CEAPIGame]):
         response_hours_json: list[dict[str, int]] = json.loads(response_hours.text)
         for item in response_hours_json:
             if 'medianCompletionTime' not in item:
-                steam_ids.remove(int(item['appId']))
-                print(f'medianCompletion time not listed for app id {item['appId']}')
+                steam_ids.remove(int(item["appId"]))
+                print(f'medianCompletion time not listed for app id {item["appId"]}')
                 continue
             hours[str(item['appId'])] = item['medianCompletionTime']
 
