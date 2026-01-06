@@ -992,7 +992,7 @@ async def on_ready() :
     # send online update
     await private_log_channel.send(f":arrow_right_hook: bot started at <t:{hm.get_unix('now')}>")
 
-    asyncio.create_task(start_webhook_server())
+    #asyncio.create_task(start_webhook_server())
     
     # master loop
     if hm.IN_CE :
