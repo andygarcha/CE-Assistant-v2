@@ -325,8 +325,11 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     view = discord.ui.View()
 
     # pull mongo database
+    print('solo roll called. pulling mongo...')
     database_name = await Mongo_Reader.get_database_name()
+    print('db name pulled')
     database_tier = await Mongo_Reader.get_database_tier()
+    print('db tier pulled')
 
     # define channel
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -434,7 +437,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 rolled_temp : list[str] = []
                 
                 for j in range(5) : #roll 5 games from the selected category
-                    rolled_temp.append(await hm.get_rollable_game(
+                    rolled_temp.append(hm.get_rollable_game_v2(
                         database_name=database_name,
                         completion_limit=10,
                         price_limit=10,
@@ -443,7 +446,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                         category=selected_category,
                         already_rolled_games=rolled_temp,
                         price_restriction=price_restriction,
-                        hours_restriction=hours_restriction
+                        hours_restriction=hours_restriction,
+                        database_tier=database_tier
                     ))
                 
                 #debugging
