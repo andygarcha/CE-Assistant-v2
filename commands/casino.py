@@ -1,4 +1,5 @@
 """This module is for all casino-related commands."""
+import datetime
 import random
 from typing import get_args
 import discord 
@@ -427,6 +428,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             #     )
             
             # -- grab games --
+            print(f'rolling at time {datetime.datetime.now()}')
             rolled_games : list[str] = []
             valid_categories = list(get_args(hm.CATEGORIES))
             failed_category = None # initialise variable to catch 2x category fails
@@ -437,6 +439,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 rolled_temp : list[str] = []
                 
                 for j in range(5) : #roll 5 games from the selected category
+                    print(f'rolling game {(i + 1) * (j + 1)}')
                     rolled_temp.append(hm.get_rollable_game_v2(
                         database_name=database_name,
                         completion_limit=10,
@@ -451,10 +454,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     ))
                 
                 #debugging
-                print(f"User ({user}) rolled the {selected_category} category, with rolled games {rolled_temp}")
+                print(f"User ({user.display_name}) rolled the {selected_category} category, with rolled games {rolled_temp}")
                 
                 if None in rolled_temp and failed_category == None: #if not enough rolls in a given category, and this is the first failed category, remove and try again
-                    
                     #remove failed category and reroll (without incrementing 'i')
                     failed_category = selected_category
                     valid_categories.remove(selected_category)
