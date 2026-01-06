@@ -447,7 +447,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 
                 for j in range(5) : #roll 5 games from the selected category
                     print(f'rolling game {(i + 1) * (j + 1)}')
-                    rolled_temp.append(hm.get_rollable_game(
+                    rolled_temp.append(await hm.get_rollable_game(
                         database_name=database_name,
                         database_tier=database_tier,
                         completion_limit=10,
