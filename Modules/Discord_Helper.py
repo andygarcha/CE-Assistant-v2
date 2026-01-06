@@ -22,7 +22,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.core.os_manager import ChromeType
 
-async def get_roll_embeds(roll : CERoll, database_user : list, database_name : list) -> list[discord.Embed] :
+async def get_roll_embeds(roll : CERoll, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from Classes.CE_Game import CEGame
 
@@ -97,6 +97,8 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     embed.set_image(url= (await game.get_ce_api_game()).header)
 
     # -- get steam data and set and description --
+
+    # TODO: replace these calls with database tier calls
     if game.platform == "steam" :
         price = await game.get_price_async()
     embed.description = (

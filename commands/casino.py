@@ -118,7 +118,7 @@ class TripleThreatDropdown(discord.ui.Select) :
         database_user = await Mongo_Reader.get_database_user()
 
         view = discord.ui.View()
-        embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
+        embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name)
         await Discord_Helper.get_buttons(view, embeds)
 
         return await interaction.followup.edit_message(
@@ -189,7 +189,7 @@ class LetFateDecideDropdown(discord.ui.Select) :
         database_user = await Mongo_Reader.get_database_user()
 
         view = discord.ui.View()
-        embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name, database_user=database_user)
+        embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name)
         await Discord_Helper.get_buttons(view, embeds)
 
         return await interaction.followup.edit_message(
@@ -678,8 +678,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
     embeds = await Discord_Helper.get_roll_embeds(
         roll=roll,
-        database_name=database_name,
-        database_user=(await Mongo_Reader.get_database_user())
+        database_name=database_name
     )
 
     await Discord_Helper.get_buttons(view=view, embeds=embeds)
