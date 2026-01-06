@@ -155,24 +155,36 @@ def generate_database_tier(database_name: list[CEAPIGame]):
             
         steam_ids.append(int(game.platform_id))
 
+    # this copy is needed because when we remove the ids mid scrape it moves 
+    #   the array back so a) some games get skipped and b) we may pull an empty list
+    steam_ids_copy = steam_ids.copy()
+
     prices: dict[str, int] = {}
+    hours: dict[str, int] = {}
     
-    # grab all prices
+    # grab all prices and hours
     for i in range(0, len(steam_ids), 100):
-        response = requests.get(
+        print(f'scraping for prices and hours at {i=} out of {len(steam_ids)}')
+
+        # prices
+        response_prices = requests.get(
             'https://store.steampowered.com/api/appdetails?',
             params = {
-                'appids': str(steam_ids[i:i+100])[1:-1],
+                'appids': str(steam_ids_copy[i:i+100])[1:-1],
                 'cc': 'US',
                 'filters': 'price_overview'
             }
         )
 
-        response_json: dict[str, dict] = json.loads(response.text)
-
-        for key, value in response_json.items():
+        response_prices_json: dict[str, dict] = json.loads(response_prices.text)
+        if type(response_prices_json) is list:
+            print(f'something went wrong. response_prices_json is being read as a list. i will now print it.')
+            print(f'app_ids={str(steam_ids[i:i+100])[1:-1]}')
+            print(response_prices_json)
+        for key, value in response_prices_json.items():
             if not value['success']:
                 steam_ids.remove(int(key))
+                print(f'price failed for app id {key}')
                 continue
             
             if len(value['data']) == 0:
@@ -184,20 +196,37 @@ def generate_database_tier(database_name: list[CEAPIGame]):
 
             else:
                 prices[key] = value['data']['price_overview']['final']
+        
+        # hours
+        response_hours = requests.get(
+            'https://steamhunters.com/api/apps/?',
+            params = {
+                'appids': str(steam_ids_copy[i:i+100])[1:-1] # appIds=220,480,730
+            }
+        )
+
+        response_hours_json: list[dict[str, int]] = json.loads(response_hours.text)
+        for item in response_hours_json:
+            if 'medianCompletionTime' not in item:
+                steam_ids.remove(int(item['appId']))
+                print(f'medianCompletion time not listed for app id {item['appId']}')
+                continue
+            hours[str(item['appId'])] = item['medianCompletionTime']
 
     for game in database_name:
         if not game.platform == 'steam': 
             continue #non steam game
         if game.get_tier_num() == 0:
             continue #t0
-        if game.platform_id not in prices:
+        if game.platform_id not in prices or game.platform_id not in hours:
             continue #no success from api
 
         database_tier[game.get_tier_num()][game.category].append(
             {
                 'ce_id': game.ce_id,
                 'name': game.game_name,
-                'price': prices[game.platform_id]
+                'price': prices[game.platform_id],
+                'sh_hours': hours[game.platform_id]
             }
         )
 
@@ -659,8 +688,10 @@ def check_completion_count():
     pass
 
 async def test():
+    print('pulling db name')
     database_name = await Mongo_Reader.get_database_name()
 
+    print('generating db tier!')
     database_tier = generate_database_tier(database_name)
 
     with open("other2.json", "w") as file:
