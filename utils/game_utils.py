@@ -310,7 +310,7 @@ async def get_rollable_game(
                     continue
         
         # too many hours
-        if hours_restriction:
+        if hours_restriction and completion_limit is not None:
             if game['sh_hours'] > (completion_limit * 60):
                 continue
         
