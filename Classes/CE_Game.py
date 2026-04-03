@@ -3,6 +3,7 @@ import aiohttp
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
+from Modules import http_session
 
 class CEGame:
     """A game that's on Challenge Enthusiasts."""
@@ -150,9 +151,9 @@ class CEGame:
     
     async def get_raw_ce_data(self) -> dict :
         "Returns the raw CE data."
-        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-            async with session.get(f'https://cedb.me/api/game/{self.ce_id}') as response :
-                return await response.json()
+        session = await http_session.get_session()
+        async with session.get(f'https://cedb.me/api/game/{self.ce_id}') as response :
+            return await response.json()
     
     async def get_ce_api_game(self) -> 'CEAPIGame' :
         "Returns the CEAPIGame."
@@ -234,18 +235,18 @@ class CEGame:
         """Returns the current price (in USD) on the platform of this game."""
         if self.platform != "steam" : return None
 
-        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-            async with session.get('https://store.steampowered.com/api/appdetails?',
-                                   params={'appids': self.platform_id, 'cc' : 'US'}) as response :
-                json_response = await response.json()
+        session = await http_session.get_session()
+        async with session.get('https://store.steampowered.com/api/appdetails?',
+                               params={'appids': self.platform_id, 'cc' : 'US'}) as response :
+            json_response = await response.json()
 
-                steam_id = str(self.platform_id)
-                
-                if json_response[steam_id]['data']['is_free'] : return 0
-                elif 'price_overview' in json_response[steam_id]['data'] :
-                    return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
-                else :
-                    return None
+            steam_id = str(self.platform_id)
+            
+            if json_response[steam_id]['data']['is_free'] : return 0
+            elif 'price_overview' in json_response[steam_id]['data'] :
+                return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
+            else :
+                return None
         return None
 
             
@@ -268,20 +269,21 @@ class CEGame:
         
     async def get_steamhunters_data_async(self) -> int | None :
         if self.platform != "steam" : return None
-        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-            async with session.get(f"https://steamhunters.com/api/apps/{self.platform_id}") as response :
-                if await response.text() == "null" or await response.text() == None :
-                    return None
-                try :
-                    json_response = await response.json()
-                except :
-                    print(f"SteamHunters response failed for {self.name_with_link()}")
-                    return 999999
+        session = await http_session.get_session()
+        async with session.get(f"https://steamhunters.com/api/apps/{self.platform_id}") as response :
+            raw_text = await response.text()
+            if response.status != 200 or raw_text == "null" or raw_text == "" :
+                return None
+            try :
+                json_response = await response.json()
+            except :
+                print(f"SteamHunters response failed for {self.name_with_link()}")
+                return 999999
 
-                if 'medianCompletionTime' in json_response :
-                    return int(int(json_response['medianCompletionTime']) / 60)
-                else :
-                    return None
+            if 'medianCompletionTime' in json_response :
+                return int(int(json_response['medianCompletionTime']) / 60)
+            else :
+                return None
         
     # def get_steam_data(self) -> SteamData | None : 
     #     """Returns the steam data for this game."""
@@ -298,25 +300,25 @@ class CEGame:
     async def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
 
-        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-            async with session.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard') as response :
-                json_response = await response.json()
+        session = await http_session.get_session()
+        async with session.get(f'https://cedb.me/api/game/{self.ce_id}/leaderboard') as response :
+            json_response = await response.json()
 
-                completions, started, owners = (0,)*3
+            completions, started, owners = (0,)*3
 
-                total_points = self.get_total_points()
-                for user in json_response :
-                    if user['points'] == total_points : completions += 1
-                    elif user['points'] != 0 : started += 1
-                    owners += 1
+            total_points = self.get_total_points()
+            for user in json_response :
+                if user['points'] == total_points : completions += 1
+                elif user['points'] != 0 : started += 1
+                owners += 1
 
-                return CECompletion(
-                    {
-                        'completed' : completions,
-                        'started' : started,
-                        'total' : owners
-                    }
-                )
+            return CECompletion(
+                {
+                    'completed' : completions,
+                    'started' : started,
+                    'total' : owners
+                }
+            )
     
     def has_an_uncleared(self) -> bool :
         """Returns true if this game has an uncleared objective."""

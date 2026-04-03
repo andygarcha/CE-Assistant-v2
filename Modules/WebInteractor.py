@@ -4,6 +4,7 @@ import functools
 import time
 import typing
 import aiohttp
+from Modules import http_session
 from discord.ext import tasks
 import discord
 import requests
@@ -518,31 +519,31 @@ async def master_loop(client : discord.Client, guild_id : int) :
 async def get_recent_curated():
     # set the payload and pull from the curator
     payload = {'cc' : 'us', 'l' : 'english'}
-    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-        async with session.get("https://store.steampowered.com/curator/36185934", params=payload) as response :
+    session = await http_session.get_session()
+    async with session.get("https://store.steampowered.com/curator/36185934", params=payload) as response :
 
-            # beautiful soupify
-            soup_data = BeautifulSoup(await response.text(), features="html.parser")
+        # beautiful soupify
+        soup_data = BeautifulSoup(await response.text(), features="html.parser")
 
-            # set up variables
-            descriptions, ce_ids = [], []
+        # set up variables
+        descriptions, ce_ids = [], []
 
-            # get all divs
-            divs = soup_data.find_all('div')
+        # get all divs
+        divs = soup_data.find_all('div')
 
-            # iterate through them
-            for item in divs :
-                try :
-                    CONSOLE_MESSAGES = False
-                    if item['class'][0] == 'recommendation_readmore' :
-                        if CONSOLE_MESSAGES : print('-- readmore --')
-                        ce_ids.append(item.contents[0]['href'][-36:])
-                        if CONSOLE_MESSAGES : print(ce_ids[-1])
+        # iterate through them
+        for item in divs :
+            try :
+                CONSOLE_MESSAGES = False
+                if item['class'][0] == 'recommendation_readmore' :
+                    if CONSOLE_MESSAGES : print('-- readmore --')
+                    ce_ids.append(item.contents[0]['href'][-36:])
+                    if CONSOLE_MESSAGES : print(ce_ids[-1])
                     if item['class'][0] == "recommendation_desc" :
                         if CONSOLE_MESSAGES : print('-- description --')
                         descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
                         if CONSOLE_MESSAGES : print(descriptions[-1])
-                except : continue
+            except : continue
             return ce_ids, descriptions
 
 

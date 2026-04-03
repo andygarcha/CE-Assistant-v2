@@ -7,7 +7,11 @@ Version 1: Not object oriented.
 Version 2: Object oriented, but used only one document in MongoDB.
 Version 3: Each user and game gets their own document in MongoDB.
 """
+import asyncio
 import json
+import os
+import uuid
+from typing import Any
 from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_User import CEUser
@@ -17,6 +21,14 @@ from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
 
 from motor.motor_asyncio import AsyncIOMotorClient
+
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+---- MUAHAHAHA LETS MOVE TO SUPABASE ----
+
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+
 
 """""""""""""""""""""""""""""""""""""""""""""""
 

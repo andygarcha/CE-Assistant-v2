@@ -7,6 +7,7 @@ from Classes.CE_Game import CEGame
 from Classes.CE_User_Game import CEUserGame
 import Modules.hm as hm
 from Classes.OtherClasses import CRData
+from Modules import http_session
 
 MUTELIST_CEIDS = [
     "e790e8f0-f67e-4646-8fa9-de436b2c8d5e" # athenavenny
@@ -500,24 +501,26 @@ class CEUser:
     
     async def get_api_user(self) -> 'CEAPIUser' :
         "Returns the CEAPIUser."
-        async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-            async with session.get(f'https://cedb.me/api/user/{self.ce_id}/') as response :
-                try :
-                    data = await response.json()
-                except :
-                    return None
+        session = await http_session.get_session()
+        async with session.get(f'https://cedb.me/api/user/{self.ce_id}/') as response :
+            if response.status != 200 :
+                return None
+            try :
+                data = await response.json()
+            except aiohttp.ContentTypeError :
+                return None
 
 
-                return CEAPIUser(
-                    discord_id=self.discord_id,
-                    ce_id=self.ce_id,
-                    owned_games=self.owned_games,
-                    rolls=self.rolls,
-                    full_data=data,
-                    display_name=self.display_name,
-                    avatar=self.avatar,
-                    last_updated=self.last_updated
-                )
+            return CEAPIUser(
+                discord_id=self.discord_id,
+                ce_id=self.ce_id,
+                owned_games=self.owned_games,
+                rolls=self.rolls,
+                full_data=data,
+                display_name=self.display_name,
+                avatar=self.avatar,
+                last_updated=self.last_updated
+            )
         
     def completions(self, database_name : list[CEGame]) -> int :
         "Returns the number of completions this user has."

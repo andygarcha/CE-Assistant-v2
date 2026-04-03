@@ -16,6 +16,7 @@ from Classes.OtherClasses import CEInput
 from Modules.WebInteractor import master_loop
 import Modules.hm as hm
 import Modules.Mongo_Reader as Mongo_Reader
+from Modules import http_session
 from commands import load_commands
 
 # ----------- to-be-sorted imports -------------
@@ -1000,6 +1001,11 @@ async def on_ready() :
             await master_loop.start(client, guild_id)
         if not monitor_loop.is_running():
             await monitor_loop.start()
+
+
+@client.event
+async def on_disconnect() :
+    await http_session.close_session()
 
 
 client.run(discord_token)

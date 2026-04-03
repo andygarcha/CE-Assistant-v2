@@ -125,12 +125,14 @@ class CERoll:
                  completed_time = None,
                  rerolls = None,
                  is_current : bool = False,
-                 tier_num : int = None):
+                 tier_num : int = None,
+                 _id: str = None):
         self._roll_name : str = roll_name
         self._user_ce_id : str = user_ce_id
         self._games : list[str] = games
         self._status = status
-        self._partner_ce_id : str = partner_ce_id
+        self._partner_ce_id : str = partner_ce_id,
+        self._id = _id
 
         # if the roll isn't being created right now
         # (and therefore is probably being read from MongoDB)
@@ -220,6 +222,16 @@ class CERoll:
     def status(self) -> ROLL_STATUS :
         "The status of this roll."
         return self._status
+    
+    def status2(self):
+        if self.init_time == 0 and self.due_time is None or self.games is None: return "won_legacy"
+        match(self.status):
+            case "current": return "current"
+            case "failed": return "failed"
+            case "pending": return "pending"
+            case "removed": return "removed"
+            case "waiting": return "between_stages"
+            case "won": return "won"
 
     def set_status(self, new_status : ROLL_STATUS) :
         "Setter for status"

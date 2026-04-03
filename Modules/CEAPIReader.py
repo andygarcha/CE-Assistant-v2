@@ -16,6 +16,7 @@ from typing import Literal
 import typing
 
 import aiohttp
+from Modules import http_session
 
 # -- local --
 from Classes.CE_Game import CEAPIGame
@@ -108,7 +109,7 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 
 
 
-async def get_api_games_full() -> list[CEAPIGame] :
+async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
     PULL_LIMIT = 50 #grab this many games per API call
@@ -117,51 +118,51 @@ async def get_api_games_full() -> list[CEAPIGame] :
     done_fetching : bool = False
     i = 1
     
-    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
+    session = await http_session.get_session()
 
-        #overarching while statement - if not done, keep going
-        while (not done_fetching):
+    #overarching while statement - if not done, keep going
+    while (not done_fetching):
+        
+        print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...", end=" ")
+        
+        #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
+        for x in range(TRY_LIMIT):
+
+            # set up a variable used to catch errors
+            str_error = None
+            outer_response = None
+
+            # try to call the API
+            try:
+                async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
+                    outer_response = response
+                    j = await response.json()
+                    json_response += j
+                    done_fetching = len(j) == 0
+                    i += 1
             
-            print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...", end=" ")
+            # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
+            except Exception as e:
+                str_error = e
+                pass
             
-            #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
-            for x in range(TRY_LIMIT):
-
-                # set up a variable used to catch errors
-                str_error = None
-                outer_response = None
-
-                # try to call the API
-                try:
-                    async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
-                        outer_response = response
-                        j = await response.json()
-                        json_response += j
-                        done_fetching = len(j) == 0
-                        i += 1
-              
-                # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
-                except Exception as e:
-                    str_error = e
-                    pass
-                
-                
-                # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
-                if str_error:
-                    print(str_error)
-                    try :
-                        print(await outer_response.text())
-                    except : print('couldnt print response')
-                    print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
             
-                    # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
-                    if x+1 == TRY_LIMIT:
-                        raise FailedScrapeException("Scraping failed from api/games/full " 
-                                            + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
+            # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
+            if str_error:
+                print(str_error)
+                try :
+                    print(await outer_response.text())
+                except : print('couldnt print response')
+                print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
+        
+                # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
+                if x+1 == TRY_LIMIT:
+                    raise FailedScrapeException("Scraping failed from api/games/full " 
+                                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
 
-                # if no error - continue on to the next block of "PULL LIMIT" games
-                else:
-                    break
+            # if no error - continue on to the next block of "PULL LIMIT" games
+            else:
+                break
             
     print(f"\ndone fetching games! total games: {len(json_response)}")
 
@@ -170,6 +171,8 @@ async def get_api_games_full() -> list[CEAPIGame] :
     you are going to have to skip some of the games if they're not `isFinished`
     the bot should effectively freeze the game in place. just copy it over from when it existed last.
     """
+
+    if return_json: return json_response
 
     # Step 2: iterate through the new json and construct an array of CEAPIGame's.
     all_games : list[CEAPIGame] = []
@@ -181,9 +184,6 @@ async def get_api_games_full() -> list[CEAPIGame] :
         # ... and append it to the list.
         all_games.append(ce_game)
     
-    # free up all of that space
-    del json_response
-
     # and return
     return all_games
 
@@ -210,71 +210,71 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
     total_response = []
     done_fetching : bool = False
     i = 1
-    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-        try :
+    session = await http_session.get_session()
+    try :
 
-            # this will run if database user has been provided
-            if database_user is not None and False :
-                while (not done_fetching) :
-                    
-                    # print
-                    print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
-
-                    # set up data
-                    data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
-
-                    # pull the data and json-ify it
-                    api_response = requests.post("https://cedb.me/api/users/query", data=data)
-                    current_response = json.loads(api_response.text)
-
-                    # check if you're done fetching
-                    done_fetching = len(current_response) == 0
-
-                    # add this to the total response and increment i
-                    total_response += current_response
-                    i += 1
-
-            # this will run if database user wasn't provided
+        # this will run if database user has been provided
+        if database_user is not None and False :
             while (not done_fetching) :
+                
+                # print
+                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
 
-                # pull the data
-                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
-
-                # set up params
-                params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
-                """# if database_user has been provided, include the 'ids' in the payload.
-                if database_user is not None : params['ids'] = registered_ids"""
+                # set up data
+                data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
 
                 # pull the data and json-ify it
-                async with session.get("https://cedb.me/api/users/all", params=params) as response :
-                    current_response = await response.json()
+                api_response = requests.post("https://cedb.me/api/users/query", data=data)
+                current_response = json.loads(api_response.text)
 
-                    # check to see if this is the last one
-                    done_fetching = len(current_response) == 0
+                # check if you're done fetching
+                done_fetching = len(current_response) == 0
 
-                    # go through and filter out users that aren't CEA registered if database_user is passed through
-                    if database_user is not None :
-                        removed_indexes = []
-                        # if the user isn't registered, add the index to remove indexes
-                        for index, user in enumerate(current_response) :
-                            if user['id'] not in registered_ids :
-                                removed_indexes.append(index)
-                        # remove all of the indexes in reverse order
-                        for index in reversed(removed_indexes) :
-                            del current_response[index]
-                        print(f"({len(removed_indexes)} removed)", end=". ")
+                # add this to the total response and increment i
+                total_response += current_response
+                i += 1
 
-                    # print this so that there will be a new line
-                    else :
-                        print("")
+        # this will run if database user wasn't provided
+        while (not done_fetching) :
 
-                    # add to the total response and increment i
-                    total_response += current_response
-                    i += 1
-        except Exception as e : 
-            print(f"original exception: {e}")
-            raise FailedScrapeException("Failed scraping from api/users/all/ "
-                                        + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
+            # pull the data
+            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
+
+            # set up params
+            params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
+            """# if database_user has been provided, include the 'ids' in the payload.
+            if database_user is not None : params['ids'] = registered_ids"""
+
+            # pull the data and json-ify it
+            async with session.get("https://cedb.me/api/users/all", params=params) as response :
+                current_response = await response.json()
+
+                # check to see if this is the last one
+                done_fetching = len(current_response) == 0
+
+                # go through and filter out users that aren't CEA registered if database_user is passed through
+                if database_user is not None :
+                    removed_indexes = []
+                    # if the user isn't registered, add the index to remove indexes
+                    for index, user in enumerate(current_response) :
+                        if user['id'] not in registered_ids :
+                            removed_indexes.append(index)
+                    # remove all of the indexes in reverse order
+                    for index in reversed(removed_indexes) :
+                        del current_response[index]
+                    print(f"({len(removed_indexes)} removed)", end=". ")
+
+                # print this so that there will be a new line
+                else :
+                    print("")
+
+                # add to the total response and increment i
+                total_response += current_response
+                i += 1
+    except Exception as e : 
+        print(f"original exception: {e}")
+        raise FailedScrapeException("Failed scraping from api/users/all/ "
+                                    + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     print(f"done fetching users! total users: {len(total_response)}")
 
     # convert to objects
@@ -357,16 +357,16 @@ def _ce_to_user(json_response : dict) -> CEUser :
 async def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
     """Returns either a :class:`CEUser` or a :class:`CEAPIGame` 
     from `ce_id` depending on `type`."""
-    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-        # if type is user
-        if type == "user" :
-            async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
-                json_response = await response.json()
-                if len(json_response) == 0 : return None
-                return _ce_to_user(json_response=json_response)
+    session = await http_session.get_session()
+    # if type is user
+    if type == "user" :
+        async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
+            json_response = await response.json()
+            if len(json_response) == 0 : return None
+            return _ce_to_user(json_response=json_response)
 
-        elif type == "game" :
-            async with session.get(f"https://cedb.me/api/game/{ce_id}") as response :
-                json_response = await response.json()
-                if len(json_response) == 0 : return None
-                return _ce_to_game(json_response=json_response)
+    elif type == "game" :
+        async with session.get(f"https://cedb.me/api/game/{ce_id}") as response :
+            json_response = await response.json()
+            if len(json_response) == 0 : return None
+            return _ce_to_game(json_response=json_response)

@@ -2,6 +2,7 @@ import random
 from typing import Literal, get_args
 from utils.general_utils import get_item_from_list
 import aiohttp
+from Modules import http_session
 
 
 def get_banned_games() -> list[str] :
@@ -345,16 +346,16 @@ async def name_to_steamid(name : str) -> str :
     
     # -- now check steam instead --
     payload = {"term" : name, "cc" : "US"}
-    async with aiohttp.ClientSession(headers={'User-Agent':"andy's-super-duper-bot/0.1"}) as session :
-        async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
-            json_response = await response.json()
+    session = await http_session.get_session()
+    async with session.get("https://store.steampowered.com/api/storesearch/?", params=payload) as response :
+        json_response = await response.json()
 
-            # look through all the games
-            for item in json_response['items'] :
-                if item['name'].lower() == name.lower() : return item['id']
-            
-            # if no exact match is found, return the first one
-            return json_response['items'][0]['id']
+        # look through all the games
+        for item in json_response['items'] :
+            if item['name'].lower() == name.lower() : return item['id']
+        
+        # if no exact match is found, return the first one
+        return json_response['items'][0]['id']
 
 
 

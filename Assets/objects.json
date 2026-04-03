@@ -1,0 +1,61 @@
+{
+    "games": {
+        "ce_id": "text",
+        "name": "text",
+        "platform": "text",
+        "platform_id": "text",
+        "image_header": "text",
+        "image_icon": "text",
+        "category_primary": "text",
+        "median_playtime": "int",
+        "updated_at_CE": "bigint"
+    },
+    "objectives": {
+        "ce_id": "text",
+        "name": "text",
+        "points": "int",
+        "partial_points": "int",
+        "objective_type": "text",
+        "description": "text",
+        "game_ce_id": "text",
+        "updated_at_CE": "bigint"
+    },
+    "objectiveRequirements": {
+        "ce_id": "text",
+        "objective_ce_id": "text",
+        "requirement_type": "text",
+        "data": "text",
+        "updated_at_CE": "bigint"
+    },
+    "users": {
+        "ce_id": "text",
+        "display_name": "text",
+        "avatar": "text",
+        "discord_id": "bigint",
+        "updated_at_CE": "bigint"
+    },
+    "userGames": {
+        "user_ce_id": "text",
+        "game_ce_id": "text",
+        "updated_at_CE": "bigint"
+    },
+    "userObjectives": {
+        "user_ce_id": "text",
+        "objective_ce_id": "text",
+        "user_points": "int",
+        "updated_at_CE": "bigint"
+    },
+    "rolls": {
+        "roll_instance_id": "text",
+        "user1_ce_id": "text",
+        "user2_ce_id": "text",
+        "time_created": "bigint",
+        "time_due": "bigint",
+        "time_completed": "bigint",
+        "is_lucky": "bool",
+        "rerolls_remaining": "int",
+        "rerolls_used": "int",
+        "status": "text",
+        "tier_chosen": "int"
+    }
+}
