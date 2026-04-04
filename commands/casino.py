@@ -1,6 +1,7 @@
 """This module is for all casino-related commands."""
 import datetime
 import random
+import sys
 from typing import get_args
 import discord 
 from discord import app_commands
@@ -345,7 +346,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     try :
         user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
     except ValueError as e :
-        print(e.with_traceback())
+        tb = sys.exception().__traceback__
+        print(e.with_traceback(tb))
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )

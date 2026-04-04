@@ -6,6 +6,7 @@ Version 3 : Object-Oriented, and each item has its own document.
 
 # imports
 import json
+import sys
 from typing import Literal
 from bson import ObjectId
 
@@ -267,7 +268,8 @@ async def get_database_input() -> list[CEInput] :
     for o in objects :
         try : database_input.append(__mongo_to_input(o))
         except Exception as e : 
-            print(e.with_traceback())
+            tb = sys.exception().__traceback__
+            print(e.with_traceback(tb))
             continue
     
     return database_input

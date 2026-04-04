@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import functools
+import sys
 import time
 import typing
 import aiohttp
@@ -430,7 +431,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
             return
 
         except Exception as e :
-            await private_log_channel.send(f":warning: {e.with_traceback()}")
+            tb = sys.exception().__traceback__
+            await private_log_channel.send(f":warning: {e.with_traceback(tb)}")
     
     print(f"old database name: {len(old_database_name)}")
 
@@ -481,7 +483,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
             return
         
         except Exception as e :
-            await private_log_channel.send(f":warning: {e.with_traceback()}")
+            tb = sys.exception().__traceback__
+            await private_log_channel.send(f":warning: {e.with_traceback(tb)}")
     
     # ---- curator ----
 
