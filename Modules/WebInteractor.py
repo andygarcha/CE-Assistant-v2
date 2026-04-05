@@ -415,6 +415,8 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
             # send embeds
             for embed in embeds :
+                if len(embed.embed.description) > 4096:
+                    embed.embed.description = embed.embed.description[0:4060] + "errortoolong"
                 if embed.file is not None :
                     await game_additions_channel.send(embed=embed.embed, file=embed.file)
                 else :
