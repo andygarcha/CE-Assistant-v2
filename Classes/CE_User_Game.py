@@ -91,6 +91,16 @@ class CEUserGame():
                 return game.category
         return None
     
+    def to_dict_supabase(self, user_ce_id: str):
+        return {
+            "user_ce_id": user_ce_id,
+            "game_ce_id": self.ce_id,
+            "updated_at_CE": None
+        }
+    
+    def to_dict_supabase_objectives(self, user_ce_id: str):
+        return [o.to_dict_supabase() for o in self.user_objectives]
+    
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.
         Example:

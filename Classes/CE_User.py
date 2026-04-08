@@ -531,6 +531,24 @@ class CEUser:
         return completions
 
     
+    def to_dict_supabase(self) -> dict:
+        return {
+            "ce_id": self.ce_id,
+            "discord_id": self.discord_id,
+            "display_name": self.display_name,
+            "image_avatar": self.avatar,
+            "updated_at_CE": self.last_updated,
+            "created_at_CE": None,
+            "steam_id": self._steam_id
+        }
+    
+    def to_dict_supabase_games(self) -> list[dict]:
+        return [g.to_dict_supabase(self.ce_id) for g in self.owned_games]
+    
+    def to_dict_supabase_objectives(self) -> list[dict]:
+        _objectives = []
+        for game in self.owned_games:
+            _objectives.extend(game.to_dict_supabase_objectives(self.ce_id))
 
     def to_dict(self) -> dict :
         """Returns this user as a dictionary as used in the MongoDB database."""

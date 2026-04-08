@@ -24,6 +24,8 @@ with open('secret_info.json') as f:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# == GETTERS ==
+
 # GET LIST
 def get_list(database: Literal['name', 'user', 'input']) -> list[str]:
     table = None
@@ -55,6 +57,7 @@ def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
     else:
         user_json = supabase.table('users').select().eq('discord_id', ce_id).execute().data
     if len(user_json) == 0: return None
+    user_json = user_json[0]
     if use_discord_id: ce_id = user_json['ce_id'] 
 
     userGames_json = supabase.table('userGames').select().eq('user_ce_id', ce_id).execute().data
@@ -67,7 +70,58 @@ def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
     
     userRollGames_json = supabase.table('rollGames').select().in_("roll_id", roll_ids).order("index").execute().data
 
-    return __supabase_to_user(user_json, userGames_json, userObjectives_json, rolls_json, userRollGames_json, objectives)
+    return __supabase_to_user(user_json, userGames_json, userObjectives_json, rolls_json, userRollGames_json, objectives_json)
+
+# DATABASE NAME
+def get_database_name() -> list[CEGame]:
+    response_games = supabase.table('games').select().execute().data
+    response_objectives = supabase.table('objectives').select().execute().data
+    response_requirements = supabase.table('objectiveRequirements').select().execute().data
+
+    _games = []
+    for game in response_games:
+        objectives = [o for o in response_objectives if o['game_ce_id'] == game['ce_id']]
+        ids_objectives = [o['ce_id'] for o in objectives]
+        requirements = [r for r in response_requirements if r['objective_ce_id'] in ids_objectives]
+        _games.append(__supabase_to_game(game, objectives, requirements))
+    
+    return _games
+
+# DATABASE USER
+def get_database_user() -> list[CEUser]:
+    response_user = supabase.table('users').select().execute().data
+    response_ugames = supabase.table('userGames').select().execute().data
+    response_uobjectives = supabase.table('userObjectives').select().execute().data
+
+    response_rolls = supabase.table('rolls').select().execute().data
+    response_rgames = supabase.table('rollGames').select().execute().data
+
+    response_objectives = supabase.table('objectives').select().execute().data
+
+    _users = []
+    for user in response_user:
+        ugames = [g for g in response_ugames if g['user_ce_id'] == user['ce_id']]
+        uobjectives = [o for o in response_uobjectives if o['user_ce_id'] == user['ce_id']]
+
+        rolls = [r for r in response_rolls if r['user1_ce_id'] == user['ce_id']]
+        rgames = [g for g in response_rgames if g['roll_id'] in [r['id'] for r in rolls]]
+
+        _users.append(__supabase_to_user(
+            user, ugames, uobjectives, rolls, rgames, 
+            [o for o in response_objectives if o['ce_id'] in [u['objective_ce_id'] for u in uobjectives]] #works?
+        ))
+    
+    return _users
+
+# === DUMPERS ===
+def dump_game(game: CEGame):
+    raise NotImplementedError
+
+def dump_user(user: CEUser):
+    raise NotImplementedError
+
+def dump_roll(roll: CERoll):
+    raise NotImplementedError
 
 
 # === SUPABASE CONVERTERS ===
@@ -104,22 +158,40 @@ def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
     )
 
 def __supabase_to_user(user: dict, userGames: list[dict], userObjectives: list[dict],
-                       rolls: list[dict], rollGames: list[dict], objectives) -> CEUser:
+                       rolls: list[dict], rollGames: list[dict], objectives: list[dict]) -> CEUser:
     _rolls = []
     for roll in rolls:
         _rolls.append(__supabase_to_roll(roll, [g for g in rollGames if g['roll_id'] == roll['id']]))
+    
+    # TODO: optimize this please
+    mapping: dict[str, list[dict]] = {}
+    for game in userGames:
+        mapping[game['game_ce_id']] = []
+    for obj_u in userObjectives:
+        found_objective: dict = None
+        for obj in objectives:
+            if obj['ce_id'] == obj_u['objective_ce_id'] :
+                found_objective = obj
+                break
+        if found_objective is None: 
+            print(f"No found objective for {obj_u}.")
+            continue
+
+        if found_objective['game_ce_id'] not in mapping:
+            mapping[found_objective['game_ce_id']] = [obj_u]
+            continue
+        mapping[found_objective['game_ce_id']].append(obj_u)
+
+    
     _games = []
     for game in userGames:
-        objectives = []
-        for obj in userObjectives:
-            
-        _games.append(__supabase_to_user_game(game, [o for o in userObjectives if o['game_ce_id'] == game['ce_id']]))
+        _games.append(__supabase_to_user_game(game, mapping[game['game_ce_id']]))
 
     return CEUser(
         discord_id=user['discord_id'],
         ce_id=user['ce_id'],
         owned_games=_games,
-        rolls=rolls,
+        rolls=_rolls,
         display_name=user['display_name'],
         avatar=user['image_avatar'],
         last_updated=user['updated_at_CE'],

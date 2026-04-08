@@ -49,6 +49,15 @@ class CEUserObjective:
         self._name = name
     
     # --------- other methods ---------
+    def to_dict_supabase(self, user_ce_id: str) -> dict:
+        return {
+            "user_ce_id": user_ce_id,
+            "objective_ce_id": self.ce_id,
+            "user_points": self.user_points,
+            "updated_at_CE": None
+        }
+
+
     def to_dict(self) -> dict :
         """Turns this objective into a dictionary for MongoDB purposes.
         Example: 
