@@ -3,7 +3,7 @@ import discord
 from discord import app_commands
 
 from Classes.CE_User import CEUser
-from Modules import CEAPIReader, Discord_Helper, Mongo_Reader, hm
+from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
 
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
@@ -73,7 +73,7 @@ async def register(interaction : discord.Interaction, ce_id : str, discord_user 
     if ce_id is None : return await interaction.followup.send(f"'{ce_id}' is not a valid link or ID. Please try again!")
 
     # get database_user
-    users = await Mongo_Reader.get_database_user()
+    users = SupabaseReader.get_database_user()
     
     # make sure they're not already registered
     for user in users :
@@ -100,7 +100,7 @@ async def register(interaction : discord.Interaction, ce_id : str, discord_user 
         ce_user.add_completed_roll(roll)
 
     # add the user to users and dump it
-    await Mongo_Reader.dump_user(ce_user)
+    SupabaseReader.dump_user(ce_user)
 
     # get the role and attach it
     cea_registered_role = discord.utils.get(interaction.guild.roles, name = "CEA Registered")
@@ -128,7 +128,7 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
     await interaction.response.defer()
 
     # pull databases
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
 
     # check to see if they asked for info on another person.
     asked_for_friend : bool = True
@@ -137,7 +137,7 @@ async def profile(interaction : discord.Interaction, user : discord.User = None)
         asked_for_friend = False
 
     # make sure they're registered
-    ce_user = await Mongo_Reader.get_user(user.id, use_discord_id=True)
+    ce_user = SupabaseReader.get_user(user.id, use_discord_id=True)
     if ce_user is None and asked_for_friend : 
         return await interaction.followup.send(f"Sorry! <@{user.id}> is not registered. Please have them run /register!", 
                                                allowed_mentions=discord.AllowedMentions.none())
@@ -156,7 +156,7 @@ async def set_color(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
 
     # grab the user data
-    user_ce = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    user_ce = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     user_rank_num = user_ce.rank_num()
 
     # the actual assigning role function
@@ -243,7 +243,7 @@ async def show_summary(interaction: discord.Interaction, user: discord.User = No
     if user is None: user = interaction.user
 
     try: 
-        user_ce = await Mongo_Reader.get_user(user.id, use_discord_id=True)
+        user_ce = SupabaseReader.get_user(user.id, use_discord_id=True)
     except ValueError:
         return await interaction.followup.send(
             "The user you requested is not registered with the bot."

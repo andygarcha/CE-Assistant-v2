@@ -14,7 +14,7 @@ from Classes.CE_User_Game import CEUserGame
 from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.OtherClasses import EmbedMessage, UpdateMessage
 from Exceptions.FailedScrapeException import FailedScrapeException
-from Modules import CEAPIReader, Discord_Helper, Mongo_Reader
+from Modules import CEAPIReader, Discord_Helper, SupabaseReader
 from Modules.Screenshot import Screenshot
 import Modules.hm as hm
 from web_scraper import scraper
@@ -348,10 +348,10 @@ async def master_loop(client : discord.Client, guild_id : int) :
     if not SKIP_GAME_SCRAPE :
         try :
             old_database_name : list[CEGame] = []
-            d = await Mongo_Reader.get_database_name()
+            d = SupabaseReader.get_database_name()
             print(len(d))
             new_games : list[CEAPIGame] = await CEAPIReader.get_api_games_full()
-            game_list = await Mongo_Reader.get_list("name")
+            game_list = SupabaseReader.get_list("name")
             print(f"games: {len(game_list)}")
             embeds : list[EmbedMessage] = []
             exceptions : list[UpdateMessage] = []
@@ -360,7 +360,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 if i % 50 == 0 : print(f"game {i} of {len(new_games)}", end="... ")
 
                 # grab the old game
-                old_game = await Mongo_Reader.get_game(new_game.ce_id)
+                old_game = SupabaseReader.get_game(new_game.ce_id)
 
                 # and add it to database name
                 if old_game is not None :
@@ -385,7 +385,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                     exceptions += game_returns[1]
 
                 # and dump the new game
-                await Mongo_Reader.dump_game(new_game)
+                SupabaseReader.dump_game(new_game)
 
 
             
@@ -394,7 +394,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
             print(game_list)
             print(f'removed games: {len(game_list)}')
             for removed_game in game_list :
-                old_game = await Mongo_Reader.get_game(removed_game)
+                old_game = SupabaseReader.get_game(removed_game)
 
                 # get the update
                 game_returns = await thread_single_game_update(
@@ -408,7 +408,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                     exceptions += game_returns[1]
 
                 # delete the game
-                await Mongo_Reader.delete_game(old_game.ce_id)
+                SupabaseReader.delete_game(old_game.ce_id)
 
                 # and add it to database name
                 old_database_name.append(old_game)
@@ -440,7 +440,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
     if not SKIP_USER_SCRAPE :
         if SKIP_GAME_SCRAPE : return
         try :
-            database_user = await Mongo_Reader.get_list("user")
+            database_user = SupabaseReader.get_list("user")
             new_users : list[CEAPIUser] = await CEAPIReader.get_api_users_all(database_user)
 
             # guild
@@ -455,7 +455,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
                 if i % 50 == 0 : print(f"user {i} of {len(new_users)}")
 
                 # grab old user
-                old_user = await Mongo_Reader.get_user(new_user.ce_id)
+                old_user = SupabaseReader.get_user(new_user.ce_id)
 
                 # grab the update
                 updates += (await single_user_update_v2(
@@ -488,7 +488,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
 
     # pull the data
     print("checking curator")
-    mongo_recent_curated = await Mongo_Reader.get_curator_ids()
+    mongo_recent_curated = SupabaseReader.get_curator_ids()
     steam_recent_curated, descriptions = await get_recent_curated()
     print(f'{steam_recent_curated=}')
     print(f'{mongo_recent_curated=}')
@@ -504,14 +504,14 @@ async def master_loop(client : discord.Client, guild_id : int) :
         curator_embeds = await thread_curator(uncurated, new_games, descriptions)
         for embed in curator_embeds :
             await game_additions_channel.send(embed=embed)
-        await Mongo_Reader.dump_curator_ids(uncurated)
+        SupabaseReader.dump_curator_ids(uncurated)
         
     
     else : print('no new curator updates.')
 
     # ---- database tier ----
     database_tier = scraper.generate_database_tier(new_games)
-    await Mongo_Reader.dump_database_tier(database_tier)
+    SupabaseReader.dump_database_tier(database_tier)
     
     print('---- loop complete. ----')
     return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
@@ -676,7 +676,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
         #       this if statement just preps for the next one.
         if not roll.status == "current" : continue
         partner = None
-        if roll.partner_ce_id is not None : partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+        if roll.partner_ce_id is not None : partner = SupabaseReader.get_user(roll.partner_ce_id)
         if (roll.is_multi_stage() and not roll.in_final_stage() and 
             (roll.is_won(database_name=new_database_name, user=user, partner=partner))) :
             # if we've already hit this roll before, keep moving
@@ -723,7 +723,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
             """
             if roll.is_co_op() :
                 # get the partner and their roll
-                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                partner = SupabaseReader.get_user(roll.partner_ce_id)
                 if partner.has_current_roll(roll.roll_name) :
                     partner_roll = partner.get_current_roll(roll.roll_name)
 
@@ -736,7 +736,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                         partner.win_current_roll(partner_roll.roll_name)
 
                     # and append it to partners
-                    await Mongo_Reader.dump_user(partner)
+                    SupabaseReader.dump_user(partner)
 
         
         elif roll.is_expired() :
@@ -751,13 +751,13 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
             # remove this roll from current rolls
             user.fail_current_roll(roll.roll_name)
             if roll.is_co_op() :
-                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                partner = SupabaseReader.get_user(roll.partner_ce_id)
                 if partner.has_current_roll(roll.roll_name) :
                     partner.fail_current_roll(roll.roll_name)
-                    await Mongo_Reader.dump_user(user)
+                    SupabaseReader.dump_user(user)
     
     user.set_last_updated(hm.get_unix("now"))
-    await Mongo_Reader.dump_user(user)
+    SupabaseReader.dump_user(user)
 
     return updates
 

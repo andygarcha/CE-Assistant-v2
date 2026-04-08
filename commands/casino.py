@@ -7,7 +7,7 @@ from discord import app_commands
 from Classes.CE_User import CEUser
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
-from Modules import Discord_Helper, Mongo_Reader, hm
+from Modules import Discord_Helper, SupabaseReader, hm
 
 """ === GETTING CLIENT TO WORK === """
 client : discord.Client = None
@@ -69,7 +69,7 @@ class TripleThreatDropdown(discord.ui.Select) :
     async def callback(self, interaction : discord.Interaction) :
         "The callback."
 
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
 
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id : 
@@ -84,8 +84,8 @@ class TripleThreatDropdown(discord.ui.Select) :
         category = self.values[0]
 
         # roll a game with these parameters
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
         rolled_games : list[str] = []
         for _ in range(3) :
             rolled_games.append(await hm.get_rollable_game(
@@ -103,7 +103,7 @@ class TripleThreatDropdown(discord.ui.Select) :
 
         if None in rolled_games :
             user.remove_pending("Triple Threat")
-            await Mongo_Reader.dump_user(user)
+            SupabaseReader.dump_user(user)
             return await interaction.followup.send("Not enough qualifiable games. Please try again later!")
 
         roll : CERoll = CERoll(
@@ -115,9 +115,9 @@ class TripleThreatDropdown(discord.ui.Select) :
 
         user.remove_pending("Triple Threat")
         user.add_current_roll(roll)
-        await Mongo_Reader.dump_user(user)
+        SupabaseReader.dump_user(user)
 
-        database_user = await Mongo_Reader.get_database_user()
+        database_user = SupabaseReader.get_database_user()
 
         view = discord.ui.View()
         embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name)
@@ -148,7 +148,7 @@ class LetFateDecideDropdown(discord.ui.Select) :
     async def callback(self, interaction : discord.Interaction) :
         "The callback."
 
-        user = await Mongo_Reader.get_user(self.__user.ce_id)
+        user = SupabaseReader.get_user(self.__user.ce_id)
 
         if user is None : raise ValueError("User is not registered!")
 
@@ -165,8 +165,8 @@ class LetFateDecideDropdown(discord.ui.Select) :
         category = self.values[0]
 
         # roll a game with these parameters
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
         rolled_game_id = await hm.get_rollable_game(
             database_name=database_name,
             database_tier=database_tier,
@@ -188,9 +188,7 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
         user.remove_pending("Let Fate Decide")
         user.add_current_roll(roll)
-        await Mongo_Reader.dump_user(user)
-
-        database_user = await Mongo_Reader.get_database_user()
+        SupabaseReader.dump_user(user)
 
         view = discord.ui.View()
         embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name)
@@ -234,7 +232,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
     async def callback(self, interaction : discord.Interaction) :
         "The callback."
 
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
 
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id :
@@ -256,8 +254,8 @@ class FourwardThinkingDropdown(discord.ui.Select) :
             )
         
         # get the data
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
         next_phase_num = len(past_roll.games) + 1
         category = self.values[0]
         game_id = await hm.get_rollable_game(
@@ -280,7 +278,7 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         user.update_waiting_roll(past_roll)
         user.unwait_waiting_roll("Fourward Thinking")
         user.remove_pending("Fourward Thinking")
-        await Mongo_Reader.dump_user(user)
+        SupabaseReader.dump_user(user)
 
         # now send the message
         game_object = hm.get_item_from_list(game_id, database_name)
@@ -300,11 +298,11 @@ class RerollView(discord.ui.View) :
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
         # pull database user and get user
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
 
         user.remove_current_roll(self.__event_name) # remove the current roll
 
-        await Mongo_Reader.dump_user(user)
+        SupabaseReader.dump_user(user)
 
         self.clear_items()
         await interaction.response.edit_message(content=f"You can now reroll {self.__event_name}.", view=self)
@@ -333,9 +331,9 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
     # pull mongo database
     print('solo roll called. pulling mongo...')
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
     print('db name pulled')
-    database_tier = await Mongo_Reader.get_database_tier()
+    database_tier = SupabaseReader.get_database_tier()
     print('db tier pulled')
 
     # define channel
@@ -343,7 +341,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
 
     # grab the user
     try :
-        user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     except ValueError as e :
         print(e.with_traceback())
         return await interaction.followup.send(
@@ -534,7 +532,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     new_game_object = hm.get_item_from_list(new_game_id, database_name)
                     user.update_waiting_roll(past_roll)
                     user.unwait_waiting_roll("Two Week T2 Streak")
-                    await Mongo_Reader.dump_user(user)
+                    SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
                         f"It is due on <t:{past_roll.due_time}>. "
@@ -586,7 +584,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     new_game_object = hm.get_item_from_list(new_game_id, database_name)
                     user.update_waiting_roll(past_roll)
                     user.unwait_waiting_roll("Two \"Two Week T2 Streak\" Streak")
-                    await Mongo_Reader.dump_user(user)
+                    SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
                         f"It is due on <t:{past_roll.due_time}>. " +
@@ -622,7 +620,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if not user.has_completed_roll("Never Lucky") :
                 return await interaction.followup.send("You need to complete Never Lucky before rolling Triple Threat!")
             user.add_pending("Triple Threat")
-            await Mongo_Reader.dump_user(user)
+            SupabaseReader.dump_user(user)
 
             view.add_item(TripleThreatDropdown(user.ce_id, price_restriction, hours_restriction))
             view.timeout = 600
@@ -634,7 +632,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
         case "Let Fate Decide" :
             # add the pending
             user.add_pending("Let Fate Decide")
-            await Mongo_Reader.dump_user(user)
+            SupabaseReader.dump_user(user)
 
             view.add_item(LetFateDecideDropdown(user, price_restriction, hours_restriction))
             view.timeout = 600
@@ -659,7 +657,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             
             # add the pending and dump it
             user.add_pending("Fourward Thinking")
-            await Mongo_Reader.dump_user(user)
+            SupabaseReader.dump_user(user)
             
             view.timeout = 600
             view.add_item(FourwardThinkingDropdown(past_roll, database_name, price_restriction, hours_restriction, 
@@ -695,7 +693,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     )
 
     await Discord_Helper.get_buttons(view=view, embeds=embeds)
-    await Mongo_Reader.dump_user(user=user)
+    SupabaseReader.dump_user(user=user)
     return await interaction.followup.send(embed=embeds[0], view=view)
 
 
@@ -718,8 +716,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         
 
         # make sure only the partner can touch the buttons.
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
         if interaction.user.id != partner.discord_id :
             self.__button_clicked = False
             return await interaction.response.send_message(
@@ -732,8 +730,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull database name
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
 
         # get the game for the user from the partner's library
         game_for_user = await hm.get_rollable_game(
@@ -790,8 +788,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         ))
 
         # and then dump them both.
-        await Mongo_Reader.dump_user(user)
-        await Mongo_Reader.dump_user(partner)
+        SupabaseReader.dump_user(user)
+        SupabaseReader.dump_user(partner)
 
         self.clear_items()
 
@@ -812,7 +810,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
     async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
         # make sure only the partner can touch the buttons
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
         if interaction.user.id != partner.discord_id :
             return await interaction.response.send_message(
                 "You cannot touch these buttons.", ephemeral=True
@@ -842,8 +840,8 @@ class SoulMatesDropdown(discord.ui.Select) :
     
     async def callback(self, interaction : discord.Interaction) :
 
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
 
         # make sure only the user can pick the tier
         if interaction.user.id != user.discord_id :
@@ -878,8 +876,8 @@ class SoulMatesAgreeView(discord.ui.View) :
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
 
         if self.__button_clicked : return
         self.__button_clicked = True
@@ -898,8 +896,8 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         tier_num = int(self.__tier)
 
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
 
         rolled_game = await hm.get_rollable_game(
             database_name=database_name,
@@ -937,8 +935,8 @@ class SoulMatesAgreeView(discord.ui.View) :
         user.add_current_roll(user_roll)
         partner.add_current_roll(partner_roll)
 
-        await Mongo_Reader.dump_user(user)
-        await Mongo_Reader.dump_user(partner)
+        SupabaseReader.dump_user(user)
+        SupabaseReader.dump_user(partner)
 
         game_object = hm.get_item_from_list(rolled_game, database_name)
 
@@ -953,7 +951,7 @@ class SoulMatesAgreeView(discord.ui.View) :
     @discord.ui.button(label="No", style=discord.ButtonStyle.red)
     async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
 
         # make sure it was the right person who clicked it
         if interaction.user.id != partner.discord_id :
@@ -981,8 +979,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
         if self.__button_clicked : return
         self.__button_clicked = True
 
-        user = await Mongo_Reader.get_user(self.__user_ce_id)
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        user = SupabaseReader.get_user(self.__user_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
 
         # make sure the right person clicked
         if interaction.user.id != partner.discord_id :
@@ -992,8 +990,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
         
         await interaction.response.defer()
         
-        database_name = await Mongo_Reader.get_database_name()
-        database_tier = await Mongo_Reader.get_database_tier()
+        database_name = SupabaseReader.get_database_name()
+        database_tier = SupabaseReader.get_database_tier()
 
         rolled_games : list[str] = []
         for i in range(4) :
@@ -1029,8 +1027,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
             partner_ce_id=user.ce_id,
             is_current=True
         ))
-        await Mongo_Reader.dump_user(user)
-        await Mongo_Reader.dump_user(partner)
+        SupabaseReader.dump_user(user)
+        SupabaseReader.dump_user(partner)
 
         rolled_games_objects = [hm.get_item_from_list(game_id, database_name) for game_id in rolled_games]
 
@@ -1053,7 +1051,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
     @discord.ui.button(label="No", style=discord.ButtonStyle.red)
     async def no_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
-        partner = await Mongo_Reader.get_user(self.__partner_ce_id)
+        partner = SupabaseReader.get_user(self.__partner_ce_id)
 
         # make sure it was the right person who clicked it
         if interaction.user.id != partner.discord_id :
@@ -1088,9 +1086,9 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
         )
 
     # grab the user
-    user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     try :
-        partner : CEUser = await Mongo_Reader.get_user(partner_discord.id, use_discord_id=True)
+        partner : CEUser = SupabaseReader.get_user(partner_discord.id, use_discord_id=True)
     except ValueError :
         partner = None
 
@@ -1141,7 +1139,7 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
             )
     
     # user has cooldown
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
     if user.has_cooldown(event_name, database_name) :
         return await interaction.followup.send(
             f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name, database_name)}>. "
@@ -1169,8 +1167,8 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
 
     user.add_pending(event_name)
     partner.add_pending(event_name)
-    await Mongo_Reader.dump_user(user)
-    await Mongo_Reader.dump_user(partner)
+    SupabaseReader.dump_user(user)
+    SupabaseReader.dump_user(partner)
 
 
     match(event_name) :
@@ -1227,7 +1225,7 @@ async def check_rolls(interaction : discord.Interaction) :
     view = discord.ui.View(timeout=None)
 
     # find the user
-    user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user is None : return await interaction.followup.send(content="You're not registered! Please run /register.")
 
     return await interaction.followup.send(f'[click me :)](https://ce-assistant-frontend.vercel.app/users/{user.ce_id})')

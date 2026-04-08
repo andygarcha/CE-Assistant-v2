@@ -2,7 +2,7 @@ import typing
 import discord
 from discord import app_commands
 
-from Modules import Discord_Helper, Mongo_Reader
+from Modules import Discord_Helper, SupabaseReader
 
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
@@ -31,7 +31,7 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def get_game_auto(interaction : discord.Interaction, current : str) -> typing.List[app_commands.Choice[str]]:
     """Function that autocompletes whatever the user is trying to type in.
     The game's name will appear on the user's screen, but the game's CE ID will be passed."""
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
     choices : list = []
 
     for game in database_name :
@@ -46,11 +46,11 @@ async def get_game(interaction : discord.Interaction, game : str) :
     # defer
     await interaction.response.defer()
 
-    chosen_game = await Mongo_Reader.get_game(game)
+    chosen_game = SupabaseReader.get_game(game)
     if chosen_game is None : return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
 
     # pull the game embed
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
     game_embed = await Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
 
     # and return

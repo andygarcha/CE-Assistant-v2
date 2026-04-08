@@ -113,6 +113,23 @@ def get_database_user() -> list[CEUser]:
     
     return _users
 
+def get_roll(roll_id: str) -> CERoll:
+    raise NotImplementedError
+
+def get_all_rolls() -> list[CERoll]:
+    raise NotImplementedError
+
+def get_input(ce_id: str) -> CEInput:
+    # this one can take a backseat for now.
+    raise NotImplementedError
+
+def get_database_tier() -> list[dict]:
+    # this one can take a backseat for now.
+    raise NotImplementedError
+
+def get_curator_ids() -> list[str]:
+    raise NotImplementedError
+
 # === DUMPERS ===
 def dump_game(game: CEGame):
     raise NotImplementedError
@@ -121,6 +138,19 @@ def dump_user(user: CEUser):
     raise NotImplementedError
 
 def dump_roll(roll: CERoll):
+    raise NotImplementedError
+
+def dump_input(input: CEInput):
+    # this one can take a backseat for now.
+    raise NotImplementedError
+
+def delete_game(ce_id: str):
+    raise NotImplementedError
+
+def dump_curator_ids(ids: list[str]):
+    raise NotImplementedError
+
+def dump_database_tier(database_tier: list[dict]):
     raise NotImplementedError
 
 

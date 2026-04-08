@@ -14,7 +14,7 @@ from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import UPDATEMESSAGE_LOCATIONS
 import Modules.hm as hm
-from Modules import CEAPIReader, Mongo_Reader
+from Modules import CEAPIReader, SupabaseReader
 
 """ SCRAPER CLASSES """
 class UpdateMessageForScraperProcess():
@@ -69,13 +69,13 @@ async def update_database_name():
     database_name_new: list[CEAPIGame] = await CEAPIReader.get_api_games_full()
     # a list of all the ce ids from the current local (mongodb) database
     #   this will be useful for finding removed games.
-    game_list = await Mongo_Reader.get_list('name')
+    game_list = SupabaseReader.get_list('name')
 
     updates = []
 
     # let's iterate through all the new games
     for i, game_new in enumerate(database_name_new):
-        game_old = await Mongo_Reader.get_game(game_new.ce_id)
+        game_old = SupabaseReader.get_game(game_new.ce_id)
         if game_old is not None:
             database_name_old.append(game_old)
         
@@ -92,17 +92,17 @@ async def update_database_name():
             updates.append(return_value)
 
         # dump the new game to mongodb
-        await Mongo_Reader.dump_game(game_new)
+        SupabaseReader.dump_game(game_new)
 
     # remove all removed games
     for removed_game in game_list:
-        game_old = await Mongo_Reader.get_game(removed_game)
+        game_old = SupabaseReader.get_game(removed_game)
 
         return_value = update_one_game(game_old, None)
         if return_value is not None:
             updates.append(return_value)
         
-        await Mongo_Reader.delete_game(removed_game)
+        SupabaseReader.delete_game(removed_game)
 
         database_name_old.append(game_old)
     
@@ -111,7 +111,7 @@ async def update_database_name():
     return database_name_old, database_name_new
 
 async def update_database_user(database_name_old: list[CEGame], database_name_new: list[CEAPIGame]):
-    user_list = await Mongo_Reader.get_list('user')
+    user_list = SupabaseReader.get_list('user')
     database_user_new = await CEAPIReader.get_api_users_all(user_list)
 
     updates: list[UpdateMessageForScraperProcess] = []
@@ -119,7 +119,7 @@ async def update_database_user(database_name_old: list[CEGame], database_name_ne
     for i, user_new in enumerate(database_user_new):
         if i % 10 == 0: print(f"User {i} of {len(database_user_new)}", end="... ")
 
-        user_old = await Mongo_Reader.get_user(user_new.ce_id)
+        user_old = SupabaseReader.get_user(user_new.ce_id)
 
         # call the update function
         return_value = await update_one_user(
@@ -330,7 +330,7 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
         #       this if statement just preps for the next one.
         if not roll.status == "current" : continue
         partner = None
-        if roll.partner_ce_id is not None : partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+        if roll.partner_ce_id is not None : partner = SupabaseReader.get_user(roll.partner_ce_id)
         if (roll.is_multi_stage() and not roll.in_final_stage() and 
             (roll.is_won(database_name=database_name_new, user=user, partner=partner))) :
             # if we've already hit this roll before, keep moving
@@ -379,7 +379,7 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
             """
             if roll.is_co_op() :
                 # get the partner and their roll
-                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                partner = SupabaseReader.get_user(roll.partner_ce_id)
                 if partner.has_current_roll(roll.roll_name) :
                     partner_roll = partner.get_current_roll(roll.roll_name)
 
@@ -392,7 +392,7 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
                         partner.win_current_roll(partner_roll.roll_name)
 
                     # and append it to partners
-                    await Mongo_Reader.dump_user(partner)
+                    SupabaseReader.dump_user(partner)
 
         
         elif roll.is_expired() :
@@ -407,14 +407,14 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
             # remove this roll from current rolls
             user.fail_current_roll(roll.roll_name)
             if roll.is_co_op() :
-                partner = await Mongo_Reader.get_user(roll.partner_ce_id)
+                partner = SupabaseReader.get_user(roll.partner_ce_id)
                 if partner.has_current_roll(roll.roll_name) :
                     partner.fail_current_roll(roll.roll_name)
-                    await Mongo_Reader.dump_user(user)
+                    SupabaseReader.dump_user(user)
     
     user.set_last_updated(hm.get_unix("now"))
 
-    await Mongo_Reader.dump_user(user)
+    SupabaseReader.dump_user(user)
 
     return updates
 
@@ -689,13 +689,13 @@ def check_completion_count():
 
 async def test():
     # print('pulling db name')
-    # database_name = await Mongo_Reader.get_database_name()
+    # database_name = SupabaseReader.get_database_name()
 
     # print('generating db tier!')
     # database_tier = generate_database_tier(database_name)
 
-    # await Mongo_Reader.dump_database_tier(database_tier)
+    # SupabaseReader.dump_database_tier(database_tier)
 
-    print(await Mongo_Reader.get_database_tier())
+    print(SupabaseReader.get_database_tier())
 
 #asyncio.run(test())

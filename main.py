@@ -14,8 +14,8 @@ from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CEInput
 from Modules.WebInteractor import master_loop
+from Modules import SupabaseReader
 import Modules.hm as hm
-import Modules.Mongo_Reader as Mongo_Reader
 from Modules import http_session
 from commands import load_commands
 
@@ -152,7 +152,7 @@ async def manual_update_casino_score(interaction : discord.Interaction, member :
 async def get_game_data(interaction : discord.Interaction, ce_id : str) :
     await interaction.response.defer()
 
-    game = await Mongo_Reader.get_game(ce_id)
+    game = SupabaseReader.get_game(ce_id)
     if game is None :
         return await interaction.followup.send('game not found')
     else :
@@ -161,52 +161,6 @@ async def get_game_data(interaction : discord.Interaction, ce_id : str) :
 
 
 
-"""
-@tree.command(name='set-color', description='Set your discord username color!', guild=guild)
-async def set_color(interaction : discord.Interaction) :
-    "Sets the color."
-    await interaction.response.defer(ephemeral=True)
-
-    # pull database_user and get the user
-    database_user = await Mongo_Reader.get_database_user()
-    user = Discord_Helper.get_user_by_discord_id(interaction.user.id, database_user)
-
-    # set up ranks values
-
-
-    class Rank(Enum) :
-        E = 0
-        D = 1
-        C = 2
-        B = 3
-        A = 4
-        S = 5
-        SS = 6
-        SSS = 7
-        EX = 8
-    class Color(Enum) :
-        Grey = Rank.E
-        Brown = Rank.D
-        Green = Rank.C
-        Blue = Rank.B
-        Purple = Rank.A
-        Orange = Rank.S
-        Yellow = Rank.SS
-        Red = Rank.SSS
-        Black = Rank.EX     
-    
-    ranks = [(rank.name + " Rank") for rank in Rank]
-
-    # set up the callback
-    async def color_callback(interaction : discord.Interaction, color : Color) :
-        "Updates the user's color."
-        color_roles = [(discord.utils.get(interaction.guild.roles, name = f.name)) for f in Color]
-
-    # get the rank
-    user_rank = user.get_rank()[:-5]
-
-    Rank.E.name
-"""
 
 
 
@@ -214,124 +168,6 @@ async def set_color(interaction : discord.Interaction) :
 
 
 
-
-
-
-"""
-
-#   _____   ______   _______            _____     ____    _        _                  _____              __  __   ______ 
-#  / ____| |  ____| |__   __|          |  __ \   / __ \  | |      | |                / ____|     /\     |  \/  | |  ____|
-# | (___   | |__       | |     ______  | |__) | | |  | | | |      | |       ______  | |  __     /  \    | \  / | | |__   
-#  \___ \  |  __|      | |    |______| |  _  /  | |  | | | |      | |      |______| | | |_ |   / /\ \   | |\/| | |  __|  
-#  ____) | | |____     | |             | | \ \  | |__| | | |____  | |____           | |__| |  / ____ \  | |  | | | |____ 
-# |_____/  |______|    |_|             |_|  \_\  \____/  |______| |______|           \_____| /_/    \_\ |_|  |_| |______|
-
-@tree.command(name="set-roll-game", description="Set any game in a user's current rolls.", guild=guild)
-async def set_roll_game(interaction : discord.Interaction, member : discord.Member, 
-                        roll_name : hm.ALL_ROLL_EVENT_NAMES, game_id : str) :
-    await interaction.response.defer(ephemeral=True)
-
-    # pull databases
-    database_name = await Mongo_Reader.get_database_name()
-    database_user = await Mongo_Reader.get_database_user()
-
-    # get objects
-    game = hm.get_item_from_list(game_id, database_name)
-    user = Discord_Helper.get_user_by_discord_id(member.id, database_user)
-
-    # make sure they're registered
-    if user is None : return await interaction.followup.send("This user is not registered.")
-
-    # make sure they have the roll
-    roll = user.get_current_roll(roll_name)
-    if roll is None : return await interaction.followup.send("This user doesn't have this roll.")
-
-    class SetRollDropdown(discord.ui.Select) :
-        def __init__(self, roll : CERoll) :
-            self.__roll = roll
-            self.__replacement_id = game_id
-
-            game_objects = [hm.get_item_from_list(game, database_name) for game in roll.games]
-
-            options = [discord.SelectOption(label=game.game_name) for game in game_objects]
-
-            super().__init__(placeholder="Select a game to replace.", min_values=1, max_values=1, options=options)
-
-        async def callback(self, interaction : discord.Interaction) :
-            "Callback."
-            await interaction.response.defer()
-
-            # get the id of the game they want to swap out
-            game_id = self.values[0]
-
-            database_name = await Mongo_Reader.get_database_name()
-
-            # go through and find that id and swap it out
-            for i, rollgameid in enumerate(self.__roll.games) :
-                if rollgameid == game_id : self.__roll._games[i] = self.__replacement_id
-            
-            # pull database name
-            database_user = await Mongo_Reader.get_database_user()
-
-            # get the user and replace the roll
-            user = hm.get_item_from_list(self.__roll.user_ce_id, database_user)
-            user.update_current_roll(self.__roll)
-
-            replaced_game = hm.get_item_from_list(game_id, database_name)
-            game_that_replaced = hm.get_item_from_list(self.__replacement_id, database_name)
-
-            return await interaction.followup.send(
-                f"Replaced {replaced_game.game_name if replaced_game is not None else ''} with ({game_that_replaced.game_name})" 
-                + f"[https://cedb.me/game/{game_that_replaced.ce_id}]."
-            )
-
-    view = discord.ui.View(timeout=None)
-    view.add_item(SetRollDropdown(roll))
-
-    return await interaction.followup.send("Select which game you'd like to replace.", view=view, ephemeral=True)
-"""
-
-
-"""
-
-#   ____    _   _     __  __   ______    _____    _____               _____   ______ 
-#  / __ \  | \ | |   |  \/  | |  ____|  / ____|  / ____|     /\      / ____| |  ____|
-# | |  | | |  \| |   | \  / | | |__    | (___   | (___      /  \    | |  __  | |__   
-# | |  | | | . ` |   | |\/| | |  __|    \___ \   \___ \    / /\ \   | | |_ | |  __|  
-# | |__| | | |\  |   | |  | | | |____   ____) |  ____) |  / ____ \  | |__| | | |____ 
-#  \____/  |_| \_|   |_|  |_| |______| |_____/  |_____/  /_/    \_\  \_____| |______|
-@client.event
-async def on_message(message : discord.Message) :
-    "This runs for every message that is sent. This might get fucked."
-
-    if message.author.bot : return
-    
-    if message.channel.id == hm.PROOF_SUBMISSIONS_ID :
-        "The message is in the #proof-submissions channel."
-
-        # pull the user
-        database_user = await Mongo_Reader.get_database_user()
-        user = Discord_Helper.get_user_by_discord_id(message.author.id, database_user)
-        
-        # scenario 2: is registered but forget link
-        if "cedb.me/user" not in message.content and user is not None :
-            await message.channel.send(f"https://cedb.me/user/{user.ce_id}/")
-        
-        # scenario 3: is not registered but sends link
-        elif "cedb.me/user" in message.content and user is None :
-            ""
-        
-        # scenario 4: is not registered and forgets link
-        elif "cedb.me/user" not in message.content and user is not None :
-            content = message.content
-            await message.delete()
-            try :
-                await message.author.send(f"Your message was removed because you forgot")
-            except :
-                ""
-    
-    # https://patorjk.com/software/taag/#p=display&h=0&v=0&f=Big&t=TEST
-"""
 
 
 #  _____   _   _   _____    _    _   _______ 
@@ -496,10 +332,10 @@ class ValueModal(discord.ui.Modal) :
             )
         
         # pull databases
-        database_name = await Mongo_Reader.get_database_name()
+        database_name = SupabaseReader.get_database_name()
 
         # grab the current input. we can guarantee this exists because we set it up previously.
-        curr_input = await Mongo_Reader.get_input(self.__game.ce_id)
+        curr_input = SupabaseReader.get_input(self.__game.ce_id)
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
 
         # we now need to check if our average has changed enough to enter scary territory
@@ -512,12 +348,12 @@ class ValueModal(discord.ui.Modal) :
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
             objective_id=self.__objective.ce_id,
-            user_id=(await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            user_id=(SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
             value=int(self.new_value.value)
         )
 
         # and dump it back to mongo
-        await Mongo_Reader.dump_input(curr_input)
+        SupabaseReader.dump_input(curr_input)
 
         # now lets grab the new average
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
@@ -605,21 +441,21 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        input_object = await Mongo_Reader.get_input(self.game_id)
-        game_object = await Mongo_Reader.get_game(self.game_id)
+        input_object = SupabaseReader.get_input(self.game_id)
+        game_object = SupabaseReader.get_game(self.game_id)
 
         old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
-            (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            (SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
             1
         )
 
         new_curatable = input_object.is_curatable()
 
         # and push back to mongo
-        await Mongo_Reader.dump_input(input_object)
+        SupabaseReader.dump_input(input_object)
 
         """
         # Update the original message to unlock "Value" and "Tags"
@@ -652,21 +488,21 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        input_object = await Mongo_Reader.get_input(self.game_id)
-        game_object = await Mongo_Reader.get_game(self.game_id)
+        input_object = SupabaseReader.get_input(self.game_id)
+        game_object = SupabaseReader.get_game(self.game_id)
 
         old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
-            (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            (SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
             2
         )
 
         new_curatable = input_object.is_curatable()
 
         # and push back to mongo
-        await Mongo_Reader.dump_input(input_object)
+        SupabaseReader.dump_input(input_object)
 
         """
         # Update the original message to unlock "Value" and "Tags"
@@ -698,21 +534,21 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        input_object = await Mongo_Reader.get_input(self.game_id)
-        game_object = await Mongo_Reader.get_game(self.game_id)
+        input_object = SupabaseReader.get_input(self.game_id)
+        game_object = SupabaseReader.get_game(self.game_id)
 
         old_curatable = input_object.is_curatable()
 
         # add the curate input
         input_object.add_curate_input(
-            (await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            (SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
             0
         )
 
         new_curatable = input_object.is_curatable()
 
         # and push back to mongo
-        await Mongo_Reader.dump_input(input_object)
+        SupabaseReader.dump_input(input_object)
 
         """
         # Update the original message to unlock "Value" and "Tags"
@@ -806,15 +642,15 @@ class GameInputView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        game = await Mongo_Reader.get_game(self.ce_id)
-        user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+        game = SupabaseReader.get_game(self.ce_id)
+        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = await Mongo_Reader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) != None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)
-            await Mongo_Reader.dump_input(new_input)
+            SupabaseReader.dump_input(new_input)
 
         # go through objectives and only let users select POs they've completed
         valid_objectives : list[CEObjective] = []
@@ -845,18 +681,18 @@ class GameInputView(discord.ui.View) :
         await interaction.response.defer()
 
         # pull from mongo
-        game = await Mongo_Reader.get_game(self.ce_id)
-        user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+        game = SupabaseReader.get_game(self.ce_id)
+        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = await Mongo_Reader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) != None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)
-            await Mongo_Reader.dump_input(new_input)
+            SupabaseReader.dump_input(new_input)
 
         # grab the input object itself
-        input_object = await Mongo_Reader.get_input(game.ce_id)
+        input_object = SupabaseReader.get_input(game.ce_id)
 
         view = CurateButtonYesOrNoView(
             input_object.user_has_selected_yes(user.ce_id), 
@@ -884,8 +720,8 @@ class GameInputView(discord.ui.View) :
 async def game_input(interaction : discord.Interaction, game : str) :
     await interaction.response.defer(ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL)
 
-    game_object = await Mongo_Reader.get_game(game)
-    user = await Mongo_Reader.get_user(interaction.user.id, use_discord_id=True)
+    game_object = SupabaseReader.get_game(game)
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
     # make sure a valid game was passed
     if game_object is None : 
@@ -903,11 +739,11 @@ async def game_input(interaction : discord.Interaction, game : str) :
     
     # set up the message
     content = f"Game chosen: {game_object.name_with_link()}"
-    database_name = await Mongo_Reader.get_database_name()
+    database_name = SupabaseReader.get_database_name()
     if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
     content += "."
 
-    input = await Mongo_Reader.get_input(game)
+    input = SupabaseReader.get_input(game)
     has_submitted_before = input is not None and input.has_curate_input(user.ce_id)
 
     # and send it.
@@ -925,8 +761,8 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
     await interaction.response.defer()
 
     # pull from mongo
-    game_object = await Mongo_Reader.get_game(game)
-    input_object = await Mongo_Reader.get_input(game)
+    game_object = SupabaseReader.get_game(game)
+    input_object = SupabaseReader.get_input(game)
 
     # make sure a valid game was passed
     if game_object is None : 
@@ -943,8 +779,8 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
         )
     
     # now get the actual to_string()
-    database_user = await Mongo_Reader.get_database_user()
-    database_name = await Mongo_Reader.get_database_name()
+    database_user = SupabaseReader.get_database_user()
+    database_name = SupabaseReader.get_database_name()
     if not simple : input_object_string = input_object.to_string(database_name, database_user)
     else : input_object_string = input_object.to_string_simple(database_name)
 
