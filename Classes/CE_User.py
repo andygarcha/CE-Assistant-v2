@@ -235,7 +235,7 @@ class CEUser:
         for i, roll in enumerate(self.rolls) :
             if roll.roll_name == roll_name and roll.status == "current" :
                 self._rolls[i].status = "won"
-                self._rolls[i].completed_time = hm.get_unix("now")
+                self._rolls[i].completed_time = hm.get_datetime('now')
                 return
         
         raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
@@ -338,8 +338,8 @@ class CEUser:
             user_ce_id=self.ce_id,
             games=[""],
             status="pending",
-            init_time=hm.get_unix("now"),
-            due_time=hm.get_unix(minutes=10)
+            init_time=hm.get_datetime('now'),
+            due_time=hm.get_datetime(minutes=10)
         ))
         pass
     
@@ -409,10 +409,10 @@ class CEUser:
         """Returns true if this user is currently on cooldown for `roll_name`."""
         # check infinite time rolls
         cooldown_time = self.get_cooldown_time(roll_name, database_name)
-        return cooldown_time is not None and cooldown_time > hm.get_unix("now")
+        return cooldown_time is not None and cooldown_time > hm.get_datetime('now')
     
     def get_cooldown_time(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame]) -> int | None :
-        """Returns the unix timestamp of the date `roll_name`'s cooldown ends
+        """Returns the datetime of the date `roll_name`'s cooldown ends
         (or `None` if not applicable.)"""
         # check infinite time rolls
         for roll in self.current_rolls :
@@ -423,7 +423,7 @@ class CEUser:
         for roll in self.failed_rolls :
             if roll.roll_name == roll_name : 
                 cooldown_date = roll.calculate_cooldown_date(database_name)
-                if cooldown_date is not None and cooldown_date > hm.get_unix("now") : return cooldown_date
+                if cooldown_date is not None and cooldown_date > hm.get_datetime('now') : return cooldown_date
         return None
     
     def had_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame], old_time : int) -> bool :
@@ -659,7 +659,7 @@ class CEAPIUser(CEUser) :
         game_names : list[str] = []
         for objective in self.full_data['userObjectives'] :
             ce_ids.append(objective['objective']['id'])
-            completion_dates.append(CEAPIReader._timestamp_to_unix(objective['updatedAt']))
+            completion_dates.append(hm.cetimestamp_to_datetime(objective['updatedAt']))
             game_names.append(objective['objective']['game']['name'])
         
         # make sure they didn't request too much

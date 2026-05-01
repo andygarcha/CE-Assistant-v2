@@ -27,11 +27,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # == GETTERS ==
 
 # GET LIST
-def get_list(database: Literal['name', 'user', 'input']) -> list[str]:
+def get_list(database: Literal['name', 'user', 'input', 'objectives']) -> list[str]:
     table = None
     if database == "name": table = "games"
     if database == "user": table = "users"
-    if table is None: raise Exception("Invalid get_list argument!")
+    if database == 'objectives': table = 'objectives'
+    if table is None: raise Exception(f"Invalid get_list argument! argument: {database}")
 
     out = supabase.table(table).select('ce_id').execute()
 
@@ -114,45 +115,175 @@ def get_database_user() -> list[CEUser]:
     return _users
 
 def get_roll(roll_id: str) -> CERoll:
-    raise NotImplementedError
+    roll_json = supabase.table('rolls').select().eq('id', roll_id).execute().data
+    if len(roll_json) == 0: return None
+    roll_json = roll_json[0]
+    
+    rollGames_json = supabase.table('rollGames').select().eq('roll_id', roll_id).order('index').execute().data
+    
+    return __supabase_to_roll(roll_json, rollGames_json)
 
 def get_all_rolls() -> list[CERoll]:
-    raise NotImplementedError
+    rolls_json = supabase.table('rolls').select().execute().data
+    rollGames_json = supabase.table('rollGames').select().execute().data
+    
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(__supabase_to_roll(roll, [g for g in rollGames_json if g['roll_id'] == roll['id']]))
+    
+    return _rolls
 
 def get_input(ce_id: str) -> CEInput:
-    # this one can take a backseat for now.
+    # TODO: Implement after input schema is finalized
     raise NotImplementedError
 
 def get_database_tier() -> list[dict]:
-    # this one can take a backseat for now.
-    raise NotImplementedError
+    response = supabase.table('tier').select().execute().data
+    return response
 
 def get_curator_ids() -> list[str]:
+    # Assuming curator_ids table exists with curator_id column
+    response = supabase.table('curator_ids').select('curator_id').execute().data
+    return [item['curator_id'] for item in response]
+
+def get_curator_count() -> int:
+    # Not currently needed, but can be implemented if required
     raise NotImplementedError
+
+def get_last_loop() -> datetime.datetime:
+    data = supabase.table('loopruns').select('ran_at').order('ran_at', desc=True).limit(1).execute().data
+
+    return datetime.datetime.fromisoformat(data['ran_at'])
+
+
 
 # === DUMPERS ===
 def dump_game(game: CEGame):
-    raise NotImplementedError
+    game_data = {
+        'ce_id': game.ce_id,
+        'name': game.game_name,
+        'platform': game.platform,
+        'platform_id': game.platform_id,
+        'category_primary': game.category,
+        'image_header': game.banner,
+        'image_icon': '',  # TODO: populate if available
+        'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
+    }
+    supabase.table('games').upsert(game_data).execute()
+    
+    for objective in game.objectives:
+        dump_objective(objective)
 
 def dump_user(user: CEUser):
-    raise NotImplementedError
+    user_data = {
+        'ce_id': user.ce_id,
+        'discord_id': user.discord_id,
+        'display_name': user.display_name,
+        'image_avatar': user.avatar,
+        'steam_id': user.steam_id,
+        'created_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'updated_at_CE': user.last_updated if isinstance(user.last_updated, str) else (user.last_updated.isoformat() if hasattr(user.last_updated, 'isoformat') else datetime.datetime.now(datetime.timezone.utc).isoformat())
+    }
+    supabase.table('users').upsert(user_data).execute()
+    
+    for game in user.owned_games:
+        game_data = {
+            'user_ce_id': user.ce_id,
+            'game_ce_id': game.ce_id,
+            'updated_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        supabase.table('userGames').upsert(game_data).execute()
+        
+        for objective in game.user_objectives:
+            obj_data = {
+                'user_ce_id': user.ce_id,
+                'objective_ce_id': objective.ce_id,
+                'user_points': objective.user_points,
+                'updated_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
+            supabase.table('userObjectives').upsert(obj_data).execute()
+    
+    for roll in user.rolls:
+        dump_roll(roll)
 
 def dump_roll(roll: CERoll):
-    raise NotImplementedError
+    roll_data = {
+        'id': roll._id,
+        'event_name': roll.roll_name,
+        'user1_ce_id': roll.user_ce_id,
+        'user2_ce_id': roll.partner_ce_id,
+        'time_created': roll.init_time if isinstance(roll.init_time, str) else roll.init_time.isoformat() if hasattr(roll.init_time, 'isoformat') else str(roll.init_time),
+        'time_due': roll.due_time if isinstance(roll.due_time, str) else roll.due_time.isoformat() if hasattr(roll.due_time, 'isoformat') else str(roll.due_time),
+        'time_completed': roll.completed_time if isinstance(roll.completed_time, str) else (roll.completed_time.isoformat() if (roll.completed_time and hasattr(roll.completed_time, 'isoformat')) else None),
+        'is_lucky': False,  # TODO: determine from roll data
+        'chosen_tier': None,  # TODO: populate if available
+        'status': roll.status,
+        'rerolls_remaining': roll.rerolls,
+        'rerolls_used': 0,  # TODO: calculate or track
+        'winner': None  # TODO: determine on completion
+    }
+    supabase.table('rolls').upsert(roll_data).execute()
+    
+    for idx, game_id in enumerate(roll.games):
+        game_data = {
+            'roll_id': roll._id,
+            'game_id': game_id,
+            'index': idx,
+            'rolled_at': datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        supabase.table('rollGames').upsert(game_data).execute()
 
 def dump_input(input: CEInput):
-    # this one can take a backseat for now.
-    raise NotImplementedError
-
-def delete_game(ce_id: str):
+    # TODO: Implement after input schema is finalized
     raise NotImplementedError
 
 def dump_curator_ids(ids: list[str]):
+    for curator_id in ids:
+        supabase.table('curator_ids').upsert({'curator_id': curator_id}).execute()
+
+def dump_curator_count(cc: int):
+    # Not currently needed
     raise NotImplementedError
 
 def dump_database_tier(database_tier: list[dict]):
-    raise NotImplementedError
+    for tier_record in database_tier:
+        supabase.table('tier').upsert(tier_record).execute()
 
+def dump_loop():
+    supabase.table('loopruns').insert({'ran_at', datetime.datetime.now(datetime.timezone.utc).isoformat()})
+    return 
+
+# === SUPABASE DELETERS ===
+def delete_game(ce_id: str):
+    # Delete objectives first (foreign key constraint)
+    objectives = supabase.table('objectives').select('ce_id').eq('game_ce_id', ce_id).execute().data
+    for obj in objectives:
+        supabase.table('objectiveRequirements').delete().eq('objective_ce_id', obj['ce_id']).execute()
+    supabase.table('objectives').delete().eq('game_ce_id', ce_id).execute()
+    
+    # Delete game
+    supabase.table('games').delete().eq('ce_id', ce_id).execute()
+
+def delete_user(ce_id: str):
+    # Delete user games and objectives
+    supabase.table('userGames').delete().eq('user_ce_id', ce_id).execute()
+    supabase.table('userObjectives').delete().eq('user_ce_id', ce_id).execute()
+    
+    # Delete rolls and associated roll games
+    rolls = supabase.table('rolls').select('id').or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
+    for roll in rolls:
+        supabase.table('rollGames').delete().eq('roll_id', roll['id']).execute()
+    supabase.table('rolls').delete().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute()
+    
+    # Delete user
+    supabase.table('users').delete().eq('ce_id', ce_id).execute()
+
+def delete_roll(roll_id: str):
+    # Delete roll games first
+    supabase.table('rollGames').delete().eq('roll_id', roll_id).execute()
+    
+    # Delete roll
+    supabase.table('rolls').delete().eq('id', roll_id).execute()
 
 # === SUPABASE CONVERTERS ===
 
@@ -166,7 +297,7 @@ def __supabase_to_game(game: dict, obj = list[dict], reqs = list[dict]) -> CEGam
         platform=game['platform'],
         platform_id=game['platform_id'],
         category=game['category_primary'],
-        last_updated=int(datetime.datetime.fromisoformat(game['updated_at_CE']).timestamp()),
+        last_updated=updated_dt,
         banner=game['image_header'],
         objectives=objectives
     )
@@ -245,16 +376,66 @@ def __supabase_to_user_objective(objective: dict, game_ce_id: str) -> CEUserObje
     )
 
 
+def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
+    requirement = [req['data'] for req in reqs if req['requirement_type'] == 'custom']
+    if len(requirement) > 1: raise Exception("More than one custom requirement found")
+    requirement = None if len(requirement) == 0 else requirement[0]
+    return CEObjective(
+        ce_id=obj['ce_id'],
+        objective_type=obj['type'],
+        description=obj['description'],
+        point_value=obj['points'],
+        point_value_partial=obj['points_partial'],
+        name=obj['name'],
+        game_ce_id=obj['game_ce_id'],
+        achievement_ce_ids=[req['data'] for req in reqs if req['requirement_type'] == 'achievement'],
+        requirements=requirement
+    )
+
 def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
     return CERoll(
-        roll_name=roll['event_name'],
-        init_time=roll['time_created'],
-        due_time=roll['time_due'],
-        completed_time=roll['time_completed'],
-        user_ce_id=roll['user1_ce_id'],
-        partner_ce_id=roll['user2_ce_id'],
-        rerolls=roll['rerolls_remaining'],
-        status=roll['status'],
-        _id=roll['id'],
-        games=[g['game_id'] for g in rollGames]
+        roll_name=roll.get('event_name', ''),
+        init_time=roll.get('time_created'),
+        due_time=roll.get('time_due'),
+        completed_time=roll.get('time_completed'),
+        user_ce_id=roll.get('user1_ce_id'),
+        partner_ce_id=roll.get('user2_ce_id'),
+        rerolls=roll.get('rerolls_remaining', 0),
+        status=roll.get('status', 'pending'),
+        _id=roll.get('id'),
+        games=[g['game_id'] for g in rollGames] if rollGames else []
     )
+
+def dump_objective(objective: CEObjective):
+    obj_data = {
+        'ce_id': objective.ce_id,
+        'game_ce_id': objective.game_ce_id,
+        'type': objective.objective_type,
+        'name': objective.name,
+        'description': objective.description,
+        'points': objective.point_value,
+        'points_partial': objective.point_value_partial,
+        'updated_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+    supabase.table('objectives').upsert(obj_data).execute()
+    
+    # Dump achievement requirements
+    if objective.achievement_ce_ids:
+        for achievement_id in objective.achievement_ce_ids:
+            req_data = {
+                'objective_ce_id': objective.ce_id,
+                'requirement_type': 'achievement',
+                'data': achievement_id,
+                'updated_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
+            supabase.table('objectiveRequirements').upsert(req_data).execute()
+    
+    # Dump custom requirement if it exists
+    if objective.requirements:
+        req_data = {
+            'objective_ce_id': objective.ce_id,
+            'requirement_type': 'custom',
+            'data': objective.requirements,
+            'updated_at_CE': datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        supabase.table('objectiveRequirements').upsert(req_data).execute()

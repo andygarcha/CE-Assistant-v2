@@ -1,9 +1,10 @@
+import datetime
 import Modules.hm as hm
 class CECooldown :
     """An object that represents a Challenge Enthusiast roll cooldown."""
     def __init__(self,
                  roll_name : hm.ALL_ROLL_EVENT_NAMES,
-                 end_time : int) :
+                 end_time : datetime.datetime) :
         self._roll_name = roll_name
         self._end_time = end_time
 
@@ -23,13 +24,13 @@ class CECooldown :
 
     def is_expired(self) -> bool :
         """Returns true if this cooldown is ready to be lifted."""
-        return self.end_time < hm.get_unix("now")
+        return self.end_time < datetime.datetime.now(datetime.timezone.utc)
     
     def to_dict(self) -> dict :
         """Returns this object as a dictionary."""
         return {
             'Event Name' : self.roll_name,
-            'End Time' : self.end_time
+            'End Time' : self.end_time.isoformat()
         }
     
     def __str__(self) :
@@ -37,5 +38,5 @@ class CECooldown :
         return (
             "-- CECooldown --" +
             "\nCooldown Name: " + self.roll_name +
-            "\nEnd Time: " + self.end_time
+            "\nEnd Time: " + self.end_time.isoformat()
         )

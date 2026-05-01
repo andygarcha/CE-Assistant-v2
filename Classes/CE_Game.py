@@ -145,8 +145,8 @@ class CEGame:
         return None
     
     @property
-    def last_updated(self) -> int :
-        """Returns the unix timestamp of the last time this game was updated."""
+    def last_updated(self) -> datetime.datetime :
+        """Returns the datetime of the last time this game was updated."""
         return self._last_updated
     
     async def get_raw_ce_data(self) -> dict :

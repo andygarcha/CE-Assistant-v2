@@ -10,11 +10,12 @@ import typing
 import discord
 import requests
 from Classes.CE_Game import CEGame, CEAPIGame
+from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import UPDATEMESSAGE_LOCATIONS
 import Modules.hm as hm
-from Modules import CEAPIReader, SupabaseReader
+from Modules import CEAPIReader, SupabaseReader, http_session
 
 """ SCRAPER CLASSES """
 class UpdateMessageForScraperProcess():
@@ -32,112 +33,186 @@ class UpdateMessageForScraperProcess():
 """ TOP LEVEL FUNCTION """
 
 async def process_loop():
-    # Update database name
-    database_name_old, database_name_new = await update_database_name()
+    updates: list[UpdateMessageForScraperProcess] = []
 
-    # Update database user
-    await update_database_user(database_name_old, database_name_new)
+    # Step 1: Update Games
+    _updates, games_new, removed_games = update_games()
+    updates.extend(_updates)
 
-    # TODO: Check curator
-    check_curator()
+    # Step 2: Update Users
+    #  -- now to do this we have to generate databasename_old and databasename_new
+    #  -- generating old is easy, that's just what's in the supabase. but the new has updates and removals.
+    # TODO
+    # fix this is mad inefficient
 
-    # Generate database tier
+    # step 2a) generate name_old and name_new
+    database_name_old = SupabaseReader.get_database_name()
+    database_name_new = database_name_old.copy()
 
+    for entry in database_name_new.copy():
+        if entry.ce_id in removed_games:
+            database_name_new.remove(entry)
 
+    for i, entry in enumerate(database_name_new):
+        for _game_new in games_new:
+            if entry.ce_id == _game_new.ce_id:
+                database_name_new[i] = _game_new
 
+    _updates, users_new, removed_users, rolls_updated = update_users(database_name_old, database_name_new)
+    updates.extend(_updates)
 
+    # Step 3: Check curator
+    check_curator_steam()
 
+    # Step 4: write all of our stuff
+    for game in games_new:
+        SupabaseReader.dump_game(game)
+    for _game_id in removed_games:
+        SupabaseReader.delete_game(_game_id)
+    for user in users_new:
+        SupabaseReader.dump_user(user)
+    for _user_id in removed_users:
+        SupabaseReader.delete_user(_user_id)
+    for roll in rolls_updated:
+        SupabaseReader.dump_roll(roll)
 
+    
 
 
 
 
 """ MEDIUM LEVEL FUNCTIONS """
 
-async def update_database_name():
+async def update_games() -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIGame], list[str]]:
     """
-    Updates database_name.
-
+    Updates all games. This version began April 9, 2026 for Supabase.
     Returns
     ---
-    - database_name_old: the database_name from before this scrape
-    - database_name_new: the database_name from after this scrape
+    - updates: a list of updates to be sent
+    - games_new: the games that have been updated
+    - removed_games: a list of ceids of games that have been removed.
     """
-    # (initially) empty list for us to store the old data in
-    database_name_old: list[CEGame] = []
-    # 'up to date' copy of the database from CE itself.
-    database_name_new: list[CEAPIGame] = await CEAPIReader.get_api_games_full()
-    # a list of all the ce ids from the current local (mongodb) database
-    #   this will be useful for finding removed games.
-    game_list = SupabaseReader.get_list('name')
 
-    updates = []
-
-    # let's iterate through all the new games
-    for i, game_new in enumerate(database_name_new):
-        game_old = SupabaseReader.get_game(game_new.ce_id)
-        if game_old is not None:
-            database_name_old.append(game_old)
-        
-        if game_new.ce_id in game_list:
-            game_list.remove(game_new.ce_id)
-
-        # game hasn't been updated
-        if (game_old is not None and
-            game_old.last_updated == game_new.last_updated):
-                continue
-        
-        return_value = update_one_game(game_old, game_new)
-        if return_value is not None:
-            updates.append(return_value)
-
-        # dump the new game to mongodb
-        SupabaseReader.dump_game(game_new)
-
-    # remove all removed games
-    for removed_game in game_list:
-        game_old = SupabaseReader.get_game(removed_game)
-
-        return_value = update_one_game(game_old, None)
-        if return_value is not None:
-            updates.append(return_value)
-        
-        SupabaseReader.delete_game(removed_game)
-
-        database_name_old.append(game_old)
-    
-    # TODO: upload the updates to mongodb
-
-    return database_name_old, database_name_new
-
-async def update_database_user(database_name_old: list[CEGame], database_name_new: list[CEAPIGame]):
-    user_list = SupabaseReader.get_list('user')
-    database_user_new = await CEAPIReader.get_api_users_all(user_list)
-
+    # Step 0: Determine the last time the loop ran.
+    last_run = SupabaseReader.get_last_loop()
     updates: list[UpdateMessageForScraperProcess] = []
 
-    for i, user_new in enumerate(database_user_new):
-        if i % 10 == 0: print(f"User {i} of {len(database_user_new)}", end="... ")
+    # Step 1: Go through /api/games and /api/objectives and find the list of all games that have been updated.
+    # 1a) get the ids of all games that have been updated from /api/games
+    session = await http_session.get_session()
+    params = {"sortBy": "updatedAt", "sortOrder": "DESC"}
+    async with session.get(f'https://cedb.me/api/games', params=params) as _r :
+        response = await _r.json()
 
-        user_old = SupabaseReader.get_user(user_new.ce_id)
+    _updated_game_ids = set()
+    for game in response:
+        timestamp_game = datetime.datetime.fromisoformat(game['updatedAt'])
+        if timestamp_game < last_run : break
+        _updated_game_ids.add(game['id'])
 
-        # call the update function
-        return_value = await update_one_user(
-            user=user_old,
-            site_data=user_new,
-            database_name_old=database_name_old,
-            database_name_new=database_name_new
-        )
+    # 1b) get the ids of all games that have been updated from /api/objectives
+    params = {"sortBy": "updatedAt", "sortOrder": "DESC", "limit": 100, "offset": 0}
+    while (1):
+        async with session.get(f'https://staging.cedb.me/api/objectives', params=params) as _r:
+            _response_local = await _r.json()
+            # all objectives are new
+            if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run: 
+                _updated_game_ids.update(r['gameId'] for r in _response_local)
+                params['offset'] += 100
+                continue
+                
+            # we found something wrong. go thru one by one.
+            for objective in _response_local:
+                if datetime.datetime.fromisoformat(objective['updatedAt']) < last_run:
+                    break
 
-        updates.extend(return_value)
+                _updated_game_ids.add(objective['gameId'])
     
-    # TODO: upload the updates to mongodb
+            break
+    
+    # 1c) get the ids of all games that have removed objectives
+    #  -- solved! folkius changed the schema so now any removed objective updates the game's updatedAt entry.
+            
+    # 1d) get the actual data for all those games
+    games: list[CEAPIGame] = []
+    for gameId in _updated_game_ids:
+        games.append(await CEAPIReader.get_game(gameId))
 
-async def check_curator():
-    """Create any updates related to the curator."""
+    # Step 2: Generate updates for those by comparing with Supabase games.
+    for game_new in games:
+        game_old = SupabaseReader.get_game(game_new.ce_id)
+        _update = update_one_game(game_old, game_new)
+        if _update is not None: 
+            updates.append(_update)
 
-    # TODO: fill in this function
-    pass
+    # Step 3: Find all removed games.
+    game_list_old = set(SupabaseReader.get_list('name'))
+    game_list_new = set(await CEAPIReader.get_api_games())
+
+    game_list_removed = game_list_old.difference(game_list_new)
+
+    # Step 4: Generate updates for those removed games.
+    for game_removed in game_list_removed:
+        _update = update_one_game(SupabaseReader.get_game(game_removed), None)
+        if _update is not None:
+            updates.append(_update)
+    
+    return updates, games, game_list_removed
+
+async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame]):
+    """
+    Updates all users. This version began April 9, 2026 for Supabase.
+    """
+
+    # Step 0: Determine the last time the loop ran.
+    last_run = SupabaseReader.get_last_loop()
+    updates: list[UpdateMessageForScraperProcess] = []
+
+    # Step 1: Go through /api/userObjectives and find the list of all users that have been updated.
+    #   -- or: if folkius makes /api/userGames, that should work too? plus it comes with the added benefit
+    #          of marking that a user owns a game, which is important for rolls.
+    # TODO
+    _updated_user_ids: list[str] = []
+
+    # Step 2: Pull all of those users
+    users: list[CEAPIUser] = []
+    for userId in _updated_user_ids:
+        users.append(await CEAPIReader.get_user(userId))
+
+    # Step 3: Generate updates for these changed users by comparing with Supabase users.
+    for user_new in users:
+        user_old = SupabaseReader.get_user(user_new.ce_id)
+        # TODO
+        # this is gonna cause problems with database_name
+        _update = update_one_user(user_old, user_new, games_old, games_new, update_rolls=False)
+        if _update is not None:
+            updates.append(_update)
+
+    # Step 4: Find any removed users
+    # TODO
+    user_list_removed: list[str] = []
+
+    # Step 5: Update all the rolls
+    rolls = SupabaseReader.get_all_rolls()
+    rolls_updated: list[CERoll] = []
+
+    for _roll in rolls:
+        if _roll.status != 'current' and _roll.status != 'pending': continue
+
+        # NOTE this is mad inefficient. Would like to clean this up eventually.
+        user1 = SupabaseReader.get_user(_roll.user_ce_id)
+        user2 = None
+        if _roll.partner_ce_id != None:
+            user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+
+        # NOTE this will also cause problems if a current roll's game gets removed from the site.
+        _update, _roll_updated = update_one_roll(_roll, user1, user2, [SupabaseReader.get_game(g) for g in _roll.games])
+
+        if _update is not None: updates.append(_update)
+        if _roll_updated is not None: rolls_updated.append(_roll_updated)
+
+
+    return updates, users, user_list_removed, rolls_updated
 
 def generate_database_tier(database_name: list[CEAPIGame]):
     # separate out games by tier and category
@@ -255,6 +330,7 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
     """Provides updates for one user."""
 
     updates: list[UpdateMessageForScraperProcess] = []
+    UPDATE_ROLLS = False
 
     points_original = user.get_total_points()
     completed_games_original = user.get_completed_games_2(database_name_old)
@@ -317,106 +393,179 @@ async def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old:
         updates.append(update)
 
     # check pendings
-    for i, roll in enumerate(user.rolls[:]) :
-        if roll.status == "pending" and roll.due_time <= hm.get_unix("now") :
-            user.remove_pending(roll.roll_name)
+    if UPDATE_ROLLS:
+        for i, roll in enumerate(user.rolls[:]) :
+            if roll.status == "pending" and roll.due_time <= hm.get_datetime('now') :
+                user.remove_pending(roll.roll_name)
 
-    # check rolls
-    for index, roll in enumerate(user.rolls) :
-        # step 0: check multistage rolls
-        # if the roll is multi stage AND its not in the final stage...
-        # note: skip this if we're in the final stage because
-        #       if it's in its final stage we can finish it out,
-        #       this if statement just preps for the next one.
-        if not roll.status == "current" : continue
-        partner = None
-        if roll.partner_ce_id is not None : partner = SupabaseReader.get_user(roll.partner_ce_id)
-        if (roll.is_multi_stage() and not roll.in_final_stage() and 
-            (roll.is_won(database_name=database_name_new, user=user, partner=partner))) :
-            # if we've already hit this roll before, keep moving
-            if roll.due_time == None : continue
+        # check rolls
+        for index, roll in enumerate(user.rolls) :
+            # step 0: check multistage rolls
+            # if the roll is multi stage AND its not in the final stage...
+            # note: skip this if we're in the final stage because
+            #       if it's in its final stage we can finish it out,
+            #       this if statement just preps for the next one.
+            if not roll.status == "current" : continue
+            partner = None
+            if roll.partner_ce_id is not None : partner = SupabaseReader.get_user(roll.partner_ce_id)
+            if (roll.is_multi_stage() and not roll.in_final_stage() and 
+                (roll.is_won(database_name=database_name_new, user=user, partner=partner))) :
+                # if we've already hit this roll before, keep moving
+                if roll.due_time == None : continue
 
-            # add the update message
-            update = UpdateMessageForScraperProcess()
-            update.location = 'casino'
-            update.is_embed = False
-            update.text = (
-                f"{user.mention()}, you've finished your current stage in {roll.roll_name}. " +
-                f"To roll your next stage, type `/solo-roll {roll.roll_name}` in <#{hm.CASINO_ID}>."
-            )
+                # add the update message
+                update = UpdateMessageForScraperProcess()
+                update.location = 'casino'
+                update.is_embed = False
+                update.text = (
+                    f"{user.mention()}, you've finished your current stage in {roll.roll_name}. " +
+                    f"To roll your next stage, type `/solo-roll {roll.roll_name}` in <#{hm.CASINO_ID}>."
+                )
 
-            # and kill the due time
-            roll.due_time = None
-            roll.set_status("waiting")
-            user._rolls[index] = roll
+                # and kill the due time
+                roll.due_time = None
+                roll.set_status("waiting")
+                user._rolls[index] = roll
 
-        elif roll.is_won(database_name=database_name_new, user=user, partner=partner) :
-            # add the update message
-            update = UpdateMessageForScraperProcess()
-            update.location = "casinolog"
-            update.is_embed = False
-            update.text = (
-                roll.get_win_message(database_name=database_name_new, user=user, partner=partner)
-            )
-            updates.append(update)
+            elif roll.is_won(database_name=database_name_new, user=user, partner=partner) :
+                # add the update message
+                update = UpdateMessageForScraperProcess()
+                update.location = "casinolog"
+                update.is_embed = False
+                update.text = (
+                    roll.get_win_message(database_name=database_name_new, user=user, partner=partner)
+                )
+                updates.append(update)
 
-            # set the completed time to now
-            roll.completed_time = hm.get_unix("now")
+                # set the completed time to now
+                roll.completed_time = hm.get_datetime('now')
 
-            # add the object to completed rolls, and
-            # remove it from current
-            roll.set_status("won")
-            user._rolls[index] = roll
+                # add the object to completed rolls, and
+                # remove it from current
+                roll.set_status("won")
+                user._rolls[index] = roll
 
-            """
-            Let's talk about why this works.
-            database-user is being constantly updated. Let's say we have two players, A and B.
-            Since the last update, they have completed their requirements for their co-op roll.
-            Player A joined the bot first, so their update is processed first. But since Player
-            B hasn't been updated yet, the roll doesn't register as "won". So, we pass through
-            Player A without removing the roll. But, when we get to Player B, both players have
-            updated.
-            """
-            if roll.is_co_op() :
-                # get the partner and their roll
-                partner = SupabaseReader.get_user(roll.partner_ce_id)
-                if partner.has_current_roll(roll.roll_name) :
-                    partner_roll = partner.get_current_roll(roll.roll_name)
+                """
+                Let's talk about why this works.
+                database-user is being constantly updated. Let's say we have two players, A and B.
+                Since the last update, they have completed their requirements for their co-op roll.
+                Player A joined the bot first, so their update is processed first. But since Player
+                B hasn't been updated yet, the roll doesn't register as "won". So, we pass through
+                Player A without removing the roll. But, when we get to Player B, both players have
+                updated.
+                """
+                if roll.is_co_op() :
+                    # get the partner and their roll
+                    partner = SupabaseReader.get_user(roll.partner_ce_id)
+                    if partner.has_current_roll(roll.roll_name) :
+                        partner_roll = partner.get_current_roll(roll.roll_name)
 
-                    # update their current roll
-                    if roll.is_pvp() and roll.status == "won" :
-                        partner.fail_current_roll(partner_roll.roll_name)
-                    elif roll.is_pvp() and roll.status == "failed" :
-                        partner.win_current_roll(partner_roll.roll_name)
-                    else :
-                        partner.win_current_roll(partner_roll.roll_name)
+                        # update their current roll
+                        if roll.is_pvp() and roll.status == "won" :
+                            partner.fail_current_roll(partner_roll.roll_name)
+                        elif roll.is_pvp() and roll.status == "failed" :
+                            partner.win_current_roll(partner_roll.roll_name)
+                        else :
+                            partner.win_current_roll(partner_roll.roll_name)
 
-                    # and append it to partners
-                    SupabaseReader.dump_user(partner)
+                        # and append it to partners
+                        SupabaseReader.dump_user(partner)
 
-        
-        elif roll.is_expired() :
-            # add the update message
-            update = UpdateMessageForScraperProcess()
-            update.location = "casino"
-            update.is_embed = False
-            update.text = (
-                roll.get_fail_message(database_name=database_name_new, user=user, partner=partner)
-            )
             
-            # remove this roll from current rolls
-            user.fail_current_roll(roll.roll_name)
-            if roll.is_co_op() :
-                partner = SupabaseReader.get_user(roll.partner_ce_id)
-                if partner.has_current_roll(roll.roll_name) :
-                    partner.fail_current_roll(roll.roll_name)
-                    SupabaseReader.dump_user(user)
+            elif roll.is_expired() :
+                # add the update message
+                update = UpdateMessageForScraperProcess()
+                update.location = "casino"
+                update.is_embed = False
+                update.text = (
+                    roll.get_fail_message(database_name=database_name_new, user=user, partner=partner)
+                )
+                
+                # remove this roll from current rolls
+                user.fail_current_roll(roll.roll_name)
+                if roll.is_co_op() :
+                    partner = SupabaseReader.get_user(roll.partner_ce_id)
+                    if partner.has_current_roll(roll.roll_name) :
+                        partner.fail_current_roll(roll.roll_name)
+                        SupabaseReader.dump_user(user)
     
-    user.set_last_updated(hm.get_unix("now"))
-
-    SupabaseReader.dump_user(user)
+    user.set_last_updated(hm.get_datetime('now'))
 
     return updates
+
+def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None, 
+                    games: list[CEGame]) -> tuple[UpdateMessageForScraperProcess, CERoll]:
+    # Step 1: Filter out the rolls that don't matter.
+    """Weird statuses
+    waiting = this is a multi stage roll, waiting on user to prompt the next part
+    pending = this is a roll that requires some input so we set this to the same timeout as the first message
+    """
+
+    status = roll.status2()
+    if status not in ["current", "pending"]: return None, None
+
+    update = UpdateMessageForScraperProcess()
+
+    # pendings
+    if roll.status2() == "pending":
+        if roll.due_time <= hm.get_datetime('now'):
+            SupabaseReader.delete_roll(roll._id)
+            update.is_embed = False
+            _user2_text = ""
+            if user2 is not None:
+                _user2_text = f"and {user2.mention()}"
+            update.text = (f"{user1.mention()} {_user2_text}, you may now re-initiate {roll.roll_name}. " +
+                           "Any button presses to the previous message will do nothing.")
+            return update, None
+        return []
+    
+    update = UpdateMessageForScraperProcess()
+    won = roll.is_won(games, user1, user2)
+    
+    # Case 1: The roll is multi-stage, and we're not on the last stage.
+    if roll.is_multi_stage() and not roll.in_final_stage() and won:
+        update.location = 'casino'
+        update.is_embed = False
+        update.text = (
+            f"{user1.mention()}, you've finished the current stage in {roll.roll_name}. " +
+            f"To roll your next stage, type /solo-roll {roll.roll_name} in <#{hm.CASINO_ID}> at any time."
+        )
+
+        roll.set_status('waiting')
+        roll.due_time = None
+        return update, roll
+
+    # Case 2: The roll is won.
+    #  -- case 2a) the roll is single-player
+    #  -- case 2b) the roll is co-op
+    #  -- case 2c) the roll is pvp (currently none... hallelujah.)
+
+    if won:
+        update.location = "casinolog"
+        update.is_embed = False
+        update.text = roll.get_win_message(games, user1, user2)
+        roll.completed_time = hm.get_datetime('now')
+        roll.set_status('won')
+
+        # Case 2A (singleplayer) and 2B (co-op)
+        if not roll.is_pvp(): return update, roll
+
+        # Case 2C (pvp)
+        # -- not dealing with this.
+        raise NotImplementedError
+
+    if roll.is_expired():
+        update.location = 'casino'
+        update.is_embed = False
+        update.text = roll.get_fail_message(games, user1, user2)
+
+        return update, roll
+    
+    # If we get here, then none of the following happened:
+    #  -- roll was pending
+    #  -- roll was current and won
+    #  -- roll was current and expired
+    return None, None
 
 def check_curator_steam(): 
     """Checks steam for the last 10 curated games."""
@@ -686,16 +835,5 @@ def check_rank(rank_old: str, rank_new: str, points_old: int,
 def check_completion_count():
     #TODO: complete this function
     pass
-
-async def test():
-    # print('pulling db name')
-    # database_name = SupabaseReader.get_database_name()
-
-    # print('generating db tier!')
-    # database_tier = generate_database_tier(database_name)
-
-    # SupabaseReader.dump_database_tier(database_tier)
-
-    print(SupabaseReader.get_database_tier())
 
 #asyncio.run(test())

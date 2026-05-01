@@ -21,26 +21,35 @@ def months_to_days(num_months : int) -> int:
     return date_delta.days
 
 
-def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:
-    """Returns a unix timestamp for `days` days (or `minutes` minutes, or `months` months) from the current time.
-    \nAdditionally, `old_unix` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that unix."""
-    # -- old unix passed --
-    if(old_unix != None) :
-        if (minutes != None) : return int(minutes * 60) + old_unix
-        elif (months != None) : return (months_to_days(months))*(86400) + old_unix
-        else : return days * 86400 + old_unix
+def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -> datetime.datetime:
+    """Returns a datetime object for `days` days (or `minutes` minutes, or `months` months) from the current time.
+    \nAdditionally, `old_datetime` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that datetime."""
+    # -- old datetime passed --
+    if(old_datetime != None) :
+        if (minutes != None) : return old_datetime + datetime.timedelta(minutes=minutes)
+        elif (months != None) : return old_datetime + datetime.timedelta(days=months_to_days(months))
+        else : return old_datetime + datetime.timedelta(days=days)
 
-    # -- old unix NOT passed --
+    # -- old datetime NOT passed --
     # return right now
-    if(days == "now") : return int(time.mktime((datetime.datetime.now()).timetuple()))
+    if(days == "now") : return datetime.datetime.now(datetime.timezone.utc)
     # return the minutes
-    elif (minutes != None) : return int(time.mktime((datetime.datetime.now()+datetime.timedelta(minutes=minutes)).timetuple()))
+    elif (minutes != None) : return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
     # return the months
-    elif (months != None) : return get_unix(days=months_to_days(months))
+    elif (months != None) : return get_datetime(days=months_to_days(months))
     # return the days
     elif (days == None) : return None
 
-    else: return int(time.mktime((datetime.datetime.now()+datetime.timedelta(days=days)).timetuple()))
+    else: return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)
+
+
+def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:
+    """Deprecated: Use get_datetime() instead. Returns a unix timestamp."""
+    old_dt = None
+    if isinstance(old_unix, int):
+        old_dt = datetime.datetime.fromtimestamp(old_unix, datetime.timezone.utc)
+    dt = get_datetime(days, minutes, months, old_dt)
+    return int(dt.timestamp())
 
 
 def current_month_str() -> str :

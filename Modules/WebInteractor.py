@@ -177,8 +177,8 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     if CONSOLE_MESSAGES: print('try complete.')
     
     # set up variables
-    start_time = hm.get_unix('now')
-    timeout = hm.get_unix('now') - start_time > 5
+    start_time = hm.get_datetime('now')
+    timeout = (hm.get_datetime('now') - start_time).total_seconds() > 5
     objective_list = []
     TIMEOUT_LIMIT = 8
 
@@ -192,7 +192,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
             print('whiling..')
             objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
             print('objective whiling...')
-            timeout = hm.get_unix('now') - start_time > TIMEOUT_LIMIT
+            timeout = (hm.get_datetime('now') - start_time).total_seconds() > TIMEOUT_LIMIT
         
         if CONSOLE_MESSAGES: print('while left.')
         
@@ -514,7 +514,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
     SupabaseReader.dump_database_tier(database_tier)
     
     print('---- loop complete. ----')
-    return await private_log_channel.send(f":white_check_mark: loop complete at <t:{hm.get_unix('now')}>.")
+    return await private_log_channel.send(f":white_check_mark: loop complete at <t:{int(hm.get_datetime('now').timestamp())}>")
 
 async def get_recent_curated():
     # set the payload and pull from the curator
@@ -664,7 +664,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
     
     # check pendings
     for i, roll in enumerate(user.rolls[:]) :
-        if roll.status == "pending" and roll.due_time <= hm.get_unix("now") :
+        if roll.status == "pending" and roll.due_time <= hm.get_datetime('now') :
             user.remove_pending(roll.roll_name)
 
     # check rolls
@@ -705,7 +705,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                 )
             ))
             # set the completed time to now
-            roll.completed_time = hm.get_unix("now")
+            roll.completed_time = hm.get_datetime('now')
 
             # add the object to completed rolls, and
             # remove it from current
@@ -756,7 +756,7 @@ async def single_user_update_v2(user : CEUser, site_data : CEUser, old_database_
                     partner.fail_current_roll(roll.roll_name)
                     SupabaseReader.dump_user(user)
     
-    user.set_last_updated(hm.get_unix("now"))
+    user.set_last_updated(hm.get_datetime('now'))
     SupabaseReader.dump_user(user)
 
     return updates

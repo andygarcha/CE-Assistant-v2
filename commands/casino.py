@@ -356,7 +356,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     
     # user currently rolled
     if (event_name in ["Never Lucky", "Let Fate Decide"]) and (user.has_current_roll(event_name)) and not (
-        user.get_current_roll(event_name).calculate_cooldown_date(database_name) > hm.get_unix(days="now")
+        user.get_current_roll(event_name).calculate_cooldown_date(database_name) > hm.get_datetime('now')
     ) :
         view = RerollView(user.ce_id, event_name)
         return await interaction.followup.send(f"Would you like to reset your {event_name} roll?", view=view)       

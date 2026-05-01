@@ -22,7 +22,7 @@ from Modules import http_session
 from Classes.CE_Game import CEAPIGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_User import CEUser
+from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
 from Exceptions.FailedScrapeException import FailedScrapeException
 
@@ -39,10 +39,12 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
         return await asyncio.to_thread(func, *args, **kwargs)
     return wrapper
 
-def _timestamp_to_unix(input : str) :
+def _timestamp_to_datetime(input : str) -> datetime.datetime:
     """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`) 
-    and converts it to unix timestamp (`1708862678`)"""
-    return int(time.mktime(datetime.datetime.strptime(str(input[:-5:]), "%Y-%m-%dT%H:%M:%S").timetuple()))
+    and converts it to a datetime object."""
+    return datetime.datetime.fromisoformat(str(input[:-5]) + "+00:00")
+
+
 
 
 
@@ -69,8 +71,7 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
         # make the actual objective object...
         ce_objective = CEObjective(
             ce_id=objective['id'],
-            # NOTE: OBJECTIVE TYPE FIX
-            objective_type='Community' if objective['community'] else 'Primary', 
+            objective_type=str(objective['type']).capitalize(), 
             description=objective['description'],
             point_value=objective['points'],
             name=objective['name'],
@@ -83,13 +84,13 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
         # ...and assign it to the array.
         all_objectives.append(ce_objective)
 
-    last_updated = _timestamp_to_unix(json_response['updatedAt'])
+    last_updated = _timestamp_to_datetime(json_response['updatedAt'])
     for objective in json_response['objectives'] :
-        if _timestamp_to_unix(objective['updatedAt']) > last_updated:
-            last_updated = _timestamp_to_unix(objective['updatedAt'])
+        if _timestamp_to_datetime(objective['updatedAt']) > last_updated:
+            last_updated = _timestamp_to_datetime(objective['updatedAt'])
         for objreq in objective['objectiveRequirements'] :
-            if _timestamp_to_unix(objreq['updatedAt']) > last_updated :
-                last_updated = _timestamp_to_unix(objreq['updatedAt'])
+            if _timestamp_to_datetime(objreq['updatedAt']) > last_updated :
+                last_updated = _timestamp_to_datetime(objreq['updatedAt'])
 
     # now that we have all objectives, we can make the object...
     ce_game = CEAPIGame(
@@ -108,6 +109,39 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
     return ce_game
 
 
+async def get_game(ce_id: str) -> CEAPIGame:
+    session = await http_session.get_session()
+
+    async with session.get(f'https://cedb.me/api/game/{ce_id}') as response:
+        game = await response.json()
+
+        return _ce_to_game(game)
+    
+async def get_user(ce_id: str) -> CEUser:
+    session = await http_session.get_session()
+
+    async with session.get(f"https://cedb.me/api/user/{ce_id}") as response:
+        user = await response.json()
+        return _ce_to_user(user)
+
+async def get_api_games() -> list[str]:
+    session = await http_session.get_session()
+
+    async with session.get(f'https://cedb.me/api/games') as response:
+        games = await response.json()
+
+        return [g['id'] for g in games]
+    
+async def get_objective_ids() -> list[str]:
+    # DELETE THIS IF THE ENDPOINT EVER GETS MADE!
+    raise NotImplementedError
+
+    session = await http_session.get_session()
+
+    async with session.get("WHATEVER THE ENDPOINT IS!") as response:
+        objectives = await response.json()
+
+        return [o['id'] for o in objectives]
 
 async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
