@@ -491,6 +491,9 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         if games_payload:
             supabase.table('games').upsert(games_payload).execute()
 
+        if categories_payload:
+            supabase.table('categories').upsert(categories_payload).execute()
+
         # Bulk upsert objectives
         if objectives_payload:
             supabase.table('objectives').upsert(objectives_payload).execute()
