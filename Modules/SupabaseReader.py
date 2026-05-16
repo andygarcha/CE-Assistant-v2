@@ -512,8 +512,10 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
         users_payload = []
         user_games_payload = []
         user_objectives_payload = []
+        user_ids = []
 
         for user in batch:
+            user_ids.append(user.ce_id)
             users_payload.append({
                 'ce_id': user.ce_id,
                 'discord_id': user.discord_id,
@@ -542,6 +544,12 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
         # Bulk upsert users
         if users_payload:
             supabase.table('users').upsert(users_payload).execute()
+
+        # TODO inefficient
+        # Bulk remove userObjectives
+        if user_ids:
+           # (do we need this?)  _delete_in_chunks('userGames', 'user_ce_id', user_ids, chunk_size=200) 
+            _delete_in_chunks('userObjectives', 'user_ce_id', user_ids, chunk_size=200)
 
         # Bulk upsert userGames
         if user_games_payload:
