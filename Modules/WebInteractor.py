@@ -337,6 +337,9 @@ times = [
 async def master_loop(client : discord.Client, guild_id : int) :
     """The main looping function that runs every half hour."""
     print('---- loop began... ----')
+
+    print("DEPRECATED!!!")
+    return
     # get channels
     casino_log_channel = client.get_channel(hm.CASINO_LOG_ID)
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
