@@ -120,6 +120,14 @@ async def process_loop(client: discord.Client = None):
     if client is None:
         print("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
     print("process_loop() invoked.")
+
+    assistant_log = client.get_channel(hm.id_num("privatelog"))
+
+    if assistant_log is not None:
+        await assistant_log.send(
+            f"🔄 Scraper loop started at {hm.get_datetime('now')}"
+        )
+
     if DEBUG: print(f"FLAGS: {SAVEDATA=}, {DEBUG=}, {SKIPUPDATES=}")
     time_current = datetime.datetime.now(datetime.timezone.utc)
 
@@ -252,10 +260,12 @@ async def process_loop(client: discord.Client = None):
     
     if DEBUG: print(f"process_loop() complete at {hm.get_datetime('now')}")
 
+    if assistant_log is not None:
+        await assistant_log.send(
+            f"✅ Scraper loop finished at {hm.get_datetime('now')}"
+        )
+
     if SAVEDATA: SupabaseReader.dump_loop(time_current)
-    
-
-
 
 
 """ MEDIUM LEVEL FUNCTIONS """

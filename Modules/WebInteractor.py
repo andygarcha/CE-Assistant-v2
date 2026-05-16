@@ -434,7 +434,7 @@ async def master_loop(client : discord.Client, guild_id : int) :
             return
 
         except Exception as e :
-            tb = sys.exception().__traceback__
+            tb = sys.exception().__traceback__ 
             await private_log_channel.send(f":warning: {e.with_traceback(tb)}")
     
     print(f"old database name: {len(old_database_name)}")
