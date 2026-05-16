@@ -755,10 +755,10 @@ def delete_user(ce_id: str):
     supabase.table('userObjectives').delete().eq('user_ce_id', ce_id).execute()
     
     # Delete rolls and associated roll games
-    rolls = supabase.table('rolls').select('id').or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
-    for roll in rolls:
-        supabase.table('rollGames').delete().eq('roll_id', roll['id']).execute()
-    supabase.table('rolls').delete().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute()
+    # rolls = supabase.table('rolls').select('id').or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
+    # for roll in rolls:
+    #     supabase.table('rollGames').delete().eq('roll_id', roll['id']).execute()
+    # supabase.table('rolls').delete().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute()
     
     # Delete user
     supabase.table('users').delete().eq('ce_id', ce_id).execute()
