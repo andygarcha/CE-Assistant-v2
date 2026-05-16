@@ -406,6 +406,7 @@ class CERoll:
         from Classes.CE_Game import CEGame
         database_name : list[CEGame] = database_name
 
+        # TODO casino fix: this does not work with dual categories
         return list(set([hm.get_item_from_list(game, database_name).category for game in self.games]))
     
     def get_win_message(self, database_name : list, user, partner) -> str :

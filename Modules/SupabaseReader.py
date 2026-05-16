@@ -99,7 +99,14 @@ def get_game(ce_id: str) -> CEGame | None:
     else:
         requirements_json = []
 
-    return __supabase_to_game(games_json[0], objectives_json, requirements_json)
+    categories_json = supabase.table('categories') \
+        .select() \
+        .eq('game_id', ce_id) \
+        .order(column='index', desc=False) \
+        .execute() \
+        .data
+
+    return __supabase_to_game(games_json[0], objectives_json, requirements_json, categories_json)
 
 # GET USER
 def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
@@ -346,7 +353,7 @@ def dump_game(game: CEGame):
         'name': game.game_name,
         'platform': game.platform,
         'platform_id': game.platform_id,
-        'category_primary': game.category,
+        'category_primary': None,
         'image_header': game._banner,
         'image_icon': '',  # TODO: populate if available
         'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
@@ -426,6 +433,7 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         achievement_reqs_payload = []
         custom_reqs_payload = []
         objective_ids = []
+        categories_payload = []
 
         for game in batch:
             games_payload.append({
@@ -433,11 +441,18 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
                 'name': game.game_name,
                 'platform': game.platform,
                 'platform_id': game.platform_id,
-                'category_primary': game.category,
+                'category_primary': None,
                 'image_header': game._banner,
                 'image_icon': '',
                 'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
             })
+
+            for i, _cat in enumerate(game.categories):
+                categories_payload.append({
+                    'game_id': game.ce_id,
+                    'category': _cat,
+                    'index': i
+                })
 
             for objective in game.all_objectives:
                 objective_ids.append(objective.ce_id)
@@ -802,16 +817,17 @@ def clean_db():
 
 # === SUPABASE CONVERTERS ===
 
-def __supabase_to_game(game: dict, obj = list[dict], reqs = list[dict]) -> CEGame: 
+def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list[dict]) -> CEGame: 
     objectives = []
     for o in obj:
         objectives.append(__supabase_to_objective(o, [req for req in reqs if req['objective_ce_id'] == o['ce_id']]))
+    categories = [c['category'] for c in cats]
     return CEGame(
         ce_id=game['ce_id'],
         game_name=game['name'],
         platform=game['platform'],
         platform_id=game['platform_id'],
-        category=game['category_primary'],
+        categories=categories,
         last_updated=game['updated_at_CE'],
         banner=game['image_header'],
         objectives=objectives
