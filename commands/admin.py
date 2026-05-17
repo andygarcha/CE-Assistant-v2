@@ -72,10 +72,10 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def force_unlink_command(interaction: discord.Interaction, member: discord.Member):
         await force_unlink(interaction, member)
 
-        @tree.command(name='shutdown', description='Shut the bot down.', guild=guild)
-        @app_commands.default_permissions(administrator=True)
-        async def shutdown_command(interaction: discord.Interaction):
-            await shutdown(interaction)
+    @tree.command(name='shutdown', description='Shut the bot down.', guild=guild)
+    @app_commands.default_permissions(administrator=True)
+    async def shutdown_command(interaction: discord.Interaction):
+        await shutdown(interaction)
     pass
 
 
