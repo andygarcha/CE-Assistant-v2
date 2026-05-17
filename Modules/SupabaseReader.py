@@ -434,8 +434,10 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         custom_reqs_payload = []
         objective_ids = []
         categories_payload = []
+        game_ids = []
 
         for game in batch:
+            game_ids.append(game.ce_id)
             games_payload.append({
                 'ce_id': game.ce_id,
                 'name': game.game_name,
@@ -493,6 +495,7 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
             supabase.table('games').upsert(games_payload).execute()
 
         if categories_payload:
+            _delete_in_chunks('categories', 'game_id', game_ids, chunk_size=200)
             supabase.table('categories').upsert(categories_payload).execute()
 
         # Bulk upsert objectives
