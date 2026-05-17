@@ -37,11 +37,14 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def scrape_command(interaction : discord.Interaction) :
         await scrape(interaction)
     """
+    @tree.command(name='full-scrape', description='Run the loop on ALL games in the CE database.', guild=guild)
+    async def full_scrape_command(interaction: discord.Interaction):
+        await loop(interaction, True)
 
     # ---- initiate loop command ----
     @tree.command(name="initiate-loop", description="Initiate the loop. ONLY RUN WHEN NECESSARY.", guild=guild)
     async def initiate_loop_command(interaction : discord.Interaction) :
-        await loop(interaction)
+        await loop(interaction, False)
 
     # ---- add notes command ----
     @tree.command(name="add-notes", description="Add notes to any #game-additions post.", guild=guild)
@@ -72,10 +75,10 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def force_unlink_command(interaction: discord.Interaction, member: discord.Member):
         await force_unlink(interaction, member)
 
-        @tree.command(name='shutdown', description='Shut the bot down.', guild=guild)
-        @app_commands.default_permissions(administrator=True)
-        async def shutdown_command(interaction: discord.Interaction):
-            await shutdown(interaction)
+    @tree.command(name='shutdown', description='Shut the bot down.', guild=guild)
+    @app_commands.default_permissions(administrator=True)
+    async def shutdown_command(interaction: discord.Interaction):
+        await shutdown(interaction)
     pass
 
 
@@ -142,7 +145,7 @@ async def scrape(interaction : discord.Interaction) :
 
 # ---- initiate loop ----
 
-async def loop(interaction : discord.Interaction) :
+async def loop(interaction: discord.Interaction, full_scrape=False) :
     await interaction.response.defer()
 
     if hm.IN_CE :
@@ -154,11 +157,14 @@ async def loop(interaction : discord.Interaction) :
     await interaction.followup.send("looping...")
 
     # log this interaction
+    name = "full-scrape" if full_scrape else "initiate-loop"
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /initiate-loop",
-                             allowed_mentions=discord.AllowedMentions.none())
+    await private_log_channel.send(
+        f":white_large_square: dev command run by <@{interaction.user.id}>: /{name}",
+        allowed_mentions=discord.AllowedMentions.none()
+    )
 
-    await process_loop(client)
+    await process_loop(client, full_scrape)
 
     return await interaction.followup.send('loop complete.')
 

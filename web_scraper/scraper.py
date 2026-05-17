@@ -116,16 +116,24 @@ times = [
 ]
 
 @tasks.loop(time=times)
-async def process_loop(client: discord.Client = None):
+async def process_loop(client: discord.Client = None, full_scrape = False):
     if client is None:
         print("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
-    print("process_loop() invoked.")
+    print(f"process_loop() invoked with {full_scrape=} (initially).")
+    
+    full_scrape = ( # Noon/1PM EST (based on daylight savings)
+        datetime.datetime.now(datetime.timezone.utc).hour == 17) and (
+        datetime.datetime.now(datetime.timezone.utc).minute == 0
+    ) or full_scrape
+
+    print(f"{full_scrape=} (second try)")
+    
 
     assistant_log = client.get_channel(hm.id_num("privatelog"))
 
     if assistant_log is not None:
         await assistant_log.send(
-            f"🔄 Scraper loop started at {hm.get_datetime('now')}"
+            f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
         )
 
     if DEBUG: print(f"FLAGS: {SAVEDATA=}, {DEBUG=}, {SKIPUPDATES=}")
@@ -138,7 +146,7 @@ async def process_loop(client: discord.Client = None):
     SENDUPDATES = True
 
     # Step 1: Update Games
-    _updates, games_new, removed_games, removed_objectives = await update_games()
+    _updates, games_new, removed_games, removed_objectives = await update_games(full_scrape)
     updates.extend(_updates)
 
     if DEBUG: 
@@ -180,7 +188,8 @@ async def process_loop(client: discord.Client = None):
     if DEBUG: print("UPDATE USERS: begin")
     _updates, users_new, removed_users, rolls_updated = await update_users(
         database_name_old,
-        database_name_new
+        database_name_new,
+        full_scrape
     )
     updates.extend(_updates)
     if DEBUG: print("UPDATE USERS: complete")
@@ -270,7 +279,12 @@ async def process_loop(client: discord.Client = None):
 
 """ MEDIUM LEVEL FUNCTIONS """
 
-async def update_games() -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIGame], list[str], list[str]]:
+async def update_games(full_scrape = False) -> tuple[
+        list[UpdateMessageForScraperProcess],   # updates
+        list[CEAPIGame],                        # games_new
+        list[str],                              # removed_games
+        list[str]                               # removed_objectives
+    ]:
     """
     Updates all games. This version began April 9, 2026 for Supabase.
     Returns
@@ -278,73 +292,87 @@ async def update_games() -> tuple[list[UpdateMessageForScraperProcess], list[CEA
     - updates: a list of updates to be sent
     - games_new: the games that have been updated
     - removed_games: a list of ceids of games that have been removed.
+    - removed_objectives: a list of ceids of objectives that have been removed
     """
 
-    # Step 0: Determine the last time the loop ran.
-    last_run = SupabaseReader.get_last_loop()
-    if DEBUG: print(f"GAMES: {last_run=}")
     updates: list[UpdateMessageForScraperProcess] = []
     objectives_removed: list[str] = []
 
+    # Step 0: Determine the last time the loop ran
+    if not full_scrape: 
+        last_run = SupabaseReader.get_last_loop()
+        if DEBUG: print(f"GAMES: {last_run=}, {full_scrape=}")
+
     # Step 1: Go through /api/games and /api/objectives and find the list of all games that have been updated.
     # 1a) get the ids of all games that have been updated from /api/games
-    session = await http_session.get_session()
-    params = {"sortBy": "updatedAt", "sortOrder": "DESC"}
-    async with session.get(f'https://cedb.me/api/games') as _r :
-        response = await _r.json()
+    if not full_scrape:
+        session = await http_session.get_session()
+        params = {"sortBy": "updatedAt", "sortOrder": "DESC"}
+        async with session.get(f'https://cedb.me/api/games') as _r :
+            response = await _r.json()
 
-    print(f"GAMES: {len(response)=} (response pulled from /api/games)")
-    _updated_game_ids = set()
-    for game in response:
-        timestamp_game = datetime.datetime.fromisoformat(game['updatedAt'])
+        print(f"GAMES: {len(response)=} (response pulled from /api/games)")
+        _updated_game_ids = set()
+        for game in response:
+            timestamp_game = datetime.datetime.fromisoformat(game['updatedAt'])
 
-        if timestamp_game < last_run : continue
-        _updated_game_ids.add(game['id'])
+            if timestamp_game < last_run : continue
+            _updated_game_ids.add(game['id'])
 
-    print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games only)")
+        print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games only)")
 
-    # 1b) get the ids of all games that have been updated from /api/objectives
-    params = {"sortBy": "updatedAt", "sortOrder": "DESC", "limit": 100, "offset": 0}
-    while (1):
-        async with session.get(f'https://cedb.me/api/objectives', params=params) as _r:
-            _response_local = await _r.json()
-            # all objectives are new
-            if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run: 
-                _updated_game_ids.update(r['gameId'] for r in _response_local)
-                params['offset'] += 100
-                continue
-                
-            # we found something wrong. go thru one by one.
-            for objective in _response_local:
-                if datetime.datetime.fromisoformat(objective['updatedAt']) < last_run:
-                    #TODO: can we confirm sorting works?
-                    break
+        # 1b) get the ids of all games that have been updated from /api/objectives
+        params = {"sortBy": "updatedAt", "sortOrder": "DESC", "limit": 100, "offset": 0}
+        while (1):
+            async with session.get(f'https://cedb.me/api/objectives', params=params) as _r:
+                _response_local = await _r.json()
+                # all objectives are new
+                if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run: 
+                    _updated_game_ids.update(r['gameId'] for r in _response_local)
+                    params['offset'] += 100
+                    continue
+                    
+                # we found something wrong. go thru one by one.
+                for objective in _response_local:
+                    if datetime.datetime.fromisoformat(objective['updatedAt']) < last_run:
+                        #TODO: can we confirm sorting works?
+                        break
 
-                _updated_game_ids.add(objective['gameId'])
-    
-            break
+                    _updated_game_ids.add(objective['gameId'])
+        
+                break
 
-    print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games + /api/objectives)")
+        print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games + /api/objectives)")
     
     # 1c) get the ids of all games that have removed objectives
     #  -- solved! folkius changed the schema so now any removed objective updates the game's updatedAt entry.
             
     # 1d) get the actual data for all those games
     games: list[CEAPIGame] = []
-    if DEBUG: print(f"PULL GAMES: pulling {len(_updated_game_ids)} games from cedb.")
-    for i, gameId in enumerate(_updated_game_ids):
-        if DEBUG and i % 10 == 0: print(f"PULL GAMES: {i}")
-        games.append(await CEAPIReader.get_game(gameId))
-    if DEBUG: print("PULL GAMES: done")
+
+    if full_scrape:
+        if DEBUG: print("PULL GAMES: begin (FULL!!)")
+        games = await CEAPIReader.get_api_games_full()
+        if DEBUG: print("PULL GAMES: done! (FULL!!)")
+    else:
+        if DEBUG: print(f"PULL GAMES: pulling {len(_updated_game_ids)} games from cedb.")
+        for i, gameId in enumerate(_updated_game_ids):
+            if DEBUG and i % 10 == 0: print(f"PULL GAMES: {i}")
+            games.append(await CEAPIReader.get_game(gameId))
+        if DEBUG: print("PULL GAMES: done")
+        
+
 
     while None in games: games.remove(None)
 
     # Step 2: Generate updates for those by comparing with Supabase games.
     if not SKIPUPDATES:
+        _ids = [g.ce_id for g in games]
+        games_old = await asyncio.to_thread(SupabaseReader.get_games_bulk, _ids)
         if DEBUG: print("GAME UPDATES: begin")
         for i, game_new in enumerate(games):
             if DEBUG and i % 10 == 0: print(f"GAME UPDATES: {i}")
-            game_old = SupabaseReader.get_game(game_new.ce_id)
+            game_old = hm.get_item_from_list(game_new.ce_id, games_old)
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
@@ -369,7 +397,7 @@ async def update_games() -> tuple[list[UpdateMessageForScraperProcess], list[CEA
     
     return updates, games, game_list_removed, objectives_removed
 
-async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame]):
+async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full_scrape = False):
     """
     Updates all users. This version began April 9, 2026 for Supabase.
     """
@@ -389,19 +417,22 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame]):
     # 1a) Go through api/userGames/updatedAt (or whatever it's called) and find the last updated
     # 1b) Do the same but with userObjectives
     # NOTE maybe folkius could make a combined one....
-    session = await http_session.get_session()
-    async with session.get(f'http://cedb.me/api/userGames/lastUpdatedAt') as _r :
-        response = await _r.json()
+    if full_scrape:
+        _updated_user_ids = SupabaseReader.get_list('user')
+    else:
+        session = await http_session.get_session()
+        async with session.get(f'http://cedb.me/api/userGames/lastUpdatedAt') as _r :
+            response = await _r.json()
 
-    for user in response:
-        timestamp_user = datetime.datetime.fromisoformat(user['lastUpdatedAt'])
+        for user in response:
+            timestamp_user = datetime.datetime.fromisoformat(user['lastUpdatedAt'])
 
-        if timestamp_user < last_run : break
-        if user['userId'] not in _users_registered: continue
+            if timestamp_user < last_run : break
+            if user['userId'] not in _users_registered: continue
 
-        _updated_user_ids.add(user['userId'])
+            _updated_user_ids.add(user['userId'])
 
-    print(f"USERS: {len(_updated_user_ids)=} (found from /api/userGames/lastUpdatedAt)")
+        print(f"USERS: {len(_updated_user_ids)=} (found from /api/userGames/lastUpdatedAt)")
 
     # Step 2: Pull all of those users
     users: list[CEAPIUser] = []
@@ -412,12 +443,15 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame]):
     # for i in range(0, len(_updated_user_ids), 10):
     #     if DEBUG: print(f"posting /api/users/query for users {i} through {i+9} (of {len(_updated_user_ids)})")
     #     users.extend(await CEAPIReader.post_users_query(users[i:i+10]))
-    if DEBUG: print(f'PULL USERS: begin, {len(_updated_user_ids)=}')
-    for i, _user_id in enumerate(_updated_user_ids):
-        if DEBUG and i % 10 == 0: print(f"PULL USERS: {i}")
-        _user = await CEAPIReader.get_user(_user_id)
-        if _user is not None: users.append(_user)
-    if DEBUG: print('PULL USERS: done')
+    if full_scrape:
+        users = await CEAPIReader.get_api_users_all(_updated_user_ids)
+    else:
+        if DEBUG: print(f'PULL USERS: begin, {len(_updated_user_ids)=}')
+        for i, _user_id in enumerate(_updated_user_ids):
+            if DEBUG and i % 10 == 0: print(f"PULL USERS: {i}")
+            _user = await CEAPIReader.get_user(_user_id)
+            if _user is not None: users.append(_user)
+        if DEBUG: print('PULL USERS: done')
 
     # Step 3: Generate updates for these changed users by comparing with Supabase users.
     if not SKIPUPDATES:
@@ -425,7 +459,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame]):
 
         # Bulk-fetch the existing users from Supabase to avoid blocking the event loop
         ce_ids = [u.ce_id for u in users]
-        users_old: list = []
+        users_old: list[CEUser] = []
         batch_size = 100
         for bstart in range(0, len(ce_ids), batch_size):
             batch_ids = ce_ids[bstart:bstart+batch_size]
@@ -922,7 +956,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.is_embed = True
     update.title = f"__ {game_old.game_name} __ removed from the site"
     update.color = 0xce4e2c
-    update.image = "removal"
+    update.image = ""
     update.location = 'gameadditions'
 
     return update
