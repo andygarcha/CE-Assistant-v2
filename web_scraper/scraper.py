@@ -133,7 +133,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
 
     if assistant_log is not None:
         await assistant_log.send(
-            f"🔄 Scraper loop started at {hm.get_datetime('now')}{", FULL SCRAPE" if full_scrape else ""}"
+            f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
         )
 
     if DEBUG: print(f"FLAGS: {SAVEDATA=}, {DEBUG=}, {SKIPUPDATES=}")
