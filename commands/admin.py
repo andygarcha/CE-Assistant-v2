@@ -37,6 +37,9 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     async def scrape_command(interaction : discord.Interaction) :
         await scrape(interaction)
     """
+    @tree.command(name='full-scrape', description='Run the loop on ALL games in the CE database.', guild=guild)
+    async def full_scrape_command(interaction: discord.Interaction):
+        await loop(interaction, True)
 
     # ---- initiate loop command ----
     @tree.command(name="initiate-loop", description="Initiate the loop. ONLY RUN WHEN NECESSARY.", guild=guild)
