@@ -116,15 +116,17 @@ times = [
 ]
 
 @tasks.loop(time=times)
-async def process_loop(client: discord.Client = None):
+async def process_loop(client: discord.Client = None, full_scrape = False):
     if client is None:
         print("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
-    print("process_loop() invoked.")
-
+    print(f"process_loop() invoked with {full_scrape=} (initially).")
+    
     full_scrape = ( # Noon/1PM EST (based on daylight savings)
         datetime.datetime.now(datetime.timezone.utc).hour == 17) and (
         datetime.datetime.now(datetime.timezone.utc).minute == 0
-    )
+    ) or full_scrape
+
+    print(f"{full_scrape=} (second try)")
     
 
     assistant_log = client.get_channel(hm.id_num("privatelog"))
