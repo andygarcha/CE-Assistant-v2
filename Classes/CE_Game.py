@@ -94,6 +94,7 @@ class CEGame:
                 case "First-Person": _nums.append(4)
                 case "Platformer": _nums.append(5)
                 case "Strategy": _nums.append(6)
+        return _nums
 
     def categories_string(self) -> str:
         "[Arcade, First-Person, Strategy] --> Arcade, First-Person, Strategy"
