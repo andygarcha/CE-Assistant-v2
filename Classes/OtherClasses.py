@@ -423,6 +423,7 @@ class CRData :
         from Modules import hm
 
         # set up the return string
+        return "CR: Currently under construction due to dual-categories!"
         return_str : str = ""
 
         # constant to denote how many CRs should be displayed per line

@@ -80,7 +80,7 @@ class CEGame:
     
     @property
     def categories(self) -> list[hm.CATEGORIES] :
-        """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
+        """Returns the categories of this game (e.g. Action, Arcade, Strategy)."""
         return self._categories
     
     def categories_num(self) -> int:
@@ -341,7 +341,7 @@ class CEGame:
     # --- emojis ---
     
     def get_category_emojis(self) -> str :
-        "Returns the category emoji for this game."
+        "Returns the category emojis for this game."
         _string = ""
         for cat in self.categories:
             _string += hm.get_emoji(cat)

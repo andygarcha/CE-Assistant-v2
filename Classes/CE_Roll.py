@@ -541,7 +541,7 @@ class CERoll:
                 game = hm.get_item_from_list(game_id, database_name)
                 if game_id not in user_wins :
                     return_str += "\n- " + game.game_name + " 🟥"
-                return_str += "\n- " + game.game_name + " " + game.get_category_emoji()
+                return_str += "\n- " + game.game_name + " " + game.get_category_emojis()
             return return_str
 
         else :
@@ -637,6 +637,7 @@ class CERoll:
                 categories[category] = 0
             for game in user.owned_games :
                 if (game.ce_id in self.games and game.is_completed(database_name)) :
+                    # TODO: casino fix doesn't work with dual categories
                     categories[game.get_category_v2(database_name)] += 1
             completed_categories = 0
             for category in categories :

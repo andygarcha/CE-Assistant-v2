@@ -609,14 +609,15 @@ def generate_database_tier(database_name: list[CEAPIGame]):
         if game.platform_id not in prices or game.platform_id not in hours:
             continue #no success from api
 
-        database_tier[str(game.get_tier_num())][game.category].append(
-            {
-                'ce_id': game.ce_id,
-                'name': game.game_name,
-                'price': prices[game.platform_id],
-                'sh_hours': hours[game.platform_id]
-            }
-        )
+        for _cat in game.categories:
+            database_tier[str(game.get_tier_num())][_cat].append(
+                {
+                    'ce_id': game.ce_id,
+                    'name': game.game_name,
+                    'price': prices[game.platform_id],
+                    'sh_hours': hours[game.platform_id]
+                }
+            )
 
     return database_tier
 

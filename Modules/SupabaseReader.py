@@ -448,6 +448,7 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
             })
 
             for i, _cat in enumerate(game.categories):
+                # We sort these on the way in so dw about sorting on the way out
                 categories_payload.append({
                     'game_id': game.ce_id,
                     'category': _cat,
