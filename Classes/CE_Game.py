@@ -191,21 +191,21 @@ class CEGame:
         "Returns true if this game is a Role T4 (has a discord role associated with it)"
         return self.get_tier_num() == 4 and self.get_total_points() >= 150
     
+    def get_tier_num(self) -> int :
+        """Returns the int value for the tier."""
+        total_points = self.get_total_points()
+        if total_points >= 800 : return 7
+        if total_points >= 400 : return 6
+        if total_points >= 200 : return 5
+        if total_points >= 80 : return 4
+        if total_points >= 40 : return 3
+        if total_points >= 20 : return 2
+        if total_points > 0 : return 1
+        return 0
+
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
-        total_points = self.get_total_points()
-        if total_points >= 800 : return "Tier 7"
-        if total_points >= 400 : return "Tier 6"
-        if total_points >= 200 : return "Tier 5"
-        elif total_points >= 80 : return "Tier 4"
-        elif total_points >= 40 : return "Tier 3"
-        elif total_points >= 20 : return "Tier 2"
-        elif total_points > 0 : return "Tier 1"
-        else : return "Tier 0"
-
-    def get_tier_num(self) -> int :
-        "Returns the int value for the tier."
-        return int(self.get_tier()[5])
+        return f"Tier {self.get_tier_num()}"
     
     def is_t5plus(self) -> bool :
         "Returns true if this game is Tier 5 or above."
