@@ -299,8 +299,9 @@ async def update_games(full_scrape = False) -> tuple[
     objectives_removed: list[str] = []
 
     # Step 0: Determine the last time the loop ran
-    if not full_scrape: last_run = SupabaseReader.get_last_loop()
-    if DEBUG: print(f"GAMES: {last_run=}, {full_scrape=}")
+    if not full_scrape: 
+        last_run = SupabaseReader.get_last_loop()
+        if DEBUG: print(f"GAMES: {last_run=}, {full_scrape=}")
 
     # Step 1: Go through /api/games and /api/objectives and find the list of all games that have been updated.
     # 1a) get the ids of all games that have been updated from /api/games
