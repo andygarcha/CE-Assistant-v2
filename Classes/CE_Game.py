@@ -410,7 +410,7 @@ class CEGame:
             "\nTotal Points: " + str(self.get_total_points()) +
             "\nPlatform: " + self.platform +
             "\nPlatform ID: " + str(self.platform_id) +
-            "\nCategories: " + self.categories +
+            "\nCategories: " + self.categories_string() +
             "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
             f"\nLast Updated: <t:{self.last_updated}>"
         )
