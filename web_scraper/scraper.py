@@ -922,7 +922,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.is_embed = True
     update.title = f"__ {game_old.game_name} __ removed from the site"
     update.color = 0xce4e2c
-    update.image = "removal"
+    update.image = ""
     update.location = 'gameadditions'
 
     return update
