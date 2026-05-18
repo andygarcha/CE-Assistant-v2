@@ -438,9 +438,9 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
                         'updated_at_CE': now_iso
                     })
 
-        # Delete existing custom requirements for all objectives in this batch
+        # Delete all achievements and requirements for all objectives in this batch
         if objective_ids:
-            supabase.table('objectiveRequirements').delete().in_('objective_ce_id', objective_ids).eq('requirement_type', 'custom').execute()
+            supabase.table('objectiveRequirements').delete().in_('objective_ce_id', objective_ids).execute()
 
         # Bulk upsert games
         if games_payload:
