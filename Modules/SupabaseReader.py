@@ -147,13 +147,15 @@ def get_database_name() -> list[CEGame]:
     response_games = supabase.table('games').select().execute().data
     response_objectives = supabase.table('objectives').select().execute().data
     response_requirements = supabase.table('objectiveRequirements').select().execute().data
+    response_categories = supabase.table('categories').select().execute().data
 
     _games = []
     for game in response_games:
         objectives = [o for o in response_objectives if o['game_ce_id'] == game['ce_id']]
         ids_objectives = [o['ce_id'] for o in objectives]
         requirements = [r for r in response_requirements if r['objective_ce_id'] in ids_objectives]
-        _games.append(__supabase_to_game(game, objectives, requirements))
+        categories = [c for c in response_categories if c['game_id'] == game['ce_id']]
+        _games.append(__supabase_to_game(game, objectives, requirements, categories))
     
     return _games
 
@@ -176,6 +178,11 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     objective_ids = [objective['ce_id'] for objective in objectives_json]
     requirements_json = _fetch_in_chunks('objectiveRequirements', 'objective_ce_id', objective_ids, chunk_size=200) if objective_ids else []
 
+    categories_json = _fetch_in_chunks('categories', 'game_id', ce_ids, chunk_size=200)
+    categories_by_game: dict[str, list[dict]] = {}
+    for _category in categories_json:
+        categories_by_game.setdefault(_category['game_id'], []).append(_category)
+
     objectives_by_game: dict[str, list[dict]] = {}
     for objective in objectives_json:
         objectives_by_game.setdefault(objective['game_ce_id'], []).append(objective)
@@ -191,12 +198,16 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
         if not game_json:
             continue
 
+        game_categories = categories_by_game.get(ce_id)
+        if not game_categories:
+            print(f"game {ce_id} has no categories.")
+            continue
         game_objectives = objectives_by_game.get(ce_id, [])
         game_requirements: list[dict] = []
         for objective in game_objectives:
             game_requirements.extend(requirements_by_objective.get(objective['ce_id'], []))
 
-        out_games.append(__supabase_to_game(game_json, game_objectives, game_requirements))
+        out_games.append(__supabase_to_game(game_json, game_objectives, game_requirements, game_categories))
 
     return out_games
 
