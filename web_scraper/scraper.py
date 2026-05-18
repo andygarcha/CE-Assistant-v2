@@ -1115,7 +1115,7 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
                 new_categories[c_num - 1] += points
     
     # CATEGORIES
-    CATEGORY_ROLE_NAMES = ["Master", "Grandmaster (Red Role)", "Grandmaster (Black Role)"]
+    CATEGORY_ROLE_NAMES = ["Expert", "Master", "Grandmaster"]
     for index_point, point_value in enumerate([500, 1000, 2000]):
         for index_category, category in enumerate(list(typing.get_args(hm.CATEGORIES))):
             if old_categories[index_category] < point_value and new_categories[index_category] >= point_value:
