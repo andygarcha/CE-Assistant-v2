@@ -151,8 +151,8 @@ async def loop(interaction: discord.Interaction, full_scrape=False) :
     if hm.IN_CE :
         if datetime.datetime.now().minute < 30 and datetime.datetime.now().minute >= 25 and full_scrape :
             return await interaction.followup.send('this loop will run in less than five minutes. please wait!')
-        if process_loop.is_running() :
-            return await interaction.followup.send('The loop is currently running. Please try again later.')
+        if datetime.datetime.now().minute >= 30 and datetime.datetime.now().minute < 35 and full_scrape :
+            return await interaction.followup.send('this loop is probably running now! please wait...')
 
     await interaction.followup.send("looping...")
 
