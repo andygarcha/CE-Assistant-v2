@@ -348,10 +348,14 @@ def get_curator_count() -> int:
     # Not currently needed, but can be implemented if required
     raise NotImplementedError
 
-def get_last_loop() -> datetime.datetime:
+def get_last_loop(offset=True) -> datetime.datetime:
     data = supabase.table('loopruns').select('ran_at').order('ran_at', desc=True).limit(1).execute().data
+    
+    dt = datetime.datetime.fromisoformat(data[0]['ran_at'])
+    if offset:
+        dt = dt - datetime.timedelta(hours=2, minutes=10)
 
-    return datetime.datetime.fromisoformat(data[0]['ran_at'])
+    return dt
 
 
 
