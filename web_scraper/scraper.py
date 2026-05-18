@@ -274,7 +274,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
             f"✅ Scraper loop finished at {hm.get_datetime('now')}"
         )
 
-    if SAVEDATA: SupabaseReader.dump_loop(time_current)
+    if SAVEDATA and not full_scrape: SupabaseReader.dump_loop(time_current)
 
 
 """ MEDIUM LEVEL FUNCTIONS """
