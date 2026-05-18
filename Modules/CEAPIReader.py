@@ -96,6 +96,8 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
     if json_response['genre'] is None:
         print(f"null genre found for ce_id: {json_response['id']}")
         return None
+    if 'gameCategories' not in json_response:
+        _categories = []
     # pull the categories (we can't be sure they're ordered)
     _categories_unordered = []
     for _c in json_response['gameCategories']:
