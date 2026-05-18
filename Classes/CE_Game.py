@@ -13,7 +13,7 @@ class CEGame:
                  game_name : str,
                  platform : hm.PLATFORM_NAMES,
                  platform_id : str,
-                 category : str,
+                 categories : list[hm.CATEGORIES],
                  objectives : list[CEObjective],
                  last_updated : int,
                  banner : str = ""):
@@ -21,7 +21,7 @@ class CEGame:
         self._game_name = game_name
         self._platform = platform
         self._platform_id = platform_id
-        self._category = category
+        self._categories = categories
         self._objectives = objectives
         self._last_updated = last_updated
         self._banner = banner
@@ -79,18 +79,26 @@ class CEGame:
         return self._platform_id
     
     @property
-    def category(self) -> hm.CATEGORIES :
-        """Returns the category of this game (e.g. Action, Arcade, Strategy)."""
-        return self._category
+    def categories(self) -> list[hm.CATEGORIES] :
+        """Returns the categories of this game (e.g. Action, Arcade, Strategy)."""
+        return self._categories
     
-    def category_num(self) -> int:
-        match(self.category):
-            case "Action": return 1
-            case "Arcade": return 2
-            case "Bullet Hell": return 3
-            case "First-Person": return 4
-            case "Platformer": return 5
-            case "Strategy": return 6
+    def categories_num(self) -> int:
+        "[Action, First-Person, Strategy] --> [1, 4, 6]"
+        _nums = []
+        for cat in self.categories:
+            match(cat):
+                case "Action": _nums.append(1)
+                case "Arcade": _nums.append(2)
+                case "Bullet Hell": _nums.append(3)
+                case "First-Person": _nums.append(4)
+                case "Platformer": _nums.append(5)
+                case "Strategy": _nums.append(6)
+        return _nums
+
+    def categories_string(self) -> str:
+        "[Arcade, First-Person, Strategy] --> Arcade, First-Person, Strategy"
+        return ', '.join(self.categories)
     
     @property
     def all_objectives(self) -> list[CEObjective] :
@@ -163,7 +171,7 @@ class CEGame:
             game_name=self.game_name,
             platform=self.platform,
             platform_id=self.platform_id,
-            category=self.category,
+            categories=self.categories,
             objectives=self.all_objectives,
             last_updated=self.last_updated,
             full_data=await self.get_raw_ce_data()
@@ -333,9 +341,12 @@ class CEGame:
     
     # --- emojis ---
     
-    def get_category_emoji(self) -> str :
-        "Returns the category emoji for this game."
-        return "" + hm.get_emoji(self.category)
+    def get_category_emojis(self) -> str :
+        "Returns the category emojis for this game."
+        _string = ""
+        for cat in self.categories:
+            _string += hm.get_emoji(cat)
+        return _string
     
     def get_tier_emoji(self) -> str :
         "Returns the tier emoji for this game."
@@ -343,7 +354,7 @@ class CEGame:
         
     def get_emojis(self) -> str :
         "Returns the tier and category emojis for this game."
-        return self.get_tier_emoji() + self.get_category_emoji()
+        return self.get_tier_emoji() + self.get_category_emojis()
 
     def update(self, json_response : 'CEGame' = None) -> str | None :
         return NotImplemented
@@ -385,7 +396,7 @@ class CEGame:
             "ce_id" : self.ce_id,
             "platform" : self.platform,
             "platform_id" : self.platform_id,
-            "category" : self.category,
+            "categories" : self.categories,
             "objectives" : objectives,
             "last_updated" : self.last_updated,
             "banner" : self._banner
@@ -400,7 +411,7 @@ class CEGame:
             "\nTotal Points: " + str(self.get_total_points()) +
             "\nPlatform: " + self.platform +
             "\nPlatform ID: " + str(self.platform_id) +
-            "\nCategory: " + self.category +
+            "\nCategories: " + self.categories_string() +
             "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
             f"\nLast Updated: <t:{self.last_updated}>"
         )
@@ -413,13 +424,13 @@ class CEAPIGame(CEGame) :
             game_name : str,
             platform : hm.PLATFORM_NAMES,
             platform_id : str,
-            category : hm.CATEGORIES,
+            categories : list[hm.CATEGORIES],
             objectives : list[CEObjective],
             last_updated : int,
             full_data,
             banner = ""
         ) :
-        super().__init__(ce_id, game_name, platform, platform_id, category, objectives, last_updated, banner)
+        super().__init__(ce_id, game_name, platform, platform_id, categories, objectives, last_updated, banner)
         self.__full_data = full_data
 
     @property

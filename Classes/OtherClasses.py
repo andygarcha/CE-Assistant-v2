@@ -380,7 +380,8 @@ class CRData :
         for i, game in enumerate(owned_games) :
             mongo_game = hm.get_item_from_list(game.ce_id, database_name)
             if mongo_game is None : continue
-            cr_groups[mongo_game.category].append(game.get_user_points())
+            for _cat in mongo_game.categories:
+                cr_groups[_cat].append(game.get_user_points())
 
         # now that they've all been sorted, calculate the individual crs, and store THAT dict.
         final_dict = {key : self.calculate_cr(cr_groups[key]) for key in cr_groups}
@@ -422,6 +423,7 @@ class CRData :
         from Modules import hm
 
         # set up the return string
+        return "CR: Currently under construction due to dual-categories!"
         return_str : str = ""
 
         # constant to denote how many CRs should be displayed per line

@@ -86,6 +86,8 @@ class CEUserGame():
     
     def get_category_v2(self, database_name : list[CEGame]) :
         """Returns the category of this game."""
+        # TODO casino fix: doesn't work with dual categories
+        raise NotImplementedError
         for game in database_name :
             if game.ce_id == self.ce_id :
                 return game.category

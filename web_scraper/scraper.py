@@ -609,14 +609,15 @@ def generate_database_tier(database_name: list[CEAPIGame]):
         if game.platform_id not in prices or game.platform_id not in hours:
             continue #no success from api
 
-        database_tier[str(game.get_tier_num())][game.category].append(
-            {
-                'ce_id': game.ce_id,
-                'name': game.game_name,
-                'price': prices[game.platform_id],
-                'sh_hours': hours[game.platform_id]
-            }
-        )
+        for _cat in game.categories:
+            database_tier[str(game.get_tier_num())][_cat].append(
+                {
+                    'ce_id': game.ce_id,
+                    'name': game.game_name,
+                    'price': prices[game.platform_id],
+                    'sh_hours': hours[game.platform_id]
+                }
+            )
 
     return database_tier
 
@@ -987,11 +988,11 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[U
             )
 
     # CATEGORY CHANGE
-    if game_old.category != game_new.category:
+    if game_old.categories != game_new.categories:
         update.description += (
-            f"\n- {game_old.get_category_emoji()} ({game_old.category})" +
+            f"\n- {game_old.get_category_emojis()} ({game_old.categories_string()})" +
             f"{hm.get_emoji('Arrow')}" +
-            f"{game_new.get_category_emoji()} ({game_new.category})"
+            f"{game_new.get_category_emojis()} ({game_new.categories_string()})"
         )
     
     # objective changes...
@@ -1094,7 +1095,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         # if the game is completed
         if game_old.get_user_points() == game_database.get_total_points():
             old_tiers[game_database.get_tier_num() - 1] += points
-            old_categories[game_database.category_num() - 1] += points
+            for c_num in game_database.categories_num():
+                old_categories[c_num - 1] += points
     
     for game_new in games_new:
         points = game_new.get_user_points()
@@ -1105,7 +1107,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         # if the game is completed
         if game_new.get_user_points() == game_database.get_total_points():
             new_tiers[game_database.get_tier_num() - 1] += points
-            new_categories[game_database.category_num() - 1] += points
+            for c_num in game_database.categories_num():
+                new_categories[c_num - 1] += points
     
     # CATEGORIES
     CATEGORY_ROLE_NAMES = ["Master", "Grandmaster (Red Role)", "Grandmaster (Black Role)"]

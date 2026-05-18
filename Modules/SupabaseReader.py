@@ -99,7 +99,14 @@ def get_game(ce_id: str) -> CEGame | None:
     else:
         requirements_json = []
 
-    return __supabase_to_game(games_json[0], objectives_json, requirements_json)
+    categories_json = supabase.table('categories') \
+        .select() \
+        .eq('game_id', ce_id) \
+        .order(column='index', desc=False) \
+        .execute() \
+        .data
+
+    return __supabase_to_game(games_json[0], objectives_json, requirements_json, categories_json)
 
 # GET USER
 def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
@@ -140,13 +147,15 @@ def get_database_name() -> list[CEGame]:
     response_games = supabase.table('games').select().execute().data
     response_objectives = supabase.table('objectives').select().execute().data
     response_requirements = supabase.table('objectiveRequirements').select().execute().data
+    response_categories = supabase.table('categories').select().execute().data
 
     _games = []
     for game in response_games:
         objectives = [o for o in response_objectives if o['game_ce_id'] == game['ce_id']]
         ids_objectives = [o['ce_id'] for o in objectives]
         requirements = [r for r in response_requirements if r['objective_ce_id'] in ids_objectives]
-        _games.append(__supabase_to_game(game, objectives, requirements))
+        categories = [c for c in response_categories if c['game_id'] == game['ce_id']]
+        _games.append(__supabase_to_game(game, objectives, requirements, categories))
     
     return _games
 
@@ -169,6 +178,11 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     objective_ids = [objective['ce_id'] for objective in objectives_json]
     requirements_json = _fetch_in_chunks('objectiveRequirements', 'objective_ce_id', objective_ids, chunk_size=200) if objective_ids else []
 
+    categories_json = _fetch_in_chunks('categories', 'game_id', ce_ids, chunk_size=200)
+    categories_by_game: dict[str, list[dict]] = {}
+    for _category in categories_json:
+        categories_by_game.setdefault(_category['game_id'], []).append(_category)
+
     objectives_by_game: dict[str, list[dict]] = {}
     for objective in objectives_json:
         objectives_by_game.setdefault(objective['game_ce_id'], []).append(objective)
@@ -184,12 +198,16 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
         if not game_json:
             continue
 
+        game_categories = categories_by_game.get(ce_id)
+        if not game_categories:
+            print(f"game {ce_id} has no categories.")
+            continue
         game_objectives = objectives_by_game.get(ce_id, [])
         game_requirements: list[dict] = []
         for objective in game_objectives:
             game_requirements.extend(requirements_by_objective.get(objective['ce_id'], []))
 
-        out_games.append(__supabase_to_game(game_json, game_objectives, game_requirements))
+        out_games.append(__supabase_to_game(game_json, game_objectives, game_requirements, game_categories))
 
     return out_games
 
@@ -339,70 +357,7 @@ def get_last_loop() -> datetime.datetime:
 
 # === DUMPERS ===
 def dump_game(game: CEGame):
-    # Upsert game record
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    game_data = {
-        'ce_id': game.ce_id,
-        'name': game.game_name,
-        'platform': game.platform,
-        'platform_id': game.platform_id,
-        'category_primary': game.category,
-        'image_header': game._banner,
-        'image_icon': '',  # TODO: populate if available
-        'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
-    }
-    supabase.table('games').upsert(game_data).execute()
-
-    # Prepare bulk upserts for objectives and requirements to reduce HTTP calls
-    objectives_payload = []
-    achievement_reqs_payload = []
-    custom_reqs_payload = []
-    objective_ids = []
-
-    for objective in game.all_objectives:
-        objective_ids.append(objective.ce_id)
-        objectives_payload.append({
-            'ce_id': objective.ce_id,
-            'game_ce_id': objective.game_ce_id,
-            'type': objective.type,
-            'name': objective.name,
-            'description': objective.description,
-            'points': objective.point_value,
-            'points_partial': objective.partial_points,
-            'updated_at_CE': now_iso
-        })
-
-        for achievement_id in (objective.achievement_ce_ids or []):
-            achievement_reqs_payload.append({
-                'objective_ce_id': objective.ce_id,
-                'requirement_type': 'achievement',
-                'data': achievement_id,
-                'updated_at_CE': now_iso
-            })
-
-        if objective.requirements:
-            custom_reqs_payload.append({
-                'objective_ce_id': objective.ce_id,
-                'requirement_type': 'custom',
-                'data': objective.requirements,
-                'updated_at_CE': now_iso
-            })
-
-    # Delete existing custom requirements for all objectives in this game in one call
-    if objective_ids:
-        supabase.table('objectiveRequirements').delete().in_('objective_ce_id', objective_ids).eq('requirement_type', 'custom').execute()
-
-    # Bulk upsert objectives
-    if objectives_payload:
-        supabase.table('objectives').upsert(objectives_payload).execute()
-
-    # Bulk upsert achievement requirements
-    if achievement_reqs_payload:
-        supabase.table('objectiveRequirements').upsert(achievement_reqs_payload).execute()
-
-    # Bulk upsert custom requirements
-    if custom_reqs_payload:
-        supabase.table('objectiveRequirements').upsert(custom_reqs_payload).execute()
+    return bulk_dump_games([game])
 
 def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: float = 0.1):
     """Bulk dump many games at once in batches to reduce HTTP calls and avoid connection termination.
@@ -426,18 +381,29 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         achievement_reqs_payload = []
         custom_reqs_payload = []
         objective_ids = []
+        categories_payload = []
+        game_ids = []
 
         for game in batch:
+            game_ids.append(game.ce_id)
             games_payload.append({
                 'ce_id': game.ce_id,
                 'name': game.game_name,
                 'platform': game.platform,
                 'platform_id': game.platform_id,
-                'category_primary': game.category,
+                'category_primary': None,
                 'image_header': game._banner,
                 'image_icon': '',
                 'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
             })
+
+            for i, _cat in enumerate(game.categories):
+                # We sort these on the way in so dw about sorting on the way out
+                categories_payload.append({
+                    'game_id': game.ce_id,
+                    'category': _cat,
+                    'index': i
+                })
 
             for objective in game.all_objectives:
                 objective_ids.append(objective.ce_id)
@@ -475,6 +441,10 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         # Bulk upsert games
         if games_payload:
             supabase.table('games').upsert(games_payload).execute()
+
+        if categories_payload:
+            _delete_in_chunks('categories', 'game_id', game_ids, chunk_size=200)
+            supabase.table('categories').upsert(categories_payload).execute()
 
         # Bulk upsert objectives
         if objectives_payload:
@@ -810,16 +780,18 @@ def clean_db():
 
 # === SUPABASE CONVERTERS ===
 
-def __supabase_to_game(game: dict, obj = list[dict], reqs = list[dict]) -> CEGame: 
+def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list[dict]) -> CEGame: 
     objectives = []
     for o in obj:
         objectives.append(__supabase_to_objective(o, [req for req in reqs if req['objective_ce_id'] == o['ce_id']]))
+    sorted_cats = sorted(cats, key=lambda c: c['index'])
+    categories = [c['category'] for c in sorted_cats]
     return CEGame(
         ce_id=game['ce_id'],
         game_name=game['name'],
         platform=game['platform'],
         platform_id=game['platform_id'],
-        category=game['category_primary'],
+        categories=categories,
         last_updated=game['updated_at_CE'],
         banner=game['image_header'],
         objectives=objectives
