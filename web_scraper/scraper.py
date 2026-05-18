@@ -373,6 +373,10 @@ async def update_games(full_scrape = False) -> tuple[
         for i, game_new in enumerate(games):
             if DEBUG and i % 10 == 0: print(f"GAME UPDATES: {i}")
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
+            if full_scrape and game_old is not None:
+                # TODO CE api bug
+                # /api/games/full does not currently give off categories so assume they do not change
+                game_new._categories = game_old.categories
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
