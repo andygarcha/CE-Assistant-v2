@@ -425,6 +425,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     hours_restriction=hours_restriction
                 ))
                 # TODO casino fix: won't work with dual category
+                raise NotImplementedError
                 valid_categories.remove(
                     hm.get_item_from_list(rolled_games[i], database_name).category
                 )
@@ -519,6 +520,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     for game in database_name:
                         if game.ce_id in past_roll.games:
                             # TODO casino fix: won't work with dual category
+                            raise NotImplementedError
                             valid_categories.remove(game.category)
 
                     new_game_id = await hm.get_rollable_game(
@@ -573,6 +575,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     for game in database_name:
                         if game.ce_id in past_roll.games:
                             # TODO casino fix: won't work with dual category
+                            raise NotImplementedError
                             valid_categories.remove(game.category)
                     new_game_id = await hm.get_rollable_game(
                         database_name=database_name,

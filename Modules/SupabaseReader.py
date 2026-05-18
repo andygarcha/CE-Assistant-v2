@@ -357,70 +357,7 @@ def get_last_loop() -> datetime.datetime:
 
 # === DUMPERS ===
 def dump_game(game: CEGame):
-    # Upsert game record
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    game_data = {
-        'ce_id': game.ce_id,
-        'name': game.game_name,
-        'platform': game.platform,
-        'platform_id': game.platform_id,
-        'category_primary': None,
-        'image_header': game._banner,
-        'image_icon': '',  # TODO: populate if available
-        'updated_at_CE': game.last_updated.isoformat() if isinstance(game.last_updated, datetime.datetime) else game.last_updated
-    }
-    supabase.table('games').upsert(game_data).execute()
-
-    # Prepare bulk upserts for objectives and requirements to reduce HTTP calls
-    objectives_payload = []
-    achievement_reqs_payload = []
-    custom_reqs_payload = []
-    objective_ids = []
-
-    for objective in game.all_objectives:
-        objective_ids.append(objective.ce_id)
-        objectives_payload.append({
-            'ce_id': objective.ce_id,
-            'game_ce_id': objective.game_ce_id,
-            'type': objective.type,
-            'name': objective.name,
-            'description': objective.description,
-            'points': objective.point_value,
-            'points_partial': objective.partial_points,
-            'updated_at_CE': now_iso
-        })
-
-        for achievement_id in (objective.achievement_ce_ids or []):
-            achievement_reqs_payload.append({
-                'objective_ce_id': objective.ce_id,
-                'requirement_type': 'achievement',
-                'data': achievement_id,
-                'updated_at_CE': now_iso
-            })
-
-        if objective.requirements:
-            custom_reqs_payload.append({
-                'objective_ce_id': objective.ce_id,
-                'requirement_type': 'custom',
-                'data': objective.requirements,
-                'updated_at_CE': now_iso
-            })
-
-    # Delete existing custom requirements for all objectives in this game in one call
-    if objective_ids:
-        supabase.table('objectiveRequirements').delete().in_('objective_ce_id', objective_ids).eq('requirement_type', 'custom').execute()
-
-    # Bulk upsert objectives
-    if objectives_payload:
-        supabase.table('objectives').upsert(objectives_payload).execute()
-
-    # Bulk upsert achievement requirements
-    if achievement_reqs_payload:
-        supabase.table('objectiveRequirements').upsert(achievement_reqs_payload).execute()
-
-    # Bulk upsert custom requirements
-    if custom_reqs_payload:
-        supabase.table('objectiveRequirements').upsert(custom_reqs_payload).execute()
+    return bulk_dump_games([game])
 
 def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: float = 0.1):
     """Bulk dump many games at once in batches to reduce HTTP calls and avoid connection termination.
@@ -847,7 +784,8 @@ def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list
     objectives = []
     for o in obj:
         objectives.append(__supabase_to_objective(o, [req for req in reqs if req['objective_ce_id'] == o['ce_id']]))
-    categories = [c['category'] for c in cats]
+    sorted_cats = sorted(cats, key=lambda c: c['index'])
+    categories = [c['category'] for c in sorted_cats]
     return CEGame(
         ce_id=game['ce_id'],
         game_name=game['name'],
