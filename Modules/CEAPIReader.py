@@ -99,14 +99,15 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
     if 'gameCategories' not in json_response:
         _categories = []
     # pull the categories (we can't be sure they're ordered)
-    _categories_unordered = []
-    for _c in json_response['gameCategories']:
-        _categories_unordered.append((_c['genre']['name'], _c['order']))
-    # and now order them
-    _categories = _categories_unordered.copy()
-    for _c in _categories_unordered:
-        # _c = (genrename, index)
-        _categories[_c[1]] = _c[0]
+    else: 
+        _categories_unordered = []
+        for _c in json_response['gameCategories']:
+            _categories_unordered.append((_c['genre']['name'], _c['order']))
+        # and now order them
+        _categories = _categories_unordered.copy()
+        for _c in _categories_unordered:
+            # _c = (genrename, index)
+            _categories[_c[1]] = _c[0]
     
     ce_game = CEAPIGame(
         ce_id=json_response['id'],
