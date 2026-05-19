@@ -152,7 +152,7 @@ class CEUser:
         completed_games : list[CEGame] = []
         for game_user in self.owned_games:
             if game_user.is_completed(database_name):
-                completed_games.append(hm.get_item_from_list(game_user.ce_id, database_name)))
+                completed_games.append(hm.get_item_from_list(game_user.ce_id, database_name))
         for game_data in database_name:
             for game_user in self.owned_games:
                 if (
