@@ -114,7 +114,7 @@ class CEObjective:
     def is_uncleared(self) -> bool :
         """Returns true if this game is UNCLEARED."""
         return (
-            self._point_value == 1
+            self._point_value == 0
             or "(UNCLEARED)" in self.name 
             or "(UNVALUED)" in self.name 
         )

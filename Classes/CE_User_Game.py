@@ -36,12 +36,20 @@ class CEUserGame():
     
     def get_user_primary_objectives(self) -> list[CEUserObjective] :
         """Returns the array of Primary :class:`CEUserObjective`'s 
-        associated with this game."""
+        associated with this game. NOTE: Though this should never happen,
+        this *will* include any 'Uncleared' POs that this user has."""
         p = []
         for obj in self.user_objectives :
             if obj.type == "Primary" :
                 p.append(obj)
         return p
+    
+    def get_user_points_primary(self):
+        "Returns the total number of points this user has from POs in this game... INCLUDING uncleared POs."
+        total_points = 0
+        for objective in self.get_user_primary_objectives():
+            total_points += objective.user_points
+        return total_points
     
     def get_user_community_objectives(self) -> list[CEUserObjective]:
         """Returns the array of Community :class:`CEUserObjective`'s 
@@ -77,12 +85,30 @@ class CEUserGame():
         import Modules.CEAPIReader as CEAPIReader
         return await CEAPIReader.get_api_page_data("game", self.ce_id)
     
-    def is_completed(self, database_name : list[CEGame]) -> bool :
+    def is_completed(self, database_name: list[CEGame] | CEGame) -> bool :
         """Returns true if this game has been completed, false if not."""
-        for game in database_name :
-            if game.ce_id == self.ce_id :
-                return game.get_total_points() == self.get_user_points()# and not game.is_t0()
+        if isinstance(database_name, CEGame): 
+            return self.__is_completed_helper(database_name)
+        if isinstance(database_name, list):
+            for game in database_name :
+                if game.ce_id == self.ce_id :
+                    return self.__is_completed_helper(game)
         return False
+    
+    def __is_completed_helper(self, game: CEGame):
+        """Only Primary Objectives should count towards completion.
+        We cannot simply count the number of POs, as some may be *partial*.
+        We also simply cannot check the user points, since this would skip uncleareds."""
+        user_pos = self.get_user_primary_objectives()
+        game_pos = game.get_primary_objectives(include_uncleareds=True)
+
+        user_points = self.get_user_points_primary()
+        game_points = game.get_po_points(skip_uncleareds=False)
+
+        if len(user_pos) == 0: return False
+        if len(user_pos) != len(game_pos): return False
+        if user_points != game_points: return False
+        return True
     
     def get_category_v2(self, database_name : list[CEGame]) :
         """Returns the category of this game."""

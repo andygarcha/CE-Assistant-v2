@@ -42,11 +42,15 @@ class CEGame:
         
         return total_points
     
-    def get_po_points(self) -> int :
-        "The total number of points in Primary Objectives."
+    def get_po_points(self, skip_uncleareds=True) -> int :
+        """The total number of points in Primary Objectives.
+        `skip_uncleareds` (on by default) allows you to specify if
+        uncleareds should be counted or not. As of now, uncleareds are
+        worth 0 points so it won't matter, but we are implementing this 
+        now in the event of a future change."""
         total_points = 0
-        for objective in self.get_primary_objectives() :
-            if objective.is_uncleared() : continue
+        # if we want to skip uncleareds, just filter them out in .get_primary_objectives()
+        for objective in self.get_primary_objectives(include_uncleareds=(not skip_uncleareds)) :
             total_points += objective.point_value
         return total_points
 
@@ -105,12 +109,12 @@ class CEGame:
         """Returns the array of all `CEObjectives` in this game."""
         return self._objectives
     
-    def get_primary_objectives(self) -> list[CEObjective] : 
+    def get_primary_objectives(self, include_uncleareds=False) -> list[CEObjective] : 
         """Returns the array of CEObjectives that are Primary.\n
-        NOTE: This does not return uncleared objectives!"""
+        NOTE: This does not return uncleared objectives, unless you set `include_uncleareds = True`!"""
         p = []
         for objective in self.all_objectives :
-            if objective.type == "Primary" and not objective.is_uncleared() :
+            if objective.type == "Primary" and (not objective.is_uncleared() or include_uncleareds) :
                 p.append(objective)
         return p
     

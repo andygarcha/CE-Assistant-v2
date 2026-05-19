@@ -150,14 +150,10 @@ class CEUser:
             raise ValueError("Argument 'database_name' contains None.")
         
         completed_games : list[CEGame] = []
-        for game_data in database_name:
-            for game_user in self.owned_games:
-                if (
-                    game_data.ce_id == game_user.ce_id 
-                    and game_data.get_total_points() > 0 
-                    and game_data.get_total_points() == game_user.get_user_points()
-                    ):
-                    completed_games.append(game_data)
+        for game_user in self.owned_games:
+            game_data = hm.get_item_from_list(game_user.ce_id, database_name)
+            if game_user.is_completed(game_data):
+                completed_games.append(game_data)
         return completed_games
     
     def get_objective(self, objective_id : str) :
@@ -476,8 +472,7 @@ class CEUser:
         "Returns true if this user has completed this game, returns false otherwise."
         for user_game in self.owned_games :
             if user_game.ce_id == game_id :
-                for game in database_name :
-                    if game.ce_id == user_game.ce_id : return game.get_total_points() == user_game.get_user_points()
+                return user_game.is_completed(database_name)
         return False
 
     def owns_game(self, game_id : str) -> bool :
