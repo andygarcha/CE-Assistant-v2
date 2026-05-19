@@ -45,8 +45,8 @@ class CEGame:
     def get_po_points(self, skip_uncleareds=True) -> int :
         "The total number of points in Primary Objectives."
         total_points = 0
-        for objective in self.get_primary_objectives() :
-            if objective.is_uncleared() and skip_uncleareds : continue
+        for objective in self.get_primary_objectives(include_uncleareds=(not skip_uncleareds)) :
+            if objective.is_uncleared(): continue
             total_points += objective.point_value
         return total_points
 

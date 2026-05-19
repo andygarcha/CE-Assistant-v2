@@ -153,14 +153,6 @@ class CEUser:
         for game_user in self.owned_games:
             if game_user.is_completed(database_name):
                 completed_games.append(hm.get_item_from_list(game_user.ce_id, database_name))
-        for game_data in database_name:
-            for game_user in self.owned_games:
-                if (
-                    game_data.ce_id == game_user.ce_id 
-                    and game_data.get_total_points() > 0 
-                    and game_data.get_total_points() == game_user.get_user_points()
-                    ):
-                    completed_games.append(game_data)
         return completed_games
     
     def get_objective(self, objective_id : str) :
