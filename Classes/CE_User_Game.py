@@ -99,11 +99,16 @@ class CEUserGame():
         """Only Primary Objectives should count towards completion.
         We cannot simply count the number of POs, as some may be *partial*.
         We also simply cannot check the user points, since this would skip uncleareds."""
-        return (
-            (len(self.get_user_primary_objectives()) == len(game.get_primary_objectives(include_uncleareds=True))
-        ) and (
-            self.get_user_points_primary() == game.get_po_points(skip_uncleareds=False)
-        ))
+        user_pos = self.get_user_primary_objectives()
+        game_pos = game.get_primary_objectives(include_uncleareds=True)
+
+        user_points = self.get_user_points_primary()
+        game_points = game.get_po_points(skip_uncleareds=False)
+
+        if len(user_pos) == 0: return False
+        if len(user_pos) != len(game_pos): return False
+        if user_points != game_points: return False
+        return True
     
     def get_category_v2(self, database_name : list[CEGame]) :
         """Returns the category of this game."""

@@ -151,8 +151,9 @@ class CEUser:
         
         completed_games : list[CEGame] = []
         for game_user in self.owned_games:
-            if game_user.is_completed(database_name):
-                completed_games.append(hm.get_item_from_list(game_user.ce_id, database_name))
+            game_data = hm.get_item_from_list(game_user.ce_id, database_name)
+            if game_user.is_completed(game_data):
+                completed_games.append(game_data)
         return completed_games
     
     def get_objective(self, objective_id : str) :
