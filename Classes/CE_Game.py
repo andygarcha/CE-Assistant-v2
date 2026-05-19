@@ -105,12 +105,12 @@ class CEGame:
         """Returns the array of all `CEObjectives` in this game."""
         return self._objectives
     
-    def get_primary_objectives(self) -> list[CEObjective] : 
+    def get_primary_objectives(self, include_uncleareds=False) -> list[CEObjective] : 
         """Returns the array of CEObjectives that are Primary.\n
         NOTE: This does not return uncleared objectives!"""
         p = []
         for objective in self.all_objectives :
-            if objective.type == "Primary" and not objective.is_uncleared() :
+            if objective.type == "Primary" and (not objective.is_uncleared() or include_uncleareds) :
                 p.append(objective)
         return p
     
