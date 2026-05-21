@@ -1,5 +1,4 @@
 
-import aiohttp
 import datetime
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion

@@ -1,5 +1,4 @@
 # -------- discord imports -----------
-import asyncio
 import logging
 from types import NoneType
 import discord
@@ -17,7 +16,6 @@ from Classes.OtherClasses import CEInput
 from web_scraper.scraper import process_loop
 from Modules import SupabaseReader
 import Modules.hm as hm
-from Modules import http_session
 from commands import load_commands
 
 # ----------- to-be-sorted imports -------------

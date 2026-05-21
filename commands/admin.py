@@ -1,14 +1,10 @@
 """This module contains all the admin commands for the bot."""
-import asyncio
 import datetime
 import discord
 from discord import app_commands
 from Classes.CE_Roll import CERoll
 from commands.user import register
-from Modules import CEAPIReader, Reformatter, hm, SupabaseReader
-import requests
-import json
-from web_scraper.scraper import update_one_user
+from Modules import CEAPIReader, hm, SupabaseReader
 
 from web_scraper.scraper import process_loop
 from Modules import http_session
@@ -344,7 +340,7 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
 
     SupabaseReader.dump_user(user)
     return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. " +
-                                           f"Status set to 'waiting'.")
+                                           "Status set to 'waiting'.")
 
 
 

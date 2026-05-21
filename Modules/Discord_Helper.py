@@ -5,22 +5,15 @@ It will:
 - take in a `CERoll` object and return an array of `discord.Embed`s denoting exactly what's up.
 """
 import datetime
-import time
 
 import discord
 
 # -- local --
 from Classes.CE_Roll import CERoll
-from Classes.OtherClasses import EmbedMessage, UpdateMessage
 import Modules.hm as hm
-import Modules.WebInteractor as WebInteractor
 
 
 # selenium and beautiful soup stuff
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.core.os_manager import ChromeType
 
 async def get_roll_embeds(roll : CERoll, database_name : list) -> list[discord.Embed] :
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""

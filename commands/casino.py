@@ -499,8 +499,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 if None in rolled_temp and failed_category != None: #not enough rolls in category, and another category has already failed
                     return await interaction.followup.send(
                         f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. " 
-                        + f"The event is unrollable for you until enough new T1 games with valid criteria get added to the site, "
-                        + f"or you relax the roll criteria (hours/price restrictions).")
+                        + "The event is unrollable for you until enough new T1 games with valid criteria get added to the site, "
+                        + "or you relax the roll criteria (hours/price restrictions).")
 
                 for j in range(5): #append the rolled games from the temp list to the main list
                     rolled_games.append(rolled_temp[j])

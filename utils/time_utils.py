@@ -1,6 +1,5 @@
 import calendar
 import datetime
-import time
 
 def months_to_days(num_months : int) -> int:
     """Takes in a number of months `num_months` and returns 

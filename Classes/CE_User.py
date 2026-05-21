@@ -1,5 +1,5 @@
 import datetime
-from typing import Literal, get_args
+from typing import get_args
 import aiohttp
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
@@ -646,7 +646,6 @@ class CEAPIUser(CEUser) :
 
         # imports
         from Classes.CE_User_Objective import CEUserObjective
-        from Modules import CEAPIReader
 
         # grab all the data
         ce_ids : list[str] = []

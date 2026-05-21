@@ -1,18 +1,13 @@
-import asyncio
 import datetime
 import json
 import time
 from typing import Literal
-import uuid
 
 from postgrest import APIError
-from Modules import CEAPIReader
-import Modules.hm as hm
 from supabase import create_client, Client
 
 # -- local --
-from Classes.CE_Cooldown import CECooldown
-from Classes.CE_Game import CEAPIGame, CEGame
+from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser

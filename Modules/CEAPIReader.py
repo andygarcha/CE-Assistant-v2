@@ -11,11 +11,9 @@ To pull data from all users on the site, use `get_api_users_all()`.
 import asyncio
 import datetime
 import functools
-import time
 from typing import Literal
 import typing
 
-import aiohttp
 from Modules import http_session
 
 # -- local --

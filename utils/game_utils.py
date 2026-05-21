@@ -1,7 +1,6 @@
 import random
 from typing import Literal, get_args
 from utils.general_utils import get_item_from_list
-import aiohttp
 from Modules import http_session
 
 

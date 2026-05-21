@@ -12,7 +12,6 @@ from discord.ext import tasks
 import asyncio
 import datetime
 import json
-import time, datetime
 import typing
 import discord
 import requests
@@ -202,7 +201,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         if DEBUG: print('saving data')
 
         if DEBUG: print(f"{len(games_new)=}")
-        if DEBUG: print(f"BULK GAMES")
+        if DEBUG: print("BULK GAMES")
         SupabaseReader.bulk_dump_games(games_new)
         
         if DEBUG: print(f"{len(removed_games)=}")
@@ -214,7 +213,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         SupabaseReader.delete_objectives_many(removed_objectives)
         
         if DEBUG: print(f"{len(users_new)=}")
-        if DEBUG: print(f"BULK USERS")
+        if DEBUG: print("BULK USERS")
         SupabaseReader.bulk_dump_users(users_new)
 
         if DEBUG: print(f"{len(removed_users)=}")
@@ -308,7 +307,7 @@ async def update_games(full_scrape = False) -> tuple[
     if not full_scrape:
         session = await http_session.get_session()
         params = {"sortBy": "updatedAt", "sortOrder": "DESC"}
-        async with session.get(f'https://cedb.me/api/games') as _r :
+        async with session.get('https://cedb.me/api/games') as _r :
             response = await _r.json()
 
         print(f"GAMES: {len(response)=} (response pulled from /api/games)")
@@ -324,7 +323,7 @@ async def update_games(full_scrape = False) -> tuple[
         # 1b) get the ids of all games that have been updated from /api/objectives
         params = {"sortBy": "updatedAt", "sortOrder": "DESC", "limit": 100, "offset": 0}
         while (1):
-            async with session.get(f'https://cedb.me/api/objectives', params=params) as _r:
+            async with session.get('https://cedb.me/api/objectives', params=params) as _r:
                 _response_local = await _r.json()
                 # all objectives are new
                 if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run: 
@@ -425,7 +424,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
         _updated_user_ids = SupabaseReader.get_list('user')
     else:
         session = await http_session.get_session()
-        async with session.get(f'http://cedb.me/api/userGames/lastUpdatedAt') as _r :
+        async with session.get('http://cedb.me/api/userGames/lastUpdatedAt') as _r :
             response = await _r.json()
 
         for user in response:
@@ -483,7 +482,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             if user_old is not None:
                 users[i]._discord_id = user_old.discord_id
 
-        if DEBUG: print(f"UPDATE USERS: done")
+        if DEBUG: print("UPDATE USERS: done")
 
     # Step 4: Find any removed users
     # TODO future update
@@ -570,7 +569,7 @@ def generate_database_tier(database_name: list[CEAPIGame]):
 
         response_prices_json: dict[str, dict] = json.loads(response_prices.text)
         if type(response_prices_json) is list:
-            print(f'something went wrong. response_prices_json is being read as a list. i will now print it.')
+            print('something went wrong. response_prices_json is being read as a list. i will now print it.')
             print(f'app_ids={str(steam_ids[i:i+100])[1:-1]}')
             print(response_prices_json)
         for key, value in response_prices_json.items():
