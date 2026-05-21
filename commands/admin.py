@@ -107,7 +107,9 @@ async def test(interaction : discord.Interaction) :
 
     totalobjcount = 0
     for game in user_old.owned_games:
-        print(f"{game.ce_id=}, {len(game.user_objectives)=}, {game.user_objectives=}")
+        print(f"{game.ce_id=}, {len(game.user_objectives)=}")
+        for obj in game.user_objectives:
+            print(f"  {obj.ce_id=}, {obj.type=}, {obj.user_points=}")
         totalobjcount += len(game.user_objectives)
     
     print(f"{totalobjcount=}")
