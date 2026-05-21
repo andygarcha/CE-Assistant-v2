@@ -1149,11 +1149,13 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
     for game in completed_games_new:
         TIER_MINIMUM = 4
 
-        if game.get_tier_num() < TIER_MINIMUM: continue
+        if game.get_tier_num() < TIER_MINIMUM:
+            continue
 
         # check if the game's been completed before
         game_old = hm.get_item_from_list(game.ce_id, completed_games_old)
-        if game_old is not None: continue
+        if game_old is not None:
+            continue
 
         update = UpdateMessageForScraperProcess()
         
