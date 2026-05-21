@@ -8,6 +8,7 @@ from commands.user import register
 from Modules import CEAPIReader, Reformatter, hm, SupabaseReader
 import requests
 import json
+from web_scraper.scraper import update_one_user
 
 from web_scraper.scraper import process_loop
 from Modules import http_session
@@ -95,6 +96,27 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
+
+    user_old = SupabaseReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
+    user_new = await CEAPIReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
+
+    game_ids = set()
+    game_ids.update([g.ce_id for g in user_old.owned_games])
+    game_ids.update([g.ce_id for g in user_new.owned_games])
+
+    games = [await CEAPIReader.get_game(g) for g in game_ids]
+
+    _updates = update_one_user(
+        user_old,
+        user_new,
+        games,
+        games,
+        False
+    )
+
+    for u in _updates:
+        u.print(full=True)
+
 
     return await interaction.followup.send('testsss done')
 
