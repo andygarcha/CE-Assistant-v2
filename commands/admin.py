@@ -98,8 +98,8 @@ async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
     print('a')
-    user_old = SupabaseReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
-    user_new = await CEAPIReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
+    user_old = SupabaseReader.get_user('d7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
+    user_new = await CEAPIReader.get_user('d7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
     print('b')
     game_ids = set()
     game_ids.update([g.ce_id for g in user_old.owned_games])
