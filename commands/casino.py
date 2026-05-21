@@ -467,7 +467,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 #debugging
                 print(f"User ({user.display_name}) rolled the {selected_category} category, with rolled games {rolled_temp}")
                 
-                if None in rolled_temp and failed_category == None: #if not enough rolls in a given category, and this is the first failed category, remove and try again
+                if None in rolled_temp and failed_category is None: #if not enough rolls in a given category, and this is the first failed category, remove and try again
                     #remove failed category and reroll (without incrementing 'i')
                     failed_category = selected_category
                     valid_categories.remove(selected_category)
@@ -755,7 +755,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         )
 
         # check to make sure one exists
-        if game_for_user == None :
+        if game_for_user is None :
             return await interaction.followup.send(
                 f"There are no completed games in {partner.mention()}'s library that are rollable " +
                 f"to {user.mention()}."
@@ -773,7 +773,7 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
         )
 
         # check to make sure one exists
-        if game_for_partner == None :
+        if game_for_partner is None :
             return await interaction.followup.send(
                 f"There are no completed games in {user.mention()}'s library that are rollable " +
                 f"to {partner.mention()}."
@@ -919,7 +919,7 @@ class SoulMatesAgreeView(discord.ui.View) :
             has_points_restriction=True
         )
 
-        if rolled_game == None :
+        if rolled_game is None :
             return await interaction.followup.send(
                 "It seems no rollable games are available right now. Please ping andy!"
             )
@@ -1103,13 +1103,13 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
         partner = None
 
     # user doesn't exist
-    if user == None :
+    if user is None :
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
     
     # partner doesn't exist
-    if partner == None :
+    if partner is None :
         return await interaction.followup.send(
             "Sorry, your partner is not registered in the CE Assistant database. " + 
             "Please have them run `/register` first!"

@@ -86,7 +86,7 @@ async def register(interaction : discord.Interaction, ce_id : str, discord_user 
     
     # grab their data from CE
     ce_user : CEUser = await CEAPIReader.get_api_page_data("user", ce_id)
-    if ce_user == None :
+    if ce_user is None :
         return await interaction.followup.send("This Challenge Enthusiast page was not found. " + 
                                                "Please try again later or contact andy.")
     

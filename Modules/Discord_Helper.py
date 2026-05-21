@@ -100,14 +100,14 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     )
 
     # -- set up price --
-    if game.platform == "retroachievements" or price == None or price == 0.0 :
+    if game.platform == "retroachievements" or price is None or price == 0.0 :
         embed.description += "- Price: Free!\n"
     else :
         embed.description += (f"- Price: ${price}\n")
 
     # -- add steamhunters data --
     sh_data = await game.get_steamhunters_data_async()
-    if sh_data == None : sh_data = "N/A"
+    if sh_data is None : sh_data = "N/A"
     embed.description += f"- SteamHunters Median Completion Time: {sh_data} hours\n"
     
     # -- get ce data --

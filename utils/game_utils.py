@@ -177,7 +177,7 @@ async def get_rollable_game_v1(
             "The price is too high (and the price is restricted) and the user doesn't own the game."
 
         sh_data = await game.get_steamhunters_data_async()
-        if completion_limit is not None and (sh_data == None or sh_data > completion_limit) :
+        if completion_limit is not None and (sh_data is None or sh_data > completion_limit) :
             "The SteamHunters median-completion-time is too high."
             if VIEW_CONSOLE_MESSAGES: print(f"The steamhunters median completion time was {sh_data}")
             continue
@@ -230,16 +230,16 @@ async def get_rollable_game(
             for t in range(5, 8):
                 database_tier_games = database_tier[str(t)][c]
     # YES category but NO tier
-    elif category is not None and tier_number == None:
+    elif category is not None and tier_number is None:
         for c in category:
             for tn in range(1, 8):
                 database_tier_games.extend(database_tier[str(tn)][c])
     # NO category and YES tier (tier != 6)
-    elif category == None and tier_number is not None and tier_number != 6:
+    elif category is None and tier_number is not None and tier_number != 6:
         for c in get_args(CATEGORIES):
             database_tier_games.extend(database_tier[str(tier_number)][c])
     # NO category and YES tier (tier == 6)
-    elif category == None and tier_number == 6:
+    elif category is None and tier_number == 6:
         for c in get_args(CATEGORIES):
             for t in range(5, 8):
                 database_tier_games = database_tier[str(t)][c]

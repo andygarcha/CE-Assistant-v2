@@ -301,7 +301,7 @@ async def reformat_database_input_v2_to_v3() :
     _collection = _mongo_client['database_name'][V3DATABASENAME]
 
     for input in database_input :
-        if (await _collection.find_one({'ce_id' : input.ce_id})) == None :
+        if (await _collection.find_one({'ce_id' : input.ce_id})) is None :
             await _collection.insert_one(input.to_dict())
         else :
             await _collection.replace_one({'ce_id' : input.ce_id}, input.to_dict())
@@ -320,7 +320,7 @@ async def reformat_database_name_v2_to_v3() :
     _collection = _mongo_client['database_name'][V3DATABASENAME]
 
     for game in database_name :
-        if (await _collection.find_one({"ce_id" : game.ce_id})) == None :
+        if (await _collection.find_one({"ce_id" : game.ce_id})) is None :
             await _collection.insert_one(game_v2_to_dict_v3(game))
         else :
             await _collection.replace_one({"ce_id" : game.ce_id}, game_v2_to_dict_v3(game))
@@ -369,7 +369,7 @@ async def reformat_database_user_v2_to_v3() :
     _collection = _mongo_client['database_name'][V3DATABASENAME]
 
     for user in database_user :
-        if (await _collection.find_one({'ce_id' : user.ce_id})) == None :
+        if (await _collection.find_one({'ce_id' : user.ce_id})) is None :
             await _collection.insert_one(user_v2_to_dict_v3(user))
         else :
             await _collection.replace_one({'ce_id' : user.ce_id}, user_v2_to_dict_v3(user))

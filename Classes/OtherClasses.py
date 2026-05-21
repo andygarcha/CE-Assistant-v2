@@ -144,7 +144,7 @@ class CECompletion() :
         Full CE Completions: 0 (Percentage N/A)
         """
         percentage = self.completion_percentage()
-        if percentage == None :
+        if percentage is None :
             return f"Full CE Completions: {self.completions} (Percentage N/A)"
         return f"Full CE Completions: {self.completions} ({percentage} of {self.total} owners)"
     

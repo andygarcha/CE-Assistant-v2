@@ -266,7 +266,7 @@ class CEGame:
     #     """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
     #     if self.platform != "steam" : return None
     #     api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
-    #     if api_response.text == "null" or api_response.text == None :
+    #     if api_response.text == "null" or api_response.text is None :
     #         return None
     #     try :
     #         json_response = json.loads(api_response.text)
@@ -369,7 +369,7 @@ class CEGame:
         to #game-additions if an update was warranted, or `None` if none."""
         if type(json_response) == dict :
             other = CEAPIReader._ce_to_game(json_response)
-        elif json_response == None :
+        elif json_response is None :
             other = CEAPIReader.get_api_page_data('game', self.ce_id)
         else :
             other = json_response

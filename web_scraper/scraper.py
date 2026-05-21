@@ -730,7 +730,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             if (roll.is_multi_stage() and not roll.in_final_stage() and 
                 (roll.is_won(database_name=database_name_new, user=user, partner=partner))) :
                 # if we've already hit this roll before, keep moving
-                if roll.due_time == None : continue
+                if roll.due_time is None : continue
 
                 # add the update message
                 update = UpdateMessageForScraperProcess()
@@ -1094,7 +1094,7 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         points = game_old.get_user_points()
         game_database = hm.get_item_from_list(game_old.ce_id, database_name)
 
-        if game_database == None: continue
+        if game_database is None: continue
 
         # if the game is completed
         if game_old.get_user_points() == game_database.get_total_points():
@@ -1106,7 +1106,7 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         points = game_new.get_user_points()
         game_database = hm.get_item_from_list(game_new.ce_id, database_name)
         
-        if game_database == None: continue
+        if game_database is None: continue
 
         # if the game is completed
         if game_new.get_user_points() == game_database.get_total_points():

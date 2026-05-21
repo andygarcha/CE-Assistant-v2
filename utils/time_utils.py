@@ -51,7 +51,7 @@ def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -
     # return the months
     elif (months is not None) : return get_datetime(days=months_to_days(months))
     # return the days
-    elif (days == None) : return None
+    elif (days is None) : return None
 
     else: return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)
 

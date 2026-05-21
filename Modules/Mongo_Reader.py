@@ -105,7 +105,7 @@ async def dump_game(game : CEGame | CEAPIGame) :
     
     collection = _mongo_client['database_name'][V3NAMETITLE]
 
-    if (await collection.find_one({"ce_id" : game.ce_id})) == None :
+    if (await collection.find_one({"ce_id" : game.ce_id})) is None :
         await collection.insert_one(game.to_dict())
     else :
         await collection.replace_one({"ce_id" : game.ce_id}, game.to_dict())
@@ -170,7 +170,7 @@ async def dump_user(user : CEUser) :
 
     collection = _mongo_client['database_name'][V3USERTITLE]
 
-    if (await collection.find_one({"ce_id" : user.ce_id})) == None :
+    if (await collection.find_one({"ce_id" : user.ce_id})) is None :
         await collection.insert_one(user.to_dict())
     else :
         await collection.replace_one({"ce_id" : user.ce_id}, user.to_dict())
@@ -252,7 +252,7 @@ async def get_input(ce_id : str) -> CEInput :
 async def dump_input(input : CEInput) :
     "Dumps an input."
     collection = _mongo_client['database_name'][V3INPUTTITLE]
-    if (await collection.find_one({"ce_id" : input.ce_id})) == None :
+    if (await collection.find_one({"ce_id" : input.ce_id})) is None :
         await collection.insert_one(input.to_dict())
     else :
         await collection.replace_one({"ce_id" : input.ce_id}, input.to_dict())

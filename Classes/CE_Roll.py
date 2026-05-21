@@ -147,29 +147,29 @@ class CERoll:
 
         # if the roll is being created right now...
         # set init_time to right now
-        if init_time == None :
+        if init_time is None :
             self._init_time = hm.get_datetime('now')
         else :
             self._init_time = init_time
 
         # set the due time to the correct time
-        if due_time == None and roll_due_times[self._roll_name] is not None:
+        if due_time is None and roll_due_times[self._roll_name] is not None:
             if roll_name == "Soul Mates" : self._due_time = hm.get_datetime(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
             else : self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
-        elif due_time == None and roll_due_times[self._roll_name] is None :
+        elif due_time is None and roll_due_times[self._roll_name] is None :
             self._due_time = None
         else :
             self._due_time = due_time
 
         # and set completed time to non-existent
         # (is this redundant code? am i stupid?)
-        if completed_time == None :
+        if completed_time is None :
             self._completed_time = None
         else :
             self._completed_time = completed_time
 
         # set the rerolls to the correct amount
-        if rerolls == None :
+        if rerolls is None :
             self._rerolls = None
             if self.roll_name == "Fourward Thinking" : self._rerolls = 0
         else :
@@ -288,7 +288,7 @@ class CERoll:
     @due_time.setter
     def due_time(self, days : int) -> None :
         """Sets the due time for `days` days from now."""
-        if days == None : self._due_time = None
+        if days is None : self._due_time = None
         else: self._due_time = hm.get_datetime(days=days)
     
     def reset_due_time(self) :
@@ -383,7 +383,7 @@ class CERoll:
         """Returns true if this game is ready for the next game."""
         if not self.is_multi_stage() : return False
         
-        return self.due_time == None or self.due_time == 0
+        return self.due_time is None or self.due_time == 0
     
     def is_multi_stage(self) -> bool :
         "Returns true if this roll is multi-stage."
@@ -789,7 +789,7 @@ class CERoll:
         database_name : list[CEGame] = database_name
 
         if (
-            self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls == None
+            self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls is None
             ) :
             return "Completed before CE Assistant's existance."
 
