@@ -149,10 +149,13 @@ class CEUser:
         if None in database_name :
             raise ValueError("Argument 'database_name' contains None.")
         
+        games_by_ce_id = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
         completed_games : list[CEGame] = []
         for game_user in self.owned_games:
-            game_data = hm.get_item_from_list(game_user.ce_id, database_name)
-            if game_user.is_completed(game_data):
+            game_data = games_by_ce_id.get(game_user.ce_id)
+            if game_data is not None and game_user.is_completed(game_data):
                 completed_games.append(game_data)
         return completed_games
     
@@ -519,9 +522,12 @@ class CEUser:
         
     def completions(self, database_name : list[CEGame]) -> int :
         "Returns the number of completions this user has."
+        games_by_ce_id = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
         completions = 0
         for owned_game in self.owned_games :
-            if owned_game.is_completed(database_name=database_name) :
+            if owned_game.is_completed(database_name=games_by_ce_id) :
                 completions += 1
         return completions
 

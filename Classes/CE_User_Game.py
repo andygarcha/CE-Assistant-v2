@@ -1,4 +1,6 @@
 
+from collections.abc import Mapping
+
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEGame
@@ -85,10 +87,15 @@ class CEUserGame():
         import Modules.CEAPIReader as CEAPIReader
         return await CEAPIReader.get_api_page_data("game", self.ce_id)
     
-    def is_completed(self, database_name: list[CEGame] | CEGame) -> bool :
+    def is_completed(self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame) -> bool :
         """Returns true if this game has been completed, false if not."""
         if isinstance(database_name, CEGame): 
             return self.__is_completed_helper(database_name)
+        if isinstance(database_name, Mapping):
+            game = database_name.get(self.ce_id)
+            if game is None:
+                return False
+            return self.__is_completed_helper(game)
         if isinstance(database_name, list):
             for game in database_name :
                 if game.ce_id == self.ce_id :
