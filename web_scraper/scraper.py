@@ -1168,9 +1168,13 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
             update.text = ""
 
         update.is_embed = False
-        update.text += (
-            f"Wow {user.mention()} ({user.display_name})! You've completed {game.game_name}, " +
-            f"a {game.get_tier_emoji()} worth {game.get_total_points()} points {hm.get_emoji('Points')}"
+        update.text += "Wow %s (%s)! You've completed %s, a %s worth %d points %s".format(
+            user.mention(),
+            user.display_name,
+            game.game_name,
+            game.get_tier_emoji(),
+            game.get_total_points(),
+            hm.get_emoji('Points')
         )
         updates.append(update)
 
