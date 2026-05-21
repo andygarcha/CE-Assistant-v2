@@ -157,7 +157,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     # Step 1: Update Games
     logger.info("UPDATE GAMES: begin")
     _updates, games_new, removed_games, removed_objectives = await update_games(full_scrape)
-    logger.info("UDPATE GAMES: done!")
+    logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
     logger.debug("len(updates)=%d (games only!)", len(updates))
