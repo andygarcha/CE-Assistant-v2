@@ -667,6 +667,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
     updates.extend(check_roles(games_original, games_new, database_name_new, user))
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
+    if DEBUG: print(f"{user.ce_id}: {len(completed_games_original)=}, {len(completed_games_new)=}")
     updates.extend(check_newly_completed_games(completed_games_original, completed_games_new, user))
     
     # -- RANK UPDATE --
