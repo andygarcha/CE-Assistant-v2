@@ -541,6 +541,10 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
                     game_id = e.details.replace('Key (game_ce_id)=(', '').replace(') is not present in table "games".', '')
                     user_games_payload = [row for row in user_games_payload if row['game_ce_id'] != game_id]
                     game_collision = True
+                    logger.error(
+                        "Found UserGame with foreign-key constraint on GameID=%s.",
+                        game_id
+                    )
 
                 
 
@@ -559,9 +563,8 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
                     user_objectives_payload = [row for row in user_objectives_payload if row['objective_ce_id'] != objective_id]
                     objective_collision = True
                     logger.error(
-                        "Found UserObjective with foreign-key constraint on ObjectiveID=%s and UserID=%s",
-                        objective_id,
-                        user.ce_id
+                        "Found UserObjective with foreign-key constraint on ObjectiveID=%s.",
+                        objective_id
                     )
 
         # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)

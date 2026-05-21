@@ -365,7 +365,7 @@ class CERoll:
                 try:
                     dt = hm.cetimestamp_to_datetime(dt)
                 except Exception:
-                    logger.error(f'FAILED EXPIRATION CHECK: {self.due_time=}')
+                    logger.error("Expiration check failed. Due Time: %s, couldn't normalize.", self.due_time)
                     return False
 
         # ensure timezone-aware for comparison

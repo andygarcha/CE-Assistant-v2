@@ -23,7 +23,6 @@ from commands import load_commands
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks
 from aiohttp import web
-import logging
 
 # ----------- selenium and beautiful soup stuff -----------
 import io
@@ -812,7 +811,7 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
 @tasks.loop(minutes=1)
 async def monitor_loop():
     if not process_loop.is_running():
-        logging.warning("Main task loop is not running. Restarting...")
+        logger.warning("Main task loop is not running. Restarting...")
         await process_loop.start(client)
 
 

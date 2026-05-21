@@ -53,7 +53,7 @@ class UpdateMessageForScraperProcess():
         self.url = ""
         self.color = 0
 
-    def print(self, full=False):
+    def print(self, full=False, info=False):
         string = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
@@ -61,8 +61,14 @@ class UpdateMessageForScraperProcess():
         else:
             string += f"{repr(self.text)}\n"
         
-        if full: logger.info(string)
-        else: logger.info(string[0:100])
+        if full and info: 
+            logger.info(string)
+        elif full: 
+            logger.debug(string)
+        elif info:
+            logger.info(string[0:100])
+        else:
+            logger.debug(string[0:100])
 
 """ TOP LEVEL FUNCTION """
 
@@ -122,14 +128,14 @@ times = [
 async def process_loop(client: discord.Client = None, full_scrape = False):
     if client is None:
         logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
-    logger.info(f"process_loop() invoked with full_scrape=%s (initially).", str(full_scrape))
+    logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
     
     full_scrape = ( # Noon/1PM EST (based on daylight savings)
         datetime.datetime.now(datetime.timezone.utc).hour == 17) and (
         datetime.datetime.now(datetime.timezone.utc).minute == 0
     ) or full_scrape
 
-    logger.info(f"full_scrape=%s (second try)", str(full_scrape))
+    logger.info("full_scrape=%s (second try)", full_scrape)
     
 
     assistant_log = client.get_channel(hm.id_num("privatelog"))
@@ -139,7 +145,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
             f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
         )
 
-    logger.debug("FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", str(SAVEDATA), str(DEBUG), str(SKIPUPDATES))
+    logger.debug("FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES)
     time_current = datetime.datetime.now(datetime.timezone.utc)
 
     updates: list[UpdateMessageForScraperProcess] = []
@@ -149,9 +155,9 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     SENDUPDATES = True
 
     # Step 1: Update Games
-    logger.debug("UPDATE GAMES: begin")
+    logger.info("UPDATE GAMES: begin")
     _updates, games_new, removed_games, removed_objectives = await update_games(full_scrape)
-    logger.debug("UDPATE GAMES: done!")
+    logger.info("UDPATE GAMES: done!")
     updates.extend(_updates)
 
     logger.debug("len(updates)=%d (games only!)", len(updates))
@@ -189,14 +195,15 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     logger.debug("len(database_name_old)=%d", len(database_name_old))
     logger.debug("len(database_name_new)=%d", len(database_name_new))
 
-    logger.debug("UPDATE USERS: begin")
+    logger.info("UPDATE USERS: begin")
     _updates, users_new, removed_users, rolls_updated = await update_users(
         database_name_old,
         database_name_new,
         full_scrape
     )
     updates.extend(_updates)
-    logger.debug("UPDATE USERS: complete")
+    logger.info("UPDATE USERS: complete")
+    logger.debug("len(_user_updates)=%d", len(_updates))
 
     # Step 3: Check curator
     check_curator_steam()
@@ -222,7 +229,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         for i, _user_id in enumerate(removed_users):
             SupabaseReader.delete_user(_user_id)
 
-        logger.debug("len(rolls_updated)=%d")
+        logger.debug("len(rolls_updated)=%d", len(rolls_updated))
         SupabaseReader.bulk_dump_rolls(rolls_updated)
 
     # Send updates!
@@ -462,7 +469,8 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     else:
         logger.debug("Pulling %d users one-by-one from /api/user/[id]", len(_updated_user_ids))
         for i, _user_id in enumerate(_updated_user_ids):
-            if i % 10 == 0: logger.debug(f"PULL USERS: {i}")
+            if i % 10 == 0: 
+                logger.debug("Pulling user %d", i)
             _user = await CEAPIReader.get_user(_user_id)
             if _user is not None: users.append(_user)
     logger.info("Pulling users complete.")

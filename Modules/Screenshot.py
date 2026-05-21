@@ -104,7 +104,7 @@ class Screenshot:
 
             i = 0
             while i < total_height:
-                if SHOW_CONSOLE_UPDATES : logger.debug('while')
+                logger.debug('while')
                 ii = 0
                 top_height = i + viewport_height
                 if top_height > total_height:
@@ -117,29 +117,29 @@ class Screenshot:
                     ii = ii + viewport_width
                 i = i + viewport_height
             stitched_image = Image.new('RGB', (total_width, total_height))
-            if SHOW_CONSOLE_UPDATES : logger.debug('while broken')
+            logger.debug('while broken')
             previous = None
             part = 0
 
             for rectangle in rectangles:
-                if SHOW_CONSOLE_UPDATES : logger.debug('for')
+                logger.debug('for')
                 if previous is not None:
-                    if SHOW_CONSOLE_UPDATES : logger.debug('prev not none')
+                    logger.debug('prev not none')
                     driver.execute_script("window.scrollTo({0}, {1})".format(rectangle[0], rectangle[1]))
                     time.sleep(10)
-                if SHOW_CONSOLE_UPDATES : logger.debug('broke if 1')
+                logger.debug('broke if 1')
 
                 self.hide_elements(driver, hide_elements)
-                if SHOW_CONSOLE_UPDATES : logger.debug('15')
+                logger.debug('15')
 
                 file_name = "part{0}.png".format(part)
                 path = Path("/CE-Assistant/part{0}.png".format(part))
-                if SHOW_CONSOLE_UPDATES : logger.debug('16')
-                if SHOW_CONSOLE_UPDATES : logger.debug("file_name=%s", file_name)
-                if SHOW_CONSOLE_UPDATES : logger.debug("path=%s", str(path))
+                logger.debug('16')
+                logger.debug("file_name=%s", file_name)
+                logger.debug("path=%s", str(path))
 
                 ss = driver.get_screenshot_as_png()
-                if SHOW_CONSOLE_UPDATES : logger.debug('gotcha >:)')
+                logger.debug('gotcha >:)')
                 return ss
                 logger.debug("ss")
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -171,12 +171,12 @@ class Screenshot:
                 logger.debug('22')
                 previous = rectangle
                 logger.debug('23')
-            if SHOW_CONSOLE_UPDATES : logger.debug('for loop broken')
+            logger.debug('for loop broken')
             save_path = Path("/CE-Assistant/Pictures/" + image_name)
-            if SHOW_CONSOLE_UPDATES : logger.debug('24')
-            if SHOW_CONSOLE_UPDATES : logger.debug("save_path=%s", save_path)
+            logger.debug('24')
+            logger.debug("save_path=%s", save_path)
             stitched_image.save(save_path)
-            if SHOW_CONSOLE_UPDATES : logger.debug('25')
+            logger.debug('25')
             return save_path
 
     def get_element(self, driver: WebDriver, element: WebElement, save_path: str, image_name: str = 'cropped_screenshot.png', hide_elements: list = None) -> str:

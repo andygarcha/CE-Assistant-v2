@@ -293,7 +293,7 @@ class CEGame:
             try :
                 json_response = await response.json()
             except :
-                logger.error(f"SteamHunters response failed for {self.name_with_link()}")
+                logger.error("SteamHunters response failed for Game ID: %s and Name: %s", self.ce_id, self.game_name)
                 return 999999
 
             if 'medianCompletionTime' in json_response :

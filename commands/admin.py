@@ -309,10 +309,11 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     roll.set_status('waiting')
     roll.due_time = None
 
-    logger.info(roll.to_dict())
+    logger.info("Roll (after changes): %s", roll.to_dict())
 
+    logger.debug("Printing all rolls in user.rolls.")
     for roll in user.rolls:
-        logger.info(roll.to_dict())
+        logger.debug("%s", roll.to_dict())
 
     SupabaseReader.dump_user(user)
     return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. " +

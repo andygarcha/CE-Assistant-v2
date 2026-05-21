@@ -33,15 +33,13 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     OBJECTIVE_LIMIT = 7
     "The maximum amount of objectives to be screenshot before cropping." 
 
-    CONSOLE_MESSAGES = True
-
     # initiate selenium
     logger.info('Attempting to screenshot game with Game ID %s', new_game.ce_id)
     try :
         url = f"https://cedb.me/game/{new_game.ce_id}/"
         driver.get(url)
     except Exception as e :
-        logger.error(e)
+        logger.error("%s", e)
         return "Assets/image_failed_v2.png"
     logger.debug('Driver complete. Moving forward...')
     
@@ -116,7 +114,7 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
         logger.debug('screenshot returned!')
     except Exception as e :
-        logger.error(e)
+        logger.error("%s", e)
         return ("Assets/image_failed_v2.png", f"{e}")
     
     logger.debug('passed try-except.')
@@ -171,13 +169,14 @@ async def get_recent_curated():
                 if item['class'][0] == 'recommendation_readmore' :
                     logger.debug('-- readmore --')
                     ce_ids.append(item.contents[0]['href'][-36:])
-                    logger.debug(ce_ids[-1])
-                    if item['class'][0] == "recommendation_desc" :
-                        logger.debug('-- description --')
-                        descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
-                        logger.debug(descriptions[-1])
-            except : continue
-            return ce_ids, descriptions
+                    logger.debug("%s", ce_ids[-1])
+                if item['class'][0] == "recommendation_desc" :
+                    logger.debug('-- description --')
+                    descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
+                    logger.debug("%s", descriptions[-1])
+            except: 
+                continue
+        return ce_ids, descriptions
 
 
 

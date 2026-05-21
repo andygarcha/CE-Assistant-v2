@@ -201,7 +201,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
     #overarching while statement - if not done, keep going
     while (not done_fetching):
         
-        logger.debug(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...", end=" ")
+        logger.debug("Fetching games %s through %s.", (i - 1) * PULL_LIMIT, i * PULL_LIMIT - 1)
         
         #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
         for x in range(TRY_LIMIT):
@@ -227,10 +227,12 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
             
             # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
             if str_error:
-                logger.error(str_error)
-                try :
-                    logger.error(await outer_response.text())
-                except : logger.error('couldnt output response')
+                logger.error("%s", str_error)
+                try:
+                    logger.error("%s", await outer_response.text())
+                except: 
+                    logger.error('couldnt output response')
+                
                 logger.error(
                     "Scraping failed from api/games/full on games %d through %d. Attempt %d of %d.",
                     (i - 1) * PULL_LIMIT,
@@ -248,7 +250,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
             else:
                 break
             
-    logger.info(f"\ndone fetching games! total games: {len(json_response)}")
+    logger.info("Done fetching %s games!", len(json_response))
 
     """"
     BIG ASS FUCKING NOTE
@@ -356,7 +358,7 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
                 total_response += current_response
                 i += 1
     except Exception as e : 
-        logger.error(f"original exception: {e}")
+        logger.error("original exception: %s", e)
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
     logger.info("done fetching users! total users: %d", len(total_response))
