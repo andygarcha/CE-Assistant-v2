@@ -236,11 +236,12 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     # TODO upload these to the database in a future update
     for update in updates:
         if not isinstance(update, UpdateMessageForScraperProcess):
-            logger.warning(
+            logger.error(
                 "Value in `updates` that is not of correct type. Type=%s, String Repr=%s",
                 str(type(update)),
                 str(update)
             )
+            continue
 
         if SENDUPDATES:
             # TODO future update
@@ -570,7 +571,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     # only return users who *actually* had something changed.
     return updates, users, user_list_removed, rolls_updated
 
-def generate_database_tier(database_name: list[CEAPIGame]) -> dict:
+def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
     # separate out games by tier and category
     database_tier: dict[str, dict[str, list[dict]]] = {}
     for tier in range(1, 8):

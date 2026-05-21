@@ -1,6 +1,17 @@
 # -------- discord imports -----------
 import asyncio
 import logging
+from Modules import hm
+
+logging.basicConfig(
+    # since we imported hm first, any utils will have root logging.
+    # at the time of writing this, none will use it, but this is why if it starts happening.
+    level=logging.INFO if hm.IN_CE else logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
 from types import NoneType
 import discord
 from discord import app_commands
@@ -16,7 +27,6 @@ from Classes.OtherClasses import CEInput
 #from Modules.WebInteractor import master_loop
 from web_scraper.scraper import process_loop
 from Modules import SupabaseReader
-import Modules.hm as hm
 from Modules import http_session
 from commands import load_commands
 
@@ -80,13 +90,6 @@ async def start_webhook_server():
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
     logger.info('Webhook Running.')
-
-logging.basicConfig(
-    level=logging.INFO if hm.IN_CE else logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
 
 # ------------------------------ commands -------------------------------------
 
