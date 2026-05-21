@@ -166,3 +166,4 @@ credentials.json
 test.py
 Assets/dbbackups/backup.sh
 **/.DS_Store
+.ruff_cache
