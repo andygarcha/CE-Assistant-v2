@@ -105,24 +105,27 @@ async def test(interaction : discord.Interaction) :
     game_ids.update([g.ce_id for g in user_old.owned_games])
     game_ids.update([g.ce_id for g in user_new.owned_games])
 
-    print('c')
-    print(f"{len(game_ids)=}")
-    games = [await CEAPIReader.get_game(g) for g in game_ids]
-    while None in games:
-        games.remove(None)
-    print('games done')
-    print(f"{len(games)=}")
+    for game in user_old.owned_games:
+        print(f"{game.ce_id=}, {len(game.user_objectives)=}, {game.user_objectives=}")
 
-    _updates = update_one_user(
-        user_old,
-        user_new,
-        games,
-        games,
-        False
-    )
+    # print('c')
+    # print(f"{len(game_ids)=}")
+    # games = [await CEAPIReader.get_game(g) for g in game_ids]
+    # while None in games:
+    #     games.remove(None)
+    # print('games done')
+    # print(f"{len(games)=}")
 
-    for u in _updates:
-        u.print(full=True)
+    # _updates = update_one_user(
+    #     user_old,
+    #     user_new,
+    #     games,
+    #     games,
+    #     False
+    # )
+
+    # for u in _updates:
+    #     u.print(full=True)
 
 
     return await interaction.followup.send('testsss done')
