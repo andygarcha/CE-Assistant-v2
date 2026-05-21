@@ -97,14 +97,21 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    print('a')
     user_old = SupabaseReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
     user_new = await CEAPIReader.get_user('e47db200-15af-48e1-819d-2742c7263648')
-
+    print('b')
     game_ids = set()
     game_ids.update([g.ce_id for g in user_old.owned_games])
     game_ids.update([g.ce_id for g in user_new.owned_games])
 
+    print('c')
+    print(f"{len(game_ids)=}")
     games = [await CEAPIReader.get_game(g) for g in game_ids]
+    while None in games:
+        games.remove(None)
+    print('games done')
+    print(f"{len(games)=}")
 
     _updates = update_one_user(
         user_old,
