@@ -105,8 +105,12 @@ async def test(interaction : discord.Interaction) :
     game_ids.update([g.ce_id for g in user_old.owned_games])
     game_ids.update([g.ce_id for g in user_new.owned_games])
 
+    totalobjcount = 0
     for game in user_old.owned_games:
         print(f"{game.ce_id=}, {len(game.user_objectives)=}, {game.user_objectives=}")
+        totalobjcount += len(game.user_objectives)
+    
+    print(f"{totalobjcount=}")
 
     # print('c')
     # print(f"{len(game_ids)=}")
