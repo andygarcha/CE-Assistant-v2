@@ -14,6 +14,7 @@ import functools
 import time
 from typing import Literal
 import typing
+import logging
 
 import aiohttp
 from Modules import http_session
@@ -30,6 +31,7 @@ from Exceptions.FailedScrapeException import FailedScrapeException
 import requests
 import json
 
+logger = logging.getLogger(__name__)
 
 # ---------------------- module for ce-api maintenance -----------------------
 
@@ -94,7 +96,7 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 
     # CATEGORIES
     if json_response['genre'] is None:
-        print(f"null genre found for ce_id: {json_response['id']}")
+        logger.error("Null genre found for game with ID %s", json_response['id'])
         return None
     if 'gameCategories' not in json_response:
         _categories = []
