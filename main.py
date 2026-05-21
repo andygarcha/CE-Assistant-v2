@@ -46,8 +46,10 @@ with open('secret_info.json') as f :
         guild_id = local_json_data['ce_guild_ID']
     else :
         RUNNING_LOCALLY = False
-        if RUNNING_LOCALLY : discord_token = local_json_data['other_discord_token']
-        else : discord_token = local_json_data['third_discord_token']
+        if RUNNING_LOCALLY :
+            discord_token = local_json_data['other_discord_token']
+        else :
+            discord_token = local_json_data['third_discord_token']
         guild_id = local_json_data['test_guild_ID']
 
 # set up client
@@ -119,7 +121,7 @@ update_casino_score_options = Literal["INCREASE", "DECREASE", "SET"]
 @app_commands.describe(member="The user you'd like to update the casino score for.")
 @app_commands.describe(value="The increase, decrease, or new value for the user's casino score.")
 @app_commands.describe(type="Whether you'd like to increase, decrease, or set the user's casino score to value.")
-async def manual_update_casino_score(interaction : discord.Interaction, member : discord.Member, value : int, type : update_casino_score_options) :
+async def manual_update_casino_score(interaction: discord.Interaction, member: discord.Member, value: int, type: update_casino_score_options) :
     await interaction.response.defer(ephemeral=True)
 
     await interaction.followup.send("Not Implemented.")
@@ -256,8 +258,10 @@ class ValueModal(discord.ui.Modal) :
         self.__objective = objective
         
         title = f"Value Input for {objective.name}"
-        if len(title) >= 45 : super().__init__(title="Value Input")
-        else : super().__init__(title=f"Value Input for {objective.name}")
+        if len(title) >= 45:
+            super().__init__(title="Value Input")
+        else:
+            super().__init__(title=f"Value Input for {objective.name}")
 
     new_value = discord.ui.TextInput(
         label="Revalue Objective",
@@ -280,8 +284,10 @@ class ValueModal(discord.ui.Modal) :
         RANGE_LIMIT_1 = 100
         RANGE_LIMIT_2 = 50
 
-        if value <= VALUE_LIMIT_0 : return hm.is_within_percentage(input, RANGE_LIMIT_0, value)
-        if value <= VALUE_LIMIT_1 : return hm.is_within_percentage(input, RANGE_LIMIT_1, value)
+        if value <= VALUE_LIMIT_0:
+            return hm.is_within_percentage(input, RANGE_LIMIT_0, value)
+        if value <= VALUE_LIMIT_1:
+            return hm.is_within_percentage(input, RANGE_LIMIT_1, value)
         return hm.is_within_percentage(input, RANGE_LIMIT_2, value)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -338,11 +344,10 @@ class ValueModal(discord.ui.Modal) :
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
 
         # we now need to check if our average has changed enough to enter scary territory
-        if value_input is None : old_average = None
-        else :
-            old_average = value_input.average_is_okay(
-                database_name, self.__game.ce_id
-            )
+        if value_input is None:
+            old_average = None
+        else:
+            old_average = value_input.average_is_okay(database_name, self.__game.ce_id)
 
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
