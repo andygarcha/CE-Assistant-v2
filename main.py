@@ -849,8 +849,8 @@ async def on_ready() :
         if not monitor_loop.is_running():
             await monitor_loop.start()
 
-    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3", "discord"]:
-        logging.getLogger(name).setLevel(logging.DEBUG)
+    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3", "discord", "aiohttp"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 
