@@ -850,7 +850,7 @@ async def on_ready() :
             await monitor_loop.start()
 
     for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3"]:
-        logging.getLogger(name).setLevel(logging.WARNING)
+        logging.getLogger(name).setLevel(logging.DEBUG)
 
 
 
