@@ -849,6 +849,10 @@ async def on_ready() :
         if not monitor_loop.is_running():
             await monitor_loop.start()
 
+    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 
 # @client.event
 # async def on_disconnect() :
