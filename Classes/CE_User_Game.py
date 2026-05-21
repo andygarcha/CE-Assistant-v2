@@ -103,12 +103,31 @@ class CEUserGame():
         game_pos = game.get_primary_objectives(include_uncleareds=True)
 
         user_points = self.get_user_points_primary()
-        game_points = game.get_po_points(skip_uncleareds=False)
+        game_points = game.get_po_points(include_uncleareds=True)
 
         if len(user_pos) == 0: return False
         if len(user_pos) != len(game_pos): return False
         if user_points != game_points: return False
         return True
+    
+        # Completion should be based on each valued Primary objective being fully met.
+        required_primary = game.get_primary_objectives(include_uncleareds=False)
+        if len(required_primary) == 0:
+            return False
+
+        # Deduplicate by objective id in case storage has duplicate rows; keep max points.
+        user_primary_points: dict[str, int] = {}
+        for objective in self.get_user_primary_objectives():
+            prev = user_primary_points.get(objective.ce_id, 0)
+            if objective.user_points > prev:
+                user_primary_points[objective.ce_id] = objective.user_points
+
+        for objective in required_primary:
+            user_points = user_primary_points.get(objective.ce_id)
+            if user_points is None:
+                return False
+            if user_points < objective.point_value:
+                return False
     
     def get_category_v2(self, database_name : list[CEGame]) :
         """Returns the category of this game."""
