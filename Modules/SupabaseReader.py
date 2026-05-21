@@ -831,24 +831,27 @@ def __supabase_to_user(user: dict, userGames: list[dict], userObjectives: list[d
     for roll in rolls:
         _rolls.append(__supabase_to_roll(roll, [g for g in rollGames if g['roll_id'] == roll['id']]))
     
-    # TODO: optimize this please
     mapping: dict[str, list[dict]] = {}
+    objective_index = {obj['ce_id']: obj for obj in objectives}
     for game in userGames:
         mapping[game['game_ce_id']] = []
     for obj_u in userObjectives:
-        found_objective: dict = None
-        for obj in objectives:
-            if obj['ce_id'] == obj_u['objective_ce_id'] :
-                found_objective = obj
-                break
+        found_objective = objective_index.get(obj_u['objective_ce_id'])
         if found_objective is None: 
             print(f"No found objective for {obj_u}.")
             continue
 
+        enriched_objective = {
+            'objective_ce_id': obj_u['objective_ce_id'],
+            'user_points': obj_u['user_points'],
+            'type': found_objective['type'],
+            'name': found_objective['name'],
+        }
+
         if found_objective['game_ce_id'] not in mapping:
-            mapping[found_objective['game_ce_id']] = [obj_u]
+            mapping[found_objective['game_ce_id']] = [enriched_objective]
             continue
-        mapping[found_objective['game_ce_id']].append(obj_u)
+        mapping[found_objective['game_ce_id']].append(enriched_objective)
 
     
     _games = []
@@ -878,8 +881,8 @@ def __supabase_to_user_objective(objective: dict, game_ce_id: str) -> CEUserObje
         ce_id=objective["objective_ce_id"],
         game_ce_id=game_ce_id,
         user_points=objective['user_points'],
-        type="Badge",
-        name="missing"
+        type=objective.get('type', "Badge"),
+        name=objective.get('name', "missing")
     )
 
 
