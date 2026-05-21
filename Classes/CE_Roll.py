@@ -329,7 +329,7 @@ class CERoll:
     @winner.setter
     def winner(self, new_winner : bool) :
         "Sets the winner."
-        if new_winner == True :
+        if new_winner :
             self.status = "won"
         else :
             self.status = "failed"
