@@ -34,22 +34,22 @@ def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -
                 old_datetime = None
     
     # -- old datetime passed --
-    if(old_datetime != None) :
+    if(old_datetime is not None) :
         # ensure timezone-aware
         if old_datetime.tzinfo is None:
             old_datetime = old_datetime.replace(tzinfo=datetime.timezone.utc)
         
-        if (minutes != None) : return old_datetime + datetime.timedelta(minutes=minutes)
-        elif (months != None) : return old_datetime + datetime.timedelta(days=months_to_days(months))
+        if (minutes is not None) : return old_datetime + datetime.timedelta(minutes=minutes)
+        elif (months is not None) : return old_datetime + datetime.timedelta(days=months_to_days(months))
         else : return old_datetime + datetime.timedelta(days=days)
 
     # -- old datetime NOT passed --
     # return right now
     if(days == "now") : return datetime.datetime.now(datetime.timezone.utc)
     # return the minutes
-    elif (minutes != None) : return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
+    elif (minutes is not None) : return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
     # return the months
-    elif (months != None) : return get_datetime(days=months_to_days(months))
+    elif (months is not None) : return get_datetime(days=months_to_days(months))
     # return the days
     elif (days == None) : return None
 

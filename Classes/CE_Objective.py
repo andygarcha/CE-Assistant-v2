@@ -109,7 +109,7 @@ class CEObjective:
     
     def has_partial(self) -> bool :
         """Returns true if this game has partial points, false if not."""
-        return self._point_value_partial != None and self._point_value_partial != 0
+        return self._point_value_partial is not None and self._point_value_partial != 0
     
     def is_uncleared(self) -> bool :
         """Returns true if this game is UNCLEARED."""

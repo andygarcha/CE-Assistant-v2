@@ -85,7 +85,7 @@ async def get_rollable_game_v1(
     # ---- iterate through all the games ----
     for game in database_name :
         if VIEW_CONSOLE_MESSAGES: print(f"evaluating {game.name_with_link()}... ", end="")
-        if category != None and game.category not in category :
+        if category is not None and game.category not in category :
             "Incorrect category."
             if VIEW_CONSOLE_MESSAGES: print("Incorrect category.")
             continue
@@ -106,7 +106,7 @@ async def get_rollable_game_v1(
             if VIEW_CONSOLE_MESSAGES: print("Requested a T6 and did not get one.")
             continue
         
-        if tier_number != None and game.get_tier() != f"Tier {tier_number}" :
+        if tier_number is not None and game.get_tier() != f"Tier {tier_number}" :
             "Incorrect tier."
             if VIEW_CONSOLE_MESSAGES: print("Incorrect tier.")
             continue
@@ -221,21 +221,21 @@ async def get_rollable_game(
 
     database_tier_games = []
     # YES category and YES tier (tier != 6)
-    if category != None and tier_number != None and tier_number != 6:
+    if category is not None and tier_number is not None and tier_number != 6:
         for c in category:
             database_tier_games = database_tier[str(tier_number)][c]
     # YES category and YES tier (tier == 6)
-    elif category != None and tier_number == 6:
+    elif category is not None and tier_number == 6:
         for c in category:
             for t in range(5, 8):
                 database_tier_games = database_tier[str(t)][c]
     # YES category but NO tier
-    elif category != None and tier_number == None:
+    elif category is not None and tier_number == None:
         for c in category:
             for tn in range(1, 8):
                 database_tier_games.extend(database_tier[str(tn)][c])
     # NO category and YES tier (tier != 6)
-    elif category == None and tier_number != None and tier_number != 6:
+    elif category == None and tier_number is not None and tier_number != 6:
         for c in get_args(CATEGORIES):
             database_tier_games.extend(database_tier[str(tier_number)][c])
     # NO category and YES tier (tier == 6)

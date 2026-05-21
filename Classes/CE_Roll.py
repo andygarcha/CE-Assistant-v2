@@ -340,7 +340,7 @@ class CERoll:
     def is_co_op(self) -> bool :
         """Returns true if this roll is co-op or pvp."""
         return (
-            (self.partner_ce_id != None and self.partner_ce_id != "")
+            (self.partner_ce_id is not None and self.partner_ce_id != "")
             or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
         )
     
@@ -377,7 +377,7 @@ class CERoll:
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
-        return self.due_time != None
+        return self.due_time is not None
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""

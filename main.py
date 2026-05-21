@@ -645,7 +645,7 @@ class GameInputView(discord.ui.View) :
         user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = SupabaseReader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) is not None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)
@@ -684,7 +684,7 @@ class GameInputView(discord.ui.View) :
         user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = SupabaseReader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) is not None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)

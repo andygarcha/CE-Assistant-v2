@@ -496,7 +496,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     #debugging                    
                     print(f"User ({user}) re-rolled into the {selected_category} category, with rolled games {rolled_temp}")
                         
-                if None in rolled_temp and failed_category != None: #not enough rolls in category, and another category has already failed
+                if None in rolled_temp and failed_category is not None: #not enough rolls in category, and another category has already failed
                     return await interaction.followup.send(
                         f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. " 
                         + "The event is unrollable for you until enough new T1 games with valid criteria get added to the site, "

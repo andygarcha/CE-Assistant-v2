@@ -1153,7 +1153,7 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
 
         # check if the game's been completed before
         game_old = hm.get_item_from_list(game.ce_id, completed_games_old)
-        if game_old != None: continue
+        if game_old is not None: continue
 
         update = UpdateMessageForScraperProcess()
         
