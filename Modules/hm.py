@@ -14,4 +14,8 @@ from utils.game_utils import *
 from utils.general_utils import *
 from utils.time_utils import *
 
-print("⚠️ The 'hm.py' module is deprecated. Use the 'utils' package instead.")
+import logging
+
+logger = logging.getLogger(__name__)
+
+logger.warning("The 'hm.py' module is deprecated. Use the 'utils' package instead.")

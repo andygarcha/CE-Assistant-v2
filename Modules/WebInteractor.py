@@ -4,6 +4,7 @@ from Modules import http_session
 import requests
 from Modules.Screenshot import Screenshot
 import Modules.hm as hm
+import logging
 
 
 # selenium and beautiful soup stuff
@@ -12,6 +13,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import io
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 #   _____   ______   _______     _____   __  __               _____   ______ 
 #  / ____| |  ____| |__   __|   |_   _| |  \/  |     /\      / ____| |  ____|
@@ -30,17 +33,15 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     OBJECTIVE_LIMIT = 7
     "The maximum amount of objectives to be screenshot before cropping." 
 
-    CONSOLE_MESSAGES = True
-
     # initiate selenium
-    if CONSOLE_MESSAGES: print('trying')
+    logger.info('Attempting to screenshot game with Game ID %s', new_game.ce_id)
     try :
         url = f"https://cedb.me/game/{new_game.ce_id}/"
         driver.get(url)
     except Exception as e :
-        print(e)
+        logger.error("%s", e)
         return "Assets/image_failed_v2.png"
-    if CONSOLE_MESSAGES: print('try complete.')
+    logger.debug('Driver complete. Moving forward...')
     
     # set up variables
     start_time = hm.get_datetime('now')
@@ -50,29 +51,32 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
 
     try:
         # give it five seconds to load the elements.
-        if CONSOLE_MESSAGES: print('before while')
+        logger.debug('Entering while...')
         while (len(objective_list) < 1 or not objective_list[0].is_displayed()) and not timeout :
             # run this to just fully load the page...
             #html_page = driver.execute_script("return document.documentElement.innerHTML;")
             # ...and now get the list.
-            print('whiling..')
+            logger.debug('Finding elements...')
             objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
-            print('objective whiling...')
+            logger.debug('find_elements() returned. Maybe looping again.')
             timeout = (hm.get_datetime('now') - start_time).total_seconds() > TIMEOUT_LIMIT
         
-        if CONSOLE_MESSAGES: print('while left.')
+        logger.debug('While exited!')
         
         # if it took longer than 5 seconds, just return the image failed image.
         if timeout : return ("Assets/image_failed_v2.png", "image timeout")
+        logger.debug("Didn't timeout!")
+
 
         # i'm gonna let it sleep here just so that we are SURE the rest of the page loads in.
-        if CONSOLE_MESSAGES: print('sleeping...')
+        
         SLEEP_LIMIT = 3
+        logger.debug('sleeping for %d seconds...', SLEEP_LIMIT)
         time.sleep(SLEEP_LIMIT)
-        if CONSOLE_MESSAGES: print('sleep over.')
+        logger.debug('sleep over.')
 
 
-        if CONSOLE_MESSAGES: print('finding elements...')
+        logger.debug('finding elements...')
         primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
         objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
         title = driver.find_element(By.TAG_NAME, "h1")
@@ -101,41 +105,45 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
         else:
             bottom_right_x = (bottom_right['x'] + size['width'] + BORDER_WIDTH)*DISPLAY_FACTOR
         
-        if CONSOLE_MESSAGES: print('elements found')
+        logger.debug('elements found')
 
-        if CONSOLE_MESSAGES: print('screenshotting 1...')
+        logger.debug('initializing Screenshot() object')
         ob = Screenshot(bottom_right_y)
-        if CONSOLE_MESSAGES: print('screenshotting 2...')
+        logger.debug('calling full_screenshot()')
         im = ob.full_screenshot(driver, save_path=r'Pictures/', image_name="ss.png", 
                                 is_load_at_runtime=True, load_wait_time=10, hide_elements=header_elements)
-        if CONSOLE_MESSAGES: print('screenshot gotten.')
+        logger.debug('screenshot returned!')
     except Exception as e :
+        logger.error("%s", e)
         return ("Assets/image_failed_v2.png", f"{e}")
     
-    if CONSOLE_MESSAGES: print('passed try-except.')
+    logger.debug('passed try-except.')
     im = io.BytesIO(im)
     im_image = Image.open(im)
 
     SAVE_FULL_IMAGE_LOCALLY = False
     if SAVE_FULL_IMAGE_LOCALLY :
+        logger.debug("saving image locally as ss.png")
         im_image.save('ss.png')
 
-    if CONSOLE_MESSAGES: print('cropping...')
+    logger.debug('cropping...')
     im_image = im_image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
-    if CONSOLE_MESSAGES: print('cropped.')
+    logger.debug('cropping complete')
 
-    if CONSOLE_MESSAGES: print('bytesio ing...')
+    logger.debug('bytesio ing...')
     imgByteArr = io.BytesIO()
     im_image.save(imgByteArr, format='PNG')
     final_im = imgByteArr.getvalue()
     ss = io.BytesIO(final_im)
-    if CONSOLE_MESSAGES: print('bytesio gotten.')
+    logger.debug('bytesio gotten.')
 
     SAVE_CROPPED_IMAGE_LOCALLY = False
 
     if SAVE_CROPPED_IMAGE_LOCALLY :
+        logger.debug('saving *cropped* image locally as ss.png')
         im_image.save('ss.png')
 
+    logger.info('Screenshot complete!')
     return ss
 
 
@@ -158,17 +166,17 @@ async def get_recent_curated():
         # iterate through them
         for item in divs :
             try :
-                CONSOLE_MESSAGES = False
                 if item['class'][0] == 'recommendation_readmore' :
-                    if CONSOLE_MESSAGES : print('-- readmore --')
+                    logger.debug('-- readmore --')
                     ce_ids.append(item.contents[0]['href'][-36:])
-                    if CONSOLE_MESSAGES : print(ce_ids[-1])
-                    if item['class'][0] == "recommendation_desc" :
-                        if CONSOLE_MESSAGES : print('-- description --')
-                        descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
-                        if CONSOLE_MESSAGES : print(descriptions[-1])
-            except : continue
-            return ce_ids, descriptions
+                    logger.debug("%s", ce_ids[-1])
+                if item['class'][0] == "recommendation_desc" :
+                    logger.debug('-- description --')
+                    descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
+                    logger.debug("%s", descriptions[-1])
+            except: 
+                continue
+        return ce_ids, descriptions
 
 
 

@@ -14,6 +14,7 @@ import functools
 import time
 from typing import Literal
 import typing
+import logging
 
 import aiohttp
 from Modules import hm, http_session
@@ -30,6 +31,7 @@ from Exceptions.FailedScrapeException import FailedScrapeException
 import requests
 import json
 
+logger = logging.getLogger(__name__)
 
 # ---------------------- module for ce-api maintenance -----------------------
 
@@ -94,7 +96,7 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 
     # CATEGORIES
     if json_response['genre'] is None:
-        print(f"null genre found for ce_id: {json_response['id']}")
+        logger.error("Null genre found for game with ID %s", json_response['id'])
         return None
     if 'gameCategories' not in json_response:
         _categories = []
@@ -205,7 +207,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
     #overarching while statement - if not done, keep going
     while (not done_fetching):
         
-        print(f"fetching games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}...", end=" ")
+        logger.debug("Fetching games %s through %s.", (i - 1) * PULL_LIMIT, i * PULL_LIMIT - 1)
         
         #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
         for x in range(TRY_LIMIT):
@@ -231,11 +233,19 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
             
             # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
             if str_error:
-                print(str_error)
-                try :
-                    print(await outer_response.text())
-                except : print('couldnt print response')
-                print(f"Scraping failed from api/games/full on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}." + " Attempt " + str(x+1) + " of " + str(TRY_LIMIT))
+                logger.error("%s", str_error)
+                try:
+                    logger.error("%s", await outer_response.text())
+                except: 
+                    logger.error('couldnt output response')
+                
+                logger.error(
+                    "Scraping failed from api/games/full on games %d through %d. Attempt %d of %d.",
+                    (i - 1) * PULL_LIMIT,
+                    i * PULL_LIMIT - 1,
+                    x + 1,
+                    TRY_LIMIT
+                )
         
                 # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
                 if x+1 == TRY_LIMIT:
@@ -246,7 +256,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
             else:
                 break
             
-    print(f"\ndone fetching games! total games: {len(json_response)}")
+    logger.info("Done fetching %s games!", len(json_response))
 
     """"
     BIG ASS FUCKING NOTE
@@ -320,7 +330,11 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
         while (not done_fetching) :
 
             # pull the data
-            print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}", end=" ")
+            logger.debug(
+                "fetching users %d through %d",
+                (i - 1) * PULL_LIMIT, # first game num
+                i * PULL_LIMIT - 1,   # last game num
+            )
 
             # set up params
             params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
@@ -344,20 +358,16 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
                     # remove all of the indexes in reverse order
                     for index in reversed(removed_indexes) :
                         del current_response[index]
-                    print(f"({len(removed_indexes)} removed)", end=". ")
-
-                # print this so that there will be a new line
-                else :
-                    print("")
+                    logger.debug("%d games removed.", len(removed_indexes))
 
                 # add to the total response and increment i
                 total_response += current_response
                 i += 1
     except Exception as e : 
-        print(f"original exception: {e}")
+        logger.error("original exception: %s", e)
         raise FailedScrapeException("Failed scraping from api/users/all/ "
                                     + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
-    print(f"done fetching users! total users: {len(total_response)}")
+    logger.info("done fetching users! total users: %d", len(total_response))
 
     # convert to objects
     all_users : list[CEUser] = []
