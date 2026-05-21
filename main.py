@@ -834,6 +834,10 @@ async def on_ready() :
     # sync commands
     await tree.sync(guild = guild)
 
+    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3", "discord", "aiohttp"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
+        logger.info("Killed logging for %s.", name)
+
     # set up channels
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
 
@@ -849,8 +853,7 @@ async def on_ready() :
         if not monitor_loop.is_running():
             await monitor_loop.start()
 
-    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3", "discord", "aiohttp"]:
-        logging.getLogger(name).setLevel(logging.WARNING)
+
 
 
 
