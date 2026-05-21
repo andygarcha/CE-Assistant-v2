@@ -23,6 +23,7 @@ from commands import load_commands
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks
 from aiohttp import web
+import logging
 
 # ----------- selenium and beautiful soup stuff -----------
 import io
@@ -79,7 +80,14 @@ async def start_webhook_server():
     # bind to 0.0.0.0 to accept external connections on port 80
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
-    print('webhook running!')
+    logger.info('Webhook Running.')
+
+logging.basicConfig(
+    level=logging.INFO if hm.IN_CE else logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 # ------------------------------ commands -------------------------------------
 

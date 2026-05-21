@@ -1,7 +1,10 @@
 import datetime
 from typing import Literal, get_args
+import logging
 
 import Modules.hm as hm
+
+logger = logging.getLogger(__name__)
 
 roll_cooldowns : dict[str, int] = {
     'Destiny Alignment' : hm.months_to_days(1),
@@ -362,7 +365,7 @@ class CERoll:
                 try:
                     dt = hm.cetimestamp_to_datetime(dt)
                 except Exception:
-                    print(f'FAILED EXPIRATION CHECK: {self.due_time=}')
+                    logger.error(f'FAILED EXPIRATION CHECK: {self.due_time=}')
                     return False
 
         # ensure timezone-aware for comparison
@@ -490,7 +493,7 @@ class CERoll:
                 self._winner = False
                 return f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Winner Takes All!\n- {game_name}"
             else :
-                print(self)
+                logger.error("Failed to determine winner in Winner Takes All with roll ID %s.", self._id)
                 return "something's gone wrong with winner takes all. please ping andy!"
         elif self.roll_name == "Game Theory" :
             # determine winner
@@ -525,7 +528,7 @@ class CERoll:
                     f"\n- <@{user.discord_id}> - {user_game_name}"
                 )
             else :
-                print(self)
+                logger.error("Failed to determine winner in Game Theory with roll ID %s.", self._id)
                 return "something's gone wrong with game theory. please ping andy!"
         
         elif self.roll_name == "One Hell of a Month" :
