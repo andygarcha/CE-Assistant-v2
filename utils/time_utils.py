@@ -1,6 +1,5 @@
 import calendar
 import datetime
-import time
 
 def months_to_days(num_months : int) -> int:
     """Takes in a number of months `num_months` and returns 
@@ -11,7 +10,8 @@ def months_to_days(num_months : int) -> int:
     #point in the year, and get_rollable_game requires day inputs
     # function input = number of months
     # function output = number of days between now and input months away
-    if num_months == 0 : return 0 
+    if num_months == 0:
+        return 0 
     now = datetime.datetime.now()
     end_year = now.year + (now.month + num_months - 1) // 12
     end_month = (now.month + num_months - 1) % 12 + 1
@@ -21,7 +21,7 @@ def months_to_days(num_months : int) -> int:
     return date_delta.days
 
 
-def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -> datetime.datetime:
+def get_datetime(days = 0 | str, minutes = None, months = None, old_datetime = None) -> datetime.datetime:
     """Returns a datetime object for `days` days (or `minutes` minutes, or `months` months) from the current time.
     \nAdditionally, `old_datetime` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that datetime."""
     # normalize string old_datetime to datetime
@@ -35,26 +35,34 @@ def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -
                 old_datetime = None
     
     # -- old datetime passed --
-    if(old_datetime != None) :
+    if(old_datetime is not None) :
         # ensure timezone-aware
         if old_datetime.tzinfo is None:
             old_datetime = old_datetime.replace(tzinfo=datetime.timezone.utc)
         
-        if (minutes != None) : return old_datetime + datetime.timedelta(minutes=minutes)
-        elif (months != None) : return old_datetime + datetime.timedelta(days=months_to_days(months))
-        else : return old_datetime + datetime.timedelta(days=days)
+        if (minutes is not None):
+            return old_datetime + datetime.timedelta(minutes=minutes)
+        elif (months is not None):
+            return old_datetime + datetime.timedelta(days=months_to_days(months))
+        else:
+            return old_datetime + datetime.timedelta(days=days)
 
     # -- old datetime NOT passed --
     # return right now
-    if(days == "now") : return datetime.datetime.now(datetime.timezone.utc)
+    if(days == "now"):
+        return datetime.datetime.now(datetime.timezone.utc)
     # return the minutes
-    elif (minutes != None) : return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
+    elif (minutes is not None):
+        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
     # return the months
-    elif (months != None) : return get_datetime(days=months_to_days(months))
+    elif (months is not None):
+        return get_datetime(days=months_to_days(months))
     # return the days
-    elif (days == None) : return None
+    elif (days is None):
+        return None
 
-    else: return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)
+    else:
+        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)
 
 
 def get_unix(days = 0, minutes = None, months = None, old_unix = None) -> int:

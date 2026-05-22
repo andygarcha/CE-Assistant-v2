@@ -1,5 +1,5 @@
 import datetime
-from typing import Literal, get_args
+from typing import get_args
 import aiohttp
 from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Roll import CERoll
@@ -11,6 +11,17 @@ from Modules import http_session
 
 MUTELIST_CEIDS = [
     "e790e8f0-f67e-4646-8fa9-de436b2c8d5e" # athenavenny
+]
+
+RANK_THRESHOLDS = [
+    (10000, 8),  # EX
+    (7500, 7),   # SSS
+    (5000, 6),   # SS
+    (2500, 5),   # S
+    (1000, 4),   # A
+    (500, 3),    # B
+    (250, 2),    # C
+    (50, 1),     # D
 ]
 
 class CEUser:
@@ -94,32 +105,18 @@ class CEUser:
             total_points += game.get_user_points()
         return total_points
     
-    def get_rank(self) -> str :
+    def get_rank(self) -> str:
         """Returns the current rank for this user."""
-        total_points = self.get_total_points()
-        if total_points >= 10000 : return "EX Rank"
-        elif total_points >= 7500 : return "SSS Rank"
-        elif total_points >= 5000 : return "SS Rank"
-        elif total_points >= 2500 : return "S Rank"
-        elif total_points >= 1000 : return "A Rank"
-        elif total_points >= 500 : return "B Rank"
-        elif total_points >= 250 : return "C Rank"
-        elif total_points >= 50 : return "D Rank"
-        else : return "E Rank"
+        ranks = ["E", "D", "C", "B", "A", "S", "SS", "SSS", "EX"]
+        return ranks[f"{self.rank_num()} Rank"]
 
-    def rank_num(self) -> int :
-        "Returns the rank as a user. E Rank is 0, D Rank is 1, etc."
-        match(self.get_rank()) :
-            case "E Rank" : return 0
-            case "D Rank" : return 1
-            case "C Rank" : return 2
-            case "B Rank" : return 3
-            case "A Rank" : return 4
-            case "S Rank" : return 5
-            case "SS Rank" : return 6
-            case "SSS Rank" : return 7
-            case "EX Rank" : return 8
-        return None
+    def rank_num(self) -> int:
+        """Returns the rank as an int. E Rank is 0, D Rank is 1, etc."""
+        points = self.get_total_points()
+        for threshold, rank in RANK_THRESHOLDS:
+            if points >= threshold:
+                return rank
+        return 0
 
     @property
     def owned_games(self):
@@ -130,7 +127,8 @@ class CEUser:
         """Returns the :class:`CEUserGame` object associated 
         `ce_id`, or `None` if this user doesn't own it."""
         for game in self.owned_games :
-            if game.ce_id == ce_id : return game
+            if game.ce_id == ce_id:
+                return game
         return None
 
     def owned_games_as_cegames(self, database_name : list[CEGame]) -> list[CEGame] :
@@ -160,7 +158,8 @@ class CEUser:
         "Takes in an ID and returns the CEUserObjective associated with it."
         for game in self.owned_games :
             for objective in game.user_objectives :
-                if objective_id == objective.ce_id : return objective
+                if objective_id == objective.ce_id:
+                    return objective
 
         return None
     
@@ -263,19 +262,22 @@ class CEUser:
     def has_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently working on `roll_name`."""
         for event in self.current_rolls :
-            if event.roll_name == roll_name : return True
+            if event.roll_name == roll_name:
+                return True
         return False
     
     def get_current_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None :
         "REturns the `CERoll` associated with `roll_name`."
         for event in self.current_rolls :
-            if event.roll_name == roll_name : return event
+            if event.roll_name == roll_name:
+                return event
         return None
     
     def has_DA_roll(self, partner_ce_id, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user has a DA roll with requested partner."""
         for event in self.current_rolls :
-            if (event.roll_name == roll_name) and (event.partner_ce_id == partner_ce_id) : return True
+            if (event.roll_name == roll_name) and (event.partner_ce_id == partner_ce_id):
+                return True
         return False
     
     def count_DA_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> int :
@@ -310,13 +312,15 @@ class CEUser:
     def has_completed_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user has completed `roll_name`."""
         for event in self.completed_rolls :
-            if event.roll_name == roll_name : return True
+            if event.roll_name == roll_name:
+                return True
         return False
     
     def get_completed_rolls(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> list[CERoll] | None :
         """Returns the `CERoll` associated with `roll_name`."""
         r = [event for event in self.completed_rolls if event.roll_name == roll_name]
-        if len(r) != 0 : return r
+        if len(r) != 0:
+            return r
         return None
 
     # ==== pending rolls ==== #
@@ -350,7 +354,8 @@ class CEUser:
     def has_pending(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         """Returns true if this user is currently on pending for `roll_name`."""
         for pending in self.pending_rolls :
-            if pending.roll_name == roll_name : return True
+            if pending.roll_name == roll_name:
+                return True
         return False
 
     # ==== failed rolls ==== #
@@ -371,13 +376,15 @@ class CEUser:
     def has_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> bool :
         "Returns true if this user has a waiting roll."
         for roll in self.rolls :
-            if roll.roll_name == roll_name and roll.status == "waiting" : return True
+            if roll.roll_name == roll_name and roll.status == "waiting":
+                return True
         return False
     
     def get_waiting_roll(self, roll_name : hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None :
         "Returns the waiting roll."
         for roll in self.rolls :
-            if roll.roll_name == roll_name and roll.status == "waiting" : return roll
+            if roll.roll_name == roll_name and roll.status == "waiting":
+                return roll
         return None
     
     def update_waiting_roll(self, roll : CERoll) -> None :
@@ -413,13 +420,15 @@ class CEUser:
         # check infinite time rolls
         for roll in self.current_rolls :
             if roll.roll_name == roll_name :
-                if roll.ends() : break
+                if roll.ends():
+                    break
                 return roll.calculate_cooldown_date(database_name)
             
         for roll in self.failed_rolls :
             if roll.roll_name == roll_name : 
                 cooldown_date = roll.calculate_cooldown_date(database_name)
-                if cooldown_date is not None and cooldown_date > hm.get_datetime('now') : return cooldown_date
+                if cooldown_date is not None and cooldown_date > hm.get_datetime('now'):
+                    return cooldown_date
         return None
     
     def had_cooldown(self, roll_name : hm.ALL_ROLL_EVENT_NAMES, database_name : list[CEGame], old_time : int) -> bool :
@@ -444,7 +453,8 @@ class CEUser:
 
         # get the game, and if it's None, return
         ce_game = self.get_owned_game(CE_GAME_ID)
-        if ce_game is None : return []
+        if ce_game is None:
+            return []
 
         # iterate through the objectives
         rolls : list[CERoll] = []
@@ -479,13 +489,15 @@ class CEUser:
         """Returns true if this user owns the game with 
         Challenge Enthusiast ID `game_id`."""
         for game in self.owned_games :
-            if game.ce_id == game_id : return True
+            if game.ce_id == game_id:
+                return True
         return False
     
     def has_points(self, game_id : str) -> bool :
         """Returns true if this user has points in this game."""
         for game in self.owned_games :
-            if game.ce_id == game_id : return game.get_user_points() != 0
+            if game.ce_id == game_id:
+                return game.get_user_points() != 0
         return False
     
     # -- other -- 
@@ -646,19 +658,19 @@ class CEAPIUser(CEUser) :
 
         # imports
         from Classes.CE_User_Objective import CEUserObjective
-        from Modules import CEAPIReader
 
         # grab all the data
-        ce_ids : list[str] = []
-        completion_dates : list[int] = []
-        game_names : list[str] = []
+        ce_ids: list[str] = []
+        completion_dates: list[int] = []
+        game_names: list[str] = []
         for objective in self.full_data['userObjectives'] :
             ce_ids.append(objective['objective']['id'])
             completion_dates.append(hm.cetimestamp_to_datetime(objective['updatedAt']))
             game_names.append(objective['objective']['game']['name'])
         
         # make sure they didn't request too much
-        if NUM_OF_OBJECTIVES > len(ce_ids) : return None
+        if NUM_OF_OBJECTIVES > len(ce_ids):
+            return None
 
         # sort and shear them to the number requested
         ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[0:NUM_OF_OBJECTIVES]
@@ -668,9 +680,11 @@ class CEAPIUser(CEUser) :
         for pair in ordered_pairs :
             objective_object = self.get_objective(pair[1])
             objective_tuples.append(
-                ((objective_object if objective_object is not None else pair[1]),
-                pair[0],
-                pair[2])
+                (
+                    objective_object if objective_object is not None else pair[1],
+                    pair[0],
+                    pair[2]
+                )
             )
             
 
@@ -681,16 +695,16 @@ class CEAPIUser(CEUser) :
         
         # pull the data
         objective_tuples = self.most_recent_objectives()
-        if objective_tuples is None : return "Database out of sync! if this continues ping andy"
+        if objective_tuples is None:
+            return "Database out of sync! if this continues ping andy"
 
         # set up return
-        return_str : str = ""
+        return_str: str = ""
 
         # loop!
         for item in objective_tuples :
             # pull the actual items from the tuple
             objective = item[0]
-            completion_unix = item[1]
             game_name = item[2]
 
             if type(objective) is str :
@@ -720,11 +734,15 @@ class CEAPIUser(CEUser) :
 
         for api_objective in self.api_user_objectives :
             if hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= current_month_datetime :
-                if api_objective['partial'] : curr_month_points += api_objective['objective']['pointsPartial']
-                else : curr_month_points += api_objective['objective']['points']
+                if api_objective['partial']:
+                    curr_month_points += api_objective['objective']['pointsPartial']
+                else:
+                    curr_month_points += api_objective['objective']['points']
             elif hm.cetimestamp_to_datetime(api_objective['updatedAt']) >= previous_month_datetime :
-                if api_objective['partial'] : prev_month_points += api_objective['objective']['pointsPartial']
-                else : prev_month_points += api_objective['objective']['points']
+                if api_objective['partial']:
+                    prev_month_points += api_objective['objective']['pointsPartial']
+                else:
+                    prev_month_points += api_objective['objective']['points']
 
         return (
             f"Points this month ({hm.current_month_str()}): {curr_month_points} {hm.get_emoji('Points')}\n" + 
@@ -757,7 +775,8 @@ class CEAPIUser(CEUser) :
         i = 0
         for i, genre_name in enumerate(genre_dict) :
             # syntax
-            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
+            if i % LINE_BREAK_LIMIT == 0:
+                return_str += "\n"
 
             # add the actual emoji and value
             return_str += f"{hm.get_emoji(genre_name)}: {genre_dict[genre_name]}\t"

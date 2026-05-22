@@ -1,15 +1,11 @@
 """This module contains all the admin commands for the bot."""
-import asyncio
 import datetime
 import discord
+import logging
 from discord import app_commands
 from Classes.CE_Roll import CERoll
 from commands.user import register
-from Modules import CEAPIReader, Reformatter, hm, SupabaseReader
-import requests
-import json
-from web_scraper.scraper import update_one_user
-import logging
+from Modules import CEAPIReader, hm, SupabaseReader
 
 from web_scraper.scraper import process_loop
 from Modules import http_session
@@ -220,10 +216,12 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
         message = await site_additions_channel.fetch_message(int(embed_id))
 
     # if it errors, message is not in the site-additions channel
-    except :
+    except discord.NotFound:
         return await interaction.followup.send(f"This message is not in the <#{hm.GAME_ADDITIONS_ID}> channel.")
     
-    if message.author.id != 1108618891040657438 : return await interaction.followup.send("This message was not sent by the bot!")
+    # TODO swap this out with a constant or client.user.id or smthn
+    if message.author.id != 1108618891040657438:
+        return await interaction.followup.send("This message was not sent by the bot!")
 
     # grab the embed
     embed = message.embeds[0]
@@ -241,7 +239,8 @@ async def add_notes(interaction : discord.Interaction, embed_id : str, notes : s
                 embed.set_field_at(index=len(embed.fields)-1, name="Note", value=f"{old_notes}\n{notes}")
     
     # if it errors, then just add a reason field
-    except :
+    except Exception as e:
+        logger.exception(e)
         embed.add_field(name="Note", value=notes, inline=False)
 
     # edit the message
@@ -273,9 +272,12 @@ async def clear_roll(interaction : discord.Interaction, member : discord.Member,
     # get database user and the user
     user = SupabaseReader.get_user(member.id, use_discord_id=True)
 
-    if current : user.remove_current_roll(roll_name)
-    if completed : user.remove_completed_rolls(roll_name)
-    if pending : user.remove_pending(roll_name)
+    if current:
+        user.remove_current_roll(roll_name)
+    if completed:
+        user.remove_completed_rolls(roll_name)
+    if pending:
+        user.remove_pending(roll_name)
 
     SupabaseReader.dump_user(user)
     return await interaction.followup.send("Done!")
@@ -317,7 +319,7 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
 
     SupabaseReader.dump_user(user)
     return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. " +
-                                           f"Status set to 'waiting'.")
+                                           "Status set to 'waiting'.")
 
 
 

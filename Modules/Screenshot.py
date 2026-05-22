@@ -52,7 +52,6 @@ class Screenshot:
             str: The image path
         """
         #image_name = os.path.abspath(save_path + '/' + image_name)
-        SHOW_CONSOLE_UPDATES = False
         logger.debug("1")
         logger.debug("save_path=%s", save_path)
         logger.debug("image_name=%s", image_name)

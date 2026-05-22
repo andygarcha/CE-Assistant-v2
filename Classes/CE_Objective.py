@@ -20,14 +20,14 @@ class CEObjective:
         self._point_value_partial = point_value_partial
         self._name = name
 
-        if requirements == "" : 
+        if requirements == "":
             self._requirements = None
-        else : 
+        else:
             self._requirements = requirements
 
-        if achievement_ce_ids == [] :
+        if achievement_ce_ids == []:
             self._achievement_ce_ids = None
-        else :
+        else:
             self._achievement_ce_ids = achievement_ce_ids
     
     # -------------- getters -----------------
@@ -54,11 +54,7 @@ class CEObjective:
     
     def get_type_short(self) -> str :
         "Returns this game's type as a short (PO, CO, SO)"
-        match(self.type) :
-            case "Primary" : return "PO"
-            case "Secondary" : return "SO"
-            case "Badge" : return "BO"
-            case "Community" : return "CO"
+        return self.type[0] + "O"
     
     @property
     def description(self) -> str:
@@ -72,9 +68,12 @@ class CEObjective:
     
     def uncleared_name(self) -> str :
         "Returns the name of this objective without the 'UNCLEARED' nonsense."
-        if not self.is_uncleared() : return self.name
-        if self.name[-11:len(self.name)] == "(UNCLEARED)" : return self.name[0:-12]
-        if self.name[-10:len(self.name)] == "(UNVALUED)" : return self.name[0:-11]
+        if not self.is_uncleared():
+            return self.name
+        if self.name[-11:len(self.name)] == "(UNCLEARED)":
+            return self.name[0:-12]
+        if self.name[-10:len(self.name)] == "(UNVALUED)":
+            return self.name[0:-11]
     
     @property
     def requirements(self) -> str | None:
@@ -96,12 +95,12 @@ class CEObjective:
     # -------------- setters ----------------
 
     @type.setter
-    def type(self, type : hm.OBJECTIVE_TYPES) :
+    def type(self, type: hm.OBJECTIVE_TYPES) :
         """Takes in the type and sets the objective's type to it."""
         self._objective_type = type
 
     @game_ce_id.setter
-    def game_ce_id(self, game_id : str) :
+    def game_ce_id(self, game_id: str) :
         """Takes in a string `game_id` and sets the local value to such."""
         self._game_ce_id = game_id
     
@@ -109,7 +108,7 @@ class CEObjective:
     
     def has_partial(self) -> bool :
         """Returns true if this game has partial points, false if not."""
-        return self._point_value_partial != None and self._point_value_partial != 0
+        return self._point_value_partial is not None and self._point_value_partial != 0
     
     def is_uncleared(self) -> bool :
         """Returns true if this game is UNCLEARED."""
@@ -121,9 +120,12 @@ class CEObjective:
     
     def equals(self, new_objective : 'CEObjective') -> bool :
         "Returns true if the two objectives have the same values."
-        if type(new_objective) != CEObjective : return False
-        if self.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None : return False
-        if self.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None : return False
+        if not isinstance(new_objective, CEObjective):
+            return False
+        if self.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None:
+            return False
+        if self.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None:
+            return False
         return (
             self.point_value == new_objective.point_value and
             self.type == new_objective.type and

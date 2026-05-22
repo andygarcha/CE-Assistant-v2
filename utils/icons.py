@@ -92,7 +92,7 @@ def get_emoji(input : __ICON_KEYS) -> str :
     """
     Returns the emoji related to `input`.
     """
-    if not channels.IN_CE and input in __test_icons :
+    if not channels.IN_CE and input in __test_icons:
         return __test_icons[input]
     return __icons.get(input, "bad-input")
 
