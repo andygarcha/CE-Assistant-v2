@@ -54,16 +54,37 @@ roll_due_times = {
     'Teamwork Makes the Dream Work' : hm.months_to_days(1)
 }
 
+CASINO_POINTS: dict[str, tuple[int, int]] = {
+    # roll_name:                              (increase, decrease)
+    "One Hell of a Day":                      (1,   0),
+    "One Hell of a Week":                     (7,  -2),
+    "One Hell of a Month":                    (18, -5),
+    "Two Week T2 Streak":                     (4,  -1),
+    'Two "Two Week T2 Streak" Streak':        (12, -2),
+    "Never Lucky":                            (4,  -1),
+    "Triple Threat":                          (15, -3),
+    "Let Fate Decide":                        (8,  -2),
+    "Fourward Thinking":                      (18, -6),
+    "Destiny Alignment":                      None,  # RELATIVE
+    "Soul Mates":                             None,  # RELATIVE
+    "Teamwork Makes the Dream Work":          (10, -2),
+    "Winner Takes All":                       None,  # RELATIVE
+    "Game Theory":                            (4,  -4),
+}
+
+RELATIVE = {
+    1: 1,
+    2: 2,
+    3: 4,
+    4: 8
+    # anything above is 20
+}
+"tier: hours"
+
+
 def relative(tier_num : int) -> int :
     "Returns the relative points given by tier_num."
-    match(tier_num) :
-        case 1 : return 1
-        case 2 : return 2
-        case 3 : return 4
-        case 4 : return 8
-        case _ : return 20
-
-
+    return RELATIVE.get(tier_num, 20)
 
 ROLL_STATUS = Literal["current", "won", "failed", "pending", "waiting", "removed"]
 """The status of rolls. 
@@ -131,11 +152,11 @@ class CERoll:
                  is_current : bool = False,
                  tier_num : int = None,
                  _id: str = None):
-        self._roll_name : str = roll_name
-        self._user_ce_id : str = user_ce_id
-        self._games : list[str] = games
+        self._roll_name: str = roll_name
+        self._user_ce_id: str = user_ce_id
+        self._games: list[str] = games
         self._status = status
-        self._partner_ce_id : str = partner_ce_id
+        self._partner_ce_id: str = partner_ce_id
         self._id = _id
 
         # if the roll isn't being created right now
@@ -150,31 +171,34 @@ class CERoll:
 
         # if the roll is being created right now...
         # set init_time to right now
-        if init_time == None :
+        if init_time is None :
             self._init_time = hm.get_datetime('now')
         else :
             self._init_time = init_time
 
         # set the due time to the correct time
-        if due_time == None and roll_due_times[self._roll_name] is not None:
-            if roll_name == "Soul Mates" : self._due_time = hm.get_datetime(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
-            else : self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
-        elif due_time == None and roll_due_times[self._roll_name] is None :
+        if due_time is None and roll_due_times[self._roll_name] is not None:
+            if roll_name == "Soul Mates":
+                self._due_time = hm.get_datetime(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
+            else:
+                self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
+        elif due_time is None and roll_due_times[self._roll_name] is None :
             self._due_time = None
         else :
             self._due_time = due_time
 
         # and set completed time to non-existent
         # (is this redundant code? am i stupid?)
-        if completed_time == None :
+        if completed_time is None :
             self._completed_time = None
         else :
             self._completed_time = completed_time
 
         # set the rerolls to the correct amount
-        if rerolls == None :
+        if rerolls is None :
             self._rerolls = None
-            if self.roll_name == "Fourward Thinking" : self._rerolls = 0
+            if self.roll_name == "Fourward Thinking":
+                self._rerolls = 0
         else :
             self._rerolls = rerolls
 
@@ -246,14 +270,21 @@ class CERoll:
         return self._status
     
     def status2(self):
-        if self.init_time == 0 and self.due_time is None or self.games is None: return "won_legacy"
+        if self.init_time == 0 and self.due_time is None or self.games is None:
+            return "won_legacy"
         match(self.status):
-            case "current": return "current"
-            case "failed": return "failed"
-            case "pending": return "pending"
-            case "removed": return "removed"
-            case "waiting": return "between_stages"
-            case "won": return "won"
+            case "current":
+                return "current"
+            case "failed":
+                return "failed"
+            case "pending":
+                return "pending"
+            case "removed":
+                return "removed"
+            case "waiting":
+                return "between_stages"
+            case "won":
+                return "won"
 
     def set_status(self, new_status : ROLL_STATUS) :
         "Setter for status"
@@ -291,13 +322,15 @@ class CERoll:
     @due_time.setter
     def due_time(self, days : int) -> None :
         """Sets the due time for `days` days from now."""
-        if days == None : self._due_time = None
-        else: self._due_time = hm.get_datetime(days=days)
+        if days is None:
+            self._due_time = None
+        else:
+            self._due_time = hm.get_datetime(days=days)
     
     def reset_due_time(self) :
         "Resets the due time."
         # if fourward thinking, assume the new game has been added already.
-        if self.roll_name == "Fourward Thinking" : 
+        if self.roll_name == "Fourward Thinking":
             self._due_time = hm.get_datetime(days=7*len(self.games))
         # if two week t2 streak, assume the new game has been added already.
         elif self.roll_name == "Two Week T2 Streak" or self.roll_name == "Two \"Two Week T2 Streak\" Streak" :
@@ -306,7 +339,7 @@ class CERoll:
         else :
             self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
 
-    def add_game(self, game : str) -> None :
+    def add_game(self, game: str) -> None :
         """Adds the Challenge Enthusiast ID given by `game`
         to this roll's games array."""
         self._games.append(game)
@@ -318,7 +351,8 @@ class CERoll:
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
-        if self.roll_name not in hm.MULTI_STAGE_ROLLS : return
+        if self.roll_name not in hm.MULTI_STAGE_ROLLS:
+            return
 
         if self.roll_name == "Two Week T2 Streak" :
             self.due_time = hm.get_datetime(days=7)
@@ -330,9 +364,9 @@ class CERoll:
             )
 
     @winner.setter
-    def winner(self, new_winner : bool) :
+    def winner(self, new_winner: bool) :
         "Sets the winner."
-        if new_winner == True :
+        if new_winner :
             self.status = "won"
         else :
             self.status = "failed"
@@ -343,7 +377,7 @@ class CERoll:
     def is_co_op(self) -> bool :
         """Returns true if this roll is co-op or pvp."""
         return (
-            (self.partner_ce_id != None and self.partner_ce_id != "")
+            (self.partner_ce_id is not None and self.partner_ce_id != "")
             or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
         )
     
@@ -364,8 +398,8 @@ class CERoll:
             except Exception:
                 try:
                     dt = hm.cetimestamp_to_datetime(dt)
-                except Exception:
-                    logger.error("Expiration check failed. Due Time: %s, couldn't normalize.", self.due_time)
+                except Exception as e:
+                    logger.error("Expiration check failed. Due Time: %s, couldn't normalize. %s", self.due_time, e)
                     return False
 
         # ensure timezone-aware for comparison
@@ -380,13 +414,14 @@ class CERoll:
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
-        return self.due_time != None
+        return self.due_time is not None
     
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if not self.is_multi_stage() : return False
+        if not self.is_multi_stage():
+            return False
         
-        return self.due_time == None or self.due_time == 0
+        return self.due_time is None or self.due_time == 0
     
     def is_multi_stage(self) -> bool :
         "Returns true if this roll is multi-stage."
@@ -398,16 +433,20 @@ class CERoll:
     
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."
-        if not self.is_multi_stage() : return False
-        if self.roll_name == "Two Week T2 Streak" : return len(self.games) == 2
-        if self.roll_name == "Two \"Two Week T2 Streak\" Streak" : return len(self.games) == 4
-        if self.roll_name == "Fourward Thinking" : return len(self.games) == 4
+        if not self.is_multi_stage():
+            return False
+        if self.roll_name == "Two Week T2 Streak":
+            return len(self.games) == 2
+        if self.roll_name == "Two \"Two Week T2 Streak\" Streak":
+            return len(self.games) == 4
+        if self.roll_name == "Fourward Thinking":
+            return len(self.games) == 4
 
     def rolled_categories(self, database_name : list) -> list[str] :
         "Returns a list of the categories that have been rolled so far."
         # type casting
         from Classes.CE_Game import CEGame
-        database_name : list[CEGame] = database_name
+        database_name: list[CEGame] = database_name
 
         # TODO casino fix: this does not work with dual categories
         raise NotImplementedError
@@ -425,7 +464,7 @@ class CERoll:
         partner : CEUser = partner
 
         # and grab the objects
-        if not self.is_co_op() : 
+        if not self.is_co_op():
             partner = None
         
         if self.roll_name == "Destiny Alignment" :
@@ -449,9 +488,11 @@ class CERoll:
             # go through each of them and decide if they were rolled in this game
             user_wins, partner_wins = [], []
             for compl in user_completions :
-                if compl.ce_id in self.games : user_wins.append(compl.ce_id)
+                if compl.ce_id in self.games:
+                    user_wins.append(compl.ce_id)
             for compl in partner_completions :
-                if compl.ce_id in self.games : partner_wins.append(compl.ce_id)
+                if compl.ce_id in self.games:
+                    partner_wins.append(compl.ce_id)
 
             # and now make the actual string
             return_str = (
@@ -477,9 +518,11 @@ class CERoll:
             user_wins = False
             partner_wins = False
             for game in user.get_completed_games_2(database_name) :
-                if game.ce_id in self.games : user_wins = True
+                if game.ce_id in self.games:
+                    user_wins = True
             for game in user.get_completed_games_2(database_name) :
-                if game.ce_id in self.games : partner_wins = True
+                if game.ce_id in self.games:
+                    partner_wins = True
             
             # send corresponding message
             game_name = hm.get_item_from_list(self.games[0], database_name).game_name
@@ -501,9 +544,11 @@ class CERoll:
             user_game = self.games[0]
             partner_game = partner.get_current_roll(self.roll_name).games[0]
             for game in user.get_completed_games_2(database_name) :
-                if game.ce_id == user_game : user_wins = True
+                if game.ce_id == user_game:
+                    user_wins = True
             for game in user.get_completed_games_2(database_name) :
-                if game.ce_id == partner_game : partner_wins = True
+                if game.ce_id == partner_game:
+                    partner_wins = True
 
             # send corresponding message
             user_game_name = hm.get_item_from_list(user_game, database_name).game_name
@@ -538,7 +583,8 @@ class CERoll:
             user_completions = user.get_completed_games_2(database_name)
             user_wins = []
             for game in user_completions :
-                if game.ce_id in self.games : user_wins.append(game.ce_id)
+                if game.ce_id in self.games:
+                    user_wins.append(game.ce_id)
             for game_id in self.games :
                 if game_id not in user_wins : 
                     continue
@@ -550,7 +596,7 @@ class CERoll:
 
         else :
             s = f"Congratulations <@{user.discord_id}>! You have beaten {self.roll_name}."
-            for game in self.games :
+            for game in self.games:
                 game_name = hm.get_item_from_list(game, database_name)
                 s += f"\n- {game_name.game_name}"
             return s
@@ -568,7 +614,7 @@ class CERoll:
         partner : CEUser = partner
 
         # and grab the objects
-        if not self.is_co_op() : 
+        if not self.is_co_op():
             partner = None
 
         if self.roll_name == "Fourward Thinking" :
@@ -603,21 +649,28 @@ class CERoll:
             database_name : list[CEGame] = database_name
 
         if self.roll_name == "Fourward Thinking" :
-            if self.rerolls is None : self._rerolls = 0
+            if self.rerolls is None:
+                self._rerolls = 0
             rerolls_used = len(self.games) - (self.rerolls + 1)
             days = len(self.games)*14 + hm.months_to_days(rerolls_used)
             return hm.get_datetime(days=days, old_datetime=self.init_time)
         
         elif self.roll_name == "Soul Mates" :
             game = hm.get_item_from_list(self.games[0], database_name)
-            match(game.get_tier_num()) :
-                case 1 : return hm.get_datetime(10*7, old_datetime=self.init_time)
-                case 2 : return hm.get_datetime(8*7, old_datetime=self.init_time)
-                case 3 : return hm.get_datetime(6*7, old_datetime=self.init_time)
-                case 4 : return hm.get_datetime(4*7, old_datetime=self.init_time)
-                case _ : return hm.get_datetime(2*7, old_datetime=self.init_time)
+            match(game.get_tier_num()):
+                case 1:
+                    return hm.get_datetime(10*7, old_datetime=self.init_time)
+                case 2:
+                    return hm.get_datetime(8*7, old_datetime=self.init_time)
+                case 3:
+                    return hm.get_datetime(6*7, old_datetime=self.init_time)
+                case 4:
+                    return hm.get_datetime(4*7, old_datetime=self.init_time)
+                case _:
+                    return hm.get_datetime(2*7, old_datetime=self.init_time)
         
-        if roll_cooldowns[self.roll_name] is None : return None
+        if roll_cooldowns[self.roll_name] is None:
+            return None
         return hm.get_datetime(days=roll_cooldowns[self.roll_name], old_datetime=self.init_time)
 
     def is_won(self, database_name : list, user, partner = None) -> bool :
@@ -627,7 +680,8 @@ class CERoll:
         from Classes.CE_Game import CEGame
 
         # if expired, return false
-        if (self.is_expired()) : return False
+        if (self.is_expired()):
+            return False
 
         # type hinting
         partner : CEUser = partner
@@ -645,7 +699,8 @@ class CERoll:
                     categories[game.get_category_v2(database_name)] += 1
             completed_categories = 0
             for category in categories :
-                if categories[category] >= 3 : completed_categories += 1
+                if categories[category] >= 3 :
+                    completed_categories += 1
             return completed_categories >= 5
 
         # teamwork makes the dream work
@@ -692,7 +747,8 @@ class CERoll:
         # all other rolls
         else :
             for game in self.games :
-                if not user.has_completed_game(game, database_name) : return False
+                if not user.has_completed_game(game, database_name) :
+                    return False
             return True
         
         #TODO: finish this function
@@ -707,22 +763,10 @@ class CERoll:
             database_name : list[CEGame] = database_name
             tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
 
-        # matches
-        match(self.roll_name) :
-            case "One Hell of a Day" : return 1
-            case "One Hell of a Week" : return 7
-            case "One Hell of a Month" : return 18
-            case "Two Week T2 Streak" : return 4
-            case "Two \"Two Week T2 Streak\" Streak" : return 12
-            case "Never Lucky" : return 4
-            case "Triple Threat" : return 15
-            case "Let Fate Decide" : return 8
-            case "Fourward Thinking" : return 18
-            case "Destiny Alignment" : return relative(tier)
-            case "Soul Mates" : return relative(tier)
-            case "Teamwork Makes the Dream Work" : return 10
-            case "Winner Takes All" : return relative(tier)
-            case "Game Theory" : return 4
+        match self.roll_name:
+            case "Destiny Alignment" | "Soul Mates" | "Winner Takes All":
+                return relative(tier)
+        return CASINO_POINTS[self.roll_name][0]
     
     def casino_decrease(self, database_name : list = None) -> int :
         "Returns the number of casino points the user would lose if the roll is lost."
@@ -733,22 +777,14 @@ class CERoll:
             database_name : list[CEGame] = database_name
             tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
 
-        # matches
-        match(self.roll_name) :
-            case "One Hell of a Day" : return 0
-            case "One Hell of a Week" : return -2
-            case "One Hell of a Month" : return -5
-            case "Two Week T2 Streak" : return -1
-            case "Two \"Two Week T2 Streak\" Streak" : return -2
-            case "Never Lucky" : return -1
-            case "Triple Threat" : return -3
-            case "Let Fate Decide" : return -2
-            case "Fourward Thinking" : return -6
-            case "Destiny Alignment" : return int(-1*relative(tier) / 3)
-            case "Soul Mates" : return int(-1*relative(tier) / 2)
-            case "Teamwork Makes the Dream Work" : return -2
-            case "Winner Takes All" : return -1*relative(tier)
-            case "Game Theory" : return -4
+        match self.roll_name:
+            case "Destiny Alignment":
+                return int(-1 * relative(tier) / 3)
+            case "Soul Mates":
+                return int(-1 * relative(tier) / 2)
+            case "Winner Takes All":
+                return int(-1 * relative(tier))
+        return CASINO_POINTS[self.roll_name][1]
 
 
 
@@ -791,11 +827,8 @@ class CERoll:
         from Classes.CE_Game import CEGame
         database_name : list[CEGame] = database_name
 
-        if (self.games is None and \
-            self.partner_ce_id is None and \
-            self.due_time is None and \
-            self.completed_time is None and \
-            self.rerolls is None
+        if (
+            self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls is None
             ) :
             return "Completed before CE Assistant's existance."
 

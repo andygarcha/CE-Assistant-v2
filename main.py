@@ -1,5 +1,4 @@
 # -------- discord imports -----------
-import asyncio
 import logging
 from Modules import hm
 
@@ -12,18 +11,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from types import NoneType
-import discord
-from discord import app_commands
+from types import NoneType # noqa: E402
+import discord # noqa: E402
+from discord import app_commands # noqa: E402
 
 # -------- json imports ----------
-import json
-from typing import Literal
+import json # noqa: E402
+from typing import Literal # noqa: E402
 
 # --------- local class imports --------
-from Classes.CE_Game import CEGame
-from Classes.CE_Objective import CEObjective
-from Classes.OtherClasses import CEInput
+from Classes.CE_Game import CEGame # noqa: E402
+from Classes.CE_Objective import CEObjective # noqa: E402
+from Classes.OtherClasses import CEInput # noqa: E402
 #from Modules.WebInteractor import master_loop
 from web_scraper.scraper import process_loop # noqa: E402
 from Modules import SupabaseReader # noqa: E402
@@ -31,13 +30,13 @@ from commands import load_commands # noqa: E402
 from commands.games import get_game_auto # noqa: E402
 
 # ----------- to-be-sorted imports -------------
-from discord.ext import tasks
-from aiohttp import web
+from discord.ext import tasks # noqa: E402
+from aiohttp import web # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
-import io
+import io # noqa: E402
 
-from commands.games import get_game_auto
+
 
 
 # -------------------------------- normal bot code -----------------------------------
@@ -58,8 +57,10 @@ with open('secret_info.json') as f :
         guild_id = local_json_data['ce_guild_ID']
     else :
         RUNNING_LOCALLY = False
-        if RUNNING_LOCALLY : discord_token = local_json_data['other_discord_token']
-        else : discord_token = local_json_data['third_discord_token']
+        if RUNNING_LOCALLY :
+            discord_token = local_json_data['other_discord_token']
+        else :
+            discord_token = local_json_data['third_discord_token']
         guild_id = local_json_data['test_guild_ID']
 
 # set up client
@@ -131,7 +132,7 @@ update_casino_score_options = Literal["INCREASE", "DECREASE", "SET"]
 @app_commands.describe(member="The user you'd like to update the casino score for.")
 @app_commands.describe(value="The increase, decrease, or new value for the user's casino score.")
 @app_commands.describe(type="Whether you'd like to increase, decrease, or set the user's casino score to value.")
-async def manual_update_casino_score(interaction : discord.Interaction, member : discord.Member, value : int, type : update_casino_score_options) :
+async def manual_update_casino_score(interaction: discord.Interaction, member: discord.Member, value: int, type: update_casino_score_options) :
     await interaction.response.defer(ephemeral=True)
 
     await interaction.followup.send("Not Implemented.")
@@ -268,8 +269,10 @@ class ValueModal(discord.ui.Modal) :
         self.__objective = objective
         
         title = f"Value Input for {objective.name}"
-        if len(title) >= 45 : super().__init__(title="Value Input")
-        else : super().__init__(title=f"Value Input for {objective.name}")
+        if len(title) >= 45:
+            super().__init__(title="Value Input")
+        else:
+            super().__init__(title=f"Value Input for {objective.name}")
 
     new_value = discord.ui.TextInput(
         label="Revalue Objective",
@@ -292,8 +295,10 @@ class ValueModal(discord.ui.Modal) :
         RANGE_LIMIT_1 = 100
         RANGE_LIMIT_2 = 50
 
-        if value <= VALUE_LIMIT_0 : return hm.is_within_percentage(input, RANGE_LIMIT_0, value)
-        if value <= VALUE_LIMIT_1 : return hm.is_within_percentage(input, RANGE_LIMIT_1, value)
+        if value <= VALUE_LIMIT_0:
+            return hm.is_within_percentage(input, RANGE_LIMIT_0, value)
+        if value <= VALUE_LIMIT_1:
+            return hm.is_within_percentage(input, RANGE_LIMIT_1, value)
         return hm.is_within_percentage(input, RANGE_LIMIT_2, value)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -350,11 +355,10 @@ class ValueModal(discord.ui.Modal) :
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
 
         # we now need to check if our average has changed enough to enter scary territory
-        if value_input is None : old_average = None
-        else :
-            old_average = value_input.average_is_okay(
-                database_name, self.__game.ce_id
-            )
+        if value_input is None:
+            old_average = None
+        else:
+            old_average = value_input.average_is_okay(database_name, self.__game.ce_id)
 
         # add the value input for the newly grabbed data.
         curr_input.add_value_input(
@@ -609,9 +613,12 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 
     def message(self) :
         "The message that should be sent with the curate message."
-        if self.has_selected_yes : return "Would you recommend this game for the curator? (You previously said 'Yes')."
-        if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
-        if self.has_selected_indiff : return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
+        if self.has_selected_yes:
+            return "Would you recommend this game for the curator? (You previously said 'Yes')."
+        if self.has_selected_no:
+            return "Would you recommend this game for the curator? (You previously said 'No')."
+        if self.has_selected_indiff:
+            return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
         return "Would you recommend this game for the curator?"
     
     def voted_before(self) :
@@ -657,7 +664,7 @@ class GameInputView(discord.ui.View) :
         user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = SupabaseReader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) is not None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)
@@ -696,7 +703,7 @@ class GameInputView(discord.ui.View) :
         user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
 
         # if this game hasn't been evaluated yet, add it to `inputs`.
-        found = SupabaseReader.get_input(self.ce_id) != None
+        found = SupabaseReader.get_input(self.ce_id) is not None
         
         if not found : 
             new_input = self.set_up_input(game.ce_id)
@@ -751,7 +758,8 @@ async def game_input(interaction : discord.Interaction, game : str) :
     # set up the message
     content = f"Game chosen: {game_object.name_with_link()}"
     database_name = SupabaseReader.get_database_name()
-    if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
+    if user.has_completed_game(game_object.ce_id, database_name):
+        content += hm.get_emoji('Crown')
     content += "."
 
     input = SupabaseReader.get_input(game)
@@ -792,8 +800,10 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
     # now get the actual to_string()
     database_user = SupabaseReader.get_database_user()
     database_name = SupabaseReader.get_database_name()
-    if not simple : input_object_string = input_object.to_string(database_name, database_user)
-    else : input_object_string = input_object.to_string_simple(database_name)
+    if not simple:
+        input_object_string = input_object.to_string(database_name, database_user)
+    else:
+        input_object_string = input_object.to_string_simple(database_name)
 
     # check if it needs to be sent as a file
     if len(input_object_string) > 2000 :

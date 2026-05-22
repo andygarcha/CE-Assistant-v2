@@ -2,13 +2,15 @@ def get_item_from_list(ce_id, list) :
     """Return the object who's Challenge Enthusiast
     ID is provided by `ce_id`."""
     for item in list :
-        if item.ce_id == ce_id : return item
+        if item.ce_id == ce_id:
+            return item
     return None
 
 def get_index_from_list(ce_id, list) :
     """Returns the index of the object provided by `ce_id`."""
     for i in range(len(list)) :
-        if list[i].ce_id == ce_id : return i
+        if list[i].ce_id == ce_id:
+            return i
     return -1
 
 def replace_item_in_list(ce_id, item, list) -> list :
@@ -32,10 +34,16 @@ def format_ce_link(ce_link : str) -> str | None :
     "Takes in a full link and returns the CE ID."
 
     # replace all the other stuff
-    ce_id = ce_link.replace("https://","").replace("www.","").replace("cedb.me", "").replace("/","").replace("games","").replace("user","")
+    ce_id = ce_link \
+        .replace("https://","") \
+        .replace("www.","") \
+        .replace("cedb.me", "") \
+        .replace("/","") \
+        .replace("games","") \
+        .replace("user","")
 
     # if it's not valid, return None
-    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-") :
+    if not (ce_id[8:9] == ce_id[13:14] == ce_id[18:19] == ce_id[23:24] == "-"):
         return None
     
     # else, return the id.

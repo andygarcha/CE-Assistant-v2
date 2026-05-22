@@ -63,7 +63,8 @@ class CEUserGame():
     def has_completed_objective(self, objective_id : str, points : int) -> CEUserObjective :
         "Returns true if this user has completed the specified objective."
         for obj in self.user_objectives :
-            if obj.ce_id == objective_id and obj.user_points == points : return True
+            if obj.ce_id == objective_id and obj.user_points == points:
+                return True
         return False
     
     @property
@@ -105,9 +106,12 @@ class CEUserGame():
         user_points = self.get_user_points_primary()
         game_points = game.get_po_points(include_uncleareds=True)
 
-        if len(user_pos) == 0: return False
-        if len(user_pos) != len(game_pos): return False
-        if user_points != game_points: return False
+        if len(user_pos) == 0:
+            return False
+        if len(user_pos) != len(game_pos):
+            return False
+        if user_points != game_points:
+            return False
         return True
     
         # Completion should be based on each valued Primary objective being fully met.

@@ -11,12 +11,10 @@ To pull data from all users on the site, use `get_api_users_all()`.
 import asyncio
 import datetime
 import functools
-import time
 from typing import Literal
 import typing
 import logging
 
-import aiohttp
 from Modules import hm, http_session
 
 # -- local --
@@ -68,7 +66,8 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
                 requirements : str | None = requirement['data']
         
         # if no achievement ids were found, send it as None in the constructor.
-        if achievement_ids == [] : achievement_ids = None
+        if achievement_ids == []:
+            achievement_ids = None
 
         # make the actual objective object...
         ce_objective = CEObjective(
@@ -149,7 +148,6 @@ async def get_user(ce_id: str) -> CEUser:
         return _ce_to_user(user)
 
 async def get_api_games() -> list[str]:
-    PULL_LIMIT = 50
     TRY_LIMIT = 4
     session = await http_session.get_session()
     last_error: Exception | None = None
@@ -228,16 +226,14 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
             # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
             except Exception as e:
                 str_error = e
-                pass
-            
             
             # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
             if str_error:
                 logger.error("%s", str_error)
                 try:
                     logger.error("%s", await outer_response.text())
-                except: 
-                    logger.error('couldnt output response')
+                except Exception as e: 
+                    logger.exception("Couldn't output response. Error: %s", e)
                 
                 logger.error(
                     "Scraping failed from api/games/full on games %d through %d. Attempt %d of %d.",
@@ -249,8 +245,10 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
         
                 # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
                 if x+1 == TRY_LIMIT:
-                    raise FailedScrapeException("Scraping failed from api/games/full " 
-                                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}.")
+                    raise FailedScrapeException(
+                        "Scraping failed from api/games/full " 
+                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}."
+                    )
 
             # if no error - continue on to the next block of "PULL LIMIT" games
             else:
@@ -264,7 +262,8 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
     the bot should effectively freeze the game in place. just copy it over from when it existed last.
     """
 
-    if return_json: return json_response
+    if return_json:
+        return json_response
 
     # Step 2: iterate through the new json and construct an array of CEAPIGame's.
     all_games : list[CEAPIGame] = []
@@ -289,9 +288,9 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
     # Step 0: check if database_user was passed
     if database_user is not None and len(database_user) > 0 :
         registered_ids : list[str] = []
-        if type(database_user[0]) == CEUser :
+        if isinstance(database_user[0], CEUser):
             registered_ids = [user.ce_id for user in database_user]
-        elif type(database_user[0]) == str :
+        elif isinstance(database_user[0], str) :
             registered_ids = database_user
         else :
             database_user = None
@@ -365,8 +364,10 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
                 i += 1
     except Exception as e : 
         logger.error("original exception: %s", e)
-        raise FailedScrapeException("Failed scraping from api/users/all/ "
-                                    + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}")
+        raise FailedScrapeException(
+            "Failed scraping from api/users/all/ "
+            + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}"
+        )
     logger.info("done fetching users! total users: %d", len(total_response))
 
     # convert to objects
@@ -384,7 +385,8 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
 
 def _ce_to_user(json_response : dict) -> CEUser :
     # Go through all of their games and make CEUserGame's out of them.
-    if json_response == {}: return None
+    if json_response == {}:
+        return None
     user_games : list[CEUserGame] = []
     for game in json_response['userGames'] :
         user_games.append(
@@ -408,7 +410,8 @@ def _ce_to_user(json_response : dict) -> CEUser :
     steam_id = "None"
 
     for item in json_response['userConnections'] :
-        if item['platform'] != 'steam' : continue
+        if item['platform'] != 'steam':
+            continue
         steam_id = item['platformId']
         
     # Now go through all their objectives and make CEUserObjective's out of them.
@@ -455,11 +458,13 @@ async def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUs
     if type == "user" :
         async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
             json_response = await response.json()
-            if len(json_response) == 0 : return None
+            if len(json_response) == 0:
+                return None
             return _ce_to_user(json_response=json_response)
 
     elif type == "game" :
         async with session.get(f"https://cedb.me/api/game/{ce_id}") as response :
             json_response = await response.json()
-            if len(json_response) == 0 : return None
+            if len(json_response) == 0:
+                return None
             return _ce_to_game(json_response=json_response)
