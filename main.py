@@ -25,10 +25,10 @@ from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CEInput
 #from Modules.WebInteractor import master_loop
-from web_scraper.scraper import process_loop
-from Modules import SupabaseReader
-from Modules import http_session
-from commands import load_commands
+from web_scraper.scraper import process_loop # noqa: E402
+from Modules import SupabaseReader # noqa: E402
+from commands import load_commands # noqa: E402
+from commands.games import get_game_auto # noqa: E402
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks

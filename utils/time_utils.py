@@ -21,7 +21,7 @@ def months_to_days(num_months : int) -> int:
     return date_delta.days
 
 
-def get_datetime(days = 0, minutes = None, months = None, old_datetime = None) -> datetime.datetime:
+def get_datetime(days: int | str = 0, minutes = None, months = None, old_datetime = None) -> datetime.datetime:
     """Returns a datetime object for `days` days (or `minutes` minutes, or `months` months) from the current time.
     \nAdditionally, `old_datetime` can be passed as a parameter to get `days` days (or `minutes` minutes, or `months` months) from that datetime."""
     # normalize string old_datetime to datetime

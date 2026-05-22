@@ -90,7 +90,7 @@ class CEGame:
         """Returns the categories of this game (e.g. Action, Arcade, Strategy)."""
         return self._categories
     
-    def categories_num(self) -> int:
+    def categories_num(self) -> list[int]:
         "[Action, First-Person, Strategy] --> [1, 4, 6]"
         _nums = []
         for cat in self.categories:

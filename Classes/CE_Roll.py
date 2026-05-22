@@ -791,8 +791,11 @@ class CERoll:
         from Classes.CE_Game import CEGame
         database_name : list[CEGame] = database_name
 
-        if (
-            self.games == self.partner_ce_id == self.due_time == self.completed_time == self.rerolls == None
+        if (self.games is None and \
+            self.partner_ce_id is None and \
+            self.due_time is None and \
+            self.completed_time is None and \
+            self.rerolls is None
             ) :
             return "Completed before CE Assistant's existance."
 

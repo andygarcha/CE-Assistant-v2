@@ -1013,8 +1013,12 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
 
     return update
 
-def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[UpdateMessageForScraperProcess, list[str]]:
-    """Creates the `UpdateMessageForScraperProcess` for an updated game."""
+def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
+    UpdateMessageForScraperProcess | None, list[str] | None]:
+    """Creates the `UpdateMessageForScraperProcess` for an updated game.
+    Returns:
+    - update: an `UpdateMessageForScraperProcess`, or `None`.
+    - removed_objective_ids: a list of Objective IDs that need to be removed. `list[str] | None`"""
     update = UpdateMessageForScraperProcess()
     update.is_embed = True
     update.title = f"__ {game_new.game_name} __ updated on the site:"
@@ -1230,9 +1234,9 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
     return updates
 
 def check_rank(rank_old: str, rank_new: str, points_old: int, 
-               points_new: int, user: CEUser) -> UpdateMessageForScraperProcess:
-    if rank_new != rank_old and points_new > points_old:
-        update = UpdateMessageForScraperProcess()
+               points_new: int, user: CEUser) -> UpdateMessageForScraperProcess | None:
+    # if rank_new != rank_old and points_new > points_old:
+    #     update = UpdateMessageForScraperProcess()
     #TODO: complete this function
 
 def check_completion_count():

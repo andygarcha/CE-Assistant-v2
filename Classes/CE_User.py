@@ -96,16 +96,8 @@ class CEUser:
     
     def get_rank(self) -> str :
         """Returns the current rank for this user."""
-        total_points = self.get_total_points()
-        if total_points >= 10000 : return "EX Rank"
-        elif total_points >= 7500 : return "SSS Rank"
-        elif total_points >= 5000 : return "SS Rank"
-        elif total_points >= 2500 : return "S Rank"
-        elif total_points >= 1000 : return "A Rank"
-        elif total_points >= 500 : return "B Rank"
-        elif total_points >= 250 : return "C Rank"
-        elif total_points >= 50 : return "D Rank"
-        else : return "E Rank"
+        ranks = ["E", "D", "C", "B", "A", "S", "SS", "SSS", "EX"]
+        return f"{ranks[self.rank_num()]} Rank"
 
     def rank_num(self) -> int :
         "Returns the rank as a user. E Rank is 0, D Rank is 1, etc."
