@@ -36,7 +36,8 @@ class CEGame:
 
         total_points = 0
         for objective in self.all_objectives :
-            if objective.is_uncleared() and not INCLUDE_UNCLEAREDS : continue
+            if objective.is_uncleared() and not INCLUDE_UNCLEAREDS:
+                continue
             total_points += objective.point_value
         
         return total_points
@@ -57,7 +58,8 @@ class CEGame:
         "The total number of points in Secondary Objectives."
         total_points = 0
         for objective in self.get_secondary_objectives() :
-            if objective.is_uncleared() : continue
+            if objective.is_uncleared():
+                continue
             total_points += objective.point_value
         return total_points
     
@@ -129,7 +131,7 @@ class CEGame:
         "Returns an array of all uncleared objectives."
         o = []
         for objective in self.all_objectives :
-            if objective.is_uncleared() and objective.type in ["Primary", "Secondary"] : 
+            if objective.is_uncleared() and objective.type in ["Primary", "Secondary"]: 
                 o.append(objective)
         return o
     
@@ -254,8 +256,9 @@ class CEGame:
 
             steam_id = str(self.platform_id)
             
-            if json_response[steam_id]['data']['is_free'] : return 0
-            elif 'price_overview' in json_response[steam_id]['data'] :
+            if json_response[steam_id]['data']['is_free']:
+                return 0
+            elif 'price_overview' in json_response[steam_id]['data']:
                 return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
             else :
                 return None
@@ -280,7 +283,8 @@ class CEGame:
     #         return None
         
     async def get_steamhunters_data_async(self) -> int | None :
-        if self.platform != "steam" : return None
+        if self.platform != "steam":
+            return None
         session = await http_session.get_session()
         async with session.get(f"https://steamhunters.com/api/apps/{self.platform_id}") as response :
             raw_text = await response.text()
@@ -320,22 +324,25 @@ class CEGame:
 
             total_points = self.get_total_points()
             for user in json_response :
-                if user['points'] == total_points : completions += 1
-                elif user['points'] != 0 : started += 1
+                if user['points'] == total_points:
+                    completions += 1
+                elif user['points'] != 0:
+                    started += 1
                 owners += 1
 
             return CECompletion(
                 {
-                    'completed' : completions,
-                    'started' : started,
-                    'total' : owners
+                    'completed': completions,
+                    'started': started,
+                    'total': owners
                 }
             )
     
     def has_an_uncleared(self) -> bool :
         """Returns true if this game has an uncleared objective."""
         for objective in self.all_objectives :
-            if objective.is_uncleared() : return True
+            if objective.is_uncleared():
+                return True
         return False
     
     def get_ce_link(self) -> str :

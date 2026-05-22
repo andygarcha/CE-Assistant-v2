@@ -128,11 +128,11 @@ class CERoll:
                  is_current : bool = False,
                  tier_num : int = None,
                  _id: str = None):
-        self._roll_name : str = roll_name
-        self._user_ce_id : str = user_ce_id
-        self._games : list[str] = games
+        self._roll_name: str = roll_name
+        self._user_ce_id: str = user_ce_id
+        self._games: list[str] = games
         self._status = status
-        self._partner_ce_id : str = partner_ce_id
+        self._partner_ce_id: str = partner_ce_id
         self._id = _id
 
         # if the roll isn't being created right now
@@ -154,8 +154,10 @@ class CERoll:
 
         # set the due time to the correct time
         if due_time is None and roll_due_times[self._roll_name] is not None:
-            if roll_name == "Soul Mates" : self._due_time = hm.get_datetime(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
-            else : self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
+            if roll_name == "Soul Mates":
+                self._due_time = hm.get_datetime(days=roll_due_times['Soul Mates'][f"Tier {tier_num}"])
+            else:
+                self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
         elif due_time is None and roll_due_times[self._roll_name] is None :
             self._due_time = None
         else :
@@ -171,7 +173,8 @@ class CERoll:
         # set the rerolls to the correct amount
         if rerolls is None :
             self._rerolls = None
-            if self.roll_name == "Fourward Thinking" : self._rerolls = 0
+            if self.roll_name == "Fourward Thinking":
+                self._rerolls = 0
         else :
             self._rerolls = rerolls
 
@@ -294,7 +297,7 @@ class CERoll:
     def reset_due_time(self) :
         "Resets the due time."
         # if fourward thinking, assume the new game has been added already.
-        if self.roll_name == "Fourward Thinking" : 
+        if self.roll_name == "Fourward Thinking":
             self._due_time = hm.get_datetime(days=7*len(self.games))
         # if two week t2 streak, assume the new game has been added already.
         elif self.roll_name == "Two Week T2 Streak" or self.roll_name == "Two \"Two Week T2 Streak\" Streak" :
@@ -303,7 +306,7 @@ class CERoll:
         else :
             self._due_time = hm.get_datetime(days=roll_due_times[self._roll_name])
 
-    def add_game(self, game : str) -> None :
+    def add_game(self, game: str) -> None :
         """Adds the Challenge Enthusiast ID given by `game`
         to this roll's games array."""
         self._games.append(game)
@@ -315,7 +318,8 @@ class CERoll:
     def initiate_next_stage(self) -> None :
         """Resets this roll's' variables for the next
         stage for a multi-stage roll."""
-        if self.roll_name not in hm.MULTI_STAGE_ROLLS : return
+        if self.roll_name not in hm.MULTI_STAGE_ROLLS:
+            return
 
         if self.roll_name == "Two Week T2 Streak" :
             self.due_time = hm.get_datetime(days=7)
@@ -327,7 +331,7 @@ class CERoll:
             )
 
     @winner.setter
-    def winner(self, new_winner : bool) :
+    def winner(self, new_winner: bool) :
         "Sets the winner."
         if new_winner :
             self.status = "won"

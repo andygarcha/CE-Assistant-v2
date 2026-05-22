@@ -602,9 +602,12 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 
     def message(self) :
         "The message that should be sent with the curate message."
-        if self.has_selected_yes : return "Would you recommend this game for the curator? (You previously said 'Yes')."
-        if self.has_selected_no : return "Would you recommend this game for the curator? (You previously said 'No')."
-        if self.has_selected_indiff : return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
+        if self.has_selected_yes:
+            return "Would you recommend this game for the curator? (You previously said 'Yes')."
+        if self.has_selected_no:
+            return "Would you recommend this game for the curator? (You previously said 'No')."
+        if self.has_selected_indiff:
+            return "Would you recommend this game for the curator? (You previously said 'Indifferent')."
         return "Would you recommend this game for the curator?"
     
     def voted_before(self) :
@@ -744,7 +747,8 @@ async def game_input(interaction : discord.Interaction, game : str) :
     # set up the message
     content = f"Game chosen: {game_object.name_with_link()}"
     database_name = SupabaseReader.get_database_name()
-    if user.has_completed_game(game_object.ce_id, database_name) : content += hm.get_emoji('Crown')
+    if user.has_completed_game(game_object.ce_id, database_name):
+        content += hm.get_emoji('Crown')
     content += "."
 
     input = SupabaseReader.get_input(game)
@@ -785,8 +789,10 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
     # now get the actual to_string()
     database_user = SupabaseReader.get_database_user()
     database_name = SupabaseReader.get_database_name()
-    if not simple : input_object_string = input_object.to_string(database_name, database_user)
-    else : input_object_string = input_object.to_string_simple(database_name)
+    if not simple:
+        input_object_string = input_object.to_string(database_name, database_user)
+    else:
+        input_object_string = input_object.to_string_simple(database_name)
 
     # check if it needs to be sent as a file
     if len(input_object_string) > 2000 :
