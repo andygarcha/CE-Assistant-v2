@@ -4,6 +4,9 @@ from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
 from Modules import http_session
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CEGame:
     """A game that's on Challenge Enthusiasts."""
@@ -293,7 +296,7 @@ class CEGame:
             try :
                 json_response = await response.json()
             except :
-                print(f"SteamHunters response failed for {self.name_with_link()}")
+                logger.error("SteamHunters response failed for Game ID: %s and Name: %s", self.ce_id, self.game_name)
                 return 999999
 
             if 'medianCompletionTime' in json_response :

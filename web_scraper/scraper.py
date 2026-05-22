@@ -21,6 +21,9 @@ from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import UPDATEMESSAGE_LOCATIONS
 from Modules import CEAPIReader, SupabaseReader, http_session, hm
+import logging
+
+logger = logging.getLogger(__name__)
 
 SAVEDATA = True
 DEBUG = True
@@ -49,7 +52,7 @@ class UpdateMessageForScraperProcess():
         self.url = ""
         self.color = 0
 
-    def print(self, full=False):
+    def print(self, full=False, info=False):
         string = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
@@ -57,8 +60,14 @@ class UpdateMessageForScraperProcess():
         else:
             string += f"{repr(self.text)}\n"
         
-        if full: print(string)
-        else: print(string[0:100])
+        if full and info: 
+            logger.info(string)
+        elif full: 
+            logger.debug(string)
+        elif info:
+            logger.info(string[0:100])
+        else:
+            logger.debug(string[0:100])
 
 """ TOP LEVEL FUNCTION """
 
@@ -117,15 +126,15 @@ times = [
 @tasks.loop(time=times)
 async def process_loop(client: discord.Client = None, full_scrape = False):
     if client is None:
-        print("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
-    print(f"process_loop() invoked with {full_scrape=} (initially).")
+        logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
+    logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
     
     full_scrape = ( # Noon/1PM EST (based on daylight savings)
         datetime.datetime.now(datetime.timezone.utc).hour == 17) and (
         datetime.datetime.now(datetime.timezone.utc).minute == 0
     ) or full_scrape
 
-    print(f"{full_scrape=} (second try)")
+    logger.info("full_scrape=%s (second try)", full_scrape)
     
 
     assistant_log = client.get_channel(hm.id_num("privatelog"))
@@ -135,7 +144,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
             f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
         )
 
-    if DEBUG: print(f"FLAGS: {SAVEDATA=}, {DEBUG=}, {SKIPUPDATES=}")
+    logger.debug("FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES)
     time_current = datetime.datetime.now(datetime.timezone.utc)
 
     updates: list[UpdateMessageForScraperProcess] = []
@@ -145,13 +154,14 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     SENDUPDATES = True
 
     # Step 1: Update Games
+    logger.info("UPDATE GAMES: begin")
     _updates, games_new, removed_games, removed_objectives = await update_games(full_scrape)
+    logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
-    if DEBUG: 
-        print(f"{len(updates)=} (games only!)")
-        for update in updates:
-            update.print(full=True)
+    logger.debug("len(updates)=%d (games only!)", len(updates))
+    for update in updates:
+        update.print(full=True)
 
     # Step 2: Update Users
     #  -- now to do this we have to generate databasename_old and databasename_new
@@ -181,68 +191,70 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         if not replaced:
             database_name_new.append(_game_new)
     
-    print(f"{len(database_name_old)=}")
-    print(f"{len(database_name_new)=}")
+    logger.debug("len(database_name_old)=%d", len(database_name_old))
+    logger.debug("len(database_name_new)=%d", len(database_name_new))
 
-    if DEBUG: print("UPDATE USERS: begin")
+    logger.info("UPDATE USERS: begin")
     _updates, users_new, removed_users, rolls_updated = await update_users(
         database_name_old,
         database_name_new,
         full_scrape
     )
     updates.extend(_updates)
-    if DEBUG: print("UPDATE USERS: complete")
+    logger.info("UPDATE USERS: complete")
+    logger.debug("len(_user_updates)=%d", len(_updates))
 
     # Step 3: Check curator
     check_curator_steam()
 
     # Step 4: write all of our stuff
     if SAVEDATA:
-        if DEBUG: print('saving data')
+        logger.info('saving data')
 
-        if DEBUG: print(f"{len(games_new)=}")
-        if DEBUG: print("BULK GAMES")
+        logger.debug("len(games_new)=%d", len(games_new))
         SupabaseReader.bulk_dump_games(games_new)
         
-        if DEBUG: print(f"{len(removed_games)=}")
+        logger.debug("len(removed_games)=%d", len(removed_games))
         for i, _game_id in enumerate(removed_games):
-            if DEBUG and i % 5 == 0: print(i)
             SupabaseReader.delete_game(_game_id)
 
-        if DEBUG: print(f"{len(removed_objectives)=}")
+        logger.debug("len(removed_objectives)=%d", len(removed_objectives))
         SupabaseReader.delete_objectives_many(removed_objectives)
         
-        if DEBUG: print(f"{len(users_new)=}")
-        if DEBUG: print("BULK USERS")
+        logger.debug("len(users_new)=%d", len(users_new))
         SupabaseReader.bulk_dump_users(users_new)
 
-        if DEBUG: print(f"{len(removed_users)=}")
+        logger.debug("len(removed_users)=%d", len(removed_users))
         for i, _user_id in enumerate(removed_users):
-            if DEBUG and i % 5 == 0: print(i)
             SupabaseReader.delete_user(_user_id)
 
-        
-        if DEBUG: print(f"{len(rolls_updated)=}")
-        if DEBUG: print("BULK ROLLS")
+        logger.debug("len(rolls_updated)=%d", len(rolls_updated))
         SupabaseReader.bulk_dump_rolls(rolls_updated)
 
     # Send updates!
     # TODO upload these to the database in a future update
     for update in updates:
         if not isinstance(update, UpdateMessageForScraperProcess):
-            print(update)
-            print(type(update))
+            logger.error(
+                "Value in `updates` that is not of correct type. Type=%s, String Repr=%s",
+                str(type(update)),
+                str(update)
+            )
+            continue
+
         if SENDUPDATES:
             # TODO future update
             # this is gonna back us up a bit
             channel = client.get_channel(hm.id_num(update.location))
+            if channel is None:
+                logger.warning("client.get_channel() returned None. Location=%s", update.location)
+                continue
 
         if not update.is_embed:
             if SENDUPDATES: 
-                if channel is None:
-                    print(update.location)
                 await channel.send(update.text, allowed_mentions=discord.AllowedMentions.none())
-            else: update.print(full=True)
+            else:
+                update.print(full=True)
             continue
         
         embed = discord.Embed()
@@ -261,12 +273,10 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
         if SENDUPDATES: 
-            if channel is None:
-                print(update.location)
             await channel.send(embed=embed)
         else: update.print(full=True)
     
-    if DEBUG: print(f"process_loop() complete at {hm.get_datetime('now')}")
+    logger.info("process_loop() complete at time=%s", hm.get_datetime('now'))
 
     if assistant_log is not None:
         await assistant_log.send(
@@ -300,7 +310,7 @@ async def update_games(full_scrape = False) -> tuple[
     # Step 0: Determine the last time the loop ran
     if not full_scrape: 
         last_run = SupabaseReader.get_last_loop()
-        if DEBUG: print(f"GAMES: {last_run=}, {full_scrape=}")
+        logger.info("GAMES: last_run at %s, full_scrape=%s", last_run, full_scrape)
 
     # Step 1: Go through /api/games and /api/objectives and find the list of all games that have been updated.
     # 1a) get the ids of all games that have been updated from /api/games
@@ -310,7 +320,7 @@ async def update_games(full_scrape = False) -> tuple[
         async with session.get('https://cedb.me/api/games') as _r :
             response = await _r.json()
 
-        print(f"GAMES: {len(response)=} (response pulled from /api/games)")
+        logger.debug("/api/games responded with %d games.", len(response))
         _updated_game_ids = set()
         for game in response:
             timestamp_game = datetime.datetime.fromisoformat(game['updatedAt'])
@@ -318,7 +328,8 @@ async def update_games(full_scrape = False) -> tuple[
             if timestamp_game < last_run : continue
             _updated_game_ids.add(game['id'])
 
-        print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games only)")
+        logger.debug("Updated IDs from /api/games: %d", len(_updated_game_ids))
+        __count = len(_updated_game_ids)
 
         # 1b) get the ids of all games that have been updated from /api/objectives
         params = {"sortBy": "updatedAt", "sortOrder": "DESC", "limit": 100, "offset": 0}
@@ -341,7 +352,8 @@ async def update_games(full_scrape = False) -> tuple[
         
                 break
 
-        print(f"GAMES: {len(_updated_game_ids)=} (found from /api/games + /api/objectives)")
+        logger.debug("Updated IDs from /api/objectives: %d", len(_updated_game_ids) - __count)
+        logger.debug("Total Updated IDs (from /api/games + /api/objectives): %d", len(_updated_game_ids))
     
     # 1c) get the ids of all games that have removed objectives
     #  -- solved! folkius changed the schema so now any removed objective updates the game's updatedAt entry.
@@ -350,47 +362,50 @@ async def update_games(full_scrape = False) -> tuple[
     games: list[CEAPIGame] = []
 
     if full_scrape:
-        if DEBUG: print("PULL GAMES: begin (FULL!!)")
+        logger.info("Full scraping: pulling from /api/games/full.")
         games = await CEAPIReader.get_api_games_full()
-        if DEBUG: print("PULL GAMES: done! (FULL!!)")
     else:
-        if DEBUG: print(f"PULL GAMES: pulling {len(_updated_game_ids)} games from cedb.")
+        logger.info("Pulling games one at a time using /api/game/[id].")
         for i, gameId in enumerate(_updated_game_ids):
-            if DEBUG and i % 10 == 0: print(f"PULL GAMES: {i}")
             games.append(await CEAPIReader.get_game(gameId))
-        if DEBUG: print("PULL GAMES: done")
+    logger.info("Pulling from CEDB complete.")
         
 
 
     while None in games: games.remove(None)
 
     # Step 2: Generate updates for those by comparing with Supabase games.
-    if not SKIPUPDATES:
+    if SKIPUPDATES:
+        logger.info("Skipping updates.")
+    else:
         _ids = [g.ce_id for g in games]
         games_old = await asyncio.to_thread(SupabaseReader.get_games_bulk, _ids)
-        if DEBUG: print("GAME UPDATES: begin")
+        logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
-            if DEBUG and i % 10 == 0: print(f"GAME UPDATES: {i}")
+            if i % 10 == 0: 
+                logger.debug("Updating game %d.", i)
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
-            if full_scrape and game_old is not None:
-                # TODO CE api bug
-                # /api/games/full does not currently give off categories so assume they do not change
-                game_new._categories = game_old.categories
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
             if _or is not None:
                 objectives_removed.extend(_or)
-        if DEBUG: print("GAME UPDATES: done")
+        logger.info("Game updates completed.")
 
     # Step 3: Find all removed games.
+    logger.debug("Pulling list of Game IDs from Supabase.")
     game_list_old = set(SupabaseReader.get_list('name'))
+    logger.debug("Pulling /api/games.")
     game_list_new = set(await CEAPIReader.get_api_games())
+    logger.debug("Requests complete.")
 
     game_list_removed = game_list_old.difference(game_list_new)
 
     # Step 4: Generate updates for those removed games.
-    if not SKIPUPDATES:
+    if SKIPUPDATES:
+        logger.warning("Skipping updates (again...)")
+    elif len(game_list_removed) != 0:
+        logger.debug("Generating updates for %d removed games.", len(game_list_removed))
         for game_removed in game_list_removed:
             _update, _or = update_one_game(SupabaseReader.get_game(game_removed), None)
             if _update is not None:
@@ -421,8 +436,10 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     # 1b) Do the same but with userObjectives
     # NOTE maybe folkius could make a combined one....
     if full_scrape:
+        logger.debug("Pulling list of User IDs from Supabase.")
         _updated_user_ids = SupabaseReader.get_list('user')
     else:
+        logger.debug("Pulling /api/userGames/lastUpdatedAt")
         session = await http_session.get_session()
         async with session.get('http://cedb.me/api/userGames/lastUpdatedAt') as _r :
             response = await _r.json()
@@ -435,7 +452,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
 
             _updated_user_ids.add(user['userId'])
 
-        print(f"USERS: {len(_updated_user_ids)=} (found from /api/userGames/lastUpdatedAt)")
+        logger.info("Updated IDs from /api/userGames/lastUpdatedAt: %d", len(_updated_user_ids))
 
     # Step 2: Pull all of those users
     users: list[CEAPIUser] = []
@@ -447,18 +464,22 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     #     if DEBUG: print(f"posting /api/users/query for users {i} through {i+9} (of {len(_updated_user_ids)})")
     #     users.extend(await CEAPIReader.post_users_query(users[i:i+10]))
     if full_scrape:
+        logger.info("Pulling users from /api/users/all")
         users = await CEAPIReader.get_api_users_all(_updated_user_ids)
     else:
-        if DEBUG: print(f'PULL USERS: begin, {len(_updated_user_ids)=}')
+        logger.debug("Pulling %d users one-by-one from /api/user/[id]", len(_updated_user_ids))
         for i, _user_id in enumerate(_updated_user_ids):
-            if DEBUG and i % 10 == 0: print(f"PULL USERS: {i}")
+            if i % 10 == 0: 
+                logger.debug("Pulling user %d", i)
             _user = await CEAPIReader.get_user(_user_id)
             if _user is not None: users.append(_user)
-        if DEBUG: print('PULL USERS: done')
+    logger.info("Pulling users complete.")
 
     # Step 3: Generate updates for these changed users by comparing with Supabase users.
-    if not SKIPUPDATES:
-        if DEBUG: print(f"UPDATE USERS: begin, {len(users)=}")
+    if SKIPUPDATES:
+        logger.warning("Skipping updates for users.")
+    else:
+        logger.info("Fetching %d users from Supabase", len(users))
 
         # Bulk-fetch the existing users from Supabase to avoid blocking the event loop
         ce_ids = [u.ce_id for u in users]
@@ -466,14 +487,17 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
         batch_size = 100
         for bstart in range(0, len(ce_ids), batch_size):
             batch_ids = ce_ids[bstart:bstart+batch_size]
-            if DEBUG: print(f"FETCH SUPABASE USERS: batch {bstart}..{bstart+len(batch_ids)}")
+            logger.debug("Fetching users %d through %d from Supabase.", bstart, bstart + batch_size)
             batch_users = await asyncio.to_thread(SupabaseReader.get_users_bulk, batch_ids)
             users_old.extend(batch_users)
 
         users_old_map = {u.ce_id: u for u in users_old}
 
+        logger.info("Generating updates for %d users.", len(users_old))
         for i, user_new in enumerate(users):
-            if DEBUG and i % 5 == 0: print(f"UPDATE USERS: {i}")
+            if i % 5 == 0: 
+                logger.debug("Updating user %d", i)
+
             user_old = users_old_map.get(user_new.ce_id)
             _updates = update_one_user(user_old, user_new, games_old, games_new, update_rolls=False)
             if _updates is not None:
@@ -482,7 +506,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             if user_old is not None:
                 users[i]._discord_id = user_old.discord_id
 
-        if DEBUG: print("UPDATE USERS: done")
+        logger.info("Done updating users.")
 
     # Step 4: Find any removed users
     # TODO future update
@@ -493,13 +517,20 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     # only pull the second user **after** you've confirmed it would potentially pass the current player's game
     SKIPROLLS = True
     rolls_updated = []
-    if not SKIPROLLS:
-        if DEBUG: print("pulling rolls from supabase")
+    if SKIPROLLS:
+        logger.warning("Skipping rolls.")
+    else:
+        logger.info("Updating rolls.")
+        logger.info("Pulling rolls from Supabase...")
         rolls = SupabaseReader.get_all_rolls()
+        logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
         rolls_updated: list[CERoll] = []
 
-        for _roll in rolls:
-            if _roll.status != 'current' and _roll.status != 'pending': continue
+        for i, _roll in enumerate(rolls):
+            if i % 15 == 0:
+                logger.debug("Updating roll %d of %d.", i, len(rolls))
+            if _roll.status != 'current' and _roll.status != 'pending':
+                continue
 
             # first, see if we have any updated data from the user.
             # if that misses, just get them from Supabase
@@ -509,28 +540,37 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             # and now for the partner
             user2 = None
             if _roll.partner_ce_id is not None:
-                print(f'looking for {_roll.partner_ce_id=}')
+                logger.debug("Looking for partner with User ID: %s", _roll.partner_ce_id)
                 user2 = hm.get_item_from_list(_roll.partner_ce_id, users)
-                if user2 is None: user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+                if user2 is None:
+                    logger.debug("Couldn't find locally. Pulling from Supabase.")
+                    user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+                if user2 is None:
+                    logger.error("Could not find partner (User ID %s) in Supabase.", _roll.partner_ce_id)
+                    continue
+            logger.debug("Partner found.")
 
             # and for the games
+            logger.debug("Pulling games from Supabase.")
             games: list[CEGame] = []
             for _game in _roll.games:
                 game_obj = hm.get_item_from_list(_game, games_new)
                 if game_obj is None: game_obj = SupabaseReader.get_game(_game)
                 games.append(game_obj)
 
-            print('updating roll -- ', end='')
+            logger.debug("Beginning update")
             _update, _roll_updated = update_one_roll(_roll, user1, user2, games)
 
-            if _update is not None: updates.append(_update)
-            if _roll_updated is not None: rolls_updated.append(_roll_updated)
+            if _update is not None: 
+                updates.append(_update)
+            if _roll_updated is not None: 
+                rolls_updated.append(_roll_updated)
 
     # TODO future update
     # only return users who *actually* had something changed.
     return updates, users, user_list_removed, rolls_updated
 
-def generate_database_tier(database_name: list[CEAPIGame]):
+def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
     # separate out games by tier and category
     database_tier: dict[str, dict[str, list[dict]]] = {}
     for tier in range(1, 8):
@@ -554,28 +594,34 @@ def generate_database_tier(database_name: list[CEAPIGame]):
     hours: dict[str, int] = {}
     
     # grab all prices and hours
-    for i in range(0, len(steam_ids), 100):
-        print(f'scraping for prices and hours at {i=} out of {len(steam_ids_copy)}')
+    logger.info("Begin scraping of Steam and SteamHunters APIs.")
+    GAMES_PER_REQUEST = 100
+    for i in range(0, len(steam_ids), GAMES_PER_REQUEST):
+        logger.debug("Scraping games %d through %d of %d.", i, i+GAMES_PER_REQUEST, len(steam_ids))
 
         # prices
+
+        logger.debug("Pulling from Steam...")
         response_prices = requests.get(
             'https://store.steampowered.com/api/appdetails?',
             params = {
-                'appids': str(steam_ids_copy[i:i+100])[1:-1],
+                'appids': str(steam_ids_copy[i:i+GAMES_PER_REQUEST])[1:-1],
                 'cc': 'US',
                 'filters': 'price_overview'
             }
         )
 
         response_prices_json: dict[str, dict] = json.loads(response_prices.text)
-        if type(response_prices_json) is list:
-            print('something went wrong. response_prices_json is being read as a list. i will now print it.')
-            print(f'app_ids={str(steam_ids[i:i+100])[1:-1]}')
-            print(response_prices_json)
+
+        if isinstance(response_prices_json, list):
+            logger.error("Something went wrong. Response has been read as a list instead of a dict.")
+            logger.error("app_ids=%s", steam_ids[i:i+GAMES_PER_REQUEST])
+            logger.error("response_prices_json=%s", response_prices_json)
+            return None
         for key, value in response_prices_json.items():
             if not value['success']:
                 steam_ids.remove(int(key))
-                print(f'price failed for app id {key}')
+                logger.warning("json['success'] was False (or null) for game with AppId=%s. Skipping...", key)
                 continue
             
             if len(value['data']) == 0:
@@ -589,10 +635,11 @@ def generate_database_tier(database_name: list[CEAPIGame]):
                 prices[key] = value['data']['price_overview']['final']
         
         # hours
+        logger.debug("Pulling from SteamHunters...")
         response_hours = requests.get(
             'https://steamhunters.com/api/apps/?',
             params = {
-                'appids': str(steam_ids_copy[i:i+100])[1:-1] # appIds=220,480,730
+                'appids': str(steam_ids_copy[i:i+GAMES_PER_REQUEST])[1:-1] # appIds=220,480,730
             }
         )
 
@@ -600,7 +647,7 @@ def generate_database_tier(database_name: list[CEAPIGame]):
         for item in response_hours_json:
             if 'medianCompletionTime' not in item:
                 steam_ids.remove(int(item["appId"]))
-                print(f'medianCompletion time not listed for app id {item["appId"]}')
+                logger.warning("No medianCompletionTime listed for AppId %s.", item['appId'])
                 continue
             hours[str(item['appId'])] = item['medianCompletionTime']
 
@@ -666,7 +713,6 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
     updates.extend(check_roles(games_original, games_new, database_name_new, user))
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
-    if DEBUG: print(f"{user.ce_id}: {len(completed_games_original)=}, {len(completed_games_new)=}")
     updates.extend(check_newly_completed_games(completed_games_original, completed_games_new, user))
     
     # -- RANK UPDATE --
@@ -1179,8 +1225,13 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
         updates.append(update)
 
         if len(updates) != 0:
-            print(f"{user.ce_id=}, {len(completed_games_old)=}, {len(completed_games_new)=}")
-
+            logger.debug(
+                "User with ID %s went from %d completed games to %d completed games (%d difference).",
+                user.ce_id,
+                len(completed_games_old),
+                len(completed_games_new),
+                len(completed_games_new) - len(completed_games_old)
+            )
     return updates
 
 def check_rank(rank_old: str, rank_new: str, points_old: int, 

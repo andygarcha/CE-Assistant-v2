@@ -2,6 +2,7 @@ import datetime
 import json
 import time
 from typing import Literal
+import logging
 
 from postgrest import APIError
 from supabase import create_client, Client
@@ -21,6 +22,8 @@ with open('secret_info.json') as f:
     SUPABASE_KEY = x['supabase_key_secret']
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+logger = logging.getLogger(__name__)
 
 
 def _iso_or_none(value):
@@ -195,7 +198,7 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
 
         game_categories = categories_by_game.get(ce_id)
         if not game_categories:
-            print(f"game {ce_id} has no categories.")
+            logger.error("Game with ID %s has no categories.", ce_id)
             continue
         game_objectives = objectives_by_game.get(ce_id, [])
         game_requirements: list[dict] = []
@@ -533,7 +536,11 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
                     game_id = e.details.replace('Key (game_ce_id)=(', '').replace(') is not present in table "games".', '')
                     user_games_payload = [row for row in user_games_payload if row['game_ce_id'] != game_id]
                     game_collision = True
-                    print(f'found usergame for game={game_id}, user={user.ce_id}')
+                    logger.error(
+                        "Found UserGame with foreign-key constraint on GameID=%s.",
+                        game_id
+                    )
+
                 
 
 
@@ -550,7 +557,10 @@ def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: fl
                     objective_id = e.details.replace('Key (objective_ce_id)=(', '').replace(') is not present in table "objectives".', '')
                     user_objectives_payload = [row for row in user_objectives_payload if row['objective_ce_id'] != objective_id]
                     objective_collision = True
-                    print(f'found userobj for obj={objective_id}, user={user.ce_id}')
+                    logger.error(
+                        "Found UserObjective with foreign-key constraint on ObjectiveID=%s.",
+                        objective_id
+                    )
 
         # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
         for user in batch:
@@ -772,8 +782,10 @@ def clean_db():
     deleted_user_games = _delete_in_chunks('userGames', 'game_ce_id', orphan_user_game_ids)
     deleted_user_objectives = _delete_in_chunks('userObjectives', 'objective_ce_id', orphan_user_objective_ids)
 
-    print(
-        f"clean_db removed {deleted_user_games} orphan userGames and {deleted_user_objectives} orphan userObjectives"
+    logger.info(
+        "clean_db removed %d orphan userGames and %d orphan userObjectives",
+        deleted_user_games,
+        deleted_user_objectives
     )
 
 
@@ -833,7 +845,11 @@ def __supabase_to_user(user: dict, userGames: list[dict], userObjectives: list[d
     for obj_u in userObjectives:
         found_objective = objective_index.get(obj_u['objective_ce_id'])
         if found_objective is None: 
-            print(f"No found objective for {obj_u}.")
+            logger.warning(
+                "No Objective object found for UserObjective with User ID %s and Objective ID %s",
+                user['ce_id'],
+                obj_u['objective_ce_id']
+            )
             continue
 
         enriched_objective = {

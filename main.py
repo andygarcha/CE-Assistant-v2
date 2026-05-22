@@ -1,5 +1,16 @@
 # -------- discord imports -----------
 import logging
+from Modules import hm
+
+logging.basicConfig(
+    # since we imported hm first, any utils will have root logging.
+    # at the time of writing this, none will use it, but this is why if it starts happening.
+    level=logging.INFO if hm.IN_CE else logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
 from types import NoneType
 import discord
 from discord import app_commands
@@ -15,7 +26,7 @@ from Classes.OtherClasses import CEInput
 #from Modules.WebInteractor import master_loop
 from web_scraper.scraper import process_loop
 from Modules import SupabaseReader
-import Modules.hm as hm
+from Modules import hm
 from commands import load_commands
 
 # ----------- to-be-sorted imports -------------
@@ -79,7 +90,7 @@ async def start_webhook_server():
     # bind to 0.0.0.0 to accept external connections on port 80
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
-    print('webhook running!')
+    logger.info('Webhook Running.')
 
 # ------------------------------ commands -------------------------------------
 
@@ -813,7 +824,7 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
 @tasks.loop(minutes=1)
 async def monitor_loop():
     if not process_loop.is_running():
-        logging.warning("Main task loop is not running. Restarting...")
+        logger.warning("Main task loop is not running. Restarting...")
         await process_loop.start(client)
 
 
@@ -833,6 +844,10 @@ async def on_ready() :
     # sync commands
     await tree.sync(guild = guild)
 
+    for name in ["httpx", "httpcore", "postgrest", "supabase", "urllib3", "discord", "aiohttp"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
+        logger.info("Killed logging for %s.", name)
+
     # set up channels
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
 
@@ -847,6 +862,9 @@ async def on_ready() :
             await process_loop.start(client)
         if not monitor_loop.is_running():
             await monitor_loop.start()
+
+
+
 
 
 # @client.event

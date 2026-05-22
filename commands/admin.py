@@ -1,6 +1,7 @@
 """This module contains all the admin commands for the bot."""
 import datetime
 import discord
+import logging
 from discord import app_commands
 from Classes.CE_Roll import CERoll
 from commands.user import register
@@ -8,6 +9,8 @@ from Modules import CEAPIReader, hm, SupabaseReader
 
 from web_scraper.scraper import process_loop
 from Modules import http_session
+
+logger = logging.getLogger(__name__)
 
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
@@ -92,43 +95,6 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
-
-    print('a')
-    user_old = SupabaseReader.get_user('d7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
-    user_new = await CEAPIReader.get_user('d7cb0869-5ed9-465c-87bf-0fb95aaebbd5')
-    print('b')
-    game_ids = set()
-    game_ids.update([g.ce_id for g in user_old.owned_games])
-    game_ids.update([g.ce_id for g in user_new.owned_games])
-
-    totalobjcount = 0
-    for game in user_old.owned_games:
-        print(f"{game.ce_id=}, {len(game.user_objectives)=}")
-        for obj in game.user_objectives:
-            print(f"  {obj.ce_id=}, {obj.type=}, {obj.user_points=}")
-        totalobjcount += len(game.user_objectives)
-    
-    print(f"{totalobjcount=}")
-
-    # print('c')
-    # print(f"{len(game_ids)=}")
-    # games = [await CEAPIReader.get_game(g) for g in game_ids]
-    # while None in games:
-    #     games.remove(None)
-    # print('games done')
-    # print(f"{len(games)=}")
-
-    # _updates = update_one_user(
-    #     user_old,
-    #     user_new,
-    #     games,
-    #     games,
-    #     False
-    # )
-
-    # for u in _updates:
-    #     u.print(full=True)
-
 
     return await interaction.followup.send('testsss done')
 
@@ -318,6 +284,12 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
     await private_log_channel.send(f":white_large_square: dev command run by <@{interaction.user.id}>: /clear-roll_recent, "
                      + f"params: member=<@{member.id}>, roll_name={roll_name}")
+    logger.info(
+        "/clear-roll-portion called by user with Discord ID %d on user with Discord ID %d and roll name %s.",
+        interaction.user.id,
+        member.id,
+        roll_name    
+    )
     
     user = SupabaseReader.get_user(member.id, use_discord_id=True)
 
@@ -333,10 +305,11 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     roll.set_status('waiting')
     roll.due_time = None
 
-    print(roll.to_dict())
+    logger.info("Roll (after changes): %s", roll.to_dict())
 
+    logger.debug("Printing all rolls in user.rolls.")
     for roll in user.rolls:
-        print (roll.to_dict())
+        logger.debug("%s", roll.to_dict())
 
     SupabaseReader.dump_user(user)
     return await interaction.followup.send(f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. " +

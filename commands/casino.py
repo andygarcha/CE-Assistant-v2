@@ -9,10 +9,13 @@ from Classes.CE_User import CEUser
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
 from Modules import Discord_Helper, SupabaseReader, hm
+import logging
 
 """ === GETTING CLIENT TO WORK === """
 client : discord.Client = None
 guild : discord.Guild = None
+
+logger = logging.getLogger(__name__)
 
 def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
     global client, guild
@@ -333,11 +336,8 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     view = discord.ui.View()
 
     # pull mongo database
-    print('solo roll called. pulling mongo...')
     database_name = SupabaseReader.get_database_name()
-    print('db name pulled')
     database_tier = SupabaseReader.get_database_tier()
-    print('db tier pulled')
 
     # define channel
     user_log_channel = client.get_channel(hm.USER_LOG_ID)
@@ -346,8 +346,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
     try :
         user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     except ValueError as e :
-        tb = sys.exception().__traceback__
-        print(e.with_traceback(tb))
+        logger.exception("%s", e)
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
@@ -439,7 +438,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             #     )
             
             # -- grab games --
-            print(f'rolling at time {datetime.datetime.now()}')
+            logger.debug("Initializing roll at time %s.", datetime.datetime.now())
             rolled_games : list[str] = []
             valid_categories = list(get_args(hm.CATEGORIES))
             failed_category = None # initialise variable to catch 2x category fails
@@ -450,7 +449,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                 rolled_temp : list[str] = []
                 
                 for j in range(5) : #roll 5 games from the selected category
-                    print(f'rolling game {(i + 1) * (j + 1)}')
+                    logger.debug("Rolling game %d.", (i + 1) * (j + 1))
                     rolled_temp.append(await hm.get_rollable_game(
                         database_name=database_name,
                         database_tier=database_tier,
@@ -465,7 +464,13 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     ))
                 
                 #debugging
-                print(f"User ({user.display_name}) rolled the {selected_category} category, with rolled games {rolled_temp}")
+                logger.info(
+                    "User (ID: %s, Name: %s) rolled the %s category, with rolled games %s.",
+                    user.ce_id,
+                    user.display_name,
+                    selected_category,
+                    rolled_temp
+                )
                 
                 if None in rolled_temp and failed_category is None: #if not enough rolls in a given category, and this is the first failed category, remove and try again
                     #remove failed category and reroll (without incrementing 'i')
@@ -474,8 +479,12 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     selected_category = random.choice(valid_categories)
 
                     #debugging
-                    print(f"There were not enough valid rolls for user ({user}) in the {failed_category} category. "
-                          + f"Rerolled into {selected_category}")
+                    logger.warning(
+                        "There were not enough rollable games for User ID: %s in the %s category.",
+                        user.ce_id,
+                        failed_category
+                    )
+                    logger.warning("Retrying with category: %s", selected_category)
 
                     rolled_temp : list[str] = []
                     
@@ -493,8 +502,14 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                             hours_restriction=hours_restriction
                         ))
 
-                    #debugging                    
-                    print(f"User ({user}) re-rolled into the {selected_category} category, with rolled games {rolled_temp}")
+                    #debugging
+                    logger.info(
+                        "User (ID: %s, Name: %s) rolled the %s category, with rolled games %s.",
+                        user.ce_id,
+                        user.display_name,
+                        selected_category,
+                        rolled_temp
+                    )
                         
                 if None in rolled_temp and failed_category is not None: #not enough rolls in category, and another category has already failed
                     return await interaction.followup.send(
@@ -506,7 +521,12 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     rolled_games.append(rolled_temp[j])
                 
                 #debugging
-                print(f"The following games from the {selected_category} category were added to the user's ({user.ce_id}) Hell Month roll list: {rolled_temp}")
+                logger.info(
+                    "The following games from the %s category were added to User %s's Hell Month roll list: %s",
+                    selected_category,
+                    user.ce_id,
+                    rolled_temp
+                )
                     
                 valid_categories.remove(selected_category)
 
