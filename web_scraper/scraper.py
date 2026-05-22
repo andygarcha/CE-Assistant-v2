@@ -501,6 +501,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
 
         logger.info("Generating updates for %d users.", len(users_old))
         for i, user_new in enumerate(users):
+            if i % 5 == 0:
                 logger.debug("Updating user %d", i)
 
             user_old = users_old_map.get(user_new.ce_id)
@@ -540,6 +541,8 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             # first, see if we have any updated data from the user.
             # if that misses, just get them from Supabase
             user1 = hm.get_item_from_list(_roll.user_ce_id, users)
+            if user1 is None:
+                user1 = SupabaseReader.get_user(_roll.user_ce_id)
 
             # and now for the partner
             user2 = None
@@ -559,7 +562,6 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             games: list[CEGame] = []
             for _game in _roll.games:
                 game_obj = hm.get_item_from_list(_game, games_new)
-                if game_obj is None: game_obj = SupabaseReader.get_game(_game)
                 if game_obj is None:
                     game_obj = SupabaseReader.get_game(_game)
                 games.append(game_obj)
@@ -574,7 +576,6 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
 
     # TODO future update
     # only return users who *actually* had something changed.
-    return updates, users, user_list_removed, rolls_updated
     return updates, users, user_list_removed, []
 
 def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
@@ -777,6 +778,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             #       if it's in its final stage we can finish it out,
             #       this if statement just preps for the next one.
             if not roll.status == "current":
+                continue
             partner = None
             if roll.partner_ce_id is not None:
                 partner = SupabaseReader.get_user(roll.partner_ce_id)
