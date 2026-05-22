@@ -6,9 +6,9 @@ Version 3 : Object-Oriented, and each item has its own document.
 
 # imports
 import json
-import sys
 from typing import Literal
 from bson import ObjectId
+import logging
 
 # -- local --
 from Classes.CE_Cooldown import CECooldown
@@ -18,12 +18,12 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.OtherClasses import *
+from Classes.OtherClasses import CEInput, CETagInput, CECurateInput, CEIndividualValueInput, CEValueInput
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
 
-
+logger = logging.getLogger(__name__)
 
 # open secret_info.json
 with open('secret_info.json') as f :
@@ -74,7 +74,8 @@ async def get_game(ce_id : str) -> CEGame | None :
     collection = _mongo_client['database_name'][V3NAMETITLE]
     
     db = await collection.find_one({"ce_id" : ce_id})
-    if db is None : return None
+    if db is None:
+        return None
         #raise ValueError(f"No game with id {ce_id} found in mongo.")
 
     return __mongo_to_game(db)
@@ -165,7 +166,7 @@ async def get_user(ce_id : str, use_discord_id : bool = False) -> CEUser :
 async def dump_user(user : CEUser) :
     "Dumps a user back to the backend."
 
-    if type(user) is not CEUser :
+    if not isinstance(user, CEUser) :
         raise TypeError(f"Argument 'user' is of type {type(user)}, not CEUser.")
 
     collection = _mongo_client['database_name'][V3USERTITLE]
@@ -184,9 +185,10 @@ async def get_database_user() -> list[CEUser] :
 
     database_user : list[CEUser] = []
     for o in objects :
-        try : database_user.append(__mongo_to_user(o))
+        try:
+            database_user.append(__mongo_to_user(o))
         except Exception as e : 
-            print(e)
+            logger.exception(e)
             continue
     
     return database_user
@@ -195,8 +197,10 @@ def __mongo_to_user(user : dict) -> CEUser :
     if user['discord_id'] is None :
         raise ValueError(f"You either called 'get_user(None)' or this user {user['ce_id']} was removed.")
     display_name : str = None
-    if 'display-name' in user : display_name = user['display-name']
-    elif 'display_name' in user : display_name = user['display_name']
+    if 'display-name' in user:
+        display_name = user['display-name']
+    elif 'display_name' in user:
+        display_name = user['display_name']
     return CEUser(
         discord_id=user['discord_id'],
         ce_id=user['ce_id'],
@@ -266,10 +270,10 @@ async def get_database_input() -> list[CEInput] :
 
     database_input : list[CEInput] = []
     for o in objects :
-        try : database_input.append(__mongo_to_input(o))
+        try:
+            database_input.append(__mongo_to_input(o))
         except Exception as e : 
-            tb = sys.exception().__traceback__
-            print(e.with_traceback(tb))
+            logger.exception(e)
             continue
     
     return database_input
@@ -279,7 +283,7 @@ def __mongo_to_input(i : dict) -> CEInput :
         game_ce_id=i['ce_id'],
         value_inputs=[__mongo_to_value_input(j) for j in i['value']],
         curate_inputs=[__mongo_to_curate_input(k) for k in i['curate']],
-        tag_inputs=[__mongo_to_tag_input(l) for l in i['tags']]
+        tag_inputs=[__mongo_to_tag_input(m) for m in i['tags']]
     )
 
 def __mongo_to_tag_input(i : dict) -> CETagInput :
@@ -407,7 +411,8 @@ async def get_mongo_v2(title :_mongo_names_v2) :
 
 async def dump_mongo_v2(title : _mongo_names_v2, data) :
     """Dumps the MongoDB given by `title` and passed by `data`."""
-    if '_id' not in data : data['_id'] = mongo_ids_v2[title]
+    if '_id' not in data:
+        data['_id'] = mongo_ids_v2[title]
     return await _collection_v2.replace_one({'_id' : mongo_ids_v2[title]}, data)
 
 
@@ -415,9 +420,12 @@ def _mongo_to_game_objective_v2(objective : dict) -> CEObjective :
     """Turns the MongoDB dictionary for an objective 
     into a :class:`CEObjective` object."""
     achievements, requirements, partial_points = (None,)*3
-    if "Achievements" in objective : achievements = objective['Achievements']
-    if "Requirements" in objective : requirements = objective['Requirements']
-    if 'Partial Points' in objective : partial_points = objective['Partial Points']
+    if "Achievements" in objective:
+        achievements = objective['Achievements']
+    if "Requirements" in objective:
+        requirements = objective['Requirements']
+    if 'Partial Points' in objective:
+        partial_points = objective['Partial Points']
     
     return CEObjective(
         ce_id=objective['CE ID'],
@@ -440,20 +448,33 @@ def _mongo_to_user_roll_v2(roll : dict, is_current : bool) -> CERoll :
     into a :class:`CERoll` object."""
     event_name, partner, games, init_time, due_time = (None,)*5
     completed_time, rerolls, user_id, winner = (None,)*4
-    if 'Event Name' in roll : event_name = roll['Event Name']
-    if 'User ID' in roll : user_id = roll['User ID']
-    if 'Partner ID' in roll : partner = roll['Partner ID']
-    if 'Games' in roll : games = roll['Games']
-    if 'Init Time' in roll : init_time = roll['Init Time']
-    if 'Due Time' in roll : due_time = roll['Due Time']
-    if 'Completed Time' in roll : completed_time = roll['Completed Time']
-    if 'Rerolls' in roll : rerolls = roll['Rerolls']
-    if 'Winner' in roll : winner = roll["Winner"]
+    if 'Event Name' in roll:
+        event_name = roll['Event Name']
+    if 'User ID' in roll:
+        user_id = roll['User ID']
+    if 'Partner ID' in roll:
+        partner = roll['Partner ID']
+    if 'Games' in roll:
+        games = roll['Games']
+    if 'Init Time' in roll:
+        init_time = roll['Init Time']
+    if 'Due Time' in roll:
+        due_time = roll['Due Time']
+    if 'Completed Time' in roll:
+        completed_time = roll['Completed Time']
+    if 'Rerolls' in roll:
+        rerolls = roll['Rerolls']
+    if 'Winner' in roll:
+        winner = roll["Winner"]
 
-    if winner is None and is_current : status = "current"
-    elif winner is None and not is_current : status = "won"
-    elif winner is True : status = "won"
-    elif winner is False : status = "failed"
+    if winner is None and is_current:
+        status = "current"
+    elif winner is None and not is_current:
+        status = "won"
+    elif winner is True:
+        status = "won"
+    elif winner is False:
+        status = "failed"
 
     return CERoll(
         roll_name=event_name,
@@ -652,9 +673,9 @@ async def dump_games_v2(games : list[CEGame]) -> None :
 
 async def dump_user_v2(user : CEUser | list[CEUser]) -> None :
     """Takes in one (or more) `CEUser`'s and dumps them."""
-    if type(user) == CEUser : 
+    if isinstance(user, CEUser): 
         user : list[CEUser] = [user]
-    else :
+    elif isinstance(user, list) :
         user : list[CEUser] = user
 
     database_user = await get_mongo_users_v2()

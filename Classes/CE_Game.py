@@ -8,6 +8,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+TIER_THRESHOLDS = [
+    (800, 7),   # T7
+    (400, 6),   # T6
+    (200, 5),   # T5
+    (80, 4),    # T4
+    (40, 3),    # T3
+    (20, 2),     # T2
+    (5, 1)       # T1
+]
+
 class CEGame:
     """A game that's on Challenge Enthusiasts."""
     def __init__(self,
@@ -96,12 +106,18 @@ class CEGame:
         _nums = []
         for cat in self.categories:
             match(cat):
-                case "Action": _nums.append(1)
-                case "Arcade": _nums.append(2)
-                case "Bullet Hell": _nums.append(3)
-                case "First-Person": _nums.append(4)
-                case "Platformer": _nums.append(5)
-                case "Strategy": _nums.append(6)
+                case "Action":
+                    _nums.append(1)
+                case "Arcade":
+                    _nums.append(2)
+                case "Bullet Hell":
+                    _nums.append(3)
+                case "First-Person":
+                    _nums.append(4)
+                case "Platformer":
+                    _nums.append(5)
+                case "Strategy":
+                    _nums.append(6)
         return _nums
 
     def categories_string(self) -> str:
@@ -158,7 +174,8 @@ class CEGame:
         """Returns the :class:`CEObjective` object associated
         with `ce_id`, or `None` if none exist."""
         for objective in self.all_objectives :
-            if objective.ce_id == ce_id : return objective
+            if objective.ce_id == ce_id:
+                return objective
         return None
     
     @property
@@ -209,19 +226,15 @@ class CEGame:
     
     def get_tier(self) -> str :
         """Returns the tier (e.g. `"Tier 1"`) of this game."""
-        total_points = self.get_total_points()
-        if total_points >= 800 : return "Tier 7"
-        if total_points >= 400 : return "Tier 6"
-        if total_points >= 200 : return "Tier 5"
-        elif total_points >= 80 : return "Tier 4"
-        elif total_points >= 40 : return "Tier 3"
-        elif total_points >= 20 : return "Tier 2"
-        elif total_points > 0 : return "Tier 1"
-        else : return "Tier 0"
-
-    def get_tier_num(self) -> int :
-        "Returns the int value for the tier."
-        return int(self.get_tier()[5])
+        return f"Tier {self.get_tier_num()}"
+    
+    def get_tier_num(self) -> int:
+        """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
+        points = self.get_po_points() # don't include uncleareds
+        for threshold, tier in TIER_THRESHOLDS:
+            if points >= threshold:
+                return tier
+        return 0
     
     def is_t5plus(self) -> bool :
         "Returns true if this game is Tier 5 or above."
@@ -250,7 +263,8 @@ class CEGame:
     
     async def get_price_async(self) -> float | None :
         """Returns the current price (in USD) on the platform of this game."""
-        if self.platform != "steam" : return None
+        if self.platform != "steam":
+            return None
 
         session = await http_session.get_session()
         async with session.get('https://store.steampowered.com/api/appdetails?',
@@ -295,8 +309,13 @@ class CEGame:
                 return None
             try :
                 json_response = await response.json()
-            except :
-                logger.error("SteamHunters response failed for Game ID: %s and Name: %s", self.ce_id, self.game_name)
+            except Exception as e:
+                logger.error(
+                    "SteamHunters response failed for Game ID: %s and Name: %s. Exception: %s",
+                    self.ce_id,
+                    self.game_name,
+                    e
+                )
                 return 999999
 
             if 'medianCompletionTime' in json_response :
@@ -368,32 +387,6 @@ class CEGame:
     def get_emojis(self) -> str :
         "Returns the tier and category emojis for this game."
         return self.get_tier_emoji() + self.get_category_emojis()
-
-    def update(self, json_response : 'CEGame' = None) -> str | None :
-        return NotImplemented
-        import CEAPIReader
-        json_response : dict | 'CEGame'
-        """Takes in either a :class:`CEGame` or a :class:`dict`
-        and uses that data to update this object.\n
-        This method will return a :class:`str` that is to be sent
-        to #game-additions if an update was warranted, or `None` if none."""
-        if type(json_response) == dict :
-            other = CEAPIReader._ce_to_game(json_response)
-        elif json_response is None :
-            other = CEAPIReader.get_api_page_data('game', self.ce_id)
-        else :
-            other = json_response
-
-        if self.last_updated >= other.last_updated : 
-            return None
-        
-        update_str = ""
-        if self.get_total_points() != other.get_total_points() :
-            # use hm.get_emoji("Points")
-            update_str += (f"\n- {self.get_total_points()} <:CE_points:1128420207329816597> " +
-            f"<:CE_points:1128420207329816597> {other.get_total_points()} " +
-            "<:CE_points:1128420207329816597>")
-        #TODO: finish this function
 
     def name_with_link(self) -> str :
         "Returns the name with a link."

@@ -14,7 +14,7 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.OtherClasses import *
+from Classes.OtherClasses import CEInput
 
 with open('secret_info.json') as f:
     x = json.load(f)
@@ -73,10 +73,15 @@ def _delete_in_chunks(table_name: str, column: str, values: list, chunk_size: in
 # GET LIST
 def get_list(database: Literal['name', 'user', 'input', 'objectives']) -> list[str]:
     table = None
-    if database == "name": table = "games"
-    if database == "user": table = "users"
-    if database == 'objectives': table = 'objectives'
-    if table is None: raise Exception(f"Invalid get_list argument! argument: {database}")
+    match(database):
+        case "name":
+            table = "games"
+        case "user":
+            table = "users"
+        case 'objectives':
+            table = 'objectives'
+        case _:
+            raise Exception(f"Invalid get_list argument! argument: {database}")
 
     out = supabase.table(table).select('ce_id').execute()
 
@@ -85,7 +90,8 @@ def get_list(database: Literal['name', 'user', 'input', 'objectives']) -> list[s
 # GET GAME
 def get_game(ce_id: str) -> CEGame | None:
     games_json = supabase.table('games').select().eq('ce_id', ce_id).execute().data
-    if len(games_json) == 0: return None
+    if len(games_json) == 0:
+        return None
 
     objectives_json = supabase.table('objectives').select().eq('game_ce_id', ce_id).execute().data
     objective_ids = [item['ce_id'] for item in objectives_json]
@@ -113,9 +119,11 @@ def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
         user_json = supabase.table('users').select().eq('ce_id', ce_id).execute().data
     else:
         user_json = supabase.table('users').select().eq('discord_id', ce_id).execute().data
-    if len(user_json) == 0: return None
+    if len(user_json) == 0:
+        return None
     user_json = user_json[0]
-    if use_discord_id: ce_id = user_json['ce_id'] 
+    if use_discord_id:
+        ce_id = user_json['ce_id'] 
 
     userGames_json = supabase.table('userGames').select().eq('user_ce_id', ce_id).execute().data
     userObjectives_json = supabase.table('userObjectives').select().eq('user_ce_id', ce_id).execute().data
@@ -312,7 +320,8 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
 
 def get_roll(roll_id: str) -> CERoll:
     roll_json = supabase.table('rolls').select().eq('id', roll_id).execute().data
-    if len(roll_json) == 0: return None
+    if len(roll_json) == 0:
+        return None
     roll_json = roll_json[0]
     
     rollGames_json = supabase.table('rollGames').select().eq('roll_id', roll_id).order('index').execute().data
@@ -811,7 +820,7 @@ def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list
 def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
     custom_reqs = [req for req in reqs if req['requirement_type'] == 'custom']
     
-    if len(custom_reqs) > 1: 
+    if len(custom_reqs) > 1:
         # Multiple custom requirements - select the one with the most recent updated_at_CE
         sorted_reqs = sorted(custom_reqs, key=lambda r: r.get('updated_at_CE', ''), reverse=True)
         requirement = sorted_reqs[0]['data']
@@ -844,7 +853,7 @@ def __supabase_to_user(user: dict, userGames: list[dict], userObjectives: list[d
         mapping[game['game_ce_id']] = []
     for obj_u in userObjectives:
         found_objective = objective_index.get(obj_u['objective_ce_id'])
-        if found_objective is None: 
+        if found_objective is None:
             logger.warning(
                 "No Objective object found for UserObjective with User ID %s and Objective ID %s",
                 user['ce_id'],
@@ -900,7 +909,7 @@ def __supabase_to_user_objective(objective: dict, game_ce_id: str) -> CEUserObje
 def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
     custom_reqs = [req for req in reqs if req['requirement_type'] == 'custom']
     
-    if len(custom_reqs) > 1: 
+    if len(custom_reqs) > 1:
         # Multiple custom requirements - select the one with the most recent updated_at_CE
         sorted_reqs = sorted(custom_reqs, key=lambda r: r.get('updated_at_CE', ''), reverse=True)
         requirement = sorted_reqs[0]['data']

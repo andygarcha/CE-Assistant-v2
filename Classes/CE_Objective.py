@@ -54,11 +54,7 @@ class CEObjective:
     
     def get_type_short(self) -> str :
         "Returns this game's type as a short (PO, CO, SO)"
-        match(self.type) :
-            case "Primary": return "PO"
-            case "Secondary": return "SO"
-            case "Badge": return "BO"
-            case "Community": return "CO"
+        return self.type[0] + "O"
     
     @property
     def description(self) -> str:
@@ -124,7 +120,8 @@ class CEObjective:
     
     def equals(self, new_objective : 'CEObjective') -> bool :
         "Returns true if the two objectives have the same values."
-        if type(new_objective) != CEObjective : return False
+        if not isinstance(new_objective, CEObjective):
+            return False
         if self.achievement_ce_ids is None and new_objective.achievement_ce_ids is not None:
             return False
         if self.achievement_ce_ids is not None and new_objective.achievement_ce_ids is None:

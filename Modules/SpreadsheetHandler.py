@@ -61,11 +61,12 @@ def dump_to_sheet(valueData : list[list], range_name : str, sheet_id : str) :
 
         # put it in
         sheet = service.spreadsheets()
-        result = sheet.values().update(spreadsheetId=sheet_id,
-                                       range=range_name,
-                                       valueInputOption="USER_ENTERED",
-                                       body={"values" : valueData}
-                                       ).execute()
+        sheet.values().update(
+            spreadsheetId=sheet_id,
+            range=range_name,
+            valueInputOption="USER_ENTERED",
+            body={"values" : valueData}
+        ).execute()
     except HttpError as err :
         print(err)
 
@@ -159,7 +160,8 @@ async def __get_sheet_url(url : str) -> str :
 
     # Replace function to construct the new URL for CSV export
     # If gid is present in the URL, it includes it in the export URL, otherwise, it's omitted
-    replacement = lambda m: f'https://docs.google.com/spreadsheets/d/{m.group(1)}/export?' + (f'gid={m.group(3)}&' if m.group(3) else '') + 'format=csv'
+    def replacement(m):
+        return f'https://docs.google.com/spreadsheets/d/{m.group(1)}/export?' + (f'gid={m.group(3)}&' if m.group(3) else '') + 'format=csv'
 
     # Replace using regex
     new_url = re.sub(pattern, replacement, url)

@@ -150,7 +150,6 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     updates: list[UpdateMessageForScraperProcess] = []
 
     # FLAGS
-    JUSTGAMES = False
     SENDUPDATES = True
 
     # Step 1: Update Games
@@ -272,9 +271,10 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         embed.set_author(name='Challenge Enthusiasts', icon_url=hm.CE_MOUNTAIN_ICON)
         embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
-        if SENDUPDATES: 
+        if SENDUPDATES:
             await channel.send(embed=embed)
-        else: update.print(full=True)
+        else:
+            update.print(full=True)
     
     logger.info("process_loop() complete at time=%s", hm.get_datetime('now'))
 
@@ -283,7 +283,8 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
             f"✅ Scraper loop finished at {hm.get_datetime('now')}"
         )
 
-    if SAVEDATA and not full_scrape: SupabaseReader.dump_loop(time_current)
+    if SAVEDATA and not full_scrape:
+        SupabaseReader.dump_loop(time_current)
 
 
 """ MEDIUM LEVEL FUNCTIONS """
@@ -308,7 +309,7 @@ async def update_games(full_scrape = False) -> tuple[
     objectives_removed: list[str] = []
 
     # Step 0: Determine the last time the loop ran
-    if not full_scrape: 
+    if not full_scrape:
         last_run = SupabaseReader.get_last_loop()
         logger.info("GAMES: last_run at %s, full_scrape=%s", last_run, full_scrape)
 
@@ -325,7 +326,8 @@ async def update_games(full_scrape = False) -> tuple[
         for game in response:
             timestamp_game = datetime.datetime.fromisoformat(game['updatedAt'])
 
-            if timestamp_game < last_run : continue
+            if timestamp_game < last_run:
+                continue
             _updated_game_ids.add(game['id'])
 
         logger.debug("Updated IDs from /api/games: %d", len(_updated_game_ids))
@@ -337,7 +339,7 @@ async def update_games(full_scrape = False) -> tuple[
             async with session.get('https://cedb.me/api/objectives', params=params) as _r:
                 _response_local = await _r.json()
                 # all objectives are new
-                if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run: 
+                if datetime.datetime.fromisoformat(_response_local[-1]['updatedAt']) >= last_run:
                     _updated_game_ids.update(r['gameId'] for r in _response_local)
                     params['offset'] += 100
                     continue
@@ -372,7 +374,8 @@ async def update_games(full_scrape = False) -> tuple[
         
 
 
-    while None in games: games.remove(None)
+    while None in games:
+        games.remove(None)
 
     # Step 2: Generate updates for those by comparing with Supabase games.
     if SKIPUPDATES:
@@ -382,7 +385,7 @@ async def update_games(full_scrape = False) -> tuple[
         games_old = await asyncio.to_thread(SupabaseReader.get_games_bulk, _ids)
         logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
-            if i % 10 == 0: 
+            if i % 10 == 0:
                 logger.debug("Updating game %d.", i)
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
             _update, _or = update_one_game(game_old, game_new)
@@ -447,8 +450,10 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
         for user in response:
             timestamp_user = datetime.datetime.fromisoformat(user['lastUpdatedAt'])
 
-            if timestamp_user < last_run : break
-            if user['userId'] not in _users_registered: continue
+            if timestamp_user < last_run :
+                break
+            if user['userId'] not in _users_registered:
+                continue
 
             _updated_user_ids.add(user['userId'])
 
@@ -469,10 +474,11 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     else:
         logger.debug("Pulling %d users one-by-one from /api/user/[id]", len(_updated_user_ids))
         for i, _user_id in enumerate(_updated_user_ids):
-            if i % 10 == 0: 
+            if i % 10 == 0:
                 logger.debug("Pulling user %d", i)
             _user = await CEAPIReader.get_user(_user_id)
-            if _user is not None: users.append(_user)
+            if _user is not None:
+                users.append(_user)
     logger.info("Pulling users complete.")
 
     # Step 3: Generate updates for these changed users by comparing with Supabase users.
@@ -495,7 +501,6 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
 
         logger.info("Generating updates for %d users.", len(users_old))
         for i, user_new in enumerate(users):
-            if i % 5 == 0: 
                 logger.debug("Updating user %d", i)
 
             user_old = users_old_map.get(user_new.ce_id)
@@ -535,7 +540,6 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             # first, see if we have any updated data from the user.
             # if that misses, just get them from Supabase
             user1 = hm.get_item_from_list(_roll.user_ce_id, users)
-            if user1 is None: user1 = SupabaseReader.get_user(_roll.user_ce_id)
 
             # and now for the partner
             user2 = None
@@ -556,6 +560,8 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
             for _game in _roll.games:
                 game_obj = hm.get_item_from_list(_game, games_new)
                 if game_obj is None: game_obj = SupabaseReader.get_game(_game)
+                if game_obj is None:
+                    game_obj = SupabaseReader.get_game(_game)
                 games.append(game_obj)
 
             logger.debug("Beginning update")
@@ -569,6 +575,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     # TODO future update
     # only return users who *actually* had something changed.
     return updates, users, user_list_removed, rolls_updated
+    return updates, users, user_list_removed, []
 
 def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
     # separate out games by tier and category
@@ -652,7 +659,7 @@ def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
             hours[str(item['appId'])] = item['medianCompletionTime']
 
     for game in database_name:
-        if not game.platform == 'steam': 
+        if not game.platform == 'steam':
             continue #non steam game
         if game.get_tier_num() == 0:
             continue #t0
@@ -694,7 +701,6 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
     """Provides updates for one user."""
 
     updates: list[UpdateMessageForScraperProcess] = []
-    UPDATE_ROLLS = False
 
     points_original = user.get_total_points()
     completed_games_original = user.get_completed_games_2(database_name_old)
@@ -770,13 +776,15 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             # note: skip this if we're in the final stage because
             #       if it's in its final stage we can finish it out,
             #       this if statement just preps for the next one.
-            if not roll.status == "current" : continue
+            if not roll.status == "current":
             partner = None
-            if roll.partner_ce_id is not None : partner = SupabaseReader.get_user(roll.partner_ce_id)
+            if roll.partner_ce_id is not None:
+                partner = SupabaseReader.get_user(roll.partner_ce_id)
             if (roll.is_multi_stage() and not roll.in_final_stage() and 
-                (roll.is_won(database_name=database_name_new, user=user, partner=partner))) :
+                (roll.is_won(database_name=database_name_new, user=user, partner=partner))):
                 # if we've already hit this roll before, keep moving
-                if roll.due_time is None : continue
+                if roll.due_time is None:
+                    continue
 
                 # add the update message
                 update = UpdateMessageForScraperProcess()
@@ -792,7 +800,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 roll.set_status("waiting")
                 user._rolls[index] = roll
 
-            elif roll.is_won(database_name=database_name_new, user=user, partner=partner) :
+            elif roll.is_won(database_name=database_name_new, user=user, partner=partner):
                 # add the update message
                 update = UpdateMessageForScraperProcess()
                 update.location = "casinolog"
@@ -819,7 +827,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 Player A without removing the roll. But, when we get to Player B, both players have
                 updated.
                 """
-                if roll.is_co_op() :
+                if roll.is_co_op():
                     # get the partner and their roll
                     partner = SupabaseReader.get_user(roll.partner_ce_id)
                     if partner.has_current_roll(roll.roll_name) :
@@ -868,7 +876,8 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
 
     # ERROR CHECKING: sending in a bad roll
     status = roll.status2()
-    if status not in ["current", "pending"]: return None, None
+    if status not in ["current", "pending"]:
+        return None, None
 
     # ERROR CHECKING: handle the problem where a roll's game gets removed from the site
     update = UpdateMessageForScraperProcess()
@@ -894,7 +903,8 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
     if roll.status2() == "pending":
         due_dt = roll._normalize_datetime(roll.due_time) if hasattr(roll, '_normalize_datetime') else roll.due_time
         if due_dt is not None and due_dt <= hm.get_datetime('now'):
-            if SAVEDATA: SupabaseReader.delete_roll(roll._id)
+            if SAVEDATA:
+                SupabaseReader.delete_roll(roll._id)
             update.is_embed = False
             update.location = 'casino'
             _user2_text = ""
@@ -934,7 +944,8 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
         roll.set_status('won')
 
         # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp(): return update, roll
+        if not roll.is_pvp():
+            return update, roll
 
         # Case 2C (pvp)
         # -- not dealing with this.
@@ -953,7 +964,7 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
     #  -- roll was current and expired
     return None, None
 
-def check_curator_steam(): 
+def check_curator_steam():
     """Checks steam for the last 10 curated games."""
 
     # TODO: fill in this function
@@ -1093,6 +1104,7 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[U
         
             # if the achievements were updated
             # TODO: this can be made more specific in 2.1
+            # i.e. "2 achievements removed, 4 added"
             if (not hm.achievements_are_equal(old_objective.achievement_ce_ids, new_objective.achievement_ce_ids)) :
                 update.description += "\n  - Achievements updated"
 
@@ -1121,7 +1133,8 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[U
     description_test = description_test.replace('\n','').replace('\t','').replace('- Total points unchanged!','')
 
     # if there wasn't any real change, ignore this embed
-    if description_test == "" : return None, None
+    if description_test == "":
+        return None, None
 
     return update, old_objective_ce_ids
 
@@ -1140,7 +1153,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         points = game_old.get_user_points()
         game_database = hm.get_item_from_list(game_old.ce_id, database_name)
 
-        if game_database is None: continue
+        if game_database is None:
+            continue
 
         # if the game is completed
         if game_old.get_user_points() == game_database.get_total_points():
@@ -1152,7 +1166,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
         points = game_new.get_user_points()
         game_database = hm.get_item_from_list(game_new.ce_id, database_name)
         
-        if game_database is None: continue
+        if game_database is None:
+            continue
 
         # if the game is completed
         if game_new.get_user_points() == game_database.get_total_points():
@@ -1236,9 +1251,10 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
 
 def check_rank(rank_old: str, rank_new: str, points_old: int, 
                points_new: int, user: CEUser) -> UpdateMessageForScraperProcess:
-    if rank_new != rank_old and points_new > points_old:
-        update = UpdateMessageForScraperProcess()
+    # if rank_new != rank_old and points_new > points_old:
+    #     update = UpdateMessageForScraperProcess()
     #TODO: complete this function
+    pass
 
 def check_completion_count():
     #TODO: complete this function

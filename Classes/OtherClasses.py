@@ -1,8 +1,8 @@
 from typing import Literal, get_args
-
+import logging
 import discord
 
-
+logger = logging.getLogger(__name__)
 
 class GameData() :
     """This is a superclass for SteamData, RAData, and any other game types that may be added later."""
@@ -49,28 +49,33 @@ class SteamData() :
     @property
     def base_price(self) -> float :
         "Returns this game's base price."
-        if self.is_free : return 0
+        if self.is_free:
+            return 0
         return self.raw_data['price_overview']['initial'] / 100
 
     @property
     def current_price(self) -> float :
         "Returns this game's current price."
-        if self.is_free : return 0
+        if self.is_free:
+            return 0
         return self.raw_data['price_overview']['final'] / 100
     
     @property
     def base_price_formatted(self) -> str :
         "Returns this game's base price as a string - e.g. $19.99."
-        if self.is_free : return "$0.00"
+        if self.is_free:
+            return "$0.00"
         return self.raw_data['price_overview']['initial_formatted']
     
     @property
     def current_price_formatted(self) -> str :
         "Returns this game's base price as a string - e.g. $19.99."
-        if self.is_free : return "$0.00"
+        if self.is_free:
+            return "$0.00"
         try :
             return self.raw_data['price_overview']['final_formatted']
-        except :
+        except Exception as e:
+            logger.exception(e)
             return "Price Error."
     
     @property
@@ -130,7 +135,8 @@ class CECompletion() :
     
     def completion_percentage(self) -> str :
         "The percentage of people who have completed this game - e.g. 4.19%."
-        if self.total == 0 : return None
+        if self.total == 0:
+            return None
         percentage = (self.completions / self.total) * 100
         percentage = round(percentage, 2)
         return f"{percentage}%"
@@ -271,37 +277,6 @@ class EmbedMessage() :
         "The file."
         return self.__file
 
-"""
-class CEList() :
-    
-    from Classes.CE_Game import CEGame
-    from Classes.CE_User import CEUser
-    from Exceptions.ItemNotFoundException import ItemNotFoundException
-    def __init__(self, items : list[CEGame] | list[CEUser]) :
-        self.__items = items
-
-    @property
-    def name(self) -> Literal["database_name", "database_user"] :
-        "Returns the type of database this CEList is."
-
-    @property
-    def items(self)  :
-        return self.__items
-
-    def get_item(self, ce_id) :
-        for item in self.items :
-            if ce_id == item.ce_id : return item
-        raise ItemNotFoundException(f"Could not find item {ce_id} in {self.name}.")
-    
-class DatabaseName(CEList) :
-    from Classes.CE_Game import CEGame
-
-    def __init__(self, items : list[CEGame]) :
-        super.__init__(self, items)
-    
-
-"""
-
 class Achievement() :
     "A CE achievement."
     def __init__(
@@ -323,7 +298,8 @@ class Achievement() :
         return self.__name
     
     def __eq__(self, other) :
-        if not isinstance(other, Achievement) : return False
+        if not isinstance(other, Achievement):
+            return False
         return self.ce_id == other.ce_id
     
     def __hash__(self) :
@@ -342,11 +318,11 @@ class CRData :
         CR_GAME_CAP = 1000          # the cap of how much an individual game is allowed to contribute
 
         # calculate the actual cr
-        cr : int = 0
+        cr: int = 0
         for i, point_value in enumerate(games) :
 
             # if the game's value is higher than the cap, set it to the cap
-            if point_value > CR_GAME_CAP : point_value = CR_GAME_CAP
+            point_value = min(point_value, CR_GAME_CAP)
 
             # do the calculation
             cr += (CR_MULTIPLIER**i)*(float(point_value))
@@ -377,9 +353,10 @@ class CRData :
             cr_groups[category] = []
 
         # now go through all of their games and sort them into their categories
-        for i, game in enumerate(owned_games) :
+        for game in owned_games :
             mongo_game = hm.get_item_from_list(game.ce_id, database_name)
-            if mongo_game is None : continue
+            if mongo_game is None:
+                continue
             for _cat in mongo_game.categories:
                 cr_groups[_cat].append(game.get_user_points())
 
@@ -424,7 +401,7 @@ class CRData :
 
         # set up the return string
         return "CR: Currently under construction due to dual-categories!"
-        return_str : str = ""
+        return_str: str = ""
 
         # constant to denote how many CRs should be displayed per line
         LINE_BREAK_LIMIT = 3
@@ -433,7 +410,8 @@ class CRData :
         for i, category in enumerate(self.cr_dict) :
 
             # make a line break if necessary
-            if i % LINE_BREAK_LIMIT == 0 : return_str += "\n"
+            if i % LINE_BREAK_LIMIT == 0:
+                return_str += "\n"
 
             # now add the actual values
             return_str += f"{hm.get_emoji(category)}: {self.cr_dict[category]}  "
@@ -540,7 +518,8 @@ class CEValueInput :
     def index_of_individual_input(self, user_id : str) -> int :
         "Returns the index of the individual input for a user (or -1 if one doesn't exist)."
         for i, individual_value_input in enumerate(self.__individual_value_inputs) :
-            if individual_value_input.user_ce_id == user_id : return i
+            if individual_value_input.user_ce_id == user_id:
+                return i
         return -1
     
     # == other methods ==
@@ -600,12 +579,13 @@ class CEValueInput :
         database_name : list[CEGame] = database_name
 
         game : CEGame = hm.get_item_from_list(game_id, database_name)
-
-        return (f"- Objective: {game.get_objective(self.objective_ce_id).name} " +
-                f"({game.get_objective(self.objective_ce_id).point_value} {hm.get_emoji('Points')})\n" +
-                f"  - Average: {self.average()} ({len(self.individual_value_inputs)} valuation(s)\n")
-
-
+        return "- Objective: {} ({} {})\n  - Average: {} ({} valuation(s))\n".format(
+            game.get_objective(self.objective_ce_id).name,
+            game.get_objective(self.objective_ce_id).point_value,
+            hm.get_emoji('Points'),
+            self.average(),
+            len(self.individual_value_inputs)
+        )
 
 
 
@@ -630,10 +610,14 @@ class CECurateInput :
     
     def curate_meaning(self) -> str :
         match(self.curate) :
-            case 0 : return "Don't Curate"
-            case 1 : return "Curate"
-            case 2 : return "Indifferent"
-            case _ : return "Failure"
+            case 0:
+                return "Don't Curate"
+            case 1:
+                return "Curate"
+            case 2:
+                return "Indifferent"
+            case _:
+                return "Failure"
     
     def set_curate(self, curate) :
         "Sets this object's curate attribute to `curate` argument."
@@ -721,13 +705,15 @@ class CEInput :
     def has_value_input(self, objective_id : str) -> bool :
         "Returns true if there already is a `CEValueInput` for this objective."
         for value_input in self.value_inputs :
-            if value_input.objective_ce_id == objective_id : return True
+            if value_input.objective_ce_id == objective_id:
+                return True
         return False
     
     def get_value_input(self, objective_id : str) -> CEValueInput | None :
         "Returns the `CEValueInput` associated with objective_id, or `None` if none exists."
         for value_input in self.value_inputs :
-            if value_input.objective_ce_id == objective_id : return value_input
+            if value_input.objective_ce_id == objective_id:
+                return value_input
         return None
     
     def index_of_value_input(self, objective_id : str) :
@@ -767,7 +753,8 @@ class CEInput :
 
     def average_curate(self) -> str :
         "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
-        if (self.curator_count() == 0) : return "N/A"
+        if (self.curator_count() == 0):
+            return "N/A"
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
         average = float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
         return f"{round(average, 2)}%"
@@ -807,10 +794,12 @@ class CEInput :
 
     def add_new_curate_input(self, user_id : str, curate : bool) :
         "Adds a new curate input."
-        self.__curate_inputs.append(CECurateInput(
-            user_ce_id=user_id,
-            curate=curate
-        ))
+        self.__curate_inputs.append(
+            CECurateInput(
+                user_ce_id=user_id,
+                curate=curate
+            )
+        )
         pass
         
     def has_curate_input(self, user_id : str) :
@@ -820,7 +809,8 @@ class CEInput :
     def index_of_curate_input(self, user_id : str) :
         "Returns the index of the curate input from this user (or -1 if none exists)."
         for i, curate_input in enumerate(self.__curate_inputs) :
-            if curate_input.user_ce_id == user_id : return i
+            if curate_input.user_ce_id == user_id:
+                return i
         return -1
     
     def get_curate_input(self, user_id : str) :
@@ -894,12 +884,12 @@ class CEInput :
         # imports
         from Classes.CE_Game import CEGame
         import Modules.hm as hm
-        database_name : list[CEGame] = database_name
+        database_name: list[CEGame] = database_name
 
         # grab the game object
         game = hm.get_item_from_list(self.ce_id, database_name)
 
-        returned_string : str = ""
+        returned_string: str = ""
 
         # show game name
         returned_string += f"Game: {game.name_with_link()}\n"

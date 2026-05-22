@@ -1,7 +1,6 @@
 """This module is for all casino-related commands."""
 import datetime
 import random
-import sys
 from typing import get_args
 import discord 
 from discord import app_commands
@@ -123,8 +122,6 @@ class TripleThreatDropdown(discord.ui.Select) :
         user.add_current_roll(roll)
         SupabaseReader.dump_user(user)
 
-        database_user = SupabaseReader.get_database_user()
-
         view = discord.ui.View()
         embeds = await Discord_Helper.get_roll_embeds(roll=roll, database_name=database_name)
         await Discord_Helper.get_buttons(view, embeds)
@@ -156,7 +153,8 @@ class LetFateDecideDropdown(discord.ui.Select) :
 
         user = SupabaseReader.get_user(self.__user.ce_id)
 
-        if user is None : raise ValueError("User is not registered!")
+        if user is None:
+            raise ValueError("User is not registered!")
 
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id : 
@@ -212,7 +210,6 @@ class FourwardThinkingDropdown(discord.ui.Select) :
     def __init__(self, past_roll : CERoll, database_name : list[CEGame], price_restriction : bool,
                  hours_restriction : bool, user_id : str) :
         # store the user
-        self.__past_roll = past_roll
         self.__price_restriction = price_restriction
         self.__hours_restriction = hours_restriction
         self.__user_ce_id = user_id
@@ -221,17 +218,19 @@ class FourwardThinkingDropdown(discord.ui.Select) :
         options : list[discord.SelectOption] = []
 
         # if haven't rolled before, here are options
-        if past_roll is None : options = [
-            discord.SelectOption(label=cat, emoji=hm.get_emoji(cat)) for cat in get_args(hm.CATEGORIES)
-        ]
+        if past_roll is None:
+            options = [
+                discord.SelectOption(label=cat, emoji=hm.get_emoji(cat)) for cat in get_args(hm.CATEGORIES)
+            ]
 
         # if they have rolled before, get new options
         else :
             already_rolled_categories = past_roll.rolled_categories(database_name=database_name)
             for cat in get_args(hm.CATEGORIES) :
-                if cat not in already_rolled_categories : options.append(
-                    discord.SelectOption(label=cat, emoji=hm.get_emoji(cat))
-                )
+                if cat not in already_rolled_categories:
+                    options.append(
+                        discord.SelectOption(label=cat, emoji=hm.get_emoji(cat))
+                    )
         
         super().__init__(placeholder="Select a category.", min_values=1, max_values=1, options=options)
 
@@ -741,7 +740,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
-        if self.__button_clicked : return
+        if self.__button_clicked:
+            return
         self.__button_clicked = True
         
 
@@ -909,7 +909,8 @@ class SoulMatesAgreeView(discord.ui.View) :
         user = SupabaseReader.get_user(self.__user_ce_id)
         partner = SupabaseReader.get_user(self.__partner_ce_id)
 
-        if self.__button_clicked : return
+        if self.__button_clicked:
+            return
         self.__button_clicked = True
 
         # make sure only the partner can click this.
@@ -1006,7 +1007,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes_button(self, interaction : discord.Interaction, button : discord.ui.Button) :
 
-        if self.__button_clicked : return
+        if self.__button_clicked:
+            return
         self.__button_clicked = True
 
         user = SupabaseReader.get_user(self.__user_ce_id)
@@ -1068,7 +1070,8 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
             )
         for i, game in enumerate(rolled_games_objects) :
             content += (f"{game.name_with_link()}")
-            if i != 3 : content += ", "
+            if i != 3:
+                content += ", "
         content += "."
 
         return await interaction.followup.edit_message(
@@ -1105,9 +1108,6 @@ async def coop_roll(interaction : discord.Interaction, event_name : hm.COOP_ROLL
 
     # make the view
     view = discord.ui.View()
-
-    # define channel
-    user_log_channel = client.get_channel(hm.USER_LOG_ID)
 
     # check they didn't roll with themselves
     if interaction.user.id == partner_discord.id :
@@ -1249,13 +1249,9 @@ async def check_rolls(interaction : discord.Interaction) :
     # defer the message
     await interaction.response.defer()
 
-    #return await interaction.followup.send("sorry this does not work rn :( shouyld be back up by thursday night...")
-
-    # create the view
-    view = discord.ui.View(timeout=None)
-
     # find the user
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
-    if user is None : return await interaction.followup.send(content="You're not registered! Please run /register.")
+    if user is None:
+        return await interaction.followup.send(content="You're not registered! Please run /register.")
 
     return await interaction.followup.send(f'[click me :)](https://ce-assistant-frontend.vercel.app/users/{user.ce_id})')

@@ -30,8 +30,8 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
     from Classes.CE_Game import CEGame
     new_game : CEGame = new_game
 
-    OBJECTIVE_LIMIT = 7
-    "The maximum amount of objectives to be screenshot before cropping." 
+    # OBJECTIVE_LIMIT = 7
+    # "The maximum amount of objectives to be screenshot before cropping." 
 
     # initiate selenium
     logger.info('Attempting to screenshot game with Game ID %s', new_game.ce_id)
@@ -64,7 +64,9 @@ def get_image(driver : webdriver.Chrome, new_game) -> io.BytesIO | tuple[typing.
         logger.debug('While exited!')
         
         # if it took longer than 5 seconds, just return the image failed image.
-        if timeout : return ("Assets/image_failed_v2.png", "image timeout")
+        if timeout:
+            # TODO update this
+            return ("Assets/image_failed_v2.png", "image timeout")
         logger.debug("Didn't timeout!")
 
 
@@ -174,7 +176,8 @@ async def get_recent_curated():
                     logger.debug('-- description --')
                     descriptions.append(item.string.replace('\t','').replace('\r','').replace('\n',''))
                     logger.debug("%s", descriptions[-1])
-            except: 
+            except Exception as e:
+                logger.exception(e) 
                 continue
         return ce_ids, descriptions
 
@@ -206,7 +209,8 @@ async def get_curator_count() -> int | None :
         try : 
             if item['id'] == "Recommendations_total" :
                 return int(item.string)
-        except :
+        except Exception as e:
+            logger.exception(e)
             continue
 
     # return None if this fails.

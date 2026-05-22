@@ -13,11 +13,8 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
     @tree.command(name="get-game", description="Get information about any game on CE!", guild=guild)
     @app_commands.autocomplete(game=get_game_auto)
     async def get_game_command(interaction : discord.Interaction, game : str) :
-        await get_game(interaction, game)
-
-    
-
-    pass
+        return await get_game(interaction, game)
+    return
 
 
 #   _____   ______   _______             _____              __  __   ______ 
@@ -37,7 +34,8 @@ async def get_game_auto(interaction : discord.Interaction, current : str) -> typ
     for game in database_name :
         if current.lower() in game.game_name.lower() :
             choices.append(app_commands.Choice(name=game.game_name, value=game.ce_id))
-        if len(choices) >= 25 : break
+        if len(choices) >= 25:
+            break
 
     return choices[0:25]
 
@@ -47,7 +45,8 @@ async def get_game(interaction : discord.Interaction, game : str) :
     await interaction.response.defer()
 
     chosen_game = SupabaseReader.get_game(game)
-    if chosen_game is None : return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
+    if chosen_game is None:
+        return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
 
     # pull the game embed
     database_name = SupabaseReader.get_database_name()
