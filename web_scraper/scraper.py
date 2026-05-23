@@ -128,11 +128,14 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
     logger.info("full_scrape=%s (second try)", full_scrape)
     
 
-    await hm.send_message(
+    _sent = await hm.send_message(
         client,
         "privatelog",
         f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
     )
+
+    if not _sent:
+        logger.error("Could not send message.")
 
     logger.debug("FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES)
     time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
