@@ -99,11 +99,9 @@ async def test(interaction : discord.Interaction) :
     user_cedb = await CEAPIReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
     user_supa = SupabaseReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
 
-    games_cedb = [g.ce_id for g in user_cedb.owned_games]
-    games_supa = [g.ce_id for g in user_supa.owned_games]
-
-    game_diff = set(games_cedb).difference(set(games_supa))
-    print(game_diff)
+    for game in user_cedb.owned_games:
+        if game.ce_id == '819a4b0e-41f6-4207-b1ea-9f699db82d9b':
+            print(game.to_dict())
 
 
     return await interaction.followup.send('testsss done')
