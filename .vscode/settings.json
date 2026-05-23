@@ -1,5 +1,5 @@
 {
-    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.typeCheckingMode": "off",
     "python.analysis.autoImportCompletions": false,
     "python.analysis.extraPaths": [
 
