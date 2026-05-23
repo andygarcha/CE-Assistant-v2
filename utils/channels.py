@@ -53,7 +53,7 @@ def id_num(channel_name : CHANNEL_NAMES) :
 
 def get_channel(client: discord.Client | None, channel: CHANNEL_NAMES) -> discord.TextChannel | None:
     # param check
-    if client is None or channel not in CHANNEL_NAMES:
+    if client is None or channel not in CHANNELS:
         return None
     
     # null check
