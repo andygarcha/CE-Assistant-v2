@@ -96,6 +96,13 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
+    user_cedb = await CEAPIReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
+    user_supa = SupabaseReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
+
+    game_diff = set(user_cedb.owned_games).difference(set(user_supa.owned
+    print(game_diff)
+
+
     return await interaction.followup.send('testsss done')
 
 
