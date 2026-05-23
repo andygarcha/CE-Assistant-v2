@@ -1,5 +1,5 @@
 from typing import Literal
-
+import discord
 
 IN_CE = True
 
@@ -27,7 +27,15 @@ TEST_CHANNELS = {
 
 CHANNELS = CE_CHANNELS if IN_CE else TEST_CHANNELS
 
-CHANNEL_NAMES = Literal["gameadditions", "casino", "casinolog", "privatelog", "userlog", "proofsubmissions", "inputlog"]
+CHANNEL_NAMES = Literal[
+    "gameadditions",
+    "casino",
+    "casinolog",
+    "privatelog",
+    "userlog",
+    "proofsubmissions",
+    "inputlog"
+]
 
 GAME_ADDITIONS_ID = CHANNELS["gameadditions"]
 CASINO_ID = CHANNELS["casino"]
@@ -42,3 +50,37 @@ def id_num(channel_name : CHANNEL_NAMES) :
     Returns the channel ID for a given key.
     """
     return CHANNELS.get(channel_name, 0)
+
+def get_channel(client: discord.Client | None, channel: CHANNEL_NAMES) -> discord.TextChannel | None:
+    # param check
+    if client is None or channel not in CHANNEL_NAMES:
+        return None
+    
+    # null check
+    _channel = client.get_channel(id_num(channel))
+    if _channel is None:
+        return None
+    
+    if isinstance(_channel, discord.TextChannel):
+        return _channel
+    return None
+
+async def send_message(
+        client: discord.Client | None,
+        channel: CHANNEL_NAMES,
+        message: str = "",
+        allowed_mentions: bool = True,
+        embed: discord.Embed | None = None
+    ):
+    "Sends a message to a specified channel."
+    _channel = get_channel(client, channel)
+    if _channel is None:
+        return False
+    
+    mentions = discord.AllowedMentions.all() if allowed_mentions else discord.AllowedMentions.none()
+    
+    if embed is None:
+        await _channel.send(message, allowed_mentions=mentions)
+    else: 
+        await _channel.send(message, allowed_mentions=mentions, embed=embed)
+    return True

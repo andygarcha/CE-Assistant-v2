@@ -6,7 +6,7 @@ import Modules.hm as hm
 
 logger = logging.getLogger(__name__)
 
-roll_cooldowns : dict[str, int] = {
+roll_cooldowns : dict[str, int | None | dict[str, int]] = {
     'Destiny Alignment' : hm.months_to_days(1),
     'Soul Mates' : {
         'Tier 1' : 7*10,
@@ -54,7 +54,7 @@ roll_due_times = {
     'Teamwork Makes the Dream Work' : hm.months_to_days(1)
 }
 
-CASINO_POINTS: dict[str, tuple[int, int]] = {
+CASINO_POINTS: dict[str, tuple[int, int] | None] = {
     # roll_name:                              (increase, decrease)
     "One Hell of a Day":                      (1,   0),
     "One Hell of a Week":                     (7,  -2),
@@ -72,7 +72,7 @@ CASINO_POINTS: dict[str, tuple[int, int]] = {
     "Game Theory":                            (4,  -4),
 }
 
-RELATIVE = {
+RELATIVE: dict[int, int] = {
     1: 1,
     2: 2,
     3: 4,
@@ -82,7 +82,7 @@ RELATIVE = {
 "tier: hours"
 
 
-def relative(tier_num : int) -> int :
+def relative(tier_num: int) -> int :
     "Returns the relative points given by tier_num."
     return RELATIVE.get(tier_num, 20)
 
@@ -143,20 +143,20 @@ class CERoll:
                  roll_name : hm.ALL_ROLL_EVENT_NAMES,
                  user_ce_id : str,
                  games : list[str],
-                 status : ROLL_STATUS = None,
-                 partner_ce_id : str = None,
+                 status : ROLL_STATUS | None = None,
+                 partner_ce_id : str | None = None,
                  init_time : datetime.datetime = None,
                  due_time: datetime.datetime = None,
                  completed_time: datetime.datetime = None,
                  rerolls = None,
                  is_current : bool = False,
                  tier_num : int = None,
-                 _id: str = None):
+                 _id: str | None = None):
         self._roll_name: str = roll_name
         self._user_ce_id: str = user_ce_id
         self._games: list[str] = games
         self._status = status
-        self._partner_ce_id: str = partner_ce_id
+        self._partner_ce_id = partner_ce_id
         self._id = _id
 
         # if the roll isn't being created right now

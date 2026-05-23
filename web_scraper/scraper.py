@@ -2,12 +2,14 @@
 THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 """
 
+from dataclasses import dataclass
 import sys
 import os
 
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from discord.abc import PrivateChannel
 from discord.ext import tasks
 import asyncio
 import datetime
@@ -30,30 +32,21 @@ DEBUG = True
 SKIPUPDATES = False # doesn't skip roll updates
 
 """ SCRAPER CLASSES """
+@dataclass
 class UpdateMessageForScraperProcess():
-    is_embed: bool
-    location: UPDATEMESSAGE_LOCATIONS
+    is_embed: bool = False
+    location: hm.CHANNEL_NAMES | None = None
 
-    text: str
+    text: str = ""
 
-    title: str
-    description: str
-    image: str
-    url: str
-    color: int
-
-    def __init__(self):
-        self.is_embed = False
-        self.location = None
-        self.text = ""
-        self.title = ""
-        self.description = ""
-        self.image = ""
-        self.url = ""
-        self.color = 0
+    title: str = ""
+    description: str = ""
+    image: str = ""
+    url: str = ""
+    color: int = 0x000000
 
     def print(self, full=False, info=False):
-        string = ""
+        string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
             string += f"{repr(self.title)} ----- {repr(self.description)}\n"
@@ -124,7 +117,7 @@ times = [
 ]
 
 @tasks.loop(time=times)
-async def process_loop(client: discord.Client = None, full_scrape = False):
+async def process_loop(client: discord.Client | None = None, full_scrape: bool = False):
     if client is None:
         logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
     logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
@@ -137,15 +130,14 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
     logger.info("full_scrape=%s (second try)", full_scrape)
     
 
-    assistant_log = client.get_channel(hm.id_num("privatelog"))
-
-    if assistant_log is not None:
-        await assistant_log.send(
-            f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
-        )
+    await hm.send_message(
+        client,
+        "privatelog",
+        f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}"
+    )
 
     logger.debug("FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES)
-    time_current = datetime.datetime.now(datetime.timezone.utc)
+    time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -241,17 +233,13 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
             )
             continue
 
-        if SENDUPDATES:
-            # TODO future update
-            # this is gonna back us up a bit
-            channel = client.get_channel(hm.id_num(update.location))
-            if channel is None:
-                logger.warning("client.get_channel() returned None. Location=%s", update.location)
-                continue
+        if update.location is None:
+            logger.warning("Update.location returned None! Printing", update.print())
+            continue
 
         if not update.is_embed:
-            if SENDUPDATES: 
-                await channel.send(update.text, allowed_mentions=discord.AllowedMentions.none())
+            if SENDUPDATES:
+                await hm.send_message(client, update.location, update.text, False)
             else:
                 update.print(full=True)
             continue
@@ -272,16 +260,13 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
         embed.set_footer(text='CE Assistant', icon_url=hm.FINAL_CE_ICON)
 
         if SENDUPDATES:
-            await channel.send(embed=embed)
+            await hm.send_message(client, update.location, embed=embed)
         else:
             update.print(full=True)
     
     logger.info("process_loop() complete at time=%s", hm.get_datetime('now'))
 
-    if assistant_log is not None:
-        await assistant_log.send(
-            f"✅ Scraper loop finished at {hm.get_datetime('now')}"
-        )
+    await hm.send_message(client, "privatelog", f"✅ Scraper loop finished at {hm.get_datetime('now')}")
 
     if SAVEDATA and not full_scrape:
         SupabaseReader.dump_loop(time_current)
@@ -292,7 +277,7 @@ async def process_loop(client: discord.Client = None, full_scrape = False):
 async def update_games(full_scrape = False) -> tuple[
         list[UpdateMessageForScraperProcess],   # updates
         list[CEAPIGame],                        # games_new
-        list[str],                              # removed_games
+        set[str],                              # removed_games
         list[str]                               # removed_objectives
     ]:
     """
@@ -307,6 +292,8 @@ async def update_games(full_scrape = False) -> tuple[
 
     updates: list[UpdateMessageForScraperProcess] = []
     objectives_removed: list[str] = []
+    last_run: datetime.datetime = datetime.datetime(2000, 1, 1)
+    _updated_game_ids: set = set()
 
     # Step 0: Determine the last time the loop ran
     if not full_scrape:
@@ -369,13 +356,12 @@ async def update_games(full_scrape = False) -> tuple[
     else:
         logger.info("Pulling games one at a time using /api/game/[id].")
         for i, gameId in enumerate(_updated_game_ids):
-            games.append(await CEAPIReader.get_game(gameId))
+            _game = await CEAPIReader.get_game(gameId)
+            if _game is None:
+                logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
+                continue
+            games.append(_game)
     logger.info("Pulling from CEDB complete.")
-        
-
-
-    while None in games:
-        games.remove(None)
 
     # Step 2: Generate updates for those by comparing with Supabase games.
     if SKIPUPDATES:
@@ -383,16 +369,23 @@ async def update_games(full_scrape = False) -> tuple[
     else:
         _ids = [g.ce_id for g in games]
         games_old = await asyncio.to_thread(SupabaseReader.get_games_bulk, _ids)
+
         logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
             if i % 10 == 0:
                 logger.debug("Updating game %d.", i)
+            
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
+            if game_old is None:
+                logger.error("Could not find Game with ID %s from SupabaseReader.get_games_bulk", game_new.ce_id)
+                continue
+            
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
             if _or is not None:
                 objectives_removed.extend(_or)
+
         logger.info("Game updates completed.")
 
     # Step 3: Find all removed games.
@@ -410,7 +403,11 @@ async def update_games(full_scrape = False) -> tuple[
     elif len(game_list_removed) != 0:
         logger.debug("Generating updates for %d removed games.", len(game_list_removed))
         for game_removed in game_list_removed:
-            _update, _or = update_one_game(SupabaseReader.get_game(game_removed), None)
+            _game = SupabaseReader.get_game(game_removed)
+            if _game is None:
+                logger.warning("Could not find soon-to-be removed game with ID %s in Supabase.", game_removed)
+                continue
+            _update, _or = update_one_game(_game, None)
             if _update is not None:
                 updates.append(_update)
             if _or is not None:
@@ -418,7 +415,7 @@ async def update_games(full_scrape = False) -> tuple[
     
     return updates, games, game_list_removed, objectives_removed
 
-async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full_scrape = False):
+async def update_users(games_old: list[CEGame], games_new: list[CEGame], full_scrape = False):
     """
     Updates all users. This version began April 9, 2026 for Supabase.
     """
@@ -440,7 +437,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEAPIGame], full
     # NOTE maybe folkius could make a combined one....
     if full_scrape:
         logger.debug("Pulling list of User IDs from Supabase.")
-        _updated_user_ids = SupabaseReader.get_list('user')
+        _updated_user_ids.update(SupabaseReader.get_list('user'))
     else:
         logger.debug("Pulling /api/userGames/lastUpdatedAt")
         session = await http_session.get_session()
@@ -686,13 +683,17 @@ def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
 
 
 """ BOTTOM LEVEL FUNCTIONS """
-def update_one_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[UpdateMessageForScraperProcess, list[str]]:
+def update_one_game(game_old: CEGame | None, game_new: CEAPIGame | None) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
+    # WEIRD CASE
+    if game_old is None and game_new is None:
+        return None, None
+    
     # NEW GAME
-    if game_old is None:
+    elif game_old is None and game_new is not None:
         return create_update_new_game(game_new), []
     
     # REMOVED GAME
-    elif game_new is None:
+    elif game_new is None and game_old is not None:
         return create_update_removed_game(game_old), []
     
     return create_update_updated_game(game_old, game_new)
@@ -869,7 +870,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
     return updates
 
 def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None, 
-                    games: list[CEGame]) -> tuple[UpdateMessageForScraperProcess, CERoll]:
+                    games: list[CEGame]) -> tuple[UpdateMessageForScraperProcess | None, CERoll | None]:
     # Step 1: Filter out the rolls that don't matter.
     """Weird statuses
     waiting = this is a multi stage roll, waiting on user to prompt the next part
@@ -1028,9 +1029,15 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
 def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
     UpdateMessageForScraperProcess | None, list[str] | None]:
     """Creates the `UpdateMessageForScraperProcess` for an updated game.
-    Returns:
-    - update: an `UpdateMessageForScraperProcess`, or `None`.
-    - removed_objective_ids: a list of Objective IDs that need to be removed. `list[str] | None`"""
+
+    Returns
+    -------
+    update: `UpdateMessageForScraperProcess | None`
+        The update that comes out of this game. It can also be None.
+    removed_objective_ids: `list[str]` or `None`
+        A list of Objective IDs that need to be removed.
+    """
+
     update = UpdateMessageForScraperProcess()
     update.is_embed = True
     update.title = f"__ {game_new.game_name} __ updated on the site:"
@@ -1080,6 +1087,13 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
         # update objective tracker and get the old objective
         old_objective_ce_ids.remove(new_objective.ce_id)
         old_objective = hm.get_item_from_list(new_objective.ce_id, game_old.all_objectives)
+        if old_objective is None:
+            logger.error(
+                "Could not retrieve Objective with ID %s from game_old with ID %s",
+                new_objective.ce_id,
+                game_old.ce_id
+            )
+            continue
         
         # if objective is updated
         if not new_objective.equals(old_objective) :
@@ -1131,6 +1145,13 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
     
     for old_objective_ce_id in old_objective_ce_ids :
         old_objective = game_old.get_objective(old_objective_ce_id)
+        if old_objective is None:
+            logger.error(
+                "Could not retrieve Objective with ID %s from game_old with ID %s",
+                old_objective_ce_id,
+                game_old.ce_id
+            )
+            continue
         update.description += (f"\n- {old_objective.get_type_short()} {old_objective.name} removed.")
 
     # CHECK FOR GHOST UPDATE

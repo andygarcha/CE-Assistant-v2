@@ -14,6 +14,7 @@ class GameData() :
     @property
     def name(self) -> str :
         "Returns the name of this game."
+        
     
     @property
     def app_id(self) -> str :
@@ -225,7 +226,13 @@ class RAData() :
         return self.raw_data['NumDistinctPlayers']
     
 
-UPDATEMESSAGE_LOCATIONS = Literal["casino", "casinolog", "privatelog", "gameadditions", "userlog"]
+UPDATEMESSAGE_LOCATIONS = Literal[
+    "casino",
+    "casinolog",
+    "privatelog",
+    "gameadditions",
+    "userlog"
+]
 
 class UpdateMessage() :
     """A class to hold messages that need to be sent after updating users."""
@@ -619,7 +626,7 @@ class CECurateInput :
             case _:
                 return "Failure"
     
-    def set_curate(self, curate) :
+    def set_curate(self, curate: int) :
         "Sets this object's curate attribute to `curate` argument."
         self.__curate = curate
     
@@ -753,11 +760,15 @@ class CEInput :
 
     def average_curate(self) -> str :
         "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
+        return f"{round(self.average_curate_num(), 2)}%"
+    
+    def average_curate_num(self) -> float:
+        "Returns the percentage of people who think this game should be curated. Example: '62.35%'"
         if (self.curator_count() == 0):
-            return "N/A"
+            return 0
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
         average = float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
-        return f"{round(average, 2)}%"
+        return average
 
     def curator_count(self) -> int :
         "Returns the number of people who have given curator inputs."
@@ -784,7 +795,7 @@ class CEInput :
                 return True
         return False
     
-    def add_curate_input(self, user_id : str, curate : bool) :
+    def add_curate_input(self, user_id : str, curate: int) :
         "Adds or overwrites a curate input."
         if (self.has_curate_input(user_id)) :
             self.replace_curate_input(user_id, curate)
@@ -792,7 +803,7 @@ class CEInput :
             self.add_new_curate_input(user_id, curate)
         pass
 
-    def add_new_curate_input(self, user_id : str, curate : bool) :
+    def add_new_curate_input(self, user_id : str, curate: int) :
         "Adds a new curate input."
         self.__curate_inputs.append(
             CECurateInput(
@@ -817,7 +828,7 @@ class CEInput :
         "Returns the curate input given by a the user id."
         return self.__curate_inputs[self.index_of_curate_input(user_id)]
     
-    def replace_curate_input(self, user_id : str, curate : bool) :
+    def replace_curate_input(self, user_id : str, curate: int) :
         "Adjusts the curate input accordingly."
         if not self.has_curate_input(user_id) :
             raise Exception("Tried replacing a curate input - but the user doesn't have one!")

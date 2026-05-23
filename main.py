@@ -1,6 +1,7 @@
 # -------- discord imports -----------
 import logging
 from Modules import hm
+from utils.channels import CHANNEL_NAMES
 
 logging.basicConfig(
     # since we imported hm first, any utils will have root logging.
@@ -71,26 +72,26 @@ guild = discord.Object(id=guild_id)
 load_commands.load_commands(client, tree, guild)
 
 # == webhook reception ==
-routes = web.RouteTableDef()
+# routes = web.RouteTableDef()
 
-@routes.post('/webhook')
-async def webhook_handler(request: web.Request):
-    data = await request.json()
+# @routes.post('/webhook')
+# async def webhook_handler(request: web.Request):
+#     data = await request.json()
 
-    channel = client.get_channel(hm.PRIVATE_LOG_ID)
-    if channel:
-        await channel.send(f"webhook recieved: {data=}")
+#     channel = hm.get_channel(client, "privatelog")
+#     if channel:
+#         await channel.send(f"webhook recieved: {data=}")
 
-async def start_webhook_server():
-    app = web.Application()
-    app.add_routes(routes)
-    runner = web.AppRunner(app)
-    await runner.setup()
+# async def start_webhook_server():
+#     app = web.Application()
+#     app.add_routes(routes)
+#     runner = web.AppRunner(app)
+#     await runner.setup()
 
-    # bind to 0.0.0.0 to accept external connections on port 80
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    logger.info('Webhook Running.')
+#     # bind to 0.0.0.0 to accept external connections on port 80
+#     site = web.TCPSite(runner, '0.0.0.0', 8080)
+#     await site.start()
+#     logger.info('Webhook Running.')
 
 # ------------------------------ commands -------------------------------------
 
@@ -168,7 +169,7 @@ async def get_game_data(interaction : discord.Interaction, ce_id : str) :
     if game is None :
         return await interaction.followup.send('game not found')
     else :
-        return await interaction.followup.send(game)
+        return await interaction.followup.send(f"{game.to_dict()}")
 
 
 
@@ -361,9 +362,14 @@ class ValueModal(discord.ui.Modal) :
             old_average = value_input.average_is_okay(database_name, self.__game.ce_id)
 
         # add the value input for the newly grabbed data.
+        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+        if user is None:
+            logging.warning("Could not pull User with Discord ID %d from Supabase.", interaction.user.id)
+            return
+        
         curr_input.add_value_input(
             objective_id=self.__objective.ce_id,
-            user_id=(SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
+            user_id=user.ce_id,
             value=int(self.new_value.value)
         )
 
@@ -372,13 +378,23 @@ class ValueModal(discord.ui.Modal) :
 
         # now lets grab the new average
         value_input = curr_input.get_value_input(objective_id=self.__objective.ce_id)
+        if value_input is None:
+            logging.warning(
+                "Could not find a Value Input for Objective with ID %s, even after adding one.",
+                self.__objective.ce_id
+            )
+            return await interaction.followup.send("Error 2.")
+
         new_average = value_input.average_is_okay(
             database_name, self.__game.ce_id
         )
 
         # and if the old average was okay, but the new average is not, send a message to the input channel.
         if old_average is not None and old_average and not new_average :
-            log_channel = client.get_channel(hm.INPUT_LOG_ID)
+            log_channel = hm.get_channel(client, "inputlog")
+            if log_channel is None:
+                logging.error("Could not pull the log channel.")
+                return await interaction.followup.send("Error 3.")
 
             await log_channel.send(
                 f":bell: Alert! {self.__game.name_with_link()}'s PO {self.__objective.name} " +
@@ -414,6 +430,9 @@ class ValueDropdown(discord.ui.Select) :
 
     async def callback(self, interaction : discord.Interaction) : 
         objective_object = self.game.get_objective(self.values[0])
+        if objective_object is None:
+            logger.error("ValueDropdown game.get_objective() reported None. Objective ID: %s.", self.values[0])
+            return await interaction.response.send_message("Error 1.")
         await interaction.response.send_modal(ValueModal(self.game, objective_object))
 
 
@@ -461,11 +480,17 @@ class CurateButtonYesOrNoView(discord.ui.View) :
 
         old_curatable = input_object.is_curatable()
 
+        
+        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+        if user is None:
+            logger.error("Could not find user with Discord ID %d in Supabase.", interaction.user.id)
+            return await interaction.followup.edit_message(
+                message_id=interaction.message.id,
+                content="Could not find user in local database."
+            )
+        
         # add the curate input
-        input_object.add_curate_input(
-            (SupabaseReader.get_user(interaction.user.id, use_discord_id=True)).ce_id,
-            1
-        )
+        input_object.add_curate_input(user.ce_id, 1)
 
         new_curatable = input_object.is_curatable()
 
@@ -826,7 +851,6 @@ async def monitor_loop():
     if not process_loop.is_running():
         logger.warning("Main task loop is not running. Restarting...")
         await process_loop.start(client)
-
 
 
 

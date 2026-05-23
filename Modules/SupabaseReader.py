@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import datetime
 import json
 import time
@@ -113,7 +114,7 @@ def get_game(ce_id: str) -> CEGame | None:
     return __supabase_to_game(games_json[0], objectives_json, requirements_json, categories_json)
 
 # GET USER
-def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser | None:
+def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     # TODO: simplify this stuff with joins
     if not use_discord_id:
         user_json = supabase.table('users').select().eq('ce_id', ce_id).execute().data
@@ -370,7 +371,7 @@ def get_last_loop(offset=True) -> datetime.datetime:
 def dump_game(game: CEGame):
     return bulk_dump_games([game])
 
-def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: float = 0.1):
+def bulk_dump_games(games: Sequence[CEGame], batch_size: int = 50, pause_seconds: float = 0.1):
     """Bulk dump many games at once in batches to reduce HTTP calls and avoid connection termination.
 
     - groups games into batches of `batch_size`
@@ -473,7 +474,7 @@ def bulk_dump_games(games: list[CEGame], batch_size: int = 50, pause_seconds: fl
         if pause_seconds and (i + batch_size) < len(games):
             time.sleep(pause_seconds)
 
-def bulk_dump_users(users: list[CEUser], batch_size: int = 50, pause_seconds: float = 0.1):
+def bulk_dump_users(users: Sequence[CEUser], batch_size: int = 50, pause_seconds: float = 0.1):
     """Bulk dump many users at once in batches to reduce HTTP calls and avoid connection termination.
 
     - groups users into batches of `batch_size`
