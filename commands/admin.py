@@ -99,7 +99,10 @@ async def test(interaction : discord.Interaction) :
     user_cedb = await CEAPIReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
     user_supa = SupabaseReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
 
-    game_diff = set(user_cedb.owned_games).difference(set(user_supa.owned_games))
+    games_cedb = [g.ce_id for g in user_cedb.owned_games]
+    games_supa = [g.ce_id for g in user_supa.owned_games]
+
+    game_diff = set(games_cedb).difference(set(games_supa))
     print(game_diff)
 
 
