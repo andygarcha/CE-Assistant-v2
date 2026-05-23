@@ -1,7 +1,6 @@
 # -------- discord imports -----------
 import logging
 from Modules import hm
-from utils.channels import CHANNEL_NAMES
 
 logging.basicConfig(
     # since we imported hm first, any utils will have root logging.
@@ -32,7 +31,6 @@ from commands.games import get_game_auto # noqa: E402
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks # noqa: E402
-from aiohttp import web # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
 import io # noqa: E402

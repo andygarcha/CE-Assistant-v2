@@ -9,7 +9,6 @@ import os
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from discord.abc import PrivateChannel
 from discord.ext import tasks
 import asyncio
 import datetime
@@ -21,7 +20,6 @@ from Classes.CE_Game import CEGame, CEAPIGame
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
-from Classes.OtherClasses import UPDATEMESSAGE_LOCATIONS
 from Modules import CEAPIReader, SupabaseReader, http_session, hm
 import logging
 
