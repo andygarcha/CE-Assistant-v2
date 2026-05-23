@@ -1,4 +1,5 @@
 from typing import Literal
+import aiohttp
 import discord
 
 IN_CE = True
@@ -61,6 +62,8 @@ def get_channel(client: discord.Client | None, channel: CHANNEL_NAMES) -> discor
     if _channel is None:
         return None
     
+    return _channel
+    
     if isinstance(_channel, discord.TextChannel):
         return _channel
     return None
@@ -80,7 +83,13 @@ async def send_message(
     mentions = discord.AllowedMentions.all() if allowed_mentions else discord.AllowedMentions.none()
     
     if embed is None:
-        await _channel.send(message, allowed_mentions=mentions)
-    else: 
-        await _channel.send(message, allowed_mentions=mentions, embed=embed)
+        try:
+            await _channel.send(message, allowed_mentions=mentions)
+        except (aiohttp.ClientConnectionError, discord.ConnectionClosed, discord.HTTPException):
+            return False
+    else:
+        try:
+            await _channel.send(message, allowed_mentions=mentions, embed=embed)
+        except (aiohttp.ClientConnectionError, discord.ConnectionClosed, discord.HTTPException):
+            return False
     return True

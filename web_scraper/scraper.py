@@ -225,6 +225,7 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
 
     # Send updates!
     # TODO upload these to the database in a future update
+    logger.info("Sending %d updates.", len(updates))
     for update in updates:
         if not isinstance(update, UpdateMessageForScraperProcess):
             logger.error(

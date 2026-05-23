@@ -182,6 +182,9 @@ async def shutdown(interaction: discord.Interaction):
 
     if process_loop.is_running():
         process_loop.stop()
+        task = process_loop.get_task()
+        if task is not None:
+            await task
 
     await http_session.close_session()
     await client.close()
