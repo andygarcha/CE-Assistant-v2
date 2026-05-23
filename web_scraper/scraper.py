@@ -468,7 +468,7 @@ async def update_users(games_old: list[CEGame], games_new: list[CEGame], full_sc
     #     users.extend(await CEAPIReader.post_users_query(users[i:i+10]))
     if full_scrape:
         logger.info("Pulling users from /api/users/all")
-        users = await CEAPIReader.get_api_users_all(_updated_user_ids)
+        users = await CEAPIReader.get_api_users_all(list(_updated_user_ids))
     else:
         logger.debug("Pulling %d users one-by-one from /api/user/[id]", len(_updated_user_ids))
         for i, _user_id in enumerate(_updated_user_ids):
