@@ -101,13 +101,13 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
         _categories = []
     # pull the categories (we can't be sure they're ordered)
     else: 
-        _categories_unordered = []
+        _categories_unordered: list[tuple[str, int]] = []
         for _c in json_response['gameCategories']:
             # NOTE /api/games/full doesn't include the genre item, just the genreId
             if 'genre' in _c:
                 _categories_unordered.append((_c['genre']['name'], _c['order']))
             elif 'genreId' in _c:
-                _categories_unordered.append(hm.genre_id_to_name(_c['genreId'], _c['order']))
+                _categories_unordered.append((hm.genre_id_to_name(_c['genreId']), _c['order']))
             else:
                 return None
         # and now order them
