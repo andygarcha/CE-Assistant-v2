@@ -432,7 +432,7 @@ def _ce_to_user(json_response : dict) -> CEUser :
             ce_id = objective['objective']['id'],
             game_ce_id=objective['objective']['gameId'],
             # NOTE: OBJECTIVE TYPE FIX
-            type='Community' if objective['objective']['community'] else 'Primary',
+            type=str(objective['objective']['type']).capitalize(),
             user_points=user_points,
             name=objective['objective']['name']
         )
