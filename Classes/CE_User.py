@@ -130,6 +130,20 @@ class CEUser:
             if game.ce_id == ce_id:
                 return game
         return None
+    
+    def remove_owned_game(self, ce_id: str) -> bool:
+        for i, game in enumerate(self.owned_games):
+            if game.ce_id == ce_id:
+                self.owned_games.pop(i)
+                return True
+        return False
+    
+    def replace_owned_game(self, game: CEGame) -> bool:
+        for i, game in enumerate(self.owned_games):
+            if game.ce_id == self.ce_id:
+                self.owned_games[i] = game
+                return True
+        return False
 
     def owned_games_as_cegames(self, database_name : list[CEGame]) -> list[CEGame] :
         "Returns a list of this user's owned games as `CEGame`s."

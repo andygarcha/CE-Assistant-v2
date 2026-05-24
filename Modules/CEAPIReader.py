@@ -137,6 +137,8 @@ async def get_game(ce_id: str) -> CEAPIGame | None:
 
     async with session.get(f'https://cedb.me/api/game/{ce_id}') as response:
         game = await response.json()
+        if game == {}:
+            return None
 
         return _ce_to_game(game)
     
@@ -216,7 +218,12 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
 
             # try to call the API
             try:
-                async with session.get(f"https://cedb.me/api/games/full?limit={PULL_LIMIT}&offset={(i-1)*PULL_LIMIT}") as response :
+                _params = {
+                    "limit": PULL_LIMIT,
+                    "offset": (i - 1) * PULL_LIMIT,
+                    "ishidden": True
+                }
+                async with session.get(f"https://cedb.me/api/games/full", params=_params) as response :
                     outer_response = response
                     j = await response.json()
                     json_response += j
