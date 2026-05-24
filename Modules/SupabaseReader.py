@@ -806,13 +806,13 @@ def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list
     objectives = []
     for o in obj:
         objectives.append(__supabase_to_objective(o, [req for req in reqs if req['objective_ce_id'] == o['ce_id']]))
-    sorted_cats = sorted(cats, key=lambda c: c['index'])
     # TODO update this logic
     if game['ce_id'] == '76574ec1-42df-4488-a511-b9f2d9290e5d':
         categories = ['Arcade']
     elif game['ce_id'] == '09f100aa-caa7-4154-a224-1c3e9277eea4':
         categories = ['Action']
     else:
+        sorted_cats = sorted(cats, key=lambda c: c['index'])
         categories = [c['category'] for c in sorted_cats]
     return CEGame(
         ce_id=game['ce_id'],
