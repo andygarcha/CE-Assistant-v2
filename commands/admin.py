@@ -96,14 +96,6 @@ def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.G
 async def test(interaction : discord.Interaction) :
     await interaction.response.defer()
 
-    user_cedb = await CEAPIReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
-    user_supa = SupabaseReader.get_user('95fb1496-e731-4318-9d26-62b15be073ab')
-
-    for game in user_cedb.owned_games:
-        if game.ce_id == '819a4b0e-41f6-4207-b1ea-9f699db82d9b':
-            print(game.to_dict())
-
-
     return await interaction.followup.send('testsss done')
 
 

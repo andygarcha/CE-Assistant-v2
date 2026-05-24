@@ -147,7 +147,13 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
 
     # Step 1: Update Games
     logger.info("UPDATE GAMES: begin")
-    _updates, games_new, removed_games, removed_objectives = await update_games(full_scrape)
+    (
+        _updates,
+        games_new,
+        removed_games,
+        removed_objectives,
+        notIsFinished
+    ) = await update_games(full_scrape)
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
@@ -190,7 +196,8 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
     _updates, users_new, removed_users, rolls_updated = await update_users(
         database_name_old,
         database_name_new,
-        full_scrape
+        full_scrape,
+        notIsFinished
     )
     updates.extend(_updates)
     logger.info("UPDATE USERS: complete")
@@ -279,8 +286,9 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
 async def update_games(full_scrape = False) -> tuple[
         list[UpdateMessageForScraperProcess],   # updates
         list[CEAPIGame],                        # games_new
-        set[str],                              # removed_games
-        list[str]                               # removed_objectives
+        set[str],                               # removed_games
+        list[str],                              # removed_objectives
+        set[str]                                # notIsFinished
     ]:
     """
     Updates all games. This version began April 9, 2026 for Supabase.
@@ -290,6 +298,8 @@ async def update_games(full_scrape = False) -> tuple[
     - games_new: the games that have been updated
     - removed_games: a list of ceids of games that have been removed.
     - removed_objectives: a list of ceids of objectives that have been removed
+    - notIsFinished: a list of ceids of games that have had the 'isFinished' flag turned off.
+        These games are to be *ignored* until isFinished is turned back on.
     """
 
     updates: list[UpdateMessageForScraperProcess] = []
@@ -351,10 +361,13 @@ async def update_games(full_scrape = False) -> tuple[
             
     # 1d) get the actual data for all those games
     games: list[CEAPIGame] = []
+    notIsFinished: set[str] = set()
 
     if full_scrape:
         logger.info("Full scraping: pulling from /api/games/full.")
         games = await CEAPIReader.get_api_games_full()
+        notIsFinished = set([g.ce_id for g in games if not g.is_finished])
+        games = [g for g in games if g.is_finished]
     else:
         logger.info("Pulling games one at a time using /api/game/[id].")
         for i, gameId in enumerate(_updated_game_ids):
@@ -399,6 +412,12 @@ async def update_games(full_scrape = False) -> tuple[
 
     game_list_removed = game_list_old.difference(game_list_new)
 
+    for _game in game_list_removed.copy():
+        _game_cedb = await CEAPIReader.get_game(_game)
+        if _game_cedb is not None:
+            game_list_removed.remove(_game)
+            notIsFinished.add(_game)
+
     # Step 4: Generate updates for those removed games.
     if SKIPUPDATES:
         logger.warning("Skipping updates (again...)")
@@ -415,9 +434,9 @@ async def update_games(full_scrape = False) -> tuple[
             if _or is not None:
                 objectives_removed.extend(_or)
     
-    return updates, games, game_list_removed, objectives_removed
+    return updates, games, game_list_removed, objectives_removed, notIsFinished
 
-async def update_users(games_old: list[CEGame], games_new: list[CEGame], full_scrape = False):
+async def update_users(games_old: list[CEGame], games_new: list[CEGame], full_scrape = False, notIsFinished: set = set()):
     """
     Updates all users. This version began April 9, 2026 for Supabase.
     """
@@ -504,6 +523,19 @@ async def update_users(games_old: list[CEGame], games_new: list[CEGame], full_sc
                 logger.debug("Updating user %d", i)
 
             user_old = users_old_map.get(user_new.ce_id)
+
+            # Handle notIsFinished games.
+            # Any game with the isFinished flag turned off should report NO CHANGES.
+            # To do this, we can just take the old game (if it exists) and copy it to user_new.
+            # We *must* also delete the old version of the game.
+            for _game_new in user_new.owned_games.copy():
+                if _game_new.ce_id in notIsFinished:
+                    _game_old = user_old.get_owned_game(_game_new.ce_id)
+                    if _game_old is None:
+                        user_new.remove_owned_game(_game_new.ce_id)
+                    else:
+                        user_new.replace_owned_game(_game_old)
+
             _updates = update_one_user(user_old, user_new, games_old, games_new, update_rolls=False)
             if _updates is not None:
                 updates.extend(_updates)
