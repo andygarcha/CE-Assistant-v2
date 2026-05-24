@@ -16,6 +16,7 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import CEInput
+from Modules import hm
 
 with open('secret_info.json') as f:
     x = json.load(f)
@@ -206,7 +207,7 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
             continue
 
         game_categories = categories_by_game.get(ce_id)
-        if not game_categories:
+        if not game_categories and ce_id not in ['76574ec1-42df-4488-a511-b9f2d9290e5d', '09f100aa-caa7-4154-a224-1c3e9277eea4']:
             logger.error("Game with ID %s has no categories.", ce_id)
             continue
         game_objectives = objectives_by_game.get(ce_id, [])
@@ -806,7 +807,13 @@ def __supabase_to_game(game: dict, obj: list[dict], reqs: list[dict], cats: list
     for o in obj:
         objectives.append(__supabase_to_objective(o, [req for req in reqs if req['objective_ce_id'] == o['ce_id']]))
     sorted_cats = sorted(cats, key=lambda c: c['index'])
-    categories = [c['category'] for c in sorted_cats]
+    # TODO update this logic
+    if game['ce_id'] == '76574ec1-42df-4488-a511-b9f2d9290e5d':
+        categories = ['Arcade']
+    elif game['ce_id'] == '09f100aa-caa7-4154-a224-1c3e9277eea4':
+        categories = ['Action']
+    else:
+        categories = [c['category'] for c in sorted_cats]
     return CEGame(
         ce_id=game['ce_id'],
         game_name=game['name'],
