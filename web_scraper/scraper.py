@@ -391,10 +391,6 @@ async def update_games(full_scrape = False) -> tuple[
                 logger.debug("Updating game %d.", i)
             
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
-            if game_old is None:
-                logger.error("Could not find Game with ID %s from SupabaseReader.get_games_bulk", game_new.ce_id)
-                continue
-            
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
