@@ -138,9 +138,9 @@ class CEUser:
                 return True
         return False
     
-    def replace_owned_game(self, game: CEGame) -> bool:
-        for i, game in enumerate(self.owned_games):
-            if game.ce_id == self.ce_id:
+    def replace_owned_game(self, game: CEUserGame) -> bool:
+        for i, owned_game in enumerate(self.owned_games):
+            if owned_game.ce_id == game.ce_id:
                 self.owned_games[i] = game
                 return True
         return False
