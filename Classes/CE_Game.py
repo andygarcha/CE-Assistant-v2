@@ -31,7 +31,7 @@ class CEGame:
                  banner : str = ""):
         self._ce_id = ce_id
         self._game_name = game_name
-        self._platform = platform
+        self._platform: hm.PLATFORM_NAMES = platform
         self._platform_id = platform_id
         self._categories = categories
         self._objectives = objectives
