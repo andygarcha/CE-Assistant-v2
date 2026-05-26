@@ -377,6 +377,7 @@ class CERoll:
         "Returns true if this roll is multi-stage."
         return self.roll_name in get_args(hm.MULTI_STAGE_ROLLS)
     
+    @property
     def is_rerollable(self) -> bool :
         "Returns true if this roll is rerollable."
         return self.roll_name in ["Fourward Thinking"]
@@ -886,7 +887,7 @@ class CERoll:
                 string += f"won by {'you' if self.winner else 'partner'}, "
         
         # rerolls
-        if self.is_rerollable() :
+        if self.is_rerollable :
             string += f"{self.rerolls} reroll(s) remaining, "
 
         # you're done. remove the ", "
