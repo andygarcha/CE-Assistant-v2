@@ -267,7 +267,7 @@ async def show_summary(interaction: discord.Interaction, user: discord.User = No
         )
     join_year = int(user_api.join_date[0:4])
     
-    text = f"**CE Summary for user** {user_ce.display_name_with_link}:\n\n"
+    text = f"**CE Summary for user** {user_ce.display_name_with_link()}:\n\n"
     for year in range(join_year, hm.current_year_num() + 1):
         text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
     

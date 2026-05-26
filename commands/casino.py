@@ -562,7 +562,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
-                        f"It is due on <t:{past_roll.due_time}>. "
+                        f"It is due on <t:{past_roll.due_timestamp}>. "
                         f"Run /check-rolls to see more information."
                     )
                 else :
@@ -616,7 +616,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
-                        f"It is due on <t:{past_roll.due_time}>. " +
+                        f"It is due on <t:{past_roll.due_timestamp}>. " +
                         "Run /check-rolls to see more information."
                     )
                 else :
@@ -973,7 +973,7 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            content=(f"{user.mention()} and {partner.mention()} have until <t:{user_roll.due_time}> "
+            content=(f"{user.mention()} and {partner.mention()} have until <t:{user_roll.due_timestamp}> "
             + f"to complete {game_object.name_with_link}."),
             view = discord.ui.View()
         )
@@ -1066,7 +1066,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
 
         content = (
                 f"{user.mention()} and {partner.mention()} must complete the following games by " +
-                f"<t:{user_roll.due_time}>: "
+                f"<t:{user_roll.due_timestamp}>: "
             )
         for i, game in enumerate(rolled_games_objects) :
             content += (f"{game.name_with_link}")

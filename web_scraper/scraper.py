@@ -775,7 +775,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             update.location = "privatelog"
             update.is_embed = False
             update.text = (
-                f"🤫 Muted user {user.display_name_with_link} ranked up from {rank_original} to {rank_new}."
+                f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_original} to {rank_new}."
             )
         updates.append(update)
 
@@ -796,7 +796,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             update.location = "privatelog"
             update.is_embed = False
             update.text = (
-                f"🤫 Muted user {user.display_name_with_link} has passed the milestone of" + 
+                f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of" + 
                 f"{int(len(completed_games_new) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT}"
             )
         updates.append(update)
@@ -1101,9 +1101,9 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
     # CATEGORY CHANGE
     if game_old.categories != game_new.categories:
         update.description += (
-            f"\n- {game_old.category_emojis()} ({game_old.categories_string})" +
+            f"\n- {game_old.category_emojis} ({game_old.categories_string})" +
             f"{hm.get_emoji('Arrow')}" +
-            f"{game_new.category_emojis()} ({game_new.categories_string})"
+            f"{game_new.category_emojis} ({game_new.categories_string})"
         )
     
     # objective changes...
@@ -1287,7 +1287,7 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
         # check mutelist
         if user.on_mutelist():
             update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
+            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
         else:
             update.location = "userlog"
             update.text = ""

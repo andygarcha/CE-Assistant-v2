@@ -239,7 +239,7 @@ class CERoll:
             f"\nPartner CE ID: {self.partner_ce_id}" +
             f"\nInit Time: {self.init_time}" +
             f"\nCompleted Time: {self.completed_time}" +
-            f"\nRerolls: {self.rerolls}",
+            f"\nRerolls: {self.rerolls}" +
             f"\nStatus: {self.status}"
         )
 
@@ -260,6 +260,15 @@ class CERoll:
         if isinstance(dt, datetime.datetime) and dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
         return dt
+    
+    def _to_timestamp(self, datum) -> int | None:
+        if isinstance(datum, datetime.datetime):
+            return datum.timestamp()
+        if isinstance(datum, int):
+            return datum
+        if datum is None:
+            return None
+        logger.error("datum %s has type %s.", datum, type(datum))
 
     # ==== core properties ====
 
@@ -330,7 +339,7 @@ class CERoll:
             case "won":
                 return "won"
 
-    # ==== boolean state properties ====
+    # ==== derived / boolean state properties ====
 
     @property
     def is_co_op(self) -> bool :
@@ -408,6 +417,18 @@ class CERoll:
             return len(self.games) == 4
         if self.roll_name == "Fourward Thinking":
             return len(self.games) == 4
+        
+    @property
+    def init_timestamp(self) -> int | None:
+        return self._to_timestamp(self.init_time)
+    
+    @property
+    def due_timestamp(self) -> int | None:
+        return self._to_timestamp(self.due_time)
+    
+    @property
+    def completed_timestamp(self) -> int | None:
+        return self._to_timestamp(self.completed_time)
 
     # ==== setters / mutators ====
 
@@ -640,7 +661,7 @@ class CERoll:
                 game = hm.get_item_from_list(game_id, database_name)
                 if game_id not in user_wins :
                     return_str += "\n- " + game.game_name + " 🟥"
-                return_str += "\n- " + game.game_name + " " + game.category_emojis()
+                return_str += "\n- " + game.game_name + " " + game.category_emojis
             return return_str
 
         else :
@@ -867,15 +888,15 @@ class CERoll:
         string = ""
 
         # init time
-        string += f"Rolled on <t:{self.init_time}>, "
+        string += f"Rolled on <t:{self.init_timestamp}>, "
 
         # due time
         if self.ends :
-            string += f"due on <t:{self.due_time}>, "
+            string += f"due on <t:{self.due_timestamp}>, "
         
         # completed time
         if self.is_completed :
-            string += f"completed on <t:{self.completed_time}>, "
+            string += f"completed on <t:{self.completed_timestamp}>, "
         
         # partner?
         if self.is_co_op :
