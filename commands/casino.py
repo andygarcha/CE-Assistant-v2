@@ -534,7 +534,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if user.has_waiting_roll('Two Week T2 Streak') :
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll = user.get_waiting_roll("Two Week T2 Streak")
-                if past_roll.ready_for_next() :
+                if past_roll.ready_for_next:
                     valid_categories = list(get_args(hm.CATEGORIES))
                     for game in database_name:
                         if game.ce_id in past_roll.games:
@@ -589,7 +589,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if user.has_waiting_roll("Two \"Two Week T2 Streak\" Streak") :
                 # if the user is currently working 
                 past_roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
-                if past_roll.ready_for_next() :
+                if past_roll.ready_for_next:
                     valid_categories = list(get_args(hm.CATEGORIES))
                     for game in database_name:
                         if game.ce_id in past_roll.games:
@@ -679,7 +679,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             past_roll : CERoll | None = user.get_current_roll("Fourward Thinking")
 
             # check to make sure this person is ready for the next iteration of their roll
-            if past_roll is not None and not past_roll.ready_for_next() :
+            if past_roll is not None and not past_roll.ready_for_next:
                 return await interaction.followup.send("You need to finish your previous game first! Run /check-rolls to check them.")
 
             past_roll = user.get_waiting_roll("Fourward Thinking")

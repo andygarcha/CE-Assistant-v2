@@ -364,6 +364,7 @@ class CERoll:
         """Returns true if the roll can end."""
         return self.due_time is not None
     
+    @property
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
         if not self.is_multi_stage():
