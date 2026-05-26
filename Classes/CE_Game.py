@@ -279,7 +279,7 @@ class CEGame:
         self._objectives.append(objective)
         
     @last_updated.setter
-    def set_last_updated(self, last_updated : int) -> None :
+    def last_updated(self, last_updated : int) -> None :
         """Sets the last updated value to `last_updated`."""
         self._last_updated = last_updated
 
