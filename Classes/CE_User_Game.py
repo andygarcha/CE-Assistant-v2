@@ -80,11 +80,11 @@ class CEUserGame():
         
     # ----------- other methods ------------
 
-    async def get_regular_game(self) -> CEGame :
+    async def get_regular_game(self) -> CEGame | None :
         """Returns the regular :class:`CEGame` object associated with this game.
         \n**NOTE**: uses bad method"""
         import Modules.CEAPIReader as CEAPIReader
-        return await CEAPIReader.get_api_page_data("game", self.ce_id)
+        return await CEAPIReader.get_game(self.ce_id)
     
     def is_completed(self, database_name: list[CEGame] | CEGame) -> bool :
         """Returns true if this game has been completed, false if not."""
@@ -150,7 +150,7 @@ class CEUserGame():
         }
     
     def to_dict_supabase_objectives(self, user_ce_id: str):
-        return [o.to_dict_supabase() for o in self.user_objectives]
+        return [o.to_dict_supabase(user_ce_id) for o in self.user_objectives]
     
     def to_dict(self) :
         """Returns this game as a dictionary as used in the MongoDB database.
