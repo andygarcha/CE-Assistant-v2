@@ -263,12 +263,15 @@ class CERoll:
     
     def _to_timestamp(self, datum) -> int | None:
         if isinstance(datum, datetime.datetime):
-            return datum.timestamp()
+            return int(datum.timestamp())
         if isinstance(datum, int):
             return datum
+        if isinstance(datum, float):
+            return int(datum)
         if datum is None:
             return None
         logger.error("datum %s has type %s.", datum, type(datum))
+        return None
 
     # ==== core properties ====
 
