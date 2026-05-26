@@ -361,6 +361,9 @@ class CERoll:
             return False
 
         dt = self.due_time
+        if isinstance(dt, int):
+            dt = datetime.datetime.fromtimestamp(dt, tz=datetime.timezone.utc)
+
         # normalize string timestamps to datetime
         if isinstance(dt, str):
             try:
@@ -371,6 +374,10 @@ class CERoll:
                 except Exception as e:
                     logger.error("Expiration check failed. Due Time: %s, couldn't normalize. %s", self.due_time, e)
                     return False
+
+        if not isinstance(dt, datetime.datetime):
+            logger.error("Expiration check failed. Due Time: %s has unsupported type %s", self.due_time, type(dt))
+            return False
 
         # ensure timezone-aware for comparison
         if dt.tzinfo is None:
