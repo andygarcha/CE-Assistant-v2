@@ -330,6 +330,7 @@ class CERoll:
         "Returns true if this roll is PvP."
         return self.roll_name in hm.PVP_ROLL_EVENT_NAMES
     
+    @property
     def is_expired(self) -> bool :
         """Returns true if the roll has expired."""
         if self.due_time is None :
@@ -707,7 +708,7 @@ class CERoll:
         from Classes.CE_Game import CEGame
 
         # if expired, return false
-        if (self.is_expired()):
+        if (self.is_expired):
             return False
 
         # type hinting

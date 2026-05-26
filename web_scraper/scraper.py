@@ -885,7 +885,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                         SupabaseReader.dump_user(partner)
 
             
-            elif roll.is_expired() :
+            elif roll.is_expired :
                 # add the update message
                 update = UpdateMessageForScraperProcess()
                 update.location = "casino"
@@ -991,7 +991,7 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
         # -- not dealing with this.
         raise NotImplementedError
 
-    if roll.is_expired():
+    if roll.is_expired:
         update.location = 'casino'
         update.is_embed = False
         update.text = roll.get_fail_message(games, user1, user2)
