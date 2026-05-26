@@ -502,13 +502,11 @@ class CERoll:
             return
 
         if self.roll_name == "Two Week T2 Streak" :
-            self.due_time = hm.get_datetime(days=7)
+            self.due_time = 7
         elif self.roll_name == "Two \"Two Week T2 Streak\" Streak" :
-            self.due_time = hm.get_datetime(days=7)
+            self.due_time = 7
         elif self.roll_name == "Fourward Thinking" :
-            self.due_time = hm.get_datetime(
-                days=len(self.games)*7
-            )
+            self.due_time = len(self.games)*7
 
     # ==== complex logic ====
 
