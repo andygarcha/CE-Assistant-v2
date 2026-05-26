@@ -13,7 +13,7 @@ class CEObjective:
                  achievement_ce_ids : list[str] | None = None,
                  point_value_partial : int = 0):
         self._ce_id = ce_id
-        self._objective_type = objective_type
+        self._objective_type: hm.OBJECTIVE_TYPES = objective_type
         self._description = description
         self._game_ce_id = game_ce_id
         self._point_value = point_value
@@ -74,6 +74,7 @@ class CEObjective:
             return self.name[0:-12]
         if self.name[-10:len(self.name)] == "(UNVALUED)":
             return self.name[0:-11]
+        return self.name
     
     @property
     def requirements(self) -> str | None:
