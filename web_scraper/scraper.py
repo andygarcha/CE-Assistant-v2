@@ -116,6 +116,7 @@ times = [
 
 @tasks.loop(time=times)
 async def process_loop(client: discord.Client | None = None, full_scrape: bool = False):
+    logger.info("")
     if client is None:
         logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")    
     logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
