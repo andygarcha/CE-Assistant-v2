@@ -325,6 +325,7 @@ class CERoll:
             or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
         )
     
+    @property
     def is_pvp(self) -> bool :
         "Returns true if this roll is PvP."
         return self.roll_name in hm.PVP_ROLL_EVENT_NAMES

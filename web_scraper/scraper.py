@@ -874,9 +874,9 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                         partner_roll = partner.get_current_roll(roll.roll_name)
 
                         # update their current roll
-                        if roll.is_pvp() and roll.status == "won" :
+                        if roll.is_pvp and roll.status == "won" :
                             partner.fail_current_roll(partner_roll.roll_name)
-                        elif roll.is_pvp() and roll.status == "failed" :
+                        elif roll.is_pvp and roll.status == "failed" :
                             partner.win_current_roll(partner_roll.roll_name)
                         else :
                             partner.win_current_roll(partner_roll.roll_name)
@@ -984,7 +984,7 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
         roll.set_status('won')
 
         # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp():
+        if not roll.is_pvp:
             return update, roll
 
         # Case 2C (pvp)
