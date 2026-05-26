@@ -375,7 +375,12 @@ async def update_games(full_scrape = False) -> tuple[
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
                 continue
-            games.append(_game)
+            # isFinished games should *not* have updates made for them, 
+            # nor should their data be persisted to local backend.
+            if _game.is_finished:
+                games.append(_game)
+            else:
+                notIsFinished.add(_game.ce_id)
     logger.info("Pulling from CEDB complete.")
 
     # Step 2: Generate updates for those by comparing with Supabase games.
@@ -411,6 +416,7 @@ async def update_games(full_scrape = False) -> tuple[
     for _game in game_list_removed.copy():
         _game_cedb = await CEAPIReader.get_game(_game)
         if _game_cedb is not None:
+            # TODO inefficient. see above for previous notIsFinished logic.
             game_list_removed.remove(_game)
             notIsFinished.add(_game)
 
