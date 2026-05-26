@@ -228,6 +228,21 @@ class CERoll:
         else :
             self._rerolls = rerolls
 
+    def __str__(self) -> str :
+        "Turns this object into a string representation."
+        return (
+            "-- CERoll --" +
+            f"\nEvent Name: {self.roll_name}" +
+            f"\nDue Time: {self.due_time}" +
+            f"\nGames: {self.games}" +
+            f"\nUser CE ID: {self.user_ce_id}" + 
+            f"\nPartner CE ID: {self.partner_ce_id}" +
+            f"\nInit Time: {self.init_time}" +
+            f"\nCompleted Time: {self.completed_time}" +
+            f"\nRerolls: {self.rerolls}",
+            f"\nStatus: {self.status}"
+        )
+
     # ==== private helpers ====
     
     def _normalize_datetime(self, dt):
@@ -394,6 +409,7 @@ class CERoll:
         if self.roll_name == "Fourward Thinking":
             return len(self.games) == 4
 
+    # ==== setters / mutators ====
 
     def set_status(self, new_status : ROLL_STATUS) :
         "Setter for status"
@@ -403,25 +419,11 @@ class CERoll:
     def status(self, new_status : ROLL_STATUS) :
         self._status = new_status
     
-    # ------ setters -------
-
-    def increase_rerolls(self, increase : int) -> None :
-        """Increase the number of rerolls allowed for this roll event 
-        given by `increase`."""
-        self._rerolls += increase
-
     @completed_time.setter
     def completed_time(self, current_time : int) -> None :
         """Sets the time of completion for this roll event
         given by `current_time`."""
         self._completed_time = current_time
-
-    def increase_due_time(self, increase_in_seconds : int) -> None :
-        """Moves the due date of this roll event up 
-        by `increase_in_seconds` seconds."""
-        dt = self._normalize_datetime(self._due_time)
-        if dt is not None:
-            self._due_time = dt + datetime.timedelta(seconds=increase_in_seconds)
 
     @due_time.setter
     def due_time(self, days : int) -> None :
@@ -430,6 +432,26 @@ class CERoll:
             self._due_time = None
         else:
             self._due_time = hm.get_datetime(days=days)
+
+    @winner.setter
+    def winner(self, new_winner: bool) :
+        "Sets the winner."
+        if new_winner :
+            self.status = "won"
+        else :
+            self.status = "failed" 
+
+    def increase_rerolls(self, increase : int) -> None :
+        """Increase the number of rerolls allowed for this roll event 
+        given by `increase`."""
+        self._rerolls += increase
+
+    def increase_due_time(self, increase_in_seconds : int) -> None :
+        """Moves the due date of this roll event up 
+        by `increase_in_seconds` seconds."""
+        dt = self._normalize_datetime(self._due_time)
+        if dt is not None:
+            self._due_time = dt + datetime.timedelta(seconds=increase_in_seconds)
     
     def reset_due_time(self) :
         "Resets the due time."
@@ -467,13 +489,7 @@ class CERoll:
                 days=len(self.games)*7
             )
 
-    @winner.setter
-    def winner(self, new_winner: bool) :
-        "Sets the winner."
-        if new_winner :
-            self.status = "won"
-        else :
-            self.status = "failed"
+    # ==== complex logic ====
 
     def rolled_categories(self, database_name : list) -> list[str] :
         "Returns a list of the categories that have been rolled so far."
@@ -818,11 +834,8 @@ class CERoll:
             case "Winner Takes All":
                 return int(-1 * relative(tier))
         return CASINO_POINTS[self.roll_name][1]
-
-
-
-# ---------------- extra class stuff ----------------
         
+    # ==== display information ====
 
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
@@ -837,21 +850,6 @@ class CERoll:
             "rerolls" : self.rerolls,
             "status" : self.status
         }
-    
-    def __str__(self) -> str :
-        "Turns this object into a string representation."
-        return (
-            "-- CERoll --" +
-            f"\nEvent Name: {self.roll_name}" +
-            f"\nDue Time: {self.due_time}" +
-            f"\nGames: {self.games}" +
-            f"\nUser CE ID: {self.user_ce_id}" + 
-            f"\nPartner CE ID: {self.partner_ce_id}" +
-            f"\nInit Time: {self.init_time}" +
-            f"\nCompleted Time: {self.completed_time}" +
-            f"\nRerolls: {self.rerolls}",
-            f"\nStatus: {self.status}"
-        )
     
     def display_str(self, database_name : list) -> str :
         "Turns this object into a string representation to be sent to discord."
