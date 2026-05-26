@@ -434,7 +434,7 @@ class CEUser:
         # check infinite time rolls
         for roll in self.current_rolls :
             if roll.roll_name == roll_name :
-                if roll.ends():
+                if roll.ends:
                     break
                 return roll.calculate_cooldown_date(database_name)
             

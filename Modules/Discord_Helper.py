@@ -46,7 +46,7 @@ async def get_roll_embeds(roll : CERoll, database_name : list) -> list[discord.E
     
     # -- set up roll info --
     description += "__Roll Info__\n"
-    if roll.ends() :
+    if roll.ends:
         description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
         description += f"If you fail, you will have a cooldown until <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
     else :
