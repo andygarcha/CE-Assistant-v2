@@ -38,8 +38,109 @@ class CEGame:
         self._last_updated = last_updated
         self._banner = banner
 
+    def __str__(self) :
+        "Returns the string representation of this object."
+        return (
+            "-- CEGame --" +
+            "\nGame Name: " + self.game_name +
+            "\nGame CE ID: " + self.ce_id +
+            "\nTotal Points: " + str(self.get_total_points()) +
+            "\nPlatform: " + self.platform +
+            "\nPlatform ID: " + str(self.platform_id) +
+            "\nCategories: " + self.categories_string +
+            "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
+            f"\nLast Updated: <t:{self.last_updated}>"
+        )
 
-    # ----------- getters -------------
+    # ==== core properties ====
+
+    @property
+    def ce_id(self) -> str :
+        """Returns the Challenge Enthusiasts ID associated with this game."""
+        return self._ce_id
+    
+    @property
+    def game_name(self) -> str :
+        """Returns the name of this game."""
+        return self._game_name
+    
+    @property
+    def platform(self) -> hm.PLATFORM_NAMES :
+        """Returns the platform this game is hosted on."""
+        return self._platform
+    
+    @property
+    def platform_id(self) -> str :
+        """Returns the ID value of this game on its platform."""
+        return self._platform_id
+    
+    @property
+    def categories(self) -> list[hm.CATEGORIES] :
+        """Returns the categories of this game (e.g. Action, Arcade, Strategy)."""
+        return self._categories
+
+    @property
+    def all_objectives(self) -> list[CEObjective] :
+        """Returns the array of all `CEObjectives` in this game."""
+        return self._objectives
+
+    @property
+    def last_updated(self) -> int :
+        """Returns the UNIX timestamp of the last time this game was updated."""
+        return self._last_updated
+    
+    # ==== objective methods ====
+
+    def get_primary_objectives(self, include_uncleareds=False) -> list[CEObjective] : 
+        """Returns the array of CEObjectives that are Primary.\n
+        NOTE: This does not return uncleared objectives, unless you set `include_uncleareds = True`!"""
+        p = []
+        for objective in self.all_objectives :
+            if objective.type == "Primary" and (not objective.is_uncleared() or include_uncleareds) :
+                p.append(objective)
+        return p
+
+    def get_secondary_objectives(self) -> list[CEObjective] :
+        "Returns an array of all secondary objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.type == "Secondary" :
+                o.append(objective)
+        return o
+    
+    def get_community_objectives(self) -> list[CEObjective] :
+        """Returns the array of CEObjectives that are Community."""
+        p = []
+        for objective in self.all_objectives :
+            if objective.type == "Community" :
+                p.append(objective)
+        return p
+    
+    def get_uncleared_objectives(self) -> list[CEObjective] :
+        "Returns an array of all uncleared objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.is_uncleared() and objective.type in ["Primary", "Secondary"]: 
+                o.append(objective)
+        return o
+    
+    def get_badge_objectives(self) -> list[CEObjective] :
+        "Returns an array of all badge objectives."
+        o = []
+        for objective in self.all_objectives :
+            if objective.type == "Badge" :
+                o.append(objective)
+        return o
+    
+    def get_objective(self, ce_id : str) -> CEObjective | None:
+        """Returns the :class:`CEObjective` object associated
+        with `ce_id`, or `None` if none exist."""
+        for objective in self.all_objectives :
+            if objective.ce_id == ce_id:
+                return objective
+        return None
+    
+    # ==== point totals ====
     
     def get_total_points(self) -> int :
         """Returns the total number of points this game has.\n
@@ -76,31 +177,77 @@ class CEGame:
             total_points += objective.point_value
         return total_points
     
+    # ==== tier methods ====
+
     @property
-    def ce_id(self) -> str :
-        """Returns the Challenge Enthusiasts ID associated with this game."""
-        return self._ce_id
+    def tier(self) -> str :
+        """Returns the tier (e.g. `"Tier 1"`) of this game."""
+        return f"Tier {self.tier_num}"
     
     @property
-    def game_name(self) -> str :
-        """Returns the name of this game."""
-        return self._game_name
+    def tier_num(self) -> int:
+        """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
+        points = self.get_po_points(include_uncleareds=False) # don't include uncleareds
+        for threshold, tier in TIER_THRESHOLDS:
+            if points >= threshold:
+                return tier
+        return 0
     
     @property
-    def platform(self) -> hm.PLATFORM_NAMES :
-        """Returns the platform this game is hosted on."""
-        return self._platform
+    def is_t0(self) -> bool :
+        """Returns true if the game is a Tier 0."""
+        return self.get_total_points() == 0
+
+    @property
+    def is_role_t4(self) -> bool :
+        "Returns true if this game is a Role T4 (has a discord role associated with it)"
+        po_points = self.get_po_points(include_uncleareds=False)
+        return self.tier_num == 4 and po_points >= 150
     
     @property
-    def platform_id(self) -> str :
-        """Returns the ID value of this game on its platform."""
-        return self._platform_id
+    def is_t5plus(self) -> bool :
+        "Returns true if this game is Tier 5 or above."
+        return self.tier_num >= 5
+    
+    # ==== derived properties ====
+
+    @property
+    def has_uncleared(self) -> bool :
+        """Returns true if this game has an uncleared objective."""
+        for objective in self.all_objectives :
+            if objective.is_uncleared():
+                return True
+        return False
     
     @property
-    def categories(self) -> list[hm.CATEGORIES] :
-        """Returns the categories of this game (e.g. Action, Arcade, Strategy)."""
-        return self._categories
+    def ce_link(self) -> str :
+        "Returns the link to the Challenge Enthusiasts page."
+        return f"https://cedb.me/game/{self.ce_id}"
     
+    @property
+    def category_emojis(self) -> str :
+        "Returns the category emojis for this game."
+        _string = ""
+        for cat in self.categories:
+            _string += hm.get_emoji(cat)
+        return _string
+    
+    @property
+    def tier_emoji(self) -> str :
+        "Returns the tier emoji for this game."
+        return "" + hm.get_emoji(self.tier)
+        
+    @property
+    def emojis(self) -> str :
+        "Returns the tier and category emojis for this game."
+        return self.tier_emoji + self.category_emojis
+
+    @property
+    def name_with_link(self) -> str :
+        "Returns the name with a link."
+        return f"[{self.game_name}](https://cedb.me/game/{self.ce_id})"
+    
+    @property
     def categories_num(self) -> list[int]:
         "[Action, First-Person, Strategy] --> [1, 4, 6]"
         _nums = []
@@ -120,68 +267,23 @@ class CEGame:
                     _nums.append(6)
         return _nums
 
+    @property
     def categories_string(self) -> str:
         "[Arcade, First-Person, Strategy] --> Arcade, First-Person, Strategy"
         return ', '.join(self.categories)
     
-    @property
-    def all_objectives(self) -> list[CEObjective] :
-        """Returns the array of all `CEObjectives` in this game."""
-        return self._objectives
-    
-    def get_primary_objectives(self, include_uncleareds=False) -> list[CEObjective] : 
-        """Returns the array of CEObjectives that are Primary.\n
-        NOTE: This does not return uncleared objectives, unless you set `include_uncleareds = True`!"""
-        p = []
-        for objective in self.all_objectives :
-            if objective.type == "Primary" and (not objective.is_uncleared() or include_uncleareds) :
-                p.append(objective)
-        return p
-    
-    def get_community_objectives(self) -> list[CEObjective] :
-        """Returns the array of CEObjectives that are Community."""
-        p = []
-        for objective in self.all_objectives :
-            if objective.type == "Community" :
-                p.append(objective)
-        return p
-    
-    def get_uncleared_objectives(self) -> list[CEObjective] :
-        "Returns an array of all uncleared objectives."
-        o = []
-        for objective in self.all_objectives :
-            if objective.is_uncleared() and objective.type in ["Primary", "Secondary"]: 
-                o.append(objective)
-        return o
-    
-    def get_badge_objectives(self) -> list[CEObjective] :
-        "Returns an array of all badge objectives."
-        o = []
-        for objective in self.all_objectives :
-            if objective.type == "Badge" :
-                o.append(objective)
-        return o
-    
-    def get_secondary_objectives(self) -> list[CEObjective] :
-        "Returns an array of all secondary objectives."
-        o = []
-        for objective in self.all_objectives :
-            if objective.type == "Secondary" :
-                o.append(objective)
-        return o
-    
-    def get_objective(self, ce_id : str) -> CEObjective | None:
-        """Returns the :class:`CEObjective` object associated
-        with `ce_id`, or `None` if none exist."""
-        for objective in self.all_objectives :
-            if objective.ce_id == ce_id:
-                return objective
-        return None
-    
-    @property
-    def last_updated(self) -> datetime.datetime :
-        """Returns the datetime of the last time this game was updated."""
-        return self._last_updated
+    # ==== mutators ====
+
+    def add_objective(self, objective : CEObjective) :
+        """Adds an objective to the game's objective arrays."""
+        self._objectives.append(objective)
+        
+    @last_updated.setter
+    def last_updated(self, last_updated : int) -> None :
+        """Sets the last updated value to `last_updated`."""
+        self._last_updated = last_updated
+
+    # ==== async / network ====
     
     async def get_raw_ce_data(self) -> dict :
         "Returns the raw CE data."
@@ -202,65 +304,6 @@ class CEGame:
             full_data=await self.get_raw_ce_data()
         )
     
-    # ----------- setters -----------
-
-    def add_objective(self, objective : CEObjective) :
-        """Adds an objective to the game's objective arrays."""
-        self._objectives.append(objective)
-        
-    @last_updated.setter
-    def set_last_updated(self, last_updated : int) -> None :
-        """Sets the last updated value to `last_updated`."""
-        self._last_updated = last_updated
-    
-
-    # --------- helper functions ------------
-
-    def is_t0(self) -> bool :
-        """Returns true if the game is a Tier 0."""
-        return self.get_total_points() == 0
-
-    def is_role_t4(self) -> bool :
-        "Returns true if this game is a Role T4 (has a discord role associated with it)"
-        return self.get_tier_num() == 4 and self.get_total_points() >= 150
-    
-    def get_tier(self) -> str :
-        """Returns the tier (e.g. `"Tier 1"`) of this game."""
-        return f"Tier {self.get_tier_num()}"
-    
-    def get_tier_num(self) -> int:
-        """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
-        points = self.get_po_points() # don't include uncleareds
-        for threshold, tier in TIER_THRESHOLDS:
-            if points >= threshold:
-                return tier
-        return 0
-    
-    def is_t5plus(self) -> bool :
-        "Returns true if this game is Tier 5 or above."
-        #          tier num        >= 5
-        return self.get_tier_num() >= 5
-
-    # def get_price(self) -> float :
-    #     """Returns the current price (in USD) on the platform of choice."""
-    #     print("⚠️ The 'CEGame.get_price()' method is deprecated. Use 'CEGame.get_price_async' instead.")
-    #     return None 
-    
-    #     if self.platform == "steam" :
-    #         api_response = requests.get("https://store.steampowered.com/api/appdetails?",
-    #                                     params = {'appids' : self.platform_id, 'cc' : 'US'})
-    #         json_response = json.loads(api_response.text)
-
-    #         steam_id = str(self.platform_id)
-
-    #         if json_response[steam_id]['data']['is_free'] : 
-    #             return 0
-    #         elif 'price_overview' in json_response[steam_id]['data'] :
-    #             return float(json_response[steam_id]['data']['price_overview']['final_formatted'][1::])
-    #         else :
-    #             return None
-    #     return None
-    
     async def get_price_async(self) -> float | None :
         """Returns the current price (in USD) on the platform of this game."""
         if self.platform != "steam":
@@ -280,24 +323,6 @@ class CEGame:
             else :
                 return None
         return None
-
-            
-    # def get_steamhunters_data(self) -> int | None :
-    #     """Returns the average completion time on SteamHunters, or `None` if a) not a Steam game or b) no SteamHunters data."""
-    #     if self.platform != "steam" : return None
-    #     api_response = requests.get(f"https://steamhunters.com/api/apps/{self.platform_id}")
-    #     if api_response.text == "null" or api_response.text is None :
-    #         return None
-    #     try :
-    #         json_response = json.loads(api_response.text)
-    #     except :
-    #         print(f"SteamHunters response failed for {self.name_with_link()}")
-    #         return 999999
-
-    #     if 'medianCompletionTime' in json_response :
-    #         return int(int(json_response['medianCompletionTime']) / 60)
-    #     else :
-    #         return None
         
     async def get_steamhunters_data_async(self) -> int | None :
         if self.platform != "steam":
@@ -322,18 +347,6 @@ class CEGame:
                 return int(int(json_response['medianCompletionTime']) / 60)
             else :
                 return None
-        
-    # def get_steam_data(self) -> SteamData | None : 
-    #     """Returns the steam data for this game."""
-    #     if self.platform != 'steam' : return None
-    #     try :
-    #         payload = {'appids' : self.platform_id, 'cc' : 'US'}
-    #         response = requests.get("https://store.steampowered.com/api/appdetails?", 
-    #                                 params = payload)
-    #         return SteamData(json.loads(response.text))
-    #     except Exception as e :
-    #         print(e)
-    #         return None
         
     async def get_completion_data(self) -> CECompletion :
         """Returns the completion data for this game."""
@@ -360,37 +373,7 @@ class CEGame:
                 }
             )
     
-    def has_an_uncleared(self) -> bool :
-        """Returns true if this game has an uncleared objective."""
-        for objective in self.all_objectives :
-            if objective.is_uncleared():
-                return True
-        return False
-    
-    def get_ce_link(self) -> str :
-        "Returns the link to the Challenge Enthusiasts page."
-        return f"https://cedb.me/game/{self.ce_id}"
-    
-    # --- emojis ---
-    
-    def get_category_emojis(self) -> str :
-        "Returns the category emojis for this game."
-        _string = ""
-        for cat in self.categories:
-            _string += hm.get_emoji(cat)
-        return _string
-    
-    def get_tier_emoji(self) -> str :
-        "Returns the tier emoji for this game."
-        return "" + hm.get_emoji(self.get_tier())
-        
-    def get_emojis(self) -> str :
-        "Returns the tier and category emojis for this game."
-        return self.get_tier_emoji() + self.get_category_emojis()
-
-    def name_with_link(self) -> str :
-        "Returns the name with a link."
-        return f"[{self.game_name}](https://cedb.me/game/{self.ce_id})"
+    # ==== idk where you belong ====
     
     def to_dict(self) -> dict :
         """Turns this object into a dictionary for storage purposes."""
@@ -408,19 +391,7 @@ class CEGame:
             "banner" : self._banner
         }
     
-    def __str__(self) :
-        "Returns the string representation of this object."
-        return (
-            "-- CEGame --" +
-            "\nGame Name: " + self.game_name +
-            "\nGame CE ID: " + self.ce_id +
-            "\nTotal Points: " + str(self.get_total_points()) +
-            "\nPlatform: " + self.platform +
-            "\nPlatform ID: " + str(self.platform_id) +
-            "\nCategories: " + self.categories_string() +
-            "\nObjectives: " + str([objective.__str__() for objective in self.all_objectives]) +
-            f"\nLast Updated: <t:{self.last_updated}>"
-        )
+
     
 class CEAPIGame(CEGame) :
     """A game that's been pulled from the CE API."""

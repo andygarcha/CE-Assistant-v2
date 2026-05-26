@@ -534,7 +534,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if user.has_waiting_roll('Two Week T2 Streak') :
                 "If user's current roll is ready for next stage, roll it for them."
                 past_roll : CERoll = user.get_waiting_roll("Two Week T2 Streak")
-                if past_roll.ready_for_next() :
+                if past_roll.ready_for_next:
                     valid_categories = list(get_args(hm.CATEGORIES))
                     for game in database_name:
                         if game.ce_id in past_roll.games:
@@ -562,7 +562,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
-                        f"It is due on <t:{past_roll.due_time}>. "
+                        f"It is due on <t:{past_roll.due_timestamp}>. "
                         f"Run /check-rolls to see more information."
                     )
                 else :
@@ -589,7 +589,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             if user.has_waiting_roll("Two \"Two Week T2 Streak\" Streak") :
                 # if the user is currently working 
                 past_roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
-                if past_roll.ready_for_next() :
+                if past_roll.ready_for_next:
                     valid_categories = list(get_args(hm.CATEGORIES))
                     for game in database_name:
                         if game.ce_id in past_roll.games:
@@ -616,7 +616,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
                     SupabaseReader.dump_user(user)
                     return await interaction.followup.send(
                         f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). " +
-                        f"It is due on <t:{past_roll.due_time}>. " +
+                        f"It is due on <t:{past_roll.due_timestamp}>. " +
                         "Run /check-rolls to see more information."
                     )
                 else :
@@ -679,7 +679,7 @@ async def solo_roll(interaction : discord.Interaction, event_name : hm.SOLO_ROLL
             past_roll : CERoll | None = user.get_current_roll("Fourward Thinking")
 
             # check to make sure this person is ready for the next iteration of their roll
-            if past_roll is not None and not past_roll.ready_for_next() :
+            if past_roll is not None and not past_roll.ready_for_next:
                 return await interaction.followup.send("You need to finish your previous game first! Run /check-rolls to check them.")
 
             past_roll = user.get_waiting_roll("Fourward Thinking")
@@ -828,8 +828,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
 
         return await interaction.followup.edit_message(
             content=(
-                f"{user.mention()} must complete {game_for_user_object.name_with_link()} and " +
-                f"{partner.mention()} must complete {game_for_partner_object.name_with_link()}. Your cooldown " +
+                f"{user.mention()} must complete {game_for_user_object.name_with_link} and " +
+                f"{partner.mention()} must complete {game_for_partner_object.name_with_link}. Your cooldown " +
                 f"ends on <t:{user.get_current_roll('Destiny Alignment').calculate_cooldown_date(database_name)}>."
             ),
             message_id=interaction.message.id,
@@ -973,8 +973,8 @@ class SoulMatesAgreeView(discord.ui.View) :
 
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            content=(f"{user.mention()} and {partner.mention()} have until <t:{user_roll.due_time}> "
-            + f"to complete {game_object.name_with_link()}."),
+            content=(f"{user.mention()} and {partner.mention()} have until <t:{user_roll.due_timestamp}> "
+            + f"to complete {game_object.name_with_link}."),
             view = discord.ui.View()
         )
 
@@ -1066,10 +1066,10 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
 
         content = (
                 f"{user.mention()} and {partner.mention()} must complete the following games by " +
-                f"<t:{user_roll.due_time}>: "
+                f"<t:{user_roll.due_timestamp}>: "
             )
         for i, game in enumerate(rolled_games_objects) :
-            content += (f"{game.name_with_link()}")
+            content += (f"{game.name_with_link}")
             if i != 3:
                 content += ", "
         content += "."

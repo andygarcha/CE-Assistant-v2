@@ -696,13 +696,13 @@ def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
     for game in database_name:
         if not game.platform == 'steam':
             continue #non steam game
-        if game.get_tier_num() == 0:
+        if game.tier_num == 0:
             continue #t0
         if game.platform_id not in prices or game.platform_id not in hours:
             continue #no success from api
 
         for _cat in game.categories:
-            database_tier[str(game.get_tier_num())][_cat].append(
+            database_tier[str(game.tier_num)][_cat].append(
                 {
                     'ce_id': game.ce_id,
                     'name': game.game_name,
@@ -820,7 +820,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             partner = None
             if roll.partner_ce_id is not None:
                 partner = SupabaseReader.get_user(roll.partner_ce_id)
-            if (roll.is_multi_stage() and not roll.in_final_stage() and 
+            if (roll.is_multi_stage and not roll.in_final_stage and 
                 (roll.is_won(database_name=database_name_new, user=user, partner=partner))):
                 # if we've already hit this roll before, keep moving
                 if roll.due_time is None:
@@ -867,16 +867,16 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 Player A without removing the roll. But, when we get to Player B, both players have
                 updated.
                 """
-                if roll.is_co_op():
+                if roll.is_co_op:
                     # get the partner and their roll
                     partner = SupabaseReader.get_user(roll.partner_ce_id)
                     if partner.has_current_roll(roll.roll_name) :
                         partner_roll = partner.get_current_roll(roll.roll_name)
 
                         # update their current roll
-                        if roll.is_pvp() and roll.status == "won" :
+                        if roll.is_pvp and roll.status == "won" :
                             partner.fail_current_roll(partner_roll.roll_name)
-                        elif roll.is_pvp() and roll.status == "failed" :
+                        elif roll.is_pvp and roll.status == "failed" :
                             partner.win_current_roll(partner_roll.roll_name)
                         else :
                             partner.win_current_roll(partner_roll.roll_name)
@@ -885,7 +885,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                         SupabaseReader.dump_user(partner)
 
             
-            elif roll.is_expired() :
+            elif roll.is_expired :
                 # add the update message
                 update = UpdateMessageForScraperProcess()
                 update.location = "casino"
@@ -896,7 +896,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 
                 # remove this roll from current rolls
                 user.fail_current_roll(roll.roll_name)
-                if roll.is_co_op() :
+                if roll.is_co_op :
                     partner = SupabaseReader.get_user(roll.partner_ce_id)
                     if partner.has_current_roll(roll.roll_name) :
                         partner.fail_current_roll(roll.roll_name)
@@ -959,7 +959,7 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
     won = roll.is_won(games, user1, user2)
     
     # Case 1: The roll is multi-stage, and we're not on the last stage.
-    if roll.is_multi_stage() and not roll.in_final_stage() and won:
+    if roll.is_multi_stage and not roll.in_final_stage and won:
         update.location = 'casino'
         update.is_embed = False
         update.text = (
@@ -984,14 +984,14 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
         roll.set_status('won')
 
         # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp():
+        if not roll.is_pvp:
             return update, roll
 
         # Case 2C (pvp)
         # -- not dealing with this.
         raise NotImplementedError
 
-    if roll.is_expired():
+    if roll.is_expired:
         update.location = 'casino'
         update.is_embed = False
         update.text = roll.get_fail_message(games, user1, user2)
@@ -1022,7 +1022,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.is_embed = True
     update.title = f"__ {game_new.game_name} __ added to the site:"
     update.color = 0x48b474
-    update.description = f"\n- {game_new.get_emojis()}"
+    update.description = f"\n- {game_new.emojis}"
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = 'gameadditions'
 
@@ -1089,21 +1089,21 @@ def create_update_updated_game(game_old: CEGame, game_new: CEAPIGame) -> tuple[
         update.description += "\n- Total points unchanged!"
     else:
         update.description += (
-            f"\n- {game_old.get_total_points()} {hm.get_emoji('Points')} " +                            # 75 points
-            f"{hm.get_emoji('Arrow')} " +                                                               # -->
-            f"{game_new.get_total_points()} {hm.get_emoji('Points')}"                                   # 220 points
+            f"\n- {game_old.get_total_points()} {hm.get_emoji('Points')} " +  # 75 points
+            f"{hm.get_emoji('Arrow')} " +                                     # -->
+            f"{game_new.get_total_points()} {hm.get_emoji('Points')}"         # 220 points
         )
-        if game_old.get_tier() != game_new.get_tier() :
+        if game_old.tier_num != game_new.tier_num :
             update.description += (
-                f" ({game_old.get_tier_emoji()} {hm.get_emoji('Arrow')} {game_new.get_tier_emoji()})"
+                f" ({game_old.tier_emoji} {hm.get_emoji('Arrow')} {game_new.tier_emoji})"
             )
 
     # CATEGORY CHANGE
     if game_old.categories != game_new.categories:
         update.description += (
-            f"\n- {game_old.get_category_emojis()} ({game_old.categories_string()})" +
+            f"\n- {game_old.category_emojis} ({game_old.categories_string})" +
             f"{hm.get_emoji('Arrow')}" +
-            f"{game_new.get_category_emojis()} ({game_new.categories_string()})"
+            f"{game_new.category_emojis} ({game_new.categories_string})"
         )
     
     # objective changes...
@@ -1222,8 +1222,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
 
         # if the game is completed
         if game_old.get_user_points() == game_database.get_total_points():
-            old_tiers[game_database.get_tier_num() - 1] += points
-            for c_num in game_database.categories_num():
+            old_tiers[game_database.tier_num - 1] += points
+            for c_num in game_database.categories_num:
                 old_categories[c_num - 1] += points
     
     for game_new in games_new:
@@ -1235,8 +1235,8 @@ def check_roles(games_old: list[CEUserGame], games_new: list[CEUserGame],
 
         # if the game is completed
         if game_new.get_user_points() == game_database.get_total_points():
-            new_tiers[game_database.get_tier_num() - 1] += points
-            for c_num in game_database.categories_num():
+            new_tiers[game_database.tier_num - 1] += points
+            for c_num in game_database.categories_num:
                 new_categories[c_num - 1] += points
     
     # CATEGORIES
@@ -1274,7 +1274,7 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
     for game in completed_games_new:
         TIER_MINIMUM = 4
 
-        if game.get_tier_num() < TIER_MINIMUM:
+        if game.tier_num < TIER_MINIMUM:
             continue
 
         # check if the game's been completed before
@@ -1297,7 +1297,7 @@ def check_newly_completed_games(completed_games_old: list[CEGame], completed_gam
             user.mention(),
             user.display_name,
             game.game_name,
-            game.get_tier_emoji(),
+            game.tier_emoji,
             game.get_total_points(),
             hm.get_emoji('Points')
         )

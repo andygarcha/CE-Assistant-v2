@@ -46,8 +46,8 @@ async def get_roll_embeds(roll : CERoll, database_name : list) -> list[discord.E
     
     # -- set up roll info --
     description += "__Roll Info__\n"
-    if roll.ends() :
-        description += f"You must complete {roll.roll_name} by <t:{roll.due_time}>.\n"
+    if roll.ends:
+        description += f"You must complete {roll.roll_name} by <t:{roll.due_timestamp}>.\n"
         description += f"If you fail, you will have a cooldown until <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
     else :
         description += f"{roll.roll_name} has no time limit. You can reroll on <t:{roll.calculate_cooldown_date(database_name=database_name)}>.\n"
@@ -100,7 +100,7 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     if game.platform == "steam" :
         price = await game.get_price_async()
     embed.description = (
-        f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
+        f"- {hm.get_emoji(game.tier)}{game.category_emojis}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 

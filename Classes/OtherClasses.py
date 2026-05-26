@@ -871,7 +871,7 @@ class CEInput :
         returned_string : str = ""
 
         # show game name
-        returned_string += f"Game: {game.name_with_link()}\n"
+        returned_string += f"Game: {game.name_with_link}\n"
 
         # show value inputs
         returned_string += "Value Inputs:\n"
@@ -903,7 +903,7 @@ class CEInput :
         returned_string: str = ""
 
         # show game name
-        returned_string += f"Game: {game.name_with_link()}\n"
+        returned_string += f"Game: {game.name_with_link}\n"
 
         # show value inputs
         returned_string += "Value Inputs:\n"
