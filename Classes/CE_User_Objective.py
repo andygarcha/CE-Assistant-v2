@@ -8,7 +8,7 @@ class CEUserObjective:
                  type : hm.OBJECTIVE_TYPES,
                  user_points : int,
                  name : str = ""):
-        self._type = type
+        self._type: hm.OBJECTIVE_TYPES = type
         self._ce_id = ce_id
         self._game_ce_id = game_ce_id
         self._user_points = user_points
@@ -78,12 +78,12 @@ class CEUserObjective:
         }
         return d
     
-    def __str__(self) :
+    def __str__(self) -> str :
         return (
             "-- CEUserObjective --" +
             "\nObjective Name: " + self.name +
             "\nObjective CE ID: " + self.ce_id +
             "\nGame CE ID: " + self.game_ce_id +
             "\nObjective Type: " + self.type +
-            "\nUser Points: " + self.user_points
+            "\nUser Points: " + str(self.user_points)
         )
