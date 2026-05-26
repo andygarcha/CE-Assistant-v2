@@ -18,19 +18,23 @@ class CECooldown :
     @property
     def end_time(self) -> int :
         """Returns the end time for this cooldown as a unix timestamp."""
+        return int(self._end_time.timestamp())
+    
+    @property
+    def end_time_asdt(self) -> datetime.datetime:
         return self._end_time
     
     # ----------- other methods ---------
 
     def is_expired(self) -> bool :
         """Returns true if this cooldown is ready to be lifted."""
-        return self.end_time < datetime.datetime.now(datetime.timezone.utc)
+        return self.end_time_asdt < datetime.datetime.now(datetime.timezone.utc)
     
     def to_dict(self) -> dict :
         """Returns this object as a dictionary."""
         return {
             'Event Name' : self.roll_name,
-            'End Time' : self.end_time.isoformat()
+            'End Time' : self.end_time_asdt.isoformat()
         }
     
     def __str__(self) :
@@ -38,5 +42,5 @@ class CECooldown :
         return (
             "-- CECooldown --" +
             "\nCooldown Name: " + self.roll_name +
-            "\nEnd Time: " + self.end_time.isoformat()
+            "\nEnd Time: " + self.end_time_asdt.isoformat()
         )
