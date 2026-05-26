@@ -354,6 +354,12 @@ class CERoll:
 
         return dt < hm.get_datetime('now')
 
+    @property
+    def is_completed(self) -> bool :
+        "Return true if this roll has been completed."
+        return self.completed_time is not None
+
+
 
     def set_status(self, new_status : ROLL_STATUS) :
         "Setter for status"
@@ -434,11 +440,6 @@ class CERoll:
             self.status = "won"
         else :
             self.status = "failed"
-
-
-    def is_completed(self) -> bool :
-        "Return true if this roll has been completed."
-        return self.completed_time is not None
     
     def ends(self) -> bool :
         """Returns true if the roll can end."""
@@ -871,7 +872,7 @@ class CERoll:
             string += f"due on <t:{self.due_time}>, "
         
         # completed time
-        if self.is_completed() :
+        if self.is_completed :
             string += f"completed on <t:{self.completed_time}>, "
         
         # partner?
@@ -879,7 +880,7 @@ class CERoll:
             string += f"partnered with <@{self.partner_ce_id}>, "
 
             # winner?
-            if self.is_completed() :
+            if self.is_completed :
                 string += f"won by {'you' if self.winner else 'partner'}, "
         
         # rerolls
