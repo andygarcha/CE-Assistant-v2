@@ -367,11 +367,12 @@ class CERoll:
     @property
     def ready_for_next(self) -> bool :
         """Returns true if this game is ready for the next game."""
-        if not self.is_multi_stage():
+        if not self.is_multi_stage:
             return False
         
         return self.due_time is None or self.due_time == 0
     
+    @property
     def is_multi_stage(self) -> bool :
         "Returns true if this roll is multi-stage."
         return self.roll_name in get_args(hm.MULTI_STAGE_ROLLS)
@@ -382,7 +383,7 @@ class CERoll:
     
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."
-        if not self.is_multi_stage():
+        if not self.is_multi_stage:
             return False
         if self.roll_name == "Two Week T2 Streak":
             return len(self.games) == 2

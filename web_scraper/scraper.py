@@ -820,7 +820,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
             partner = None
             if roll.partner_ce_id is not None:
                 partner = SupabaseReader.get_user(roll.partner_ce_id)
-            if (roll.is_multi_stage() and not roll.in_final_stage() and 
+            if (roll.is_multi_stage and not roll.in_final_stage() and 
                 (roll.is_won(database_name=database_name_new, user=user, partner=partner))):
                 # if we've already hit this roll before, keep moving
                 if roll.due_time is None:
@@ -959,7 +959,7 @@ def update_one_roll(roll: CERoll, user1: CEUser, user2: CEUser | None,
     won = roll.is_won(games, user1, user2)
     
     # Case 1: The roll is multi-stage, and we're not on the last stage.
-    if roll.is_multi_stage() and not roll.in_final_stage() and won:
+    if roll.is_multi_stage and not roll.in_final_stage() and won:
         update.location = 'casino'
         update.is_embed = False
         update.text = (
