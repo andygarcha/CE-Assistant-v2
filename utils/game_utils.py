@@ -124,7 +124,8 @@ async def get_rollable_game(
             continue
 
         # has uncleared
-        if get_item_from_list(game['ce_id'], database_name).has_an_uncleared():
+        __game_object = get_item_from_list(game['ce_id'], database_name)
+        if __game_object is None or __game_object.has_uncleared:
             continue
 
         # has points

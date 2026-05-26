@@ -60,7 +60,7 @@ class CEUserGame():
                 p.append(obj)
         return p
     
-    def has_completed_objective(self, objective_id : str, points : int) -> CEUserObjective :
+    def has_completed_objective(self, objective_id : str, points : int) -> bool :
         "Returns true if this user has completed the specified objective."
         for obj in self.user_objectives :
             if obj.ce_id == objective_id and obj.user_points == points:

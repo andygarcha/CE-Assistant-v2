@@ -591,7 +591,7 @@ class CERoll:
                 game = hm.get_item_from_list(game_id, database_name)
                 if game_id not in user_wins :
                     return_str += "\n- " + game.game_name + " 🟥"
-                return_str += "\n- " + game.game_name + " " + game.get_category_emojis()
+                return_str += "\n- " + game.game_name + " " + game.category_emojis()
             return return_str
 
         else :
@@ -657,7 +657,7 @@ class CERoll:
         
         elif self.roll_name == "Soul Mates" :
             game = hm.get_item_from_list(self.games[0], database_name)
-            match(game.get_tier_num()):
+            match(game.tier_num):
                 case 1:
                     return hm.get_datetime(10*7, old_datetime=self.init_time)
                 case 2:
@@ -761,7 +761,7 @@ class CERoll:
         if database_name is not None :
             from Classes.CE_Game import CEGame
             database_name : list[CEGame] = database_name
-            tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
+            tier = hm.get_item_from_list(self.games[0], database_name).tier_num
 
         match self.roll_name:
             case "Destiny Alignment" | "Soul Mates" | "Winner Takes All":
@@ -775,7 +775,7 @@ class CERoll:
         if database_name is not None :
             from Classes.CE_Game import CEGame
             database_name : list[CEGame] = database_name
-            tier = hm.get_item_from_list(self.games[0], database_name).get_tier_num()
+            tier = hm.get_item_from_list(self.games[0], database_name).tier_num
 
         match self.roll_name:
             case "Destiny Alignment":

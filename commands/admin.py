@@ -310,7 +310,7 @@ async def clear_roll_portion(interaction: discord.Interaction, member: discord.M
     if game_removed is None :
         game_removed = "<error, removed game was 'null'>"
     else :
-        game_removed = game_removed.name_with_link()
+        game_removed = game_removed.name_with_link
     roll.set_status('waiting')
     roll.due_time = None
 

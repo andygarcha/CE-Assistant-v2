@@ -100,7 +100,7 @@ async def get_game_embed(game_id : str, database_name : list) -> discord.Embed :
     if game.platform == "steam" :
         price = await game.get_price_async()
     embed.description = (
-        f"- {hm.get_emoji(game.get_tier())}{hm.get_emoji(game.category)}" +
+        f"- {hm.get_emoji(game.tier)}{game.category_emojis}" +
         f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 

@@ -395,13 +395,13 @@ class ValueModal(discord.ui.Modal) :
                 return await interaction.followup.send("Error 3.")
 
             await log_channel.send(
-                f":bell: Alert! {self.__game.name_with_link()}'s PO {self.__objective.name} " +
+                f":bell: Alert! {self.__game.name_with_link}'s PO {self.__objective.name} " +
                 f"({self.__objective.point_value} points) has an average evaluation of {value_input.average()} points."
             )
 
         # return a quick little confirmation message
         return await interaction.followup.send(
-            f"You've valued {self.__game.name_with_link()}'s " +
+            f"You've valued {self.__game.name_with_link}'s " +
             f"{self.__objective.get_type_short()} '{self.__objective.name}' at {self.new_value} points.",
             ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
         )
@@ -505,7 +505,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         if not old_curatable and new_curatable :
             input_channel = client.get_channel(hm.INPUT_LOG_ID)
             await input_channel.send(
-                f":bell: Alert! {game_object.name_with_link()} has been voted curatable! " +
+                f":bell: Alert! {game_object.name_with_link} has been voted curatable! " +
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
 
@@ -552,7 +552,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         if not old_curatable and new_curatable :
             input_channel = client.get_channel(hm.INPUT_LOG_ID)
             await input_channel.send(
-                f":bell: Alert! {game_object.name_with_link()} has been voted curatable! " +
+                f":bell: Alert! {game_object.name_with_link} has been voted curatable! " +
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
 
@@ -599,7 +599,7 @@ class CurateButtonYesOrNoView(discord.ui.View) :
         if old_curatable and not new_curatable :
             input_channel = client.get_channel(hm.INPUT_LOG_ID)
             await input_channel.send(
-                f":bell: Alert! {game_object.name_with_link()}'s curatable status has been removed! " +
+                f":bell: Alert! {game_object.name_with_link}'s curatable status has been removed! " +
                 f"Curate percentage: {input_object.average_curate()}, votes: {input_object.curator_count()}."
             )
         
@@ -779,7 +779,7 @@ async def game_input(interaction : discord.Interaction, game : str) :
         )
     
     # set up the message
-    content = f"Game chosen: {game_object.name_with_link()}"
+    content = f"Game chosen: {game_object.name_with_link}"
     database_name = SupabaseReader.get_database_name()
     if user.has_completed_game(game_object.ce_id, database_name):
         content += hm.get_emoji('Crown')
@@ -816,7 +816,7 @@ async def check_inputs(interaction : discord.Interaction, game : str, simple : b
     # check to see if any inputs have even been provided.
     if (input_object is None) :
         return await interaction.followup.send(
-            f"No inputs have been provided on {game_object.name_with_link()}.",
+            f"No inputs have been provided on {game_object.name_with_link}.",
             ephemeral=INPUT_MESSAGES_ARE_EPHEMERAL
         )
     

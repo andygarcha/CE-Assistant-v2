@@ -828,8 +828,8 @@ class DestinyAlignmentAgreeView(discord.ui.View) :
 
         return await interaction.followup.edit_message(
             content=(
-                f"{user.mention()} must complete {game_for_user_object.name_with_link()} and " +
-                f"{partner.mention()} must complete {game_for_partner_object.name_with_link()}. Your cooldown " +
+                f"{user.mention()} must complete {game_for_user_object.name_with_link} and " +
+                f"{partner.mention()} must complete {game_for_partner_object.name_with_link}. Your cooldown " +
                 f"ends on <t:{user.get_current_roll('Destiny Alignment').calculate_cooldown_date(database_name)}>."
             ),
             message_id=interaction.message.id,
@@ -974,7 +974,7 @@ class SoulMatesAgreeView(discord.ui.View) :
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
             content=(f"{user.mention()} and {partner.mention()} have until <t:{user_roll.due_time}> "
-            + f"to complete {game_object.name_with_link()}."),
+            + f"to complete {game_object.name_with_link}."),
             view = discord.ui.View()
         )
 
@@ -1069,7 +1069,7 @@ class TeamworkMakesTheDreamWorkAgreeView(discord.ui.View) :
                 f"<t:{user_roll.due_time}>: "
             )
         for i, game in enumerate(rolled_games_objects) :
-            content += (f"{game.name_with_link()}")
+            content += (f"{game.name_with_link}")
             if i != 3:
                 content += ", "
         content += "."
