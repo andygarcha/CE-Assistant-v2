@@ -85,8 +85,8 @@ class CEGame:
         return self._objectives
 
     @property
-    def last_updated(self) -> datetime.datetime :
-        """Returns the datetime of the last time this game was updated."""
+    def last_updated(self) -> int :
+        """Returns the UNIX timestamp of the last time this game was updated."""
         return self._last_updated
     
     # ==== objective methods ====
