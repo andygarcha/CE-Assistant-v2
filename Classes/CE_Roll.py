@@ -382,6 +382,7 @@ class CERoll:
         "Returns true if this roll is rerollable."
         return self.roll_name in ["Fourward Thinking"]
     
+    @property
     def in_final_stage(self) -> bool :
         "If this roll is multi-stage, this will return true if this event is in its final stage."
         if not self.is_multi_stage:
