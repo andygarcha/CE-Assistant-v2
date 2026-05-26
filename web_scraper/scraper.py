@@ -867,7 +867,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 Player A without removing the roll. But, when we get to Player B, both players have
                 updated.
                 """
-                if roll.is_co_op():
+                if roll.is_co_op:
                     # get the partner and their roll
                     partner = SupabaseReader.get_user(roll.partner_ce_id)
                     if partner.has_current_roll(roll.roll_name) :
@@ -896,7 +896,7 @@ def update_one_user(user: CEUser, site_data: CEAPIUser, database_name_old: list[
                 
                 # remove this roll from current rolls
                 user.fail_current_roll(roll.roll_name)
-                if roll.is_co_op() :
+                if roll.is_co_op :
                     partner = SupabaseReader.get_user(roll.partner_ce_id)
                     if partner.has_current_roll(roll.roll_name) :
                         partner.fail_current_roll(roll.roll_name)

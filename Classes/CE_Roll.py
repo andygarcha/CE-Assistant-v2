@@ -139,6 +139,32 @@ class CERoll:
         This is only for Soul Mates. They get to choose their tier.
     """
 
+    # def __init__(
+    #     self,
+    #     roll_name,
+    #     user_ce_id,
+    #     partner_ce_id,
+    #     games,
+    #     status,
+    #     time_created,
+    #     time_due,
+    #     time_completed,
+    #     rerolls,
+    #     _id,
+    #     tier_num
+    # ):
+    #     """Initializer"""
+    #     self._roll_name = roll_name
+    #     self._user_ce_id = user_ce_id
+    #     self._games = games
+    #     self._status = status
+    #     self._partner_ce_id = partner_ce_id
+    #     self._id = _id
+    #     self._init_time = time_created
+    #     self._due_time = time_due
+    #     self._completed_time = time_completed
+    #     self._rerolls = rerolls
+
     def __init__(self,
                  roll_name : hm.ALL_ROLL_EVENT_NAMES,
                  user_ce_id : str,
@@ -202,7 +228,7 @@ class CERoll:
         else :
             self._rerolls = rerolls
 
-    # ------- helper methods -------
+    # ==== private helpers ====
     
     def _normalize_datetime(self, dt):
         """Convert string or naive datetime to timezone-aware datetime."""
@@ -220,7 +246,7 @@ class CERoll:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
         return dt
 
-    # ------- properties -------
+    # ==== core properties ====
 
     @property
     def roll_name(self) -> hm.ALL_ROLL_EVENT_NAMES :
@@ -231,6 +257,20 @@ class CERoll:
     def user_ce_id(self) -> str :
         """Get the Challenge Enthusiast ID of the roller."""
         return self._user_ce_id
+    
+    @property
+    def partner_ce_id(self) -> str:
+        return self._partner_ce_id
+    
+    @property
+    def games(self) :
+        """Get the list of games as an array of their Challenge Enthusiast IDs."""
+        return self._games
+    
+    @property
+    def status(self) -> ROLL_STATUS :
+        "The status of this roll."
+        return self._status
     
     @property
     def init_time(self):
@@ -247,29 +287,18 @@ class CERoll:
         """Get the datetime of the time the roll was completed 
         (will be `None` if active)."""
         return self._completed_time
-    
-    @property
-    def games(self) :
-        """Get the list of games as an array of their Challenge Enthusiast IDs."""
-        return self._games
-    
-    @property
-    def partner_ce_id(self) :
-        """Get the Challenge Enthusiast ID of the partner in this roll 
-        (if one exists)."""
-        return self._partner_ce_id
-    
+
     @property
     def rerolls(self) :
         """If applicable, get the number of rerolls allowed for this roll event."""
         return self._rerolls
     
     @property
-    def status(self) -> ROLL_STATUS :
-        "The status of this roll."
-        return self._status
-    
-    def status2(self):
+    def winner(self) -> bool :
+        "Returns true if this person won the co-op, false if their partner won."
+        return self.status == "won"
+
+    def __status_mongo_to_supabase(self):
         if self.init_time == 0 and self.due_time is None or self.games is None:
             return "won_legacy"
         match(self.status):
@@ -286,6 +315,44 @@ class CERoll:
             case "won":
                 return "won"
 
+    # ==== boolean state properties ====
+
+    @property
+    def is_co_op(self) -> bool :
+        """Returns true if this roll is co-op or pvp."""
+        return (
+            (self.partner_ce_id is not None and self.partner_ce_id != "")
+            or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
+        )
+    
+    def is_pvp(self) -> bool :
+        "Returns true if this roll is PvP."
+        return self.roll_name in hm.PVP_ROLL_EVENT_NAMES
+    
+    def is_expired(self) -> bool :
+        """Returns true if the roll has expired."""
+        if self.due_time is None :
+            return False
+
+        dt = self.due_time
+        # normalize string timestamps to datetime
+        if isinstance(dt, str):
+            try:
+                dt = datetime.datetime.fromisoformat(dt)
+            except Exception:
+                try:
+                    dt = hm.cetimestamp_to_datetime(dt)
+                except Exception as e:
+                    logger.error("Expiration check failed. Due Time: %s, couldn't normalize. %s", self.due_time, e)
+                    return False
+
+        # ensure timezone-aware for comparison
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+
+        return dt < hm.get_datetime('now')
+
+
     def set_status(self, new_status : ROLL_STATUS) :
         "Setter for status"
         self._status = new_status
@@ -293,11 +360,6 @@ class CERoll:
     @status.setter
     def status(self, new_status : ROLL_STATUS) :
         self._status = new_status
-    
-    @property
-    def winner(self) -> bool :
-        "Returns true if this person won the co-op, false if their partner won."
-        return self.status == "won"
     
     # ------ setters -------
 
@@ -372,42 +434,6 @@ class CERoll:
             self.status = "failed"
 
 
-    # ------ other methods ------
-
-    def is_co_op(self) -> bool :
-        """Returns true if this roll is co-op or pvp."""
-        return (
-            (self.partner_ce_id is not None and self.partner_ce_id != "")
-            or self.roll_name in hm.COOP_ROLL_EVENT_NAMES
-        )
-    
-    def is_pvp(self) -> bool :
-        "Returns true if this roll is PvP."
-        return self.roll_name in hm.PVP_ROLL_EVENT_NAMES
-    
-    def is_expired(self) -> bool :
-        """Returns true if the roll has expired."""
-        if self.due_time is None :
-            return False
-
-        dt = self.due_time
-        # normalize string timestamps to datetime
-        if isinstance(dt, str):
-            try:
-                dt = datetime.datetime.fromisoformat(dt)
-            except Exception:
-                try:
-                    dt = hm.cetimestamp_to_datetime(dt)
-                except Exception as e:
-                    logger.error("Expiration check failed. Due Time: %s, couldn't normalize. %s", self.due_time, e)
-                    return False
-
-        # ensure timezone-aware for comparison
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-
-        return dt < hm.get_datetime('now')
-
     def is_completed(self) -> bool :
         "Return true if this roll has been completed."
         return self.completed_time is not None
@@ -464,7 +490,7 @@ class CERoll:
         partner : CEUser = partner
 
         # and grab the objects
-        if not self.is_co_op():
+        if not self.is_co_op:
             partner = None
         
         if self.roll_name == "Destiny Alignment" :
@@ -614,7 +640,7 @@ class CERoll:
         partner : CEUser = partner
 
         # and grab the objects
-        if not self.is_co_op():
+        if not self.is_co_op:
             partner = None
 
         if self.roll_name == "Fourward Thinking" :
@@ -622,7 +648,7 @@ class CERoll:
                 f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. " +
                 f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_date(database_name)}>."
             )
-        elif self.is_co_op() :
+        elif self.is_co_op :
             return (
                 f"Sorry {user.mention()} and {partner.display_name}, you failed your {self.roll_name} roll. " +
                 f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date(database_name)}>."
@@ -847,7 +873,7 @@ class CERoll:
             string += f"completed on <t:{self.completed_time}>, "
         
         # partner?
-        if self.is_co_op() :
+        if self.is_co_op :
             string += f"partnered with <@{self.partner_ce_id}>, "
 
             # winner?
