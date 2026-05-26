@@ -1,10 +1,13 @@
 
 import datetime
+from typing import cast
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
 from Modules import http_session
 import logging
+
+from utils.icons import __ICON_KEYS
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +238,8 @@ class CEGame:
     @property
     def tier_emoji(self) -> str :
         "Returns the tier emoji for this game."
-        return "" + hm.get_emoji(self.tier)
+        tier_casted = cast(__ICON_KEYS, self.tier)
+        return "" + hm.get_emoji(tier_casted)
         
     @property
     def emojis(self) -> str :
