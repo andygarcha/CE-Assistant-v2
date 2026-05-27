@@ -1,6 +1,5 @@
 import datetime
 
-import pytest
 
 from utils.time_utils import (
     cetimestamp_to_datetime,

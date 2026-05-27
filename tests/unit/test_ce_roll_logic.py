@@ -1,7 +1,6 @@
 import datetime
 import pytest
 
-from Classes.CE_Roll import CERoll, CASINO_POINTS, relative
 from tests.conftest import make_game, make_objective, make_roll, make_user, make_user_game, make_user_objective
 
 GAME_ID_A = "game-aaa-0000-0000-000000000000"

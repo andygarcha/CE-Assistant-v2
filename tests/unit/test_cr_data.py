@@ -1,4 +1,3 @@
-import pytest
 
 from Classes.OtherClasses import CRData
 from tests.conftest import make_game, make_objective, make_user_game, make_user_objective

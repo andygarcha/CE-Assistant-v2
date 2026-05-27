@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from Classes.CE_Roll import CERoll, relative
+from Classes.CE_Roll import relative
 from tests.conftest import make_roll
 
 PAST = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)

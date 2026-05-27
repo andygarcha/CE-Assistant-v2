@@ -1,6 +1,4 @@
-import pytest
 
-from Classes.CE_User_Game import CEUserGame
 from tests.conftest import make_game, make_objective, make_user_game, make_user_objective
 
 GAME_ID = "game-001-0000-0000-000000000000"

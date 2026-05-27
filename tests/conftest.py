@@ -4,7 +4,6 @@ Each factory exposes only the parameters that individual tests care about;
 everything else gets a safe default.
 """
 import datetime
-import pytest
 
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Game import CEGame

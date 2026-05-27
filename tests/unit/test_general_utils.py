@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-import pytest
 
 from utils.general_utils import (
     format_ce_link,

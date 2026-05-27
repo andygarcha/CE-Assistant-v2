@@ -1,6 +1,6 @@
 import pytest
 
-from Classes.CE_User import CEUser, MUTELIST_CEIDS
+from Classes.CE_User import MUTELIST_CEIDS
 from tests.conftest import make_game, make_objective, make_user, make_user_game, make_user_objective
 
 GAME_ID_A = "game-aaa-0000-0000-000000000000"

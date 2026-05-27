@@ -6,9 +6,8 @@ Each test documents:
   - what the correct behaviour should be
   - why it currently fails
 """
-import pytest
 
-from Classes.OtherClasses import CEInput, CECurateInput
+from Classes.OtherClasses import CEInput
 from utils.general_utils import get_grammar_str
 from tests.conftest import make_game, make_roll, make_user, make_user_game, make_user_objective
 
