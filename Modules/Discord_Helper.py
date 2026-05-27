@@ -88,11 +88,13 @@ async def get_roll_embeds(
     return embeds
 
 
-async def get_game_embed(game_id: str, database_name: list[CEGame]) -> discord.Embed | None:
+async def get_game_embed(
+    game_id: str, database_name: list[CEGame]
+) -> discord.Embed | None:
     """This function returns a `discord.Embed` that holds all information about a game."""
 
     # grab the game
-    game= hm.get_item_from_list(game_id, database_name)
+    game = hm.get_item_from_list(game_id, database_name)
     if game is None:
         return None
 
@@ -116,7 +118,7 @@ async def get_game_embed(game_id: str, database_name: list[CEGame]) -> discord.E
     if game.platform == "steam":
         price = await game.get_price_async()
     embed.description = (
-        f"- {hm.get_emoji(game.tier)}{game.category_emojis}" # type: ignore
+        f"- {hm.get_emoji(game.tier)}{game.category_emojis}"  # type: ignore
         + f" - {game.get_total_points()}{hm.get_emoji('Points')}\n"
     )
 
@@ -196,9 +198,7 @@ class ProfileView(discord.ui.View):
 
     @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
     async def summary_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         # defer the message
         await interaction.response.defer()
@@ -244,8 +244,7 @@ class ProfileView(discord.ui.View):
 
 
 async def get_user_embeds(
-    user: CEUser,
-    database_name: list[CEGame]
+    user: CEUser, database_name: list[CEGame]
 ) -> tuple[discord.Embed, discord.ui.View]:
     """Returns a `discord.Embed` that represents this user."""
 
@@ -261,7 +260,7 @@ async def get_user_embeds(
     )
     summary_embed.add_field(
         name="User",
-        value=f"<@{user.discord_id}> {hm.get_emoji(user.get_rank())}", # type: ignore
+        value=f"<@{user.discord_id}> {hm.get_emoji(user.get_rank())}",  # type: ignore
         inline=True,
     )
     summary_embed.add_field(

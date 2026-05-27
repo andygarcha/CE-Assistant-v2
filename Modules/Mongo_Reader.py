@@ -170,7 +170,7 @@ async def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser:
             raise ValueError(f"No user found with discord id {ce_id} in mongo.")
         else:
             raise ValueError(f"No user found with ce id {ce_id} in mongo.")
-    
+
     return __mongo_to_user(db)
 
 
@@ -408,4 +408,3 @@ async def dump_database_tier(database_tier: dict):
     else:
         print("No document with 'database_tier' found.")
     pass
-

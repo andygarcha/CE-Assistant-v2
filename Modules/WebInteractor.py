@@ -28,8 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_image(
-    driver: webdriver.Chrome, 
-    new_game: CEGame
+    driver: webdriver.Chrome, new_game: CEGame
 ) -> io.BytesIO | tuple[Literal["Assets/image_failed_v2.png"], str]:
     "Takes in the `driver` (webdriver) and the game's `ce_id` and returns an image to be screenshotted."
 
@@ -191,9 +190,9 @@ async def get_recent_curated() -> NoReturn:
         for item in divs:
             if not isinstance(item, Tag):
                 continue
-            
+
             try:
-                #classes = item.get("class", '')
+                # classes = item.get("class", '')
 
                 if item["class"][0] == "recommendation_readmore":
                     logger.debug("-- readmore --")
