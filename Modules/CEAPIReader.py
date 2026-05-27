@@ -10,9 +10,7 @@ To pull data from all users on the site, use `get_api_users_all()`.
 
 import asyncio
 import datetime
-import functools
-from typing import Literal
-import typing
+from typing import Literal, cast
 import logging
 
 from Modules import hm, http_session
@@ -33,101 +31,100 @@ logger = logging.getLogger(__name__)
 
 # ---------------------- module for ce-api maintenance -----------------------
 
-def to_thread(func: typing.Callable) -> typing.Coroutine:
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
-    return wrapper
 
-def _timestamp_to_datetime(input : str) -> datetime.datetime:
-    """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`) 
+def _timestamp_to_datetime(input: str) -> datetime.datetime:
+    """Takes in the Challenge Enthusiasts timestamp (`"2024-02-25T07:04:38.000Z"`)
     and converts it to a datetime object."""
     return datetime.datetime.fromisoformat(str(input[:-5]) + "+00:00")
 
 
-
-
-
-def _ce_to_game(json_response : dict) -> CEAPIGame :
+def _ce_to_game(json_response: dict) -> CEAPIGame | None:
     """Takes in a :class:`dict` pulled from the Challenge Enthusiasts API
     and returns a :class:`CEAPIGame` object from it."""
 
     # Step 1: iterate through all of the objectives and make two separate arrays.
-    all_objectives : list[CEObjective] = []
-    for objective in json_response['objectives'] :
-
+    all_objectives: list[CEObjective] = []
+    for objective in json_response["objectives"]:
         # Step 2: iterate through all the objective requirements and sort those as well.
-        requirements : str | None = None
-        achievement_ids : list[str] | None = []
-        for requirement in objective['objectiveRequirements'] :
-            if requirement['type'] == "achievement" : 
-                achievement_ids.append(requirement['data'])
-            elif requirement['type'] == "custom" : 
-                requirements : str | None = requirement['data']
-        
+        requirements: str | None = None
+        achievement_ids: list[str] | None = []
+        for requirement in objective["objectiveRequirements"]:
+            if requirement["type"] == "achievement":
+                achievement_ids.append(requirement["data"])
+            elif requirement["type"] == "custom":
+                requirements: str | None = requirement["data"]
+
         # if no achievement ids were found, send it as None in the constructor.
         if achievement_ids == []:
             achievement_ids = None
 
         # make the actual objective object...
+        _type: str = str(objective["type"]).capitalize()
         ce_objective = CEObjective(
-            ce_id=objective['id'],
-            objective_type=str(objective['type']).capitalize(), 
-            description=objective['description'],
-            point_value=objective['points'],
-            name=objective['name'],
-            game_ce_id=json_response['id'],
+            ce_id=objective["id"],
+            objective_type=cast(hm.OBJECTIVE_TYPES, _type),
+            description=objective["description"],
+            point_value=objective["points"],
+            name=objective["name"],
+            game_ce_id=json_response["id"],
             requirements=requirements,
             achievement_ce_ids=achievement_ids,
-            point_value_partial=objective['pointsPartial']
+            point_value_partial=objective["pointsPartial"],
         )
-        
+
         # ...and assign it to the array.
         all_objectives.append(ce_objective)
 
-    last_updated = _timestamp_to_datetime(json_response['updatedAt'])
-    for objective in json_response['objectives'] :
-        if _timestamp_to_datetime(objective['updatedAt']) > last_updated:
-            last_updated = _timestamp_to_datetime(objective['updatedAt'])
-        for objreq in objective['objectiveRequirements'] :
-            if _timestamp_to_datetime(objreq['updatedAt']) > last_updated :
-                last_updated = _timestamp_to_datetime(objreq['updatedAt'])
+    last_updated = _timestamp_to_datetime(json_response["updatedAt"])
+    for objective in json_response["objectives"]:
+        if _timestamp_to_datetime(objective["updatedAt"]) > last_updated:
+            last_updated = _timestamp_to_datetime(objective["updatedAt"])
+        for objreq in objective["objectiveRequirements"]:
+            if _timestamp_to_datetime(objreq["updatedAt"]) > last_updated:
+                last_updated = _timestamp_to_datetime(objreq["updatedAt"])
 
     # CATEGORIES
-    if json_response['genre'] is None:
-        logger.error("Null genre found for game with ID %s", json_response['id'])
+    if json_response["genre"] is None:
+        logger.error("Null genre found for game with ID %s", json_response["id"])
         return None
-    if 'gameCategories' not in json_response:
+    if "gameCategories" not in json_response:
         _categories = []
     # pull the categories (we can't be sure they're ordered)
-    else: 
+    else:
         _categories_unordered: list[tuple[str, int]] = []
-        for _c in json_response['gameCategories']:
+        for _c in json_response["gameCategories"]:
             # NOTE /api/games/full doesn't include the genre item, just the genreId
-            if 'genre' in _c:
-                _categories_unordered.append((_c['genre']['name'], _c['order']))
-            elif 'genreId' in _c:
-                _categories_unordered.append((hm.genre_id_to_name(_c['genreId']), _c['order']))
+            if "genre" in _c:
+                _categories_unordered.append((_c["genre"]["name"], _c["order"]))
+            elif "genreId" in _c:
+                _category = hm.genre_id_to_name(_c["genreId"])
+                if _category is None:
+                    raise Exception(f"Illegal category id {_c['genreId']}")
+
+                _categories_unordered.append((_category, _c["order"]))
             else:
                 return None
         # and now order them
-        _categories = _categories_unordered.copy()
-        for _c in _categories_unordered:
-            # _c = (genrename, index)
-            _categories[_c[1]] = _c[0]
-    
+        _categories: list[str] = [""] * len(_categories_unordered)
+
+        for name, index in _categories_unordered:
+            _categories[index] = name
+
+        if "" in _categories:
+            raise Exception(f"Could not convert categories correctly. {_categories}")
+
     ce_game = CEAPIGame(
-        ce_id=json_response['id'],
-        game_name=json_response['name'],
-        platform=json_response['platform'],
-        platform_id=json_response['platformId'],
-        categories=_categories,
+        ce_id=json_response["id"],
+        game_name=json_response["name"],
+        platform=json_response["platform"],
+        platform_id=json_response["platformId"],
+        categories=cast(list[hm.CATEGORIES], _categories),
         objectives=all_objectives,
-        last_updated=last_updated,
+        last_updated=None,
         full_data=json_response,
-        banner=json_response['header']
+        banner=json_response["header"],
     )
-    
+
     # ... and return it.
     return ce_game
 
@@ -135,19 +132,21 @@ def _ce_to_game(json_response : dict) -> CEAPIGame :
 async def get_game(ce_id: str) -> CEAPIGame | None:
     session = await http_session.get_session()
 
-    async with session.get(f'https://cedb.me/api/game/{ce_id}') as response:
+    async with session.get(f"https://cedb.me/api/game/{ce_id}") as response:
         game = await response.json()
         if game == {}:
             return None
 
         return _ce_to_game(game)
-    
-async def get_user(ce_id: str) -> CEUser:
+
+
+async def get_user(ce_id: str) -> CEAPIUser | None:
     session = await http_session.get_session()
 
     async with session.get(f"https://cedb.me/api/user/{ce_id}") as response:
         user = await response.json()
         return _ce_to_user(user)
+
 
 async def get_api_games() -> list[str]:
     TRY_LIMIT = 4
@@ -156,20 +155,23 @@ async def get_api_games() -> list[str]:
 
     for attempt in range(TRY_LIMIT):
         try:
-            async with session.get('https://cedb.me/api/games') as response:
+            async with session.get("https://cedb.me/api/games") as response:
                 games = await response.json()
-                return [g['id'] for g in games]
+                return [g["id"] for g in games]
         except Exception as exc:
             last_error = exc
             if attempt + 1 == TRY_LIMIT:
-                raise FailedScrapeException(f'Failed to fetch api/games after {TRY_LIMIT} attempts.') from exc
+                raise FailedScrapeException(
+                    f"Failed to fetch api/games after {TRY_LIMIT} attempts."
+                ) from exc
             await asyncio.sleep(1.5 * (attempt + 1))
 
     if last_error is not None:
-        raise FailedScrapeException('Failed to fetch api/games.') from last_error
+        raise FailedScrapeException("Failed to fetch api/games.") from last_error
 
     return []
-    
+
+
 async def get_objective_ids() -> list[str]:
     # DELETE THIS IF THE ENDPOINT EVER GETS MADE!
     raise NotImplementedError
@@ -179,39 +181,41 @@ async def get_objective_ids() -> list[str]:
     async with session.get("WHATEVER THE ENDPOINT IS!") as response:
         objectives = await response.json()
 
-        return [o['id'] for o in objectives]
-    
+        return [o["id"] for o in objectives]
+
+
 async def post_users_query(ids: list[str]) -> list[CEAPIUser]:
     raise NotImplementedError
     if len(ids) > 100:
         print(f"post_users_query() called with {len(ids)=}")
         return []
-    
+
     session = await http_session.get_session()
-    async with session.post('https://cedb.me/api/users/query', data=ids) as response:
+    async with session.post("https://cedb.me/api/users/query", data=ids) as response:
         users = await response.json()
 
         return [_ce_to_user(u) for u in users]
 
-async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
+
+async def get_api_games_full(return_json=False) -> list[CEAPIGame]:
     """Returns an array of :class:`CEAPIGame`'s grabbed from https://cedb.me/api/games/full"""
     # Step 1: get the big json intact.
-    PULL_LIMIT = 50 #grab this many games per API call
-    TRY_LIMIT = 3 # try each batch of 'PULL LIMIT' this many times
+    PULL_LIMIT = 50  # grab this many games per API call
+    TRY_LIMIT = 3  # try each batch of 'PULL LIMIT' this many times
     json_response = []
-    done_fetching : bool = False
+    done_fetching: bool = False
     i = 1
-    
+
     session = await http_session.get_session()
 
-    #overarching while statement - if not done, keep going
-    while (not done_fetching):
-        
-        logger.debug("Fetching games %s through %s.", (i - 1) * PULL_LIMIT, i * PULL_LIMIT - 1)
-        
-        #for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
-        for x in range(TRY_LIMIT):
+    # overarching while statement - if not done, keep going
+    while not done_fetching:
+        logger.debug(
+            "Fetching games %s through %s.", (i - 1) * PULL_LIMIT, i * PULL_LIMIT - 1
+        )
 
+        # for each iteration (PULL_LIMIT), allow the site to be queried a few times in case of failure
+        for x in range(TRY_LIMIT):
             # set up a variable used to catch errors
             str_error = None
             outer_response = None
@@ -221,46 +225,50 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
                 _params = {
                     "limit": PULL_LIMIT,
                     "offset": (i - 1) * PULL_LIMIT,
-                    "ishidden": True
+                    "ishidden": True,
                 }
-                async with session.get("https://cedb.me/api/games/full", params=_params) as response :
+                async with session.get(
+                    "https://cedb.me/api/games/full", params=_params
+                ) as response:
                     outer_response = response
                     j = await response.json()
                     json_response += j
                     done_fetching = len(j) == 0
                     i += 1
-            
+
             # if we got an error from the API call, set "str_error" to a value to enable the error catch/retry below
             except Exception as e:
                 str_error = e
-            
+
             # if an error, print a message and try again until TRY_LIMIT attempts completed for this batch of PULL_LIMIT games
             if str_error:
                 logger.error("%s", str_error)
+                if outer_response is None:
+                    raise Exception("outer_response was None.")
                 try:
                     logger.error("%s", await outer_response.text())
-                except Exception as e: 
+                except Exception as e:
                     logger.exception("Couldn't output response. Error: %s", e)
-                
+
                 logger.error(
                     "Scraping failed from api/games/full on games %d through %d. Attempt %d of %d.",
                     (i - 1) * PULL_LIMIT,
                     i * PULL_LIMIT - 1,
                     x + 1,
-                    TRY_LIMIT
+                    TRY_LIMIT,
                 )
-        
+
                 # if this block of games have failed TRY_LIMIT times, throw an exception and go to sleep
-                if x+1 == TRY_LIMIT:
+                if x + 1 == TRY_LIMIT:
                     raise FailedScrapeException(
-                        "Scraping failed from api/games/full " 
-                        + f"on games {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}."
+                        "Scraping failed from api/games/full "
+                        + f"on games {(i - 1) * PULL_LIMIT} through {i * PULL_LIMIT - 1}."
                     )
 
             # if no error - continue on to the next block of "PULL LIMIT" games
             else:
                 break
-            
+
     logger.info("Done fetching %s games!", len(json_response))
 
     """"
@@ -273,114 +281,100 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
         return json_response
 
     # Step 2: iterate through the new json and construct an array of CEAPIGame's.
-    all_games : list[CEAPIGame] = []
-    for game in json_response :
-
+    all_games: list[CEAPIGame] = []
+    for game in json_response:
         # grab the object
         ce_game = _ce_to_game(game)
+        if ce_game is None:
+            raise Exception("Could not turn the json into a CEGame.")
 
         # ... and append it to the list.
         all_games.append(ce_game)
-    
+
     # and return
     return all_games
 
 
-
-async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> list[CEUser]:
+async def get_api_users_all(
+    database_user: list[CEUser] | list[str] | None = None,
+) -> list[CEAPIUser]:
     """Returns an array of :class:`CEUser`'s grabbed from https://cedb.me/api/users/all.
     NOTE: if `database_user` is passed, this will only return the users who are CEA Registered.
     You can pass in the entire database_user here, or just a list of registered ids. Either work."""
 
     # Step 0: check if database_user was passed
-    if database_user is not None and len(database_user) > 0 :
-        registered_ids : list[str] = []
+    if database_user is not None and len(database_user) > 0:
+        registered_ids: list[str] = []
         if isinstance(database_user[0], CEUser):
-            registered_ids = [user.ce_id for user in database_user]
-        elif isinstance(database_user[0], str) :
-            registered_ids = database_user
-        else :
+            _db_user_casted = cast(list[CEUser], database_user)
+            registered_ids = [user.ce_id for user in _db_user_casted]
+        elif isinstance(database_user[0], str):
+            _db_user_casted = cast(list[str], database_user)
+            registered_ids = _db_user_casted
+        else:
             database_user = None
-
 
     # Step 1: get the big json intact.
     PULL_LIMIT = 50
     total_response = []
-    done_fetching : bool = False
+    done_fetching: bool = False
     i = 1
     session = await http_session.get_session()
-    try :
-
-        # this will run if database user has been provided
-        if database_user is not None and False :
-            while (not done_fetching) :
-                
-                # print
-                print(f"fetching users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1} from database_user")
-
-                # set up data
-                data = {'id' : registered_ids[((i-1)*PULL_LIMIT), i*PULL_LIMIT-1]}
-
-                # pull the data and json-ify it
-                api_response = requests.post("https://cedb.me/api/users/query", data=data)
-                current_response = json.loads(api_response.text)
-
-                # check if you're done fetching
-                done_fetching = len(current_response) == 0
-
-                # add this to the total response and increment i
-                total_response += current_response
-                i += 1
-
+    try:
         # this will run if database user wasn't provided
-        while (not done_fetching) :
-
+        while not done_fetching:
             # pull the data
             logger.debug(
                 "fetching users %d through %d",
-                (i - 1) * PULL_LIMIT, # first game num
-                i * PULL_LIMIT - 1,   # last game num
+                (i - 1) * PULL_LIMIT,  # first game num
+                i * PULL_LIMIT - 1,  # last game num
             )
 
             # set up params
-            params = {"limit" : PULL_LIMIT, "offset" : (i-1)*PULL_LIMIT}
+            params = {"limit": PULL_LIMIT, "offset": (i - 1) * PULL_LIMIT}
             """# if database_user has been provided, include the 'ids' in the payload.
             if database_user is not None : params['ids'] = registered_ids"""
 
             # pull the data and json-ify it
-            async with session.get("https://cedb.me/api/users/all", params=params) as response :
+            async with session.get(
+                "https://cedb.me/api/users/all", params=params
+            ) as response:
                 current_response = await response.json()
 
                 # check to see if this is the last one
                 done_fetching = len(current_response) == 0
 
                 # go through and filter out users that aren't CEA registered if database_user is passed through
-                if database_user is not None :
+                if database_user is not None:
                     removed_indexes = []
                     # if the user isn't registered, add the index to remove indexes
-                    for index, user in enumerate(current_response) :
-                        if user['id'] not in registered_ids :
+                    for index, user in enumerate(current_response):
+                        if user["id"] not in registered_ids:
                             removed_indexes.append(index)
                     # remove all of the indexes in reverse order
-                    for index in reversed(removed_indexes) :
+                    for index in reversed(removed_indexes):
                         del current_response[index]
                     logger.debug("%d games removed.", len(removed_indexes))
 
                 # add to the total response and increment i
                 total_response += current_response
                 i += 1
-    except Exception as e : 
+    except Exception as e:
         logger.error("original exception: %s", e)
         raise FailedScrapeException(
             "Failed scraping from api/users/all/ "
-            + f"on users {(i-1)*PULL_LIMIT} through {i*PULL_LIMIT-1}"
+            + f"on users {(i - 1) * PULL_LIMIT} through {i * PULL_LIMIT - 1}"
         )
     logger.info("done fetching users! total users: %d", len(total_response))
 
     # convert to objects
-    all_users : list[CEUser] = []
-    for user in total_response :
-        all_users.append(_ce_to_user(user))
+    all_users: list[CEAPIUser] = []
+    for user in total_response:
+        _user_object = _ce_to_user(user)
+        if _user_object is None:
+            raise Exception(f"Could not convert user into CEUser. {user=}")
+
+        all_users.append(_user_object)
 
     # free up space
     del total_response
@@ -389,21 +383,17 @@ async def get_api_users_all(database_user : list[CEUser] | list[str] = None) -> 
     return all_users
 
 
-
-def _ce_to_user(json_response : dict) -> CEUser :
+def _ce_to_user(json_response: dict) -> CEAPIUser | None:
     # Go through all of their games and make CEUserGame's out of them.
     if json_response == {}:
         return None
-    user_games : list[CEUserGame] = []
-    for game in json_response['userGames'] :
+    user_games: list[CEUserGame] = []
+    for game in json_response["userGames"]:
         user_games.append(
             CEUserGame(
-                ce_id=game['game']['id'],
-                user_objectives=[],
-                name=game['game']['name']
+                ce_id=game["game"]["id"], user_objectives=[], name=game["game"]["name"]
             )
         )
-
 
     """ok
     ok now yal
@@ -416,61 +406,64 @@ def _ce_to_user(json_response : dict) -> CEUser :
 
     steam_id = "None"
 
-    for item in json_response['userConnections'] :
-        if item['platform'] != 'steam':
+    for item in json_response["userConnections"]:
+        if item["platform"] != "steam":
             continue
-        steam_id = item['platformId']
-        
+        steam_id = item["platformId"]
+
     # Now go through all their objectives and make CEUserObjective's out of them.
-    for objective in json_response['userObjectives'] :
-        if not objective['partial'] :
-            user_points = objective['objective']['points']
-        else :
-            user_points = objective['objective']['pointsPartial']
+    for objective in json_response["userObjectives"]:
+        if not objective["partial"]:
+            user_points = objective["objective"]["points"]
+        else:
+            user_points = objective["objective"]["pointsPartial"]
+
+        _type = str(objective["objective"]["type"]).capitalize()
 
         new_objective = CEUserObjective(
-            ce_id = objective['objective']['id'],
-            game_ce_id=objective['objective']['gameId'],
-            # NOTE: OBJECTIVE TYPE FIX
-            type=str(objective['objective']['type']).capitalize(),
+            ce_id=objective["objective"]["id"],
+            game_ce_id=objective["objective"]["gameId"],
+            type=cast(hm.OBJECTIVE_TYPES, _type),
             user_points=user_points,
-            name=objective['objective']['name']
+            name=objective["objective"]["name"],
         )
 
         # now that we have the objective
         # we need to assign it to the correct games
-        for ce_game in user_games :
-            if ce_game.ce_id == new_objective.game_ce_id : 
+        for ce_game in user_games:
+            if ce_game.ce_id == new_objective.game_ce_id:
                 ce_game.add_user_objective(new_objective)
                 break
 
-    return CEUser(
+    return CEAPIUser(
         discord_id=0,
-        ce_id = json_response['id'],
-        owned_games = user_games,
+        ce_id=json_response["id"],
+        owned_games=user_games,
         rolls=[],
-        display_name=json_response['displayName'],
-        avatar=json_response['avatar'],
-        last_updated=0,
-        steam_id=steam_id
+        display_name=json_response["displayName"],
+        avatar=json_response["avatar"],
+        last_updated=datetime.datetime.now(),
+        steam_id=steam_id,
+        full_data=json_response,
     )
 
 
-
-async def get_api_page_data(type : Literal["user", "game"], ce_id : str) -> CEUser | CEAPIGame | None :
-    """Returns either a :class:`CEUser` or a :class:`CEAPIGame` 
+async def get_api_page_data(
+    type: Literal["user", "game"], ce_id: str
+) -> CEUser | CEAPIGame | None:
+    """Returns either a :class:`CEUser` or a :class:`CEAPIGame`
     from `ce_id` depending on `type`."""
     session = await http_session.get_session()
     # if type is user
-    if type == "user" :
-        async with session.get(f"https://cedb.me/api/user/{ce_id}") as response :
+    if type == "user":
+        async with session.get(f"https://cedb.me/api/user/{ce_id}") as response:
             json_response = await response.json()
             if len(json_response) == 0:
                 return None
             return _ce_to_user(json_response=json_response)
 
-    elif type == "game" :
-        async with session.get(f"https://cedb.me/api/game/{ce_id}") as response :
+    elif type == "game":
+        async with session.get(f"https://cedb.me/api/game/{ce_id}") as response:
             json_response = await response.json()
             if len(json_response) == 0:
                 return None

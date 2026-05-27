@@ -1,46 +1,49 @@
 import datetime
 import Modules.hm as hm
-class CECooldown :
+
+
+class CECooldown:
     """An object that represents a Challenge Enthusiast roll cooldown."""
-    def __init__(self,
-                 roll_name : hm.ALL_ROLL_EVENT_NAMES,
-                 end_time : datetime.datetime) :
+
+    def __init__(self, roll_name: hm.ALL_ROLL_EVENT_NAMES, end_time: datetime.datetime):
         self._roll_name = roll_name
         self._end_time = end_time
 
     # ---------- getters ----------
 
     @property
-    def roll_name(self) -> str :
+    def roll_name(self) -> str:
         """Returns the event name for this cooldown."""
         return self._roll_name
-    
+
     @property
-    def end_time(self) -> int :
+    def end_time(self) -> int:
         """Returns the end time for this cooldown as a unix timestamp."""
         return int(self._end_time.timestamp())
-    
+
     @property
     def end_time_asdt(self) -> datetime.datetime:
         return self._end_time
-    
+
     # ----------- other methods ---------
 
-    def is_expired(self) -> bool :
+    def is_expired(self) -> bool:
         """Returns true if this cooldown is ready to be lifted."""
         return self.end_time_asdt < datetime.datetime.now(datetime.timezone.utc)
-    
-    def to_dict(self) -> dict :
+
+    def to_dict(self) -> dict:
         """Returns this object as a dictionary."""
         return {
-            'Event Name' : self.roll_name,
-            'End Time' : self.end_time_asdt.isoformat()
+            "Event Name": self.roll_name,
+            "End Time": self.end_time_asdt.isoformat(),
         }
-    
-    def __str__(self) :
+
+    def __str__(self):
         "Returns the string representation of this CECooldown."
         return (
-            "-- CECooldown --" +
-            "\nCooldown Name: " + self.roll_name +
-            "\nEnd Time: " + self.end_time_asdt.isoformat()
+            "-- CECooldown --"
+            + "\nCooldown Name: "
+            + self.roll_name
+            + "\nEnd Time: "
+            + self.end_time_asdt.isoformat()
         )
