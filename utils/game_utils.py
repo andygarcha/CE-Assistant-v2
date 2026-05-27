@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 from typing import Literal, get_args, TYPE_CHECKING
 from utils.general_utils import get_item_from_list

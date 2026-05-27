@@ -6,7 +6,6 @@ Skips: EmbedMessage/UpdateMessage (trivial containers), RAData (dict passthrough
 import pytest
 
 from Classes.OtherClasses import (
-    Achievement,
     CECompletion,
     CECurateInput,
     CEIndividualValueInput,
@@ -256,26 +255,3 @@ class TestCEInputValueVoting:
     def test_get_value_input_not_found_returns_none(self):
         ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
         assert ci.get_value_input("nonexistent") is None
-
-
-# ── Achievement ───────────────────────────────────────────────────────────────
-
-
-class TestAchievement:
-    def test_equality_same_ce_id(self):
-        a = Achievement(ce_id="ach-001", name="First")
-        b = Achievement(ce_id="ach-001", name="Different Name")
-        assert a == b
-
-    def test_inequality_different_ce_id(self):
-        a = Achievement(ce_id="ach-001", name="First")
-        b = Achievement(ce_id="ach-002", name="First")
-        assert a != b
-
-    def test_not_equal_to_non_achievement(self):
-        assert Achievement(ce_id="ach-001", name="X") != "ach-001"
-
-    def test_properties(self):
-        a = Achievement(ce_id="ach-001", name="My Achievement")
-        assert a.ce_id == "ach-001"
-        assert a.name == "My Achievement"

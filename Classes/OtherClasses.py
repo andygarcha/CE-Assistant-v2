@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from abc import abstractmethod, ABC
 from typing import get_args, TYPE_CHECKING
 import logging
 
+from Modules import hm
+
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
     from Classes.CE_User_Game import CEUserGame
-    from Modules import hm
     from Classes.CE_User import CEUser
 
 logger = logging.getLogger(__name__)
