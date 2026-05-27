@@ -273,7 +273,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
         async with session.get("https://cedb.me/api/games/full", params=_params) as response:
             _json = await response.json()
             json_response += _json
-            done_fetching = len(j) == 0
+            done_fetching = len(_json) == 0
             i += 1
             
     logger.info("Done fetching %s games!", len(json_response))
