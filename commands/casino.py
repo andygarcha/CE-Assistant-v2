@@ -114,6 +114,9 @@ class TripleThreatDropdown(discord.ui.Select):
             return await interaction.response.send_message(
                 "Stop that! This isn't your roll.", ephemeral=True
             )
+        
+        if interaction.message is None:
+            raise Exception("Invalid message.")
 
         # defer the message
         await interaction.response.defer()
@@ -206,6 +209,9 @@ class LetFateDecideDropdown(discord.ui.Select):
                 "Stop that! This isn't your roll.", ephemeral=True
             )
 
+        if interaction.message is None:
+            raise Exception("Invalid message.")
+
         # defer the message
         await interaction.response.defer()
 
@@ -227,11 +233,15 @@ class LetFateDecideDropdown(discord.ui.Select):
             hours_restriction=self.__hours_restriction,
         )
 
-        roll: CERoll = CERoll(
+        if rolled_game_id is None:
+            return await interaction.followup.send("Could not find you a game.")
+
+        roll = CERoll(
             roll_name="Let Fate Decide",
             user_ce_id=user.ce_id,
             games=[rolled_game_id],
             is_current=True,
+            status="current"
         )
 
         user.remove_pending("Let Fate Decide")
@@ -298,12 +308,17 @@ class FourwardThinkingDropdown(discord.ui.Select):
         "The callback."
 
         user = SupabaseReader.get_user(self.__user_ce_id)
+        if user is None:
+            raise Exception("Could not find user.")
 
         # stop other users from clicking the dropdown
         if interaction.user.id != user.discord_id:
             return await interaction.response.send_message(
                 "Stop that! This isn't your roll.", ephemeral=True
             )
+        
+        if interaction.message is None:
+            raise Exception("Invalid message.")
 
         # defer the message
         await interaction.response.defer()
@@ -316,6 +331,7 @@ class FourwardThinkingDropdown(discord.ui.Select):
                 user_ce_id=user.ce_id,
                 games=[],
                 is_current=True,
+                status="current"
             )
 
         # get the data
@@ -335,6 +351,9 @@ class FourwardThinkingDropdown(discord.ui.Select):
             hours_restriction=self.__hours_restriction,
         )
 
+        if game_id is None:
+            return await interaction.followup.send("Could not find any rolls fitting your criteria.")
+
         # add the new game and reset the due time.
         past_roll.add_game(game_id)
         past_roll.reset_due_time()
@@ -347,6 +366,10 @@ class FourwardThinkingDropdown(discord.ui.Select):
 
         # now send the message
         game_object = hm.get_item_from_list(game_id, database_name)
+        if game_object is None:
+            raise Exception(f"Could not find {game_id} in database name")
+
+
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
             content=f"Your new game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
@@ -366,8 +389,10 @@ class RerollView(discord.ui.View):
     ):
         # pull database user and get user
         user = SupabaseReader.get_user(self.__user_ce_id)
+        if user is None:
+            raise Exception(f"Could not find user {self.__user_ce_id} in supabase.")
 
-        user.remove_current_roll(self.__event_name)  # remove the current roll
+        user.remove_current_roll(self.__event_name)  # type: ignore
 
         SupabaseReader.dump_user(user)
 
@@ -405,42 +430,39 @@ async def solo_roll(
     # return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
     view = discord.ui.View()
 
+    lucky = False
+
     # pull mongo database
     database_name = SupabaseReader.get_database_name()
     database_tier = SupabaseReader.get_database_tier()
 
-    # define channel
-    user_log_channel = client.get_channel(hm.USER_LOG_ID)
-
     # grab the user
-    try:
-        user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
-    except ValueError as e:
-        logger.exception("%s", e)
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    if user is None:
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
 
     # user has cooldown
-    if user.has_cooldown(event_name, database_name):
+    if user.has_cooldown(event_name):
         return await interaction.followup.send(
-            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name, database_name)}>. "
+            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name)}>. "
         )
 
-    # user currently rolled
-    if (
-        (event_name in ["Never Lucky", "Let Fate Decide"])
-        and (user.has_current_roll(event_name))
-        and not (
-            user.get_current_roll(event_name).calculate_cooldown_date(database_name)
-            > hm.get_datetime("now")
-        )
-    ):
-        view = RerollView(user.ce_id, event_name)
-        return await interaction.followup.send(
-            f"Would you like to reset your {event_name} roll?", view=view
-        )
+    # user currently rolled => is rerollable
+    if event_name in ["Never Lucky", "Let Fate Decide"]:
+        _current_roll = user.get_current_roll(event_name)
 
+        if _current_roll is not None:
+            _cooldown_date = _current_roll.calculate_cooldown_date()
+            
+            if _cooldown_date is None or _cooldown_date <= hm.get_datetime("now"):
+                return await interaction.followup.send(
+                    f"Would you like to reset your {event_name} roll?",
+                    view=RerollView(user.ce_id, event_name)
+                )
+
+    # user currently rolled => not rerollable
     if user.has_current_roll(event_name):
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
@@ -454,9 +476,12 @@ async def solo_roll(
 
     # jarvis's random event!
     if random.randint(0, 99) == 0:
-        await user_log_channel.send(
-            f"Congratulations <@{interaction.user.id}>! You've won Jarvis's super secret reward! "
-            + "Please DM him for your prize :)"
+        lucky = True
+        await hm.send_message(
+            client,
+            "userlog",
+            f"Congratulations {interaction.user.mention}! You've won Jarvis's super secret reward. "
+                "Please DM him for your prize :)"
         )
 
     # -- set up vars --
@@ -466,18 +491,21 @@ async def solo_roll(
     match event_name:
         case "One Hell of a Day":
             # -- grab games --
-            rolled_games = [
-                await hm.get_rollable_game(
-                    database_name=database_name,
-                    database_tier=database_tier,
-                    completion_limit=10,
-                    price_limit=10,
-                    tier_number=1,
-                    user=user,
-                    price_restriction=price_restriction,
-                    hours_restriction=hours_restriction,
+            _game = await hm.get_rollable_game(
+                database_name=database_name,
+                database_tier=database_tier,
+                completion_limit=10,
+                price_limit=10,
+                tier_number=1,
+                user=user,
+                price_restriction=price_restriction,
+                hours_restriction=hours_restriction
+            )
+            if _game is None:
+                return await interaction.followup.send(
+                    "There are no rollable games at this time."
                 )
-            ]
+            rolled_games = [_game]
 
         case "One Hell of a Week":
             # -- if the user hasn't done day, return --
@@ -490,8 +518,7 @@ async def solo_roll(
             rolled_games: list[str] = []
             valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5):
-                rolled_games.append(
-                    await hm.get_rollable_game(
+                _game = await hm.get_rollable_game(
                         database_name=database_name,
                         database_tier=database_tier,
                         completion_limit=10,
@@ -503,7 +530,11 @@ async def solo_roll(
                         price_restriction=price_restriction,
                         hours_restriction=hours_restriction,
                     )
-                )
+                if _game is None:
+                    return await interaction.followup.send(
+                        "No valid options at the moment."
+                    )
+                rolled_games.append(_game)
                 # TODO casino fix: won't work with dual category
                 raise NotImplementedError
                 valid_categories.remove(

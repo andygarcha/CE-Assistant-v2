@@ -30,8 +30,8 @@ def get_banned_games() -> list[str] | None:
 async def get_rollable_game(
     database_name: list[CEGame],
     database_tier: dict,
-    completion_limit: int,
-    price_limit: int,
+    completion_limit: int | None,
+    price_limit: int | None,
     tier_number: int,
     user: list[CEUser] | CEUser,
     category: str | list[str] | None = None,
@@ -133,7 +133,7 @@ async def get_rollable_game(
                 continue
 
         # too pricey
-        if price_restriction:
+        if price_restriction and price_limit is not None:
             if not game["price"] <= (price_limit * 100):
                 fails = False
                 for _user in user:

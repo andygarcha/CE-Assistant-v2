@@ -452,7 +452,8 @@ class CEUser:
     # ==== cooldowns ==== #
 
     def has_cooldown(
-        self, roll_name: hm.ALL_ROLL_EVENT_NAMES, database_name: list[CEGame]
+        self, 
+        roll_name: hm.ALL_ROLL_EVENT_NAMES
     ) -> bool:
         """Returns true if this user is currently on cooldown for `roll_name`."""
         # check infinite time rolls
