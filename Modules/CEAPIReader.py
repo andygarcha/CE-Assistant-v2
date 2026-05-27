@@ -221,7 +221,7 @@ async def get_api_games_full(return_json = False) -> list[CEAPIGame] :
                 _params = {
                     "limit": PULL_LIMIT,
                     "offset": (i - 1) * PULL_LIMIT,
-                    "ishidden": True
+                    "ishidden": "true"
                 }
                 async with session.get("https://cedb.me/api/games/full", params=_params) as response :
                     outer_response = response
