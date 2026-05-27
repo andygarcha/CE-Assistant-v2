@@ -114,7 +114,7 @@ class TripleThreatDropdown(discord.ui.Select):
             return await interaction.response.send_message(
                 "Stop that! This isn't your roll.", ephemeral=True
             )
-        
+
         if interaction.message is None:
             raise Exception("Invalid message.")
 
@@ -241,7 +241,7 @@ class LetFateDecideDropdown(discord.ui.Select):
             user_ce_id=user.ce_id,
             games=[rolled_game_id],
             is_current=True,
-            status="current"
+            status="current",
         )
 
         user.remove_pending("Let Fate Decide")
@@ -316,7 +316,7 @@ class FourwardThinkingDropdown(discord.ui.Select):
             return await interaction.response.send_message(
                 "Stop that! This isn't your roll.", ephemeral=True
             )
-        
+
         if interaction.message is None:
             raise Exception("Invalid message.")
 
@@ -331,7 +331,7 @@ class FourwardThinkingDropdown(discord.ui.Select):
                 user_ce_id=user.ce_id,
                 games=[],
                 is_current=True,
-                status="current"
+                status="current",
             )
 
         # get the data
@@ -352,7 +352,9 @@ class FourwardThinkingDropdown(discord.ui.Select):
         )
 
         if game_id is None:
-            return await interaction.followup.send("Could not find any rolls fitting your criteria.")
+            return await interaction.followup.send(
+                "Could not find any rolls fitting your criteria."
+            )
 
         # add the new game and reset the due time.
         past_roll.add_game(game_id)
@@ -368,7 +370,6 @@ class FourwardThinkingDropdown(discord.ui.Select):
         game_object = hm.get_item_from_list(game_id, database_name)
         if game_object is None:
             raise Exception(f"Could not find {game_id} in database name")
-
 
         return await interaction.followup.edit_message(
             message_id=interaction.message.id,
@@ -455,11 +456,11 @@ async def solo_roll(
 
         if _current_roll is not None:
             _cooldown_date = _current_roll.calculate_cooldown_date()
-            
+
             if _cooldown_date is None or _cooldown_date <= hm.get_datetime("now"):
                 return await interaction.followup.send(
                     f"Would you like to reset your {event_name} roll?",
-                    view=RerollView(user.ce_id, event_name)
+                    view=RerollView(user.ce_id, event_name),
                 )
 
     # user currently rolled => not rerollable
@@ -481,7 +482,7 @@ async def solo_roll(
             client,
             "userlog",
             f"Congratulations {interaction.user.mention}! You've won Jarvis's super secret reward. "
-                "Please DM him for your prize :)"
+            "Please DM him for your prize :)",
         )
 
     # -- set up vars --
@@ -499,7 +500,7 @@ async def solo_roll(
                 tier_number=1,
                 user=user,
                 price_restriction=price_restriction,
-                hours_restriction=hours_restriction
+                hours_restriction=hours_restriction,
             )
             if _game is None:
                 return await interaction.followup.send(
@@ -519,17 +520,17 @@ async def solo_roll(
             valid_categories = list(get_args(hm.CATEGORIES))
             for i in range(5):
                 _game = await hm.get_rollable_game(
-                        database_name=database_name,
-                        database_tier=database_tier,
-                        completion_limit=10,
-                        price_limit=10,
-                        tier_number=1,
-                        user=user,
-                        category=valid_categories,
-                        already_rolled_games=rolled_games,
-                        price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                    )
+                    database_name=database_name,
+                    database_tier=database_tier,
+                    completion_limit=10,
+                    price_limit=10,
+                    tier_number=1,
+                    user=user,
+                    category=valid_categories,
+                    already_rolled_games=rolled_games,
+                    price_restriction=price_restriction,
+                    hours_restriction=hours_restriction,
+                )
                 if _game is None:
                     return await interaction.followup.send(
                         "No valid options at the moment."

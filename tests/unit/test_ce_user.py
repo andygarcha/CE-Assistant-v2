@@ -1,7 +1,13 @@
 import pytest
 
 from Classes.CE_User import MUTELIST_CEIDS
-from tests.conftest import make_game, make_objective, make_user, make_user_game, make_user_objective
+from tests.conftest import (
+    make_game,
+    make_objective,
+    make_user,
+    make_user_game,
+    make_user_objective,
+)
 
 GAME_ID_A = "game-aaa-0000-0000-000000000000"
 GAME_ID_B = "game-bbb-0000-0000-000000000000"
@@ -18,26 +24,29 @@ def _user_game(ce_id: str, points: int) -> object:
 
 
 class TestRankNum:
-    @pytest.mark.parametrize("total_points, expected_rank", [
-        (0,     0),   # E
-        (49,    0),   # E (just below D threshold)
-        (50,    1),   # D
-        (249,   1),   # D
-        (250,   2),   # C
-        (499,   2),   # C
-        (500,   3),   # B
-        (999,   3),   # B
-        (1000,  4),   # A
-        (2499,  4),   # A
-        (2500,  5),   # S
-        (4999,  5),   # S
-        (5000,  6),   # SS
-        (7499,  6),   # SS
-        (7500,  7),   # SSS
-        (9999,  7),   # SSS
-        (10000, 8),   # EX
-        (99999, 8),   # EX (no upper bound)
-    ])
+    @pytest.mark.parametrize(
+        "total_points, expected_rank",
+        [
+            (0, 0),  # E
+            (49, 0),  # E (just below D threshold)
+            (50, 1),  # D
+            (249, 1),  # D
+            (250, 2),  # C
+            (499, 2),  # C
+            (500, 3),  # B
+            (999, 3),  # B
+            (1000, 4),  # A
+            (2499, 4),  # A
+            (2500, 5),  # S
+            (4999, 5),  # S
+            (5000, 6),  # SS
+            (7499, 6),  # SS
+            (7500, 7),  # SSS
+            (9999, 7),  # SSS
+            (10000, 8),  # EX
+            (99999, 8),  # EX (no upper bound)
+        ],
+    )
     def test_rank_boundaries(self, total_points, expected_rank):
         user = make_user(owned_games=[_user_game(GAME_ID_A, total_points)])
         assert user.rank_num() == expected_rank
@@ -47,17 +56,20 @@ class TestRankNum:
 
 
 class TestGetRank:
-    @pytest.mark.parametrize("points, expected_str", [
-        (0,     "E Rank"),
-        (50,    "D Rank"),
-        (250,   "C Rank"),
-        (500,   "B Rank"),
-        (1000,  "A Rank"),
-        (2500,  "S Rank"),
-        (5000,  "SS Rank"),
-        (7500,  "SSS Rank"),
-        (10000, "EX Rank"),
-    ])
+    @pytest.mark.parametrize(
+        "points, expected_str",
+        [
+            (0, "E Rank"),
+            (50, "D Rank"),
+            (250, "C Rank"),
+            (500, "B Rank"),
+            (1000, "A Rank"),
+            (2500, "S Rank"),
+            (5000, "SS Rank"),
+            (7500, "SSS Rank"),
+            (10000, "EX Rank"),
+        ],
+    )
     def test_rank_strings(self, points, expected_str):
         user = make_user(owned_games=[_user_game(GAME_ID_A, points)])
         assert user.get_rank() == expected_str
@@ -68,10 +80,12 @@ class TestGetRank:
 
 class TestGetTotalPoints:
     def test_sums_across_games(self):
-        user = make_user(owned_games=[
-            _user_game(GAME_ID_A, 100),
-            _user_game(GAME_ID_B, 200),
-        ])
+        user = make_user(
+            owned_games=[
+                _user_game(GAME_ID_A, 100),
+                _user_game(GAME_ID_B, 200),
+            ]
+        )
         assert user.get_total_points() == 300
 
     def test_no_games_zero_points(self):
@@ -243,6 +257,7 @@ class TestGetCompletedGames2:
 
     def test_returns_cegame_objects(self):
         from Classes.CE_Game import CEGame
+
         game = _db_game(GAME_ID_A)
         user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
         result = user.get_completed_games_2([game])

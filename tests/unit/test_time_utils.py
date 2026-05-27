@@ -84,7 +84,9 @@ class TestGetDatetime:
 
     def test_string_old_datetime_parsed(self):
         result = get_datetime(days=1, old_datetime="2024-06-15T12:00:00")
-        expected_base = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        expected_base = datetime.datetime(
+            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
+        )
         assert result == expected_base + datetime.timedelta(days=1)
 
     def test_zero_days_from_now_is_recent(self):

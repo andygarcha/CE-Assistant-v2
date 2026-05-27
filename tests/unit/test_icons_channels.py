@@ -6,10 +6,44 @@ from utils.channels import id_num
 
 EMOJI_PATTERN = re.compile(r"^<:.+:\d+>$")
 
-TIER_KEYS = ["Tier 0", "Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Tier 6", "Tier 7"]
-CATEGORY_KEYS = ["Action", "Arcade", "Bullet Hell", "First-Person", "Platformer", "Strategy"]
-RANK_KEYS = ["A Rank", "B Rank", "C Rank", "D Rank", "E Rank", "S Rank", "SS Rank", "SSS Rank", "EX Rank"]
-CHANNEL_KEYS = ["gameadditions", "casino", "casinolog", "privatelog", "userlog", "proofsubmissions", "inputlog"]
+TIER_KEYS = [
+    "Tier 0",
+    "Tier 1",
+    "Tier 2",
+    "Tier 3",
+    "Tier 4",
+    "Tier 5",
+    "Tier 6",
+    "Tier 7",
+]
+CATEGORY_KEYS = [
+    "Action",
+    "Arcade",
+    "Bullet Hell",
+    "First-Person",
+    "Platformer",
+    "Strategy",
+]
+RANK_KEYS = [
+    "A Rank",
+    "B Rank",
+    "C Rank",
+    "D Rank",
+    "E Rank",
+    "S Rank",
+    "SS Rank",
+    "SSS Rank",
+    "EX Rank",
+]
+CHANNEL_KEYS = [
+    "gameadditions",
+    "casino",
+    "casinolog",
+    "privatelog",
+    "userlog",
+    "proofsubmissions",
+    "inputlog",
+]
 
 
 # ── get_emoji ─────────────────────────────────────────────────────────────────
@@ -60,4 +94,6 @@ class TestIdNum:
     def test_all_known_channel_ids_are_discord_snowflakes(self):
         for channel in CHANNEL_KEYS:
             result = id_num(channel)
-            assert result > (1 << 40), f"Channel {channel!r} has suspiciously small ID {result}"
+            assert result > (1 << 40), (
+                f"Channel {channel!r} has suspiciously small ID {result}"
+            )

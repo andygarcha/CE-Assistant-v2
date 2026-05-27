@@ -45,7 +45,9 @@ class TestIsUncleared:
         assert make_objective(name="Beat the game (UNVALUED)").is_uncleared() is True
 
     def test_normal_objective_is_not_uncleared(self):
-        assert make_objective(point_value=10, name="Beat the game").is_uncleared() is False
+        assert (
+            make_objective(point_value=10, name="Beat the game").is_uncleared() is False
+        )
 
     def test_nonzero_points_with_clean_name_not_uncleared(self):
         assert make_objective(point_value=50).is_uncleared() is False
@@ -88,12 +90,15 @@ class TestUnclearedName:
 
 
 class TestGetTypeShort:
-    @pytest.mark.parametrize("obj_type, expected", [
-        ("Primary", "PO"),
-        ("Secondary", "SO"),
-        ("Badge", "BO"),
-        ("Community", "CO"),
-    ])
+    @pytest.mark.parametrize(
+        "obj_type, expected",
+        [
+            ("Primary", "PO"),
+            ("Secondary", "SO"),
+            ("Badge", "BO"),
+            ("Community", "CO"),
+        ],
+    )
     def test_short_types(self, obj_type, expected):
         assert make_objective(obj_type=obj_type).get_type_short() == expected
 
@@ -108,16 +113,24 @@ class TestEquals:
         assert a.equals(b) is True
 
     def test_different_point_value_not_equal(self):
-        assert make_objective(point_value=10).equals(make_objective(point_value=20)) is False
+        assert (
+            make_objective(point_value=10).equals(make_objective(point_value=20))
+            is False
+        )
 
     def test_different_type_not_equal(self):
-        assert make_objective(obj_type="Primary").equals(make_objective(obj_type="Badge")) is False
+        assert (
+            make_objective(obj_type="Primary").equals(make_objective(obj_type="Badge"))
+            is False
+        )
 
     def test_different_name_not_equal(self):
         assert make_objective(name="A").equals(make_objective(name="B")) is False
 
     def test_different_ce_id_not_equal(self):
-        assert make_objective(ce_id="id-a").equals(make_objective(ce_id="id-b")) is False
+        assert (
+            make_objective(ce_id="id-a").equals(make_objective(ce_id="id-b")) is False
+        )
 
     def test_non_objective_returns_false(self):
         assert make_objective().equals("not an objective") is False
@@ -134,7 +147,12 @@ class TestEquals:
         assert a.equals(b) is True
 
     def test_different_partial_points_not_equal(self):
-        assert make_objective(point_value_partial=0).equals(make_objective(point_value_partial=5)) is False
+        assert (
+            make_objective(point_value_partial=0).equals(
+                make_objective(point_value_partial=5)
+            )
+            is False
+        )
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────

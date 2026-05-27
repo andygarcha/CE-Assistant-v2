@@ -3,6 +3,7 @@ Shared factory functions for building minimal valid class instances in tests.
 Each factory exposes only the parameters that individual tests care about;
 everything else gets a safe default.
 """
+
 import datetime
 
 from Classes.CE_Objective import CEObjective
@@ -117,7 +118,9 @@ def make_roll(
         games=games if games is not None else ["game-001-0000-0000-000000000000"],
         status=status,
         partner_ce_id=partner_ce_id,
-        init_time=init_time if init_time is not None else datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+        init_time=init_time
+        if init_time is not None
+        else datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         due_time=due_time,
         completed_time=completed_time,
         rerolls=rerolls,
