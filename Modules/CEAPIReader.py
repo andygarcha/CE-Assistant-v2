@@ -24,8 +24,6 @@ from Classes.CE_User_Game import CEUserGame
 from Exceptions.FailedScrapeException import FailedScrapeException
 
 # -- other --
-import requests
-import json
 
 logger = logging.getLogger(__name__)
 

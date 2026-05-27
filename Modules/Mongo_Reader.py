@@ -6,11 +6,9 @@ Version 3 : Object-Oriented, and each item has its own document.
 # imports
 import json
 from typing import Literal
-from bson import ObjectId
 import logging
 
 # -- local --
-from Classes.CE_Cooldown import CECooldown
 from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Roll import CERoll
