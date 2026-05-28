@@ -166,7 +166,7 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
-    logger.debug("len(updates)=%d (games only!)", len(updates))
+    logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
         update.print(full=True, info=True)
 
