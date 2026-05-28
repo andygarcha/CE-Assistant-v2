@@ -246,8 +246,7 @@ class CEGame:
     @property
     def tier_emoji(self) -> str:
         "Returns the tier emoji for this game."
-        tier_casted = cast(__ICON_KEYS, self.tier)
-        return "" + hm.get_emoji(tier_casted)
+        return "" + hm.get_emoji(self.tier) # type: ignore
 
     @property
     def emojis(self) -> str:

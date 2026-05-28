@@ -4,7 +4,7 @@ from collections.abc import Sequence
 import datetime
 import json
 import time
-from typing import Literal, cast, TYPE_CHECKING
+from typing import Literal, cast
 import logging
 
 from postgrest import APIError
