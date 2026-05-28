@@ -18,9 +18,7 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import CEInput
-
-if TYPE_CHECKING:
-    from Modules import hm
+from Modules import hm
 
 with open("secret_info.json") as f:
     x = json.load(f)
