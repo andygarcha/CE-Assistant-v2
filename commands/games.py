@@ -2,52 +2,64 @@ import typing
 import discord
 from discord import app_commands
 
-from Modules import Discord_Helper, SupabaseReader
+from Modules import Discord_Helper, SupabaseReader, hm
 
 
-def setup(cli : discord.Client, tree : app_commands.CommandTree, gui : discord.Guild) :
+def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guild):
     global client, guild
     client = cli
     guild = gui
 
-    @tree.command(name="get-game", description="Get information about any game on CE!", guild=guild)
+    @tree.command(
+        name="get-game",
+        description="Get information about any game on CE!",
+        guild=guild,
+    )
     @app_commands.autocomplete(game=get_game_auto)
-    async def get_game_command(interaction : discord.Interaction, game : str) :
-        await get_game(interaction, game)
+    async def get_game_command(interaction: discord.Interaction, game: str):
+        return await get_game(interaction, game)
 
-    
-
-    pass
+    return
 
 
-#   _____   ______   _______             _____              __  __   ______ 
+#   _____   ______   _______             _____              __  __   ______
 #  / ____| |  ____| |__   __|           / ____|     /\     |  \/  | |  ____|
-# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__   
-# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|  
-# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____ 
+# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__
+# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|
+# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____
 #  \_____| |______|    |_|              \_____| /_/    \_\ |_|  |_| |______|
 
 
-async def get_game_auto(interaction : discord.Interaction, current : str) -> typing.List[app_commands.Choice[str]]:
+async def get_game_auto(
+    interaction: discord.Interaction, current: str
+) -> typing.List[app_commands.Choice[str]]:
     """Function that autocompletes whatever the user is trying to type in.
     The game's name will appear on the user's screen, but the game's CE ID will be passed."""
-    database_name = SupabaseReader.get_database_name()
-    choices : list = []
 
-    for game in database_name :
-        if current.lower() in game.game_name.lower() :
+    # log this interaction
+    await hm.log_command(client, interaction, "get_game_auto", True)
+
+    database_name = SupabaseReader.get_database_name()
+    choices: list = []
+
+    for game in database_name:
+        if current.lower() in game.game_name.lower():
             choices.append(app_commands.Choice(name=game.game_name, value=game.ce_id))
-        if len(choices) >= 25 : break
+        if len(choices) >= 25:
+            break
 
     return choices[0:25]
 
-async def get_game(interaction : discord.Interaction, game : str) :
 
+async def get_game(interaction: discord.Interaction, game: str):
     # defer
     await interaction.response.defer()
 
     chosen_game = SupabaseReader.get_game(game)
-    if chosen_game is None : return await interaction.followup.send("Sorry, I encountered a strange error. Try again later!")
+    if chosen_game is None:
+        return await interaction.followup.send(
+            "Sorry, I encountered a strange error. Try again later!"
+        )
 
     # pull the game embed
     database_name = SupabaseReader.get_database_name()

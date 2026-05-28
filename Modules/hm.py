@@ -1,17 +1,17 @@
 """
 This module, named after my legendary friend ApolloTheOne (aka apollohm),
-will house a bunch of random pieces of data that need to be accessed 
+will house a bunch of random pieces of data that need to be accessed
 across multiple files.
 """
 
+from utils.icons import *  # noqa: F403
+from utils.channels import *  # noqa: F403
+from utils.game_utils import *  # noqa: F403
+from utils.general_utils import *  # noqa: F403
+from utils.time_utils import *  # noqa: F403
 
+import logging
 
+logger = logging.getLogger(__name__)
 
-
-from utils.icons import *
-from utils.channels import *
-from utils.game_utils import *
-from utils.general_utils import *
-from utils.time_utils import *
-
-print("⚠️ The 'hm.py' module is deprecated. Use the 'utils' package instead.")
+logger.warning("The 'hm.py' module is deprecated. Use the 'utils' package instead.")

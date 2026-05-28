@@ -1,35 +1,41 @@
+import importlib.util
 import sys
 import types
 import unittest
 
 
 def install_dependency_stubs():
-    hm = types.ModuleType("Modules.hm")
-    hm.PLATFORM_NAMES = str
-    hm.CATEGORIES = str
-    hm.OBJECTIVE_TYPES = str
-    hm.ALL_ROLL_EVENT_NAMES = ()
-    sys.modules["Modules.hm"] = hm
+    if importlib.util.find_spec("aiohttp") is None:
+        aiohttp = types.ModuleType("aiohttp")
+        aiohttp.ContentTypeError = type("ContentTypeError", (Exception,), {})
+        aiohttp.ClientConnectionError = type("ClientConnectionError", (Exception,), {})
+        aiohttp.ClientTimeout = type(
+            "ClientTimeout", (), {"__init__": lambda *_, **__: None}
+        )
+        aiohttp.ClientSession = type("ClientSession", (), {})
+        sys.modules["aiohttp"] = aiohttp
 
-    aiohttp = types.ModuleType("aiohttp")
-    aiohttp.ContentTypeError = type("ContentTypeError", (Exception,), {})
-    sys.modules["aiohttp"] = aiohttp
-
-    http_session = types.ModuleType("Modules.http_session")
-    sys.modules["Modules.http_session"] = http_session
-
-    cooldown = types.ModuleType("Classes.CE_Cooldown")
-    cooldown.CECooldown = type("CECooldown", (), {})
-    sys.modules["Classes.CE_Cooldown"] = cooldown
-
-    roll = types.ModuleType("Classes.CE_Roll")
-    roll.CERoll = type("CERoll", (), {})
-    sys.modules["Classes.CE_Roll"] = roll
-
-    other = types.ModuleType("Classes.OtherClasses")
-    other.CRData = type("CRData", (), {})
-    other.CECompletion = type("CECompletion", (), {})
-    sys.modules["Classes.OtherClasses"] = other
+    if importlib.util.find_spec("discord") is None:
+        discord = types.ModuleType("discord")
+        discord.Client = type("Client", (), {})
+        discord.Embed = type("Embed", (), {})
+        discord.Interaction = type("Interaction", (), {})
+        discord.ForumChannel = type("ForumChannel", (), {})
+        discord.CategoryChannel = type("CategoryChannel", (), {})
+        discord.ConnectionClosed = type("ConnectionClosed", (Exception,), {})
+        discord.HTTPException = type("HTTPException", (Exception,), {})
+        discord.AllowedMentions = type(
+            "AllowedMentions",
+            (),
+            {
+                "all": staticmethod(lambda: object()),
+                "none": staticmethod(lambda: object()),
+            },
+        )
+        discord.abc = types.SimpleNamespace(
+            PrivateChannel=type("PrivateChannel", (), {}),
+        )
+        sys.modules["discord"] = discord
 
 
 install_dependency_stubs()
@@ -98,10 +104,14 @@ class CEUserGameCompletionTest(unittest.TestCase):
         game = self.game()
         user = self.user([self.user_game()])
 
-        ce_user_module.hm.get_item_from_list = self.fail_if_linear_lookup_is_used
+        original_get_item = ce_user_module.hm.get_item_from_list
+        try:
+            ce_user_module.hm.get_item_from_list = self.fail_if_linear_lookup_is_used
 
-        self.assertEqual([game], user.get_completed_games_2([game]))
-        self.assertEqual(1, user.completions([game]))
+            self.assertEqual([game], user.get_completed_games_2([game]))
+            self.assertEqual(1, user.completions([game]))
+        finally:
+            ce_user_module.hm.get_item_from_list = original_get_item
 
     def fail_if_linear_lookup_is_used(self, *args, **kwargs):
         raise AssertionError("expected CEUser to use a precomputed game lookup")

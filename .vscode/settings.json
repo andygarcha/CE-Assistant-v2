@@ -1,6 +1,14 @@
 {
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": false,
+    // "python.analysis.diagnosticSeverityOverrides": {
+    //     "reportAttributeAccessIssue": "error",
+    //     "reportUndefinedVariable": "error",
+    //     "reportMissingImports": "error",
+    //     "reportArgumentType": "none",
+    //     "reportReturnType": "none",
+    //     "reportOperatorIssue": "none"
+    // },
     "python.analysis.extraPaths": [
 
     ]
