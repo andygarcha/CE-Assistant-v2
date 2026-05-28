@@ -90,7 +90,7 @@ async def register(
     ce_id = hm.format_ce_link(ce_link)
     if ce_id is None:
         return await interaction.followup.send(
-            f"'{ce_id}' is not a valid link or ID. Please try again!"
+            f"'{ce_link}' is not a valid link or ID. Please try again!"
         )
 
     # get database_user
