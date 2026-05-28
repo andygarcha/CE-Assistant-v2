@@ -222,8 +222,7 @@ async def get_api_games_full(return_json=False) -> list[CEAPIGame]:
             try:
                 _params = {
                     "limit": PULL_LIMIT,
-                    "offset": (i - 1) * PULL_LIMIT,
-                    "ishidden": True,
+                    "offset": (i - 1) * PULL_LIMIT
                 }
                 async with session.get(
                     "https://cedb.me/api/games/full", params=_params
@@ -267,6 +266,22 @@ async def get_api_games_full(return_json=False) -> list[CEAPIGame]:
             else:
                 break
 
+    # now we need to also get the ones that are marked as isFinished: false
+    logger.info("pulling ishidden games...")
+    done_fetching = False
+    i = 1
+    while not done_fetching:
+        _params = {
+            "limit": PULL_LIMIT,
+            "offset": (i - 1) * PULL_LIMIT,
+            "ishidden": "true"
+        }
+        async with session.get("https://cedb.me/api/games/full", params=_params) as response:
+            _json = await response.json()
+            json_response += _json
+            done_fetching = len(_json) == 0
+            i += 1
+            
     logger.info("Done fetching %s games!", len(json_response))
 
     """"
