@@ -8,6 +8,8 @@ import Modules.hm as hm
 
 from typing import TYPE_CHECKING
 
+from utils.game_utils import CATEGORIES
+
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
@@ -560,23 +562,16 @@ class CERoll:
 
     # ==== complex logic ====
 
-    def rolled_categories(self, database_name: list) -> list[str]:
+    def rolled_categories(self, database_name: list[CEGame]) -> list[CATEGORIES]:
         "Returns a list of the categories that have been rolled so far."
-        # type casting
-        from Classes.CE_Game import CEGame
-
-        database_name = cast(list[CEGame], database_name)
-
         # TODO casino fix: this does not work with dual categories
-        raise NotImplementedError
-        return list(
-            set(
-                [
-                    hm.get_item_from_list(game, database_name).category
-                    for game in self.games
-                ]
-            )
-        )
+        _categories = set()
+        for _game in self.games:
+            _game_supa = hm.get_item_from_list(_game, database_name)
+            if _game_supa is None:
+                raise Exception(f"Could not find game {_game} in database_name. rolled_categories")
+            _categories.update(_game_supa.categories)
+        return list(_categories)
 
     def get_win_message(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None
