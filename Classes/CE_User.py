@@ -651,8 +651,6 @@ class CEUser:
             + self.ce_id
             + "\nDiscord ID: "
             + str(self.discord_id)
-            + "\nCasino Score: "
-            + str(self.casino_score)
             + "\nOwned Games: "
             + str(owned_games_array)
             + "\nCurrent Rolls: "

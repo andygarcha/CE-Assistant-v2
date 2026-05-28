@@ -265,7 +265,7 @@ async def get_user_embeds(
     )
     summary_embed.add_field(
         name="Current Values",
-        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score}",
+        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
         inline=True,
     )
     summary_embed.add_field(
