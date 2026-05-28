@@ -562,8 +562,7 @@ async def solo_roll(
 
                 for j in range(5):  # roll 5 games from the selected category
                     logger.debug("Rolling game %d.", (i + 1) * (j + 1))
-                    rolled_temp.append(
-                        await hm.get_rollable_game(
+                    _game = await hm.get_rollable_game(
                             database_name=database_name,
                             database_tier=database_tier,
                             completion_limit=10,
@@ -575,7 +574,9 @@ async def solo_roll(
                             price_restriction=price_restriction,
                             hours_restriction=hours_restriction,
                         )
-                    )
+                    if _game is None:
+                        raise Exception
+                    rolled_temp.append(_game)
 
                 # debugging
                 logger.info(
@@ -605,8 +606,7 @@ async def solo_roll(
                     rolled_temp: list[str] = []
 
                     for j in range(5):
-                        rolled_temp.append(
-                            await hm.get_rollable_game(
+                        _game = await hm.get_rollable_game(
                                 database_name=database_name,
                                 database_tier=database_tier,
                                 completion_limit=10,
@@ -618,7 +618,9 @@ async def solo_roll(
                                 price_restriction=price_restriction,
                                 hours_restriction=hours_restriction,
                             )
-                        )
+                        if _game is None:
+                            raise Exception
+                        rolled_temp.append(_game)
 
                     # debugging
                     logger.info(
