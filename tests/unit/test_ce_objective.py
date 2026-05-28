@@ -65,6 +65,8 @@ class TestHasPartial:
         assert make_objective(point_value_partial=5).has_partial() is True
 
     def test_none_partial_returns_false(self):
+        from Classes.CE_Objective import CEObjective
+
         obj = make_objective()
         assert isinstance(obj, CEObjective)
         obj._point_value_partial = 0
@@ -135,7 +137,7 @@ class TestEquals:
         )
 
     def test_non_objective_returns_false(self):
-        assert make_objective().equals("not an objective") is False # type: ignore
+        assert make_objective().equals(make_objective(obj_type="Community")) is False
 
     def test_one_has_achievements_other_does_not(self):
         with_ach = make_objective(achievement_ce_ids=["ach-001"])
