@@ -206,6 +206,7 @@ async def loop(interaction: discord.Interaction, full_scrape=False, send_updates
         "full-scrape" if full_scrape else "initiate-loop",
         True,
         full_scrape=full_scrape,
+        send_updates=send_updates
     )
 
     if hm.IN_CE:
@@ -228,7 +229,7 @@ async def loop(interaction: discord.Interaction, full_scrape=False, send_updates
 
     await interaction.followup.send("looping...")
 
-    await process_loop(client, full_scrape)
+    await process_loop(client, full_scrape, send_updates)
 
     return await interaction.followup.send("loop complete.")
 
