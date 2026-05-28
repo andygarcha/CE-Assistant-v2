@@ -393,7 +393,7 @@ async def update_games(
         notIsFinished = set([g.ce_id for g in games if not g.is_finished])
         games = [g for g in games if g.is_finished]
     else:
-        logger.info("Pulling games one at a time using /api/game/[id].")
+        logger.info("Pulling %d games one at a time using /api/game/[id].", len(_updated_game_ids))
         for i, gameId in enumerate(_updated_game_ids):
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
