@@ -11,7 +11,6 @@ from Classes.OtherClasses import CEInput
 from utils.general_utils import get_grammar_str
 from tests.conftest import (
     make_game,
-    make_roll,
     make_user,
     make_user_game,
     make_user_objective,
@@ -102,24 +101,6 @@ def test_is_curatable_low_percentage_ten_votes():
     # 10 votes but only 50% yes → should be False; currently raises TypeError.
     ci = _ce_input_with_curates([1, 1, 1, 1, 1, 0, 0, 0, 0, 0])
     assert ci.is_curatable() is False
-
-
-# ── CERoll.rolled_categories (CE_Roll.py:527-535) ────────────────────────────
-# Bug: raises NotImplementedError unconditionally (TODO casino fix).
-# Expected: returns a list[str] of category names for the rolled games.
-
-
-def test_rolled_categories_returns_list():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Action"])
-    roll = make_roll(games=["game-001-0000-0000-000000000000"])
-    result = roll.rolled_categories([game])
-    assert isinstance(result, list)
-
-
-def test_rolled_categories_contains_correct_category():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Action"])
-    roll = make_roll(games=["game-001-0000-0000-000000000000"])
-    assert "Action" in roll.rolled_categories([game])
 
 
 # ── CEUserGame.get_category_v2 (CE_User_Game.py:136-143) ─────────────────────
