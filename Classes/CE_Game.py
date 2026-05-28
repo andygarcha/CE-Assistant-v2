@@ -229,6 +229,22 @@ class CEGame:
             if objective.is_uncleared():
                 return True
         return False
+    
+    @property
+    def has_uncleared_po(self) -> bool:
+        """Returns true if this game has an Uncleared Primary Objective."""
+        for objective in self.get_primary_objectives(include_uncleareds=True):
+            if objective.is_uncleared():
+                return True
+        return False
+    
+    @property
+    def has_uncleared_so(self) -> bool:
+        """Returns true if this game has an Uncleared Secondary Objective."""
+        for objective in self.get_secondary_objectives():
+            if objective.is_uncleared():
+                return True
+        return False
 
     @property
     def ce_link(self) -> str:
