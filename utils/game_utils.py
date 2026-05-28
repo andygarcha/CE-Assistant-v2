@@ -266,6 +266,6 @@ def achievements_are_equal(
 ) -> bool:
     "Returns true if the achievements are equal, false if they're not."
     if old_achievements is None or new_achievements is None:
-        return old_achievements is new_achievements is None
+        return old_achievements is None and new_achievements is None
 
     return set(old_achievements) == set(new_achievements)

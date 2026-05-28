@@ -168,7 +168,7 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
 
     logger.debug("len(updates)=%d (games only!)", len(updates))
     for update in updates:
-        update.print(full=True)
+        update.print(full=True, info=True)
 
     # Step 2: Update Users
     #  -- now to do this we have to generate databasename_old and databasename_new
