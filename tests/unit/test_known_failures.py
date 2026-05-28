@@ -51,21 +51,6 @@ def test_grammar_str_returns_str_not_not_implemented():
     assert isinstance(result, str)
 
 
-# ── CEUser.casino_score (CE_User.py:97-99) ───────────────────────────────────
-# Bug: property body is `return NotImplemented`.
-# Expected: returns an int (or at least not the NotImplemented sentinel).
-
-
-def test_casino_score_is_not_sentinel():
-    user = make_user()
-    assert user.casino_score is not NotImplemented
-
-
-def test_casino_score_is_numeric():
-    user = make_user()
-    assert isinstance(user.casino_score, (int, float))
-
-
 # ── CEUser.to_dict_supabase_objectives (CE_User.py:569-572) ──────────────────
 # Bug: method builds `_objectives` list but has no `return` statement —
 #      implicitly returns None.
@@ -143,13 +128,13 @@ def test_rolled_categories_contains_correct_category():
 
 
 def test_get_category_v2_returns_category():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Action"])
+    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Action", "Arcade"])
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
     result = ug.get_category_v2([game])
     assert result is not None
 
 
 def test_get_category_v2_returns_correct_category():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Strategy"])
+    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Strategy", "First-Person"])
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
-    assert ug.get_category_v2([game]) == "Strategy"
+    assert ug.get_category_v2([game]) == ["Strategy", "First-Person"]

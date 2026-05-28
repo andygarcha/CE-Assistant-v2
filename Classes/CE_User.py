@@ -99,10 +99,15 @@ class CEUser:
         self._last_updated: datetime.datetime = last_updated
         pass
 
-    @property
-    def casino_score(self):
+    def casino_score(self, rolls: list[CERoll]):
         """Returns the casino score associated with this user."""
-        return NotImplemented
+        _casino_score = 0
+        for roll in rolls:
+            if roll.status == "failed":
+                _casino_score += roll.casino_decrease()
+            elif roll.status == "won":
+                _casino_score += roll.casino_increase()
+        return _casino_score
 
     def get_total_points(self):
         """Returns the total amount of points this user has."""

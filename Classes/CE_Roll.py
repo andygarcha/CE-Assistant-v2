@@ -943,53 +943,29 @@ class CERoll:
         # TODO: finish this function
         return NotImplemented
 
-    def casino_increase(self, database_name: list[CEGame] | None = None) -> int:
+    def casino_increase(self) -> int:
         "Returns the number of casino points the user would gain if the roll is won."
 
         # relative points
         tup = CASINO_POINTS[self.roll_name]
         if tup is None:
-            if database_name is None:
-                logger.error(
-                    "When finding casino_increase for %s, database_name was None.",
-                    self.roll_name,
-                )
-                raise Exception
-            game = hm.get_item_from_list(self.games[0], database_name)
-            if game is None:
-                logger.error(
-                    "When finding casino_increase for ID %s, game %s was not sent in db_name",
-                    self.games[0],
-                )
-                raise Exception
-            tier = game.tier_num
+            tier = self.tier_num
+            if tier is None:
+                raise Exception(f"`tier_num` undefined for roll of type {self.roll_name}.")
             return relative(tier)
 
         # normal case
         return tup[0]
 
-    def casino_decrease(self, database_name: list[CEGame] | None = None) -> int:
+    def casino_decrease(self) -> int:
         "Returns the number of casino points the user would lose if the roll is lost."
 
         # relative points
         tup = CASINO_POINTS[self.roll_name]
         if tup is None:
-            if database_name is None:
-                logger.error(
-                    "When finding casino_increase for %s, database_name was None.",
-                    self._id,
-                    self.roll_name,
-                )
-                raise Exception
-            game = hm.get_item_from_list(self.games[0], database_name)
-            if game is None:
-                logger.error(
-                    "When finding casino_increase for ID %s, game %s was not sent in db_name",
-                    self._id,
-                    self.games[0],
-                )
-                raise Exception
-            tier = game.tier_num
+            tier = self.tier_num
+            if tier is None:
+                raise Exception(f"`tier_num` undefined for roll of type {self.roll_name}.")
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)
