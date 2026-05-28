@@ -27,7 +27,9 @@ class TestCEUserObjectiveProperties:
         assert make_user_objective(name="Complete it").name == "Complete it"
 
     def test_name_defaults_to_empty_string(self):
-        obj = CEUserObjective(ce_id=OBJ_ID, game_ce_id=GAME_ID, type="Primary", user_points=10)
+        obj = CEUserObjective(
+            ce_id=OBJ_ID, game_ce_id=GAME_ID, type="Primary", user_points=10
+        )
         assert obj.name == ""
 
     @pytest.mark.parametrize("obj_type", ["Primary", "Secondary", "Badge", "Community"])
@@ -48,7 +50,9 @@ class TestCEUserObjectiveToDict:
             assert key in result
 
     def test_values_match(self):
-        obj = make_user_objective(ce_id=OBJ_ID, game_ce_id=GAME_ID, obj_type="Badge", user_points=25)
+        obj = make_user_objective(
+            ce_id=OBJ_ID, game_ce_id=GAME_ID, obj_type="Badge", user_points=25
+        )
         d = obj.to_dict()
         assert d["ce_id"] == OBJ_ID
         assert d["game_ce_id"] == GAME_ID
