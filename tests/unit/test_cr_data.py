@@ -1,7 +1,10 @@
-import pytest
-
 from Classes.OtherClasses import CRData
-from tests.conftest import make_game, make_objective, make_user_game, make_user_objective
+from tests.conftest import (
+    make_game,
+    make_objective,
+    make_user_game,
+    make_user_objective,
+)
 
 GAME_ID_A = "game-aaa-0000-0000-000000000000"
 GAME_ID_B = "game-bbb-0000-0000-000000000000"
@@ -10,7 +13,9 @@ OBJ_ID = "obj-0001-0000-0000-000000000000"
 
 
 def _po(points: int, game_id: str = GAME_ID_A) -> object:
-    return make_objective(ce_id=OBJ_ID, point_value=points, obj_type="Primary", game_ce_id=game_id)
+    return make_objective(
+        ce_id=OBJ_ID, point_value=points, obj_type="Primary", game_ce_id=game_id
+    )
 
 
 def _completed_ug(game_id: str, points: int) -> object:
@@ -25,7 +30,14 @@ def _completed_ug(game_id: str, points: int) -> object:
 class TestCRDataEmpty:
     def test_all_category_crs_zero(self):
         cr = CRData(owned_games=[], database_name=[])
-        for attr in ("action_cr", "arcade_cr", "bullethell_cr", "firstperson_cr", "platformer_cr", "strategy_cr"):
+        for attr in (
+            "action_cr",
+            "arcade_cr",
+            "bullethell_cr",
+            "firstperson_cr",
+            "platformer_cr",
+            "strategy_cr",
+        ):
             assert getattr(cr, attr) == 0
 
     def test_total_cr_zero(self):
@@ -68,8 +80,12 @@ class TestCRDataSingleGame:
 class TestCRDataMultiplier:
     def test_two_action_games_use_multiplier(self):
         # calculate_cr([100, 100]) = 100 + 0.9*100 = 190
-        game_a = make_game(ce_id=GAME_ID_A, categories=["Action"], objectives=[_po(100, GAME_ID_A)])
-        game_b = make_game(ce_id=GAME_ID_B, categories=["Action"], objectives=[_po(100, GAME_ID_B)])
+        game_a = make_game(
+            ce_id=GAME_ID_A, categories=["Action"], objectives=[_po(100, GAME_ID_A)]
+        )
+        game_b = make_game(
+            ce_id=GAME_ID_B, categories=["Action"], objectives=[_po(100, GAME_ID_B)]
+        )
         ug_a = _completed_ug(GAME_ID_A, 100)
         ug_b = _completed_ug(GAME_ID_B, 100)
         cr = CRData(owned_games=[ug_a, ug_b], database_name=[game_a, game_b])
@@ -77,12 +93,16 @@ class TestCRDataMultiplier:
 
     def test_order_in_owned_games_affects_cr(self):
         # Putting the higher-value game first gives a higher CR.
-        game_a = make_game(ce_id=GAME_ID_A, categories=["Action"], objectives=[_po(100, GAME_ID_A)])
-        game_b = make_game(ce_id=GAME_ID_B, categories=["Action"], objectives=[_po(10, GAME_ID_B)])
+        game_a = make_game(
+            ce_id=GAME_ID_A, categories=["Action"], objectives=[_po(100, GAME_ID_A)]
+        )
+        game_b = make_game(
+            ce_id=GAME_ID_B, categories=["Action"], objectives=[_po(10, GAME_ID_B)]
+        )
         ug_a = _completed_ug(GAME_ID_A, 100)
         ug_b = _completed_ug(GAME_ID_B, 10)
         cr_desc = CRData(owned_games=[ug_a, ug_b], database_name=[game_a, game_b])
-        cr_asc  = CRData(owned_games=[ug_b, ug_a], database_name=[game_a, game_b])
+        cr_asc = CRData(owned_games=[ug_b, ug_a], database_name=[game_a, game_b])
         assert cr_desc.action_cr > cr_asc.action_cr
 
 
@@ -94,7 +114,9 @@ class TestCRDataDualCategory:
         # A game with ["Action", "Strategy"] and 100 user points:
         # action_cr = calculate_cr([100]) = 100
         # strategy_cr = calculate_cr([100]) = 100
-        game = make_game(ce_id=GAME_ID_A, categories=["Action", "Strategy"], objectives=[_po(100)])
+        game = make_game(
+            ce_id=GAME_ID_A, categories=["Action", "Strategy"], objectives=[_po(100)]
+        )
         ug = _completed_ug(GAME_ID_A, 100)
         cr = CRData(owned_games=[ug], database_name=[game])
         assert cr.action_cr == 100.0
@@ -103,7 +125,9 @@ class TestCRDataDualCategory:
     def test_dual_category_total_double_counts(self):
         # Because each category is summed independently, a dual-category game
         # contributes to the total CR twice.
-        game = make_game(ce_id=GAME_ID_A, categories=["Action", "Strategy"], objectives=[_po(100)])
+        game = make_game(
+            ce_id=GAME_ID_A, categories=["Action", "Strategy"], objectives=[_po(100)]
+        )
         ug = _completed_ug(GAME_ID_A, 100)
         cr = CRData(owned_games=[ug], database_name=[game])
         assert cr.total_cr == 200.0

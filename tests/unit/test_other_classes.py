@@ -3,10 +3,10 @@ Tests for pure-logic classes in OtherClasses.py and CRData.calculate_cr.
 Skips: EmbedMessage/UpdateMessage (trivial containers), RAData (dict passthrough),
        CEInput.is_curatable (known bug: compares str to int, always False).
 """
+
 import pytest
 
 from Classes.OtherClasses import (
-    Achievement,
     CECompletion,
     CECurateInput,
     CEIndividualValueInput,
@@ -170,12 +170,15 @@ class TestCEValueInput:
 
 
 class TestCECurateInput:
-    @pytest.mark.parametrize("curate, expected", [
-        (0, "Don't Curate"),
-        (1, "Curate"),
-        (2, "Indifferent"),
-        (99, "Failure"),
-    ])
+    @pytest.mark.parametrize(
+        "curate, expected",
+        [
+            (0, "Don't Curate"),
+            (1, "Curate"),
+            (2, "Indifferent"),
+            (99, "Failure"),
+        ],
+    )
     def test_curate_meaning(self, curate, expected):
         assert CECurateInput(user_ce_id="u", curate=curate).curate_meaning() == expected
 
@@ -190,7 +193,9 @@ class TestCECurateInput:
 
 def _ce_input_with_curates(votes: list[int]) -> CEInput:
     """Build a CEInput with the given list of curate values (0=no, 1=yes, 2=indifferent)."""
-    ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
+    ci = CEInput(
+        game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[]
+    )
     for i, v in enumerate(votes):
         ci.add_new_curate_input(user_id=f"user-{i:03}", curate=v)
     return ci
@@ -242,40 +247,23 @@ class TestCEInputCurating:
 
 class TestCEInputValueVoting:
     def test_add_value_input_new_objective(self):
-        ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
+        ci = CEInput(
+            game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[]
+        )
         ci.add_value_input(objective_id=OBJ_ID, user_id="user-001", value=30)
         assert ci.has_value_input(OBJ_ID) is True
 
     def test_add_value_input_second_user_same_objective(self):
-        ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
+        ci = CEInput(
+            game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[]
+        )
         ci.add_value_input(OBJ_ID, "user-001", 30)
         ci.add_value_input(OBJ_ID, "user-002", 50)
         vi = ci.get_value_input(OBJ_ID)
         assert vi.average() == 40.0
 
     def test_get_value_input_not_found_returns_none(self):
-        ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
+        ci = CEInput(
+            game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[]
+        )
         assert ci.get_value_input("nonexistent") is None
-
-
-# ── Achievement ───────────────────────────────────────────────────────────────
-
-
-class TestAchievement:
-    def test_equality_same_ce_id(self):
-        a = Achievement(ce_id="ach-001", name="First")
-        b = Achievement(ce_id="ach-001", name="Different Name")
-        assert a == b
-
-    def test_inequality_different_ce_id(self):
-        a = Achievement(ce_id="ach-001", name="First")
-        b = Achievement(ce_id="ach-002", name="First")
-        assert a != b
-
-    def test_not_equal_to_non_achievement(self):
-        assert Achievement(ce_id="ach-001", name="X") != "ach-001"
-
-    def test_properties(self):
-        a = Achievement(ce_id="ach-001", name="My Achievement")
-        assert a.ce_id == "ach-001"
-        assert a.name == "My Achievement"

@@ -6,11 +6,16 @@ Each test documents:
   - what the correct behaviour should be
   - why it currently fails
 """
-import pytest
 
-from Classes.OtherClasses import CEInput, CECurateInput
+from Classes.OtherClasses import CEInput
 from utils.general_utils import get_grammar_str
-from tests.conftest import make_game, make_roll, make_user, make_user_game, make_user_objective
+from tests.conftest import (
+    make_game,
+    make_roll,
+    make_user,
+    make_user_game,
+    make_user_objective,
+)
 
 
 # ── get_grammar_str (utils/general_utils.py:25-31) ───────────────────────────
@@ -88,7 +93,9 @@ def test_to_dict_supabase_objectives_not_none():
 
 
 def _ce_input_with_curates(votes: list[int]) -> CEInput:
-    ci = CEInput(game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[])
+    ci = CEInput(
+        game_ce_id="game-001", value_inputs=[], curate_inputs=[], tag_inputs=[]
+    )
     for i, v in enumerate(votes):
         ci.add_new_curate_input(user_id=f"user-{i:03}", curate=v)
     return ci

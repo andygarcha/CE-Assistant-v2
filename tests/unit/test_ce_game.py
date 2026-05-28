@@ -6,6 +6,7 @@ from tests.conftest import make_game, make_objective
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def _po(points: int, name: str = "Test PO") -> object:
     """Primary objective with the given point value."""
     return make_objective(point_value=points, obj_type="Primary", name=name)
@@ -18,7 +19,9 @@ def _so(points: int) -> object:
 
 def _uncleared_po() -> object:
     """An uncleared primary objective (0 points)."""
-    return make_objective(point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)")
+    return make_objective(
+        point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)"
+    )
 
 
 def _game_with_po_points(points: int) -> CEGame:
@@ -30,24 +33,27 @@ def _game_with_po_points(points: int) -> CEGame:
 
 
 class TestTierNum:
-    @pytest.mark.parametrize("points, expected_tier", [
-        (0,   0),   # below T1 threshold
-        (4,   0),   # still below T1 (threshold is 5)
-        (5,   1),
-        (19,  1),
-        (20,  2),
-        (39,  2),
-        (40,  3),
-        (79,  3),
-        (80,  4),
-        (199, 4),
-        (200, 5),
-        (399, 5),
-        (400, 6),
-        (799, 6),
-        (800, 7),
-        (9999, 7),
-    ])
+    @pytest.mark.parametrize(
+        "points, expected_tier",
+        [
+            (0, 0),  # below T1 threshold
+            (4, 0),  # still below T1 (threshold is 5)
+            (5, 1),
+            (19, 1),
+            (20, 2),
+            (39, 2),
+            (40, 3),
+            (79, 3),
+            (80, 4),
+            (199, 4),
+            (200, 5),
+            (399, 5),
+            (400, 6),
+            (799, 6),
+            (800, 7),
+            (9999, 7),
+        ],
+    )
     def test_tier_boundaries(self, points, expected_tier):
         assert _game_with_po_points(points).tier_num == expected_tier
 
@@ -168,7 +174,9 @@ class TestGetSoPoints:
         assert game.get_so_points() == 15
 
     def test_uncleared_secondary_excluded(self):
-        uncleared_so = make_objective(point_value=0, obj_type="Secondary", name="SO (UNCLEARED)")
+        uncleared_so = make_objective(
+            point_value=0, obj_type="Secondary", name="SO (UNCLEARED)"
+        )
         game = make_game(objectives=[_so(15), uncleared_so])
         assert game.get_so_points() == 15
 
@@ -211,15 +219,18 @@ class TestGetObjective:
 
 
 class TestCategories:
-    @pytest.mark.parametrize("cats, expected_nums", [
-        (["Action"], [1]),
-        (["Arcade"], [2]),
-        (["Bullet Hell"], [3]),
-        (["First-Person"], [4]),
-        (["Platformer"], [5]),
-        (["Strategy"], [6]),
-        (["Action", "Strategy"], [1, 6]),
-    ])
+    @pytest.mark.parametrize(
+        "cats, expected_nums",
+        [
+            (["Action"], [1]),
+            (["Arcade"], [2]),
+            (["Bullet Hell"], [3]),
+            (["First-Person"], [4]),
+            (["Platformer"], [5]),
+            (["Strategy"], [6]),
+            (["Action", "Strategy"], [1, 6]),
+        ],
+    )
     def test_categories_num(self, cats, expected_nums):
         assert make_game(categories=cats).categories_num == expected_nums
 
@@ -237,7 +248,9 @@ class TestCategories:
 class TestCELink:
     def test_ce_link_format(self):
         game = make_game(ce_id="abcd1234-0000-0000-0000-000000000000")
-        assert game.ce_link == "https://cedb.me/game/abcd1234-0000-0000-0000-000000000000"
+        assert (
+            game.ce_link == "https://cedb.me/game/abcd1234-0000-0000-0000-000000000000"
+        )
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────

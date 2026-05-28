@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from Classes.CE_Roll import CERoll, relative
+from Classes.CE_Roll import relative
 from tests.conftest import make_roll
 
 PAST = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
@@ -14,15 +14,18 @@ INIT = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
 
 
 class TestRelative:
-    @pytest.mark.parametrize("tier, expected", [
-        (1, 1),
-        (2, 2),
-        (3, 4),
-        (4, 8),
-        (5, 20),
-        (6, 20),
-        (99, 20),
-    ])
+    @pytest.mark.parametrize(
+        "tier, expected",
+        [
+            (1, 1),
+            (2, 2),
+            (3, 4),
+            (4, 8),
+            (5, 20),
+            (6, 20),
+            (99, 20),
+        ],
+    )
     def test_known_tiers(self, tier, expected):
         assert relative(tier) == expected
 
@@ -32,18 +35,24 @@ class TestRelative:
 
 class TestIsCoop:
     def test_solo_roll_without_partner_is_not_coop(self):
-        assert make_roll(roll_name="One Hell of a Day", partner_ce_id=None).is_co_op is False
+        assert (
+            make_roll(roll_name="One Hell of a Day", partner_ce_id=None).is_co_op
+            is False
+        )
 
     def test_roll_with_partner_id_is_coop(self):
         assert make_roll(partner_ce_id="partner-ce-id").is_co_op is True
 
-    @pytest.mark.parametrize("name", [
-        "Destiny Alignment",
-        "Soul Mates",
-        "Teamwork Makes the Dream Work",
-        "Winner Takes All",
-        "Game Theory",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Destiny Alignment",
+            "Soul Mates",
+            "Teamwork Makes the Dream Work",
+            "Winner Takes All",
+            "Game Theory",
+        ],
+    )
     def test_coop_roll_names_are_coop(self, name):
         assert make_roll(roll_name=name).is_co_op is True
 
@@ -126,11 +135,14 @@ class TestReadyForNext:
 
 
 class TestIsMultiStage:
-    @pytest.mark.parametrize("name", [
-        "Two Week T2 Streak",
-        'Two "Two Week T2 Streak" Streak',
-        "Fourward Thinking",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Two Week T2 Streak",
+            'Two "Two Week T2 Streak" Streak',
+            "Fourward Thinking",
+        ],
+    )
     def test_multi_stage_roll_names(self, name):
         assert make_roll(roll_name=name).is_multi_stage is True
 
@@ -276,7 +288,11 @@ class TestNormalizeDatetime:
 
 class TestCalculateCooldownDate:
     def test_none_cooldown_rolls_return_none(self):
-        for name in ["Two Week T2 Streak", 'Two "Two Week T2 Streak" Streak', "Fourward Thinking"]:
+        for name in [
+            "Two Week T2 Streak",
+            'Two "Two Week T2 Streak" Streak',
+            "Fourward Thinking",
+        ]:
             # Non-Fourward rolls with None cooldown return None
             if name != "Fourward Thinking":
                 roll = make_roll(roll_name=name, init_time=INIT)
@@ -290,7 +306,9 @@ class TestCalculateCooldownDate:
 
     def test_fourward_thinking_cooldown_based_on_games_and_rerolls(self):
         # 2 games, 0 rerolls used (rerolls=0 means 1 allowed, 1 used = rerolls_used = 2 - (0+1) = 1)
-        roll = make_roll(roll_name="Fourward Thinking", games=["g1", "g2"], rerolls=0, init_time=INIT)
+        roll = make_roll(
+            roll_name="Fourward Thinking", games=["g1", "g2"], rerolls=0, init_time=INIT
+        )
         result = roll.calculate_cooldown_date()
         # days = 2*14 + months_to_days(1) = 28 + ~30
         assert result > INIT + datetime.timedelta(days=28)
