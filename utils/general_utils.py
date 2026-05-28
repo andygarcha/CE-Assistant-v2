@@ -24,13 +24,20 @@ def replace_item_in_list(ce_id, item, list) -> list:
     return list
 
 
-def get_grammar_str(input: list) -> str:
+def get_grammar_str(items: list) -> str:
     """Takes in the list `input` and returns a string of their
     contents grammatically correct.\n
     Example: [a, b, c] --> 'a, b, and c'\n
     Example: [a] --> 'a'"""
-    # TODO: finish this function
-    return NotImplemented
+    if len(items) == 2:
+        grammatical_string = " and ".join(items)
+    elif len(items) > 1:
+        grammatical_string = ", ".join(items[:-1]) + ", and " + items[-1]
+    elif items:
+        grammatical_string = items[0]
+    else:
+        grammatical_string = ""
+    return grammatical_string
 
 
 def format_ce_link(ce_link: str) -> str | None:
