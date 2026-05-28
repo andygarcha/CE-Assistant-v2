@@ -52,8 +52,8 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Run the loop on ALL games in the CE database.",
         guild=guild,
     )
-    async def full_scrape_command(interaction: discord.Interaction):
-        await loop(interaction, True)
+    async def full_scrape_command(interaction: discord.Interaction, send_updates: bool = True):
+        await loop(interaction, True, send_updates=send_updates)
 
     # ---- initiate loop command ----
     @tree.command(
@@ -196,7 +196,7 @@ async def scrape(interaction: discord.Interaction):
 # ---- initiate loop ----
 
 
-async def loop(interaction: discord.Interaction, full_scrape=False):
+async def loop(interaction: discord.Interaction, full_scrape=False, send_updates: bool = True):
     await interaction.response.defer()
 
     # log this interaction

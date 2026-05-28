@@ -119,7 +119,11 @@ times = [
 
 
 @tasks.loop(time=times)
-async def process_loop(client: discord.Client | None = None, full_scrape: bool = False):
+async def process_loop(
+    client: discord.Client | None = None,
+    full_scrape: bool = False,
+    send_updates: bool = True
+    ):
     logger.info("")
     if client is None:
         logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")
@@ -150,9 +154,6 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
     time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
 
     updates: list[UpdateMessageForScraperProcess] = []
-
-    # FLAGS
-    SENDUPDATES = True
 
     # Step 1: Update Games
     logger.info("UPDATE GAMES: begin")
@@ -253,7 +254,7 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
             continue
 
         if not update.is_embed:
-            if SENDUPDATES:
+            if send_updates:
                 await hm.send_message(client, update.location, update.text, False)
             else:
                 update.print(full=True)
@@ -274,7 +275,7 @@ async def process_loop(client: discord.Client | None = None, full_scrape: bool =
         embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
         embed.set_footer(text="CE Assistant", icon_url=hm.FINAL_CE_ICON)
 
-        if SENDUPDATES:
+        if send_updates:
             await hm.send_message(client, update.location, embed=embed)
         else:
             update.print(full=True)
