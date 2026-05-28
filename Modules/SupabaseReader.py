@@ -561,7 +561,7 @@ def bulk_dump_games(
                     "category_primary": None,
                     "image_header": game._banner,
                     "image_icon": "",
-                    "updated_at_CE": datetime.datetime.now(),
+                    "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }
             )
 
