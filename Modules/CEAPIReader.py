@@ -299,7 +299,8 @@ async def get_api_games_full(return_json=False) -> list[CEAPIGame]:
         # grab the object
         ce_game = _ce_to_game(game)
         if ce_game is None:
-            raise Exception("Could not turn the json into a CEGame.")
+            logger.warning("Could not turn the json into a CEGame.")
+            continue
 
         # ... and append it to the list.
         all_games.append(ce_game)
