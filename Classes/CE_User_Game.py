@@ -1,6 +1,7 @@
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEGame
+from utils.game_utils import CATEGORIES
 
 
 class CEUserGame:
@@ -130,13 +131,11 @@ class CEUserGame:
             if user_points < objective.point_value:
                 return False
 
-    def get_category_v2(self, database_name: list[CEGame]):
+    def get_category_v2(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
         """Returns the category of this game."""
-        # TODO casino fix: doesn't work with dual categories
-        raise NotImplementedError
-        for game in database_name:
-            if game.ce_id == self.ce_id:
-                return game.category
+        for _game in database_name:
+            if _game.ce_id == self.ce_id:
+                return _game.categories
         return None
 
     def to_dict_supabase(self, user_ce_id: str):
