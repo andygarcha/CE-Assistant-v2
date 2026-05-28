@@ -1,7 +1,6 @@
 import importlib.util
 import sys
 import types
-import unittest
 
 
 def install_dependency_stubs():
@@ -48,7 +47,7 @@ from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 
 
-class CEUserGameCompletionTest(unittest.TestCase):
+class TestCEUserGameCompletion:
     def game(self, game_id="game-1", objective_id="objective-1"):
         return CEGame(
             ce_id=game_id,
@@ -97,25 +96,21 @@ class CEUserGameCompletionTest(unittest.TestCase):
     def test_is_completed_accepts_game_lookup(self):
         game = self.game()
 
-        self.assertTrue(self.user_game().is_completed({"game-1": game}))
-        self.assertFalse(self.user_game().is_completed({"other-game": game}))
+        assert self.user_game().is_completed({"game-1": game}) is True
+        assert self.user_game().is_completed({"other-game": game}) is False
 
-    def test_get_completed_games_uses_single_lookup_map(self):
+    def test_get_completed_games_uses_single_lookup_map(self, monkeypatch):
         game = self.game()
         user = self.user([self.user_game()])
 
-        original_get_item = ce_user_module.hm.get_item_from_list
-        try:
-            ce_user_module.hm.get_item_from_list = self.fail_if_linear_lookup_is_used
+        monkeypatch.setattr(
+            ce_user_module.hm,
+            "get_item_from_list",
+            self.fail_if_linear_lookup_is_used,
+        )
 
-            self.assertEqual([game], user.get_completed_games_2([game]))
-            self.assertEqual(1, user.completions([game]))
-        finally:
-            ce_user_module.hm.get_item_from_list = original_get_item
+        assert user.get_completed_games_2([game]) == [game]
+        assert user.completions([game]) == 1
 
     def fail_if_linear_lookup_is_used(self, *args, **kwargs):
         raise AssertionError("expected CEUser to use a precomputed game lookup")
-
-
-if __name__ == "__main__":
-    unittest.main()
