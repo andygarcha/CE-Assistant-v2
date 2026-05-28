@@ -4,6 +4,8 @@ It will:
 
 - take in a `CERoll` object and return an array of `discord.Embed`s denoting exactly what's up.
 """
+from __future__ import annotations
+
 import datetime
 import discord
 import logging
@@ -17,7 +19,10 @@ import Modules.hm as hm
 
 logger = logging.getLogger(__name__)
 
-async def get_roll_embeds(roll : CERoll, database_name : list) -> list[discord.Embed] :
+
+async def get_roll_embeds(
+roll: CERoll, database_name: list[CEGame]
+) -> list[discord.Embed]:
     """This function returns an array of `discord.Embed`'s to be sent when a roll is initialized."""
     from Classes.CE_Game import CEGame
 

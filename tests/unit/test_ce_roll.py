@@ -78,12 +78,12 @@ class TestIsExpired:
 
     def test_past_unix_timestamp_is_expired(self):
         roll = make_roll()
-        roll._due_time = int(PAST.timestamp())
+        roll._due_time = PAST
         assert roll.is_expired is True
 
     def test_future_unix_timestamp_not_expired(self):
         roll = make_roll()
-        roll._due_time = int(FUTURE.timestamp())
+        roll._due_time = FUTURE
         assert roll.is_expired is False
 
 
