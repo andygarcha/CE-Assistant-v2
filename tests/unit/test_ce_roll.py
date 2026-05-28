@@ -273,6 +273,7 @@ class TestNormalizeDatetime:
     def test_naive_datetime_becomes_utc(self):
         naive = datetime.datetime(2024, 6, 1, 12, 0, 0)
         result = make_roll()._normalize_datetime(naive)
+        assert isinstance(result, datetime.datetime)
         assert result.tzinfo is not None
 
     def test_aware_datetime_unchanged(self):
@@ -312,6 +313,7 @@ class TestCalculateCooldownDate:
             roll_name="Fourward Thinking", games=["g1", "g2"], rerolls=0, init_time=INIT
         )
         result = roll.calculate_cooldown_date()
+        assert isinstance(result, datetime.datetime)
         # days = 2*14 + months_to_days(1) = 28 + ~30
         assert result > INIT + datetime.timedelta(days=28)
 

@@ -1,3 +1,5 @@
+from Classes.CE_Objective import CEObjective
+from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import CRData
 from tests.conftest import (
     make_game,
@@ -12,13 +14,13 @@ GAME_ID_C = "game-ccc-0000-0000-000000000000"
 OBJ_ID = "obj-0001-0000-0000-000000000000"
 
 
-def _po(points: int, game_id: str = GAME_ID_A) -> object:
+def _po(points: int, game_id: str = GAME_ID_A) -> CEObjective:
     return make_objective(
         ce_id=OBJ_ID, point_value=points, obj_type="Primary", game_ce_id=game_id
     )
 
 
-def _completed_ug(game_id: str, points: int) -> object:
+def _completed_ug(game_id: str, points: int) -> CEUserGame:
     """User game whose single PO gives the user `points` points."""
     uobj = make_user_objective(ce_id=OBJ_ID, game_ce_id=game_id, user_points=points)
     return make_user_game(ce_id=game_id, user_objectives=[uobj])

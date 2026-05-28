@@ -63,14 +63,14 @@ class TestGetEmoji:
         assert EMOJI_PATTERN.match(get_emoji(key)), f"Bad result for {key!r}"
 
     def test_unknown_key_returns_bad_input(self):
-        assert get_emoji("not-a-real-key") == "bad-input"
+        assert get_emoji("not-a-real-key") == "bad-input" # type: ignore
 
     def test_tier_emojis_are_all_distinct(self):
-        emojis = [get_emoji(k) for k in TIER_KEYS]
+        emojis = [get_emoji(k) for k in TIER_KEYS] # type: ignore
         assert len(set(emojis)) == len(TIER_KEYS)
 
     def test_category_emojis_are_all_distinct(self):
-        emojis = [get_emoji(k) for k in CATEGORY_KEYS]
+        emojis = [get_emoji(k) for k in CATEGORY_KEYS] # type: ignore
         assert len(set(emojis)) == len(CATEGORY_KEYS)
 
     def test_known_misc_keys_return_emoji_format(self):
@@ -89,11 +89,11 @@ class TestIdNum:
         assert result != 0
 
     def test_unknown_channel_returns_zero(self):
-        assert id_num("does-not-exist") == 0
+        assert id_num("does-not-exist") == 0 # type: ignore
 
     def test_all_known_channel_ids_are_discord_snowflakes(self):
         for channel in CHANNEL_KEYS:
-            result = id_num(channel)
+            result = id_num(channel) # type: ignore
             assert result > (1 << 40), (
                 f"Channel {channel!r} has suspiciously small ID {result}"
             )

@@ -2,6 +2,7 @@ import pytest
 
 from Classes.CE_Roll import CASINO_POINTS, relative
 from Classes.CE_User import MUTELIST_CEIDS
+from Classes.CE_User_Game import CEUserGame
 from tests.conftest import (
     make_game,
     make_objective,
@@ -16,7 +17,7 @@ GAME_ID_B = "game-bbb-0000-0000-000000000000"
 OBJ_ID = "obj-0001-0000-0000-000000000000"
 
 
-def _user_game(ce_id: str, points: int) -> object:
+def _user_game(ce_id: str, points: int) -> CEUserGame:
     """User game whose single primary objective gives `points` user points."""
     uobj = make_user_objective(ce_id=OBJ_ID, game_ce_id=ce_id, user_points=points)
     return make_user_game(ce_id=ce_id, user_objectives=[uobj])
@@ -272,12 +273,12 @@ class TestGetCompletedGames2:
     def test_raises_on_none_database(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2(None)
+            user.get_completed_games_2(None) # type: ignore
 
     def test_raises_on_database_containing_none(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2([None])
+            user.get_completed_games_2([None]) # type: ignore
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
@@ -317,15 +318,15 @@ class TestCasinoScore:
     @pytest.mark.parametrize(
         "roll_name, expected_increase",
         [
-            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][0]),
-            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][0]),
-            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][0]),
-            ("Never Lucky", CASINO_POINTS["Never Lucky"][0]),
-            ("Triple Threat", CASINO_POINTS["Triple Threat"][0]),
-            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]),
-            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]),
-            ("Game Theory", CASINO_POINTS["Game Theory"][0]),
-            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][0]),
+            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][0]),  # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][0]), # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][0]), # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][0]), # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][0]), # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]), # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]), # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][0]), # type: ignore
+            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][0]), # type: ignore
         ],
     )
     def test_won_fixed_roll_adds_correct_increase(self, roll_name, expected_increase):
@@ -337,15 +338,15 @@ class TestCasinoScore:
     @pytest.mark.parametrize(
         "roll_name, expected_decrease",
         [
-            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][1]),
-            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][1]),
-            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][1]),
-            ("Never Lucky", CASINO_POINTS["Never Lucky"][1]),
-            ("Triple Threat", CASINO_POINTS["Triple Threat"][1]),
-            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]),
-            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]),
-            ("Game Theory", CASINO_POINTS["Game Theory"][1]),
-            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][1]),
+            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][1]), # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][1]), # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][1]), # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][1]), # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][1]), # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]), # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]), # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][1]), # type: ignore
+            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][1]), # type: ignore
         ],
     )
     def test_failed_fixed_roll_adds_correct_decrease(self, roll_name, expected_decrease):

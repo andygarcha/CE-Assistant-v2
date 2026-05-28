@@ -1,5 +1,6 @@
 import pytest
 
+from Classes.CE_Objective import CEObjective
 from tests.conftest import make_objective
 
 
@@ -65,7 +66,8 @@ class TestHasPartial:
 
     def test_none_partial_returns_false(self):
         obj = make_objective()
-        obj._point_value_partial = None
+        assert isinstance(obj, CEObjective)
+        obj._point_value_partial = 0
         assert obj.has_partial() is False
 
 
@@ -133,7 +135,7 @@ class TestEquals:
         )
 
     def test_non_objective_returns_false(self):
-        assert make_objective().equals("not an objective") is False
+        assert make_objective().equals("not an objective") is False # type: ignore
 
     def test_one_has_achievements_other_does_not(self):
         with_ach = make_objective(achievement_ce_ids=["ach-001"])

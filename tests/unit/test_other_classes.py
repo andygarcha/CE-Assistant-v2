@@ -260,6 +260,7 @@ class TestCEInputValueVoting:
         ci.add_value_input(OBJ_ID, "user-001", 30)
         ci.add_value_input(OBJ_ID, "user-002", 50)
         vi = ci.get_value_input(OBJ_ID)
+        assert vi is not None
         assert vi.average() == 40.0
 
     def test_get_value_input_not_found_returns_none(self):

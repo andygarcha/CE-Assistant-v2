@@ -1,3 +1,5 @@
+from Classes.CE_Objective import CEObjective
+from Classes.CE_User_Objective import CEUserObjective
 from tests.conftest import (
     make_game,
     make_objective,
@@ -9,14 +11,14 @@ GAME_ID = "game-001-0000-0000-000000000000"
 OBJ_ID = "obj-0001-0000-0000-000000000000"
 
 
-def _po(points: int, obj_id: str = OBJ_ID) -> object:
+def _po(points: int, obj_id: str = OBJ_ID) -> CEObjective:
     """Game primary objective with given points."""
     return make_objective(
         ce_id=obj_id, point_value=points, obj_type="Primary", game_ce_id=GAME_ID
     )
 
 
-def _uncleared_po(obj_id: str = "obj-uncleared-000000000000") -> object:
+def _uncleared_po(obj_id: str = "obj-uncleared-000000000000") -> CEObjective:
     """Uncleared primary objective (0 points)."""
     return make_objective(
         ce_id=obj_id,
@@ -27,7 +29,7 @@ def _uncleared_po(obj_id: str = "obj-uncleared-000000000000") -> object:
     )
 
 
-def _upo(points: int, obj_id: str = OBJ_ID) -> object:
+def _upo(points: int, obj_id: str = OBJ_ID) -> CEUserObjective:
     """User primary objective with given points."""
     return make_user_objective(
         ce_id=obj_id, game_ce_id=GAME_ID, obj_type="Primary", user_points=points
