@@ -185,6 +185,10 @@ def get_rollable_game(
         if __game_object is None or __game_object.has_uncleared:
             continue
 
+        # allows_multi_category
+        if not allow_multi_category and len(__game_object.categories) != 1:
+            continue
+
         # has points
         if has_points_restriction:
             fails = False
