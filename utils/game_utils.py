@@ -29,27 +29,91 @@ def get_banned_games() -> list[str] | None:
     return banned_games_ids
 
 
-async def get_rollable_game(
+def get_rollable_game(
     database_name: list[CEGame],
     database_tier: dict,
     completion_limit: int | None,
     price_limit: int | None,
-    tier_number: int,
+    tier_number: int | None,
     user: list[CEUser] | CEUser,
     category: str | list[str] | None = None,
-    already_rolled_games: list = [],
+    already_rolled_games: list | None = None,
     has_points_restriction: bool = False,
     price_restriction: bool = True,
     hours_restriction: bool = True,
+    allow_multi_category: bool = True,
 ) -> str | None:
-    """Takes in a slew of parameters and returns a `str` of
-    Challenge Enthusiast ID that match the criteria.
     """
+    Takes in a slew of parameters and returns a `str` of
+    Challenge Enthusiast ID that match the criteria.
+
+    Returns
+    ---
+    - If a game is chosen, this will return that game's CE ID.
+    - If a game is unable to be chosen, this will return None.
+
+    Disallowed Games
+    ---
+    - games that are not on Steam
+    - games that are in the BANNED_GAMES array
+    - games that any of the passed-in users have completed
+    - games that have an uncleared primary objective
+
+    Parameters
+    ---
+    database_name : `list[CEGame]`
+        A list of all games in the site.
+        This is *NOT* the list of games this function will loop through...
+        ... that is database_tier.
+    database_tier: `list[dict]`
+        A mapping of game_ids, price, and average completion time.
+        This is the list of games that this function will loop through.
+        Example: database_tier[category][tier] = list[dict]
+        Keys: 'ce_id', 'price', 'sh_hours'.
+    completion_limit: `int | None`
+        The (exclusive) upper limit of a game's allowed average completion time.
+        If this is None, there is no upper limit.
+    price_limit: `int | None`
+        The (exclusive) upper limit of a game's allowed price.
+        If this is None, there is no upper limit.
+    tier_number: `int | None`
+        The tier a chosen game must be.
+        If this is None, there is no required tier.
+        If this is 6, any game T5-T7 may be chosen.
+    user: `CEUser | list[CEUser]`
+        The user(s) who are requesting this roll.
+        This is to filter out games that have already been completed.
+    category: `str | list[str] | None`
+        The category (or categories) a chosen game must be.
+        If this is None, there is no required category.
+    already_rolled_games: `list[str]`
+        A list of games that are to be excluded from the search.
+    has_points_restriction: `bool`
+        A boolean flag that, if set to True,
+        disallows any game that rolling users currently have points in.
+    price_restriction: `bool`
+        A boolean flag that, if set to True,
+        requires the search to adhere to the chosen price limit.
+    hours_restriction: `bool`
+        A boolean flag that, if set to True,
+        requires the search to adhere to the chosen completion time limit.
+    allow_multi_category: `bool`
+        A boolean flag that, if set to True,
+        allows a multi-category game to be chosen.
+        This would be turned off for events like 'One Hell of a Week',
+        which requires all five games to be different categories.
+    """
+
+    from Classes.CE_User import CEUser
+
     # fix the problem with multiple categories (this is super gross)
     if isinstance(category, str):
         category = [category]
     if isinstance(user, CEUser):
         user = [user]
+
+    if already_rolled_games is None:
+        already_rolled_games = []
 
     # NOTE: if tier_number == 6, then we need to be able to roll any t5, t6, or t7.
 
@@ -62,7 +126,7 @@ async def get_rollable_game(
     elif category is not None and tier_number == 6:
         for c in category:
             for t in range(5, 8):
-                database_tier_games = database_tier[str(t)][c]
+                database_tier_games.extend(database_tier[str(t)][c])
     # YES category but NO tier
     elif category is not None and tier_number is None:
         for c in category:
@@ -122,6 +186,10 @@ async def get_rollable_game(
         # has uncleared
         __game_object = get_item_from_list(game["ce_id"], database_name)
         if __game_object is None or __game_object.has_uncleared:
+            continue
+
+        # allows_multi_category
+        if not allow_multi_category and len(__game_object.categories) != 1:
             continue
 
         # has points

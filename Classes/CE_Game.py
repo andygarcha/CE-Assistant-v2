@@ -1,11 +1,9 @@
-from typing import cast
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
 from Modules import http_session
 import logging
 
-from utils.icons import __ICON_KEYS
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +229,22 @@ class CEGame:
         return False
 
     @property
+    def has_uncleared_po(self) -> bool:
+        """Returns true if this game has an Uncleared Primary Objective."""
+        for objective in self.get_primary_objectives(include_uncleareds=True):
+            if objective.is_uncleared():
+                return True
+        return False
+
+    @property
+    def has_uncleared_so(self) -> bool:
+        """Returns true if this game has an Uncleared Secondary Objective."""
+        for objective in self.get_secondary_objectives():
+            if objective.is_uncleared():
+                return True
+        return False
+
+    @property
     def ce_link(self) -> str:
         "Returns the link to the Challenge Enthusiasts page."
         return f"https://cedb.me/game/{self.ce_id}"
@@ -246,7 +260,7 @@ class CEGame:
     @property
     def tier_emoji(self) -> str:
         "Returns the tier emoji for this game."
-        return "" + hm.get_emoji(self.tier) # type: ignore
+        return "" + hm.get_emoji(self.tier)  # type: ignore
 
     @property
     def emojis(self) -> str:

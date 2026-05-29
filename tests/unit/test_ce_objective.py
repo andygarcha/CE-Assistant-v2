@@ -1,5 +1,6 @@
 import pytest
 
+from Classes.CE_Objective import CEObjective
 from tests.conftest import make_objective
 
 
@@ -64,10 +65,8 @@ class TestHasPartial:
         assert make_objective(point_value_partial=5).has_partial() is True
 
     def test_none_partial_returns_false(self):
-        from Classes.CE_Objective import CEObjective
-
         obj = make_objective()
-        assert isinstance(obj, CEObjective) is True
+        assert isinstance(obj, CEObjective)
         obj._point_value_partial = 0
         assert obj.has_partial() is False
 

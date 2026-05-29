@@ -1,9 +1,12 @@
 import pytest
 
+from Classes.CE_Roll import CASINO_POINTS, relative
 from Classes.CE_User import MUTELIST_CEIDS
+from Classes.CE_User_Game import CEUserGame
 from tests.conftest import (
     make_game,
     make_objective,
+    make_roll,
     make_user,
     make_user_game,
     make_user_objective,
@@ -14,7 +17,7 @@ GAME_ID_B = "game-bbb-0000-0000-000000000000"
 OBJ_ID = "obj-0001-0000-0000-000000000000"
 
 
-def _user_game(ce_id: str, points: int) -> object:
+def _user_game(ce_id: str, points: int) -> CEUserGame:
     """User game whose single primary objective gives `points` user points."""
     uobj = make_user_objective(ce_id=OBJ_ID, game_ce_id=ce_id, user_points=points)
     return make_user_game(ce_id=ce_id, user_objectives=[uobj])
@@ -270,12 +273,12 @@ class TestGetCompletedGames2:
     def test_raises_on_none_database(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2(None)
+            user.get_completed_games_2(None)  # type: ignore
 
     def test_raises_on_database_containing_none(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2([None])
+            user.get_completed_games_2([None])  # type: ignore
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
@@ -289,3 +292,141 @@ class TestCEUserToDict:
         result = make_user().to_dict()
         for key in ("ce_id", "discord_id", "owned_games", "rolls"):
             assert key in result
+
+
+# ── casino_score ──────────────────────────────────────────────────────────────
+
+
+class TestCasinoScore:
+    # ── baseline ──────────────────────────────────────────────────────────────
+
+    def test_no_rolls_returns_zero(self):
+        assert make_user().casino_score([]) == 0
+
+    def test_returns_int(self):
+        assert isinstance(make_user().casino_score([]), int)
+
+    # ── non-terminal statuses are ignored ────────────────────────────────────
+
+    @pytest.mark.parametrize("status", ["current", "pending", "waiting", "removed"])
+    def test_non_terminal_status_not_counted(self, status):
+        roll = make_roll(roll_name="One Hell of a Week", status=status)
+        assert make_user().casino_score([roll]) == 0
+
+    # ── won rolls add casino_increase() ──────────────────────────────────────
+
+    @pytest.mark.parametrize(
+        "roll_name, expected_increase",
+        [
+            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][0]),  # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][0]),  # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][0]),  # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][0]),  # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][0]),  # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]),  # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]),  # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][0]),  # type: ignore
+            (
+                "Teamwork Makes the Dream Work",
+                CASINO_POINTS["Teamwork Makes the Dream Work"][0],
+            ),  # type: ignore
+        ],
+    )
+    def test_won_fixed_roll_adds_correct_increase(self, roll_name, expected_increase):
+        roll = make_roll(roll_name=roll_name, status="won")
+        assert make_user().casino_score([roll]) == expected_increase
+
+    # ── failed rolls add casino_decrease() ───────────────────────────────────
+
+    @pytest.mark.parametrize(
+        "roll_name, expected_decrease",
+        [
+            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][1]),  # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][1]),  # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][1]),  # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][1]),  # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][1]),  # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]),  # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]),  # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][1]),  # type: ignore
+            (
+                "Teamwork Makes the Dream Work",
+                CASINO_POINTS["Teamwork Makes the Dream Work"][1],
+            ),  # type: ignore
+        ],
+    )
+    def test_failed_fixed_roll_adds_correct_decrease(
+        self, roll_name, expected_decrease
+    ):
+        roll = make_roll(roll_name=roll_name, status="failed")
+        assert make_user().casino_score([roll]) == expected_decrease
+
+    # ── One Hell of a Day: decrease is 0 (special case) ──────────────────────
+
+    def test_one_hell_of_a_day_failed_no_penalty(self):
+        roll = make_roll(roll_name="One Hell of a Day", status="failed")
+        assert make_user().casino_score([roll]) == 0
+
+    # ── Game Theory: symmetric penalty ───────────────────────────────────────
+
+    def test_game_theory_won_and_failed_cancel(self):
+        won = make_roll(roll_name="Game Theory", status="won")
+        lost = make_roll(roll_name="Game Theory", status="failed")
+        assert make_user().casino_score([won, lost]) == 0
+
+    # ── relative rolls (tier-based) ───────────────────────────────────────────
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_winner_takes_all_won_equals_relative(self, tier):
+        roll = make_roll(roll_name="Winner Takes All", status="won", tier_num=tier)
+        assert make_user().casino_score([roll]) == relative(tier)
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_winner_takes_all_failed_equals_negative_relative(self, tier):
+        roll = make_roll(roll_name="Winner Takes All", status="failed", tier_num=tier)
+        assert make_user().casino_score([roll]) == int(-1 * relative(tier))
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_destiny_alignment_won_equals_relative(self, tier):
+        roll = make_roll(roll_name="Destiny Alignment", status="won", tier_num=tier)
+        assert make_user().casino_score([roll]) == relative(tier)
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_destiny_alignment_failed_is_one_third_penalty(self, tier):
+        roll = make_roll(roll_name="Destiny Alignment", status="failed", tier_num=tier)
+        assert make_user().casino_score([roll]) == int(-1 * relative(tier) / 3)
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_soul_mates_won_equals_relative(self, tier):
+        roll = make_roll(roll_name="Soul Mates", status="won", tier_num=tier)
+        assert make_user().casino_score([roll]) == relative(tier)
+
+    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
+    def test_soul_mates_failed_is_half_penalty(self, tier):
+        roll = make_roll(roll_name="Soul Mates", status="failed", tier_num=tier)
+        assert make_user().casino_score([roll]) == int(-1 * relative(tier) / 2)
+
+    # ── multiple rolls accumulate correctly ───────────────────────────────────
+
+    def test_multiple_won_rolls_sum(self):
+        r1 = make_roll(roll_name="One Hell of a Day", status="won")  # +1
+        r2 = make_roll(roll_name="One Hell of a Week", status="won")  # +7
+        assert make_user().casino_score([r1, r2]) == 8
+
+    def test_multiple_failed_rolls_sum(self):
+        r1 = make_roll(roll_name="One Hell of a Week", status="failed")  # -2
+        r2 = make_roll(roll_name="One Hell of a Month", status="failed")  # -5
+        assert make_user().casino_score([r1, r2]) == -7
+
+    def test_mixed_won_failed_current_accumulates(self):
+        won = make_roll(roll_name="One Hell of a Month", status="won")  # +18
+        failed = make_roll(roll_name="One Hell of a Month", status="failed")  # -5
+        current = make_roll(roll_name="One Hell of a Month", status="current")  # 0
+        assert make_user().casino_score([won, failed, current]) == 13
+
+    def test_only_won_and_failed_contribute_not_others(self):
+        won = make_roll(roll_name="Let Fate Decide", status="won")  # +8
+        pending = make_roll(roll_name="Let Fate Decide", status="pending")
+        waiting = make_roll(roll_name="Let Fate Decide", status="waiting")
+        removed = make_roll(roll_name="Let Fate Decide", status="removed")
+        assert make_user().casino_score([won, pending, waiting, removed]) == 8

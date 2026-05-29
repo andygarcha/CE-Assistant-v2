@@ -175,8 +175,10 @@ class TestCasinoIncrease:
     )
     def test_destiny_alignment_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Destiny Alignment", games=[GAME_ID_A])
-        assert roll.casino_increase([game]) == expected
+        roll = make_roll(
+            roll_name="Destiny Alignment", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_increase() == expected
 
     @pytest.mark.parametrize(
         "points, expected",
@@ -188,8 +190,10 @@ class TestCasinoIncrease:
     )
     def test_soul_mates_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Soul Mates", games=[GAME_ID_A])
-        assert roll.casino_increase([game]) == expected
+        roll = make_roll(
+            roll_name="Soul Mates", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_increase() == expected
 
     @pytest.mark.parametrize(
         "points, expected",
@@ -201,8 +205,10 @@ class TestCasinoIncrease:
     )
     def test_winner_takes_all_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID_A])
-        assert roll.casino_increase([game]) == expected
+        roll = make_roll(
+            roll_name="Winner Takes All", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_increase() == expected
 
 
 # ── casino_decrease ───────────────────────────────────────────────────────────
@@ -235,8 +241,10 @@ class TestCasinoDecrease:
     )
     def test_destiny_alignment_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Destiny Alignment", games=[GAME_ID_A])
-        assert roll.casino_decrease([game]) == expected
+        roll = make_roll(
+            roll_name="Destiny Alignment", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_decrease() == expected
 
     @pytest.mark.parametrize(
         "points, expected",
@@ -249,8 +257,10 @@ class TestCasinoDecrease:
     )
     def test_soul_mates_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Soul Mates", games=[GAME_ID_A])
-        assert roll.casino_decrease([game]) == expected
+        roll = make_roll(
+            roll_name="Soul Mates", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_decrease() == expected
 
     @pytest.mark.parametrize(
         "points, expected",
@@ -263,5 +273,7 @@ class TestCasinoDecrease:
     )
     def test_winner_takes_all_relative_tiers(self, points, expected):
         game = _db_game(GAME_ID_A, points)
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID_A])
-        assert roll.casino_decrease([game]) == expected
+        roll = make_roll(
+            roll_name="Winner Takes All", games=[GAME_ID_A], tier_num=game.tier_num
+        )
+        assert roll.casino_decrease() == expected

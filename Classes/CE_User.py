@@ -99,10 +99,15 @@ class CEUser:
         self._last_updated: datetime.datetime = last_updated
         pass
 
-    @property
-    def casino_score(self):
+    def casino_score(self, rolls: list[CERoll]):
         """Returns the casino score associated with this user."""
-        return NotImplemented
+        _casino_score = 0
+        for roll in rolls:
+            if roll.status == "failed":
+                _casino_score += roll.casino_decrease()
+            elif roll.status == "won":
+                _casino_score += roll.casino_increase()
+        return _casino_score
 
     def get_total_points(self):
         """Returns the total amount of points this user has."""
@@ -548,6 +553,13 @@ class CEUser:
                 return game.get_user_points() != 0
         return False
 
+    def has_po_points(self, game_id: str) -> bool:
+        """Returns true if this user has points in Primary Objectives in this game."""
+        for game in self.owned_games:
+            if game.ce_id == game_id:
+                return game.get_user_points_primary() != 0
+        return False
+
     # -- other --
 
     def get_ce_link(self) -> str:
@@ -646,8 +658,6 @@ class CEUser:
             + self.ce_id
             + "\nDiscord ID: "
             + str(self.discord_id)
-            + "\nCasino Score: "
-            + str(self.casino_score)
             + "\nOwned Games: "
             + str(owned_games_array)
             + "\nCurrent Rolls: "

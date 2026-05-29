@@ -4,6 +4,7 @@ It will:
 
 - take in a `CERoll` object and return an array of `discord.Embed`s denoting exactly what's up.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 # selenium and beautiful soup stuff
 
 logger = logging.getLogger(__name__)
+
 
 async def get_roll_embeds(
     roll: CERoll, database_name: list[CEGame]
@@ -265,7 +267,7 @@ async def get_user_embeds(
     )
     summary_embed.add_field(
         name="Current Values",
-        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score}",
+        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
         inline=True,
     )
     summary_embed.add_field(

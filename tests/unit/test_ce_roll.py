@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from Classes.CE_Roll import relative
-from tests.conftest import make_roll
+from tests.conftest import make_game, make_roll
 
 PAST = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
 FUTURE = datetime.datetime(2099, 1, 1, tzinfo=datetime.timezone.utc)
@@ -327,3 +327,67 @@ class TestCERollToDict:
         result = make_roll().to_dict()
         for key in ("name", "due_time", "init_time", "games", "user_ce_id", "status"):
             assert key in result
+
+
+# ── rolled_categories ─────────────────────────────────────────────────────────
+
+GAME_A = "game-aaa-0000-0000-000000000000"
+GAME_B = "game-bbb-0000-0000-000000000000"
+GAME_C = "game-ccc-0000-0000-000000000000"
+
+
+class TestRolledCategories:
+    def test_returns_list(self):
+        game = make_game(ce_id=GAME_A, categories=["Action"])
+        roll = make_roll(games=[GAME_A])
+        assert isinstance(roll.rolled_categories([game]), list)
+
+    def test_empty_games_returns_empty(self):
+        roll = make_roll(games=[])
+        assert roll.rolled_categories([]) == []
+
+    def test_single_game_single_category(self):
+        game = make_game(ce_id=GAME_A, categories=["Action"])
+        roll = make_roll(games=[GAME_A])
+        assert roll.rolled_categories([game]) == ["Action"]
+
+    def test_single_game_multiple_categories(self):
+        game = make_game(ce_id=GAME_A, categories=["Action", "Puzzle"])
+        roll = make_roll(games=[GAME_A])
+        result = roll.rolled_categories([game])
+        assert set(result) == {"Action", "Puzzle"}
+
+    def test_two_games_different_categories(self):
+        game_a = make_game(ce_id=GAME_A, categories=["Action"])
+        game_b = make_game(ce_id=GAME_B, categories=["Strategy"])
+        roll = make_roll(games=[GAME_A, GAME_B])
+        result = roll.rolled_categories([game_a, game_b])
+        assert set(result) == {"Action", "Strategy"}
+
+    def test_duplicate_categories_across_games_deduplicated(self):
+        game_a = make_game(ce_id=GAME_A, categories=["Action"])
+        game_b = make_game(ce_id=GAME_B, categories=["Action"])
+        roll = make_roll(games=[GAME_A, GAME_B])
+        result = roll.rolled_categories([game_a, game_b])
+        assert result.count("Action") == 1
+
+    def test_three_games_overlapping_categories(self):
+        game_a = make_game(ce_id=GAME_A, categories=["Action", "Puzzle"])
+        game_b = make_game(ce_id=GAME_B, categories=["Puzzle", "Strategy"])
+        game_c = make_game(ce_id=GAME_C, categories=["Strategy"])
+        roll = make_roll(games=[GAME_A, GAME_B, GAME_C])
+        result = roll.rolled_categories([game_a, game_b, game_c])
+        assert set(result) == {"Action", "Puzzle", "Strategy"}
+
+    def test_game_not_in_database_raises(self):
+        roll = make_roll(games=[GAME_A])
+        with pytest.raises(Exception):
+            roll.rolled_categories([])
+
+    def test_extra_database_games_not_in_roll_ignored(self):
+        game_a = make_game(ce_id=GAME_A, categories=["Action"])
+        game_b = make_game(ce_id=GAME_B, categories=["Strategy"])
+        roll = make_roll(games=[GAME_A])
+        result = roll.rolled_categories([game_a, game_b])
+        assert "Strategy" not in result
+        assert "Action" in result

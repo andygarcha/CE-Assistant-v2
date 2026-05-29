@@ -1,23 +1,24 @@
 import pytest
 
 from Classes.CE_Game import CEGame
+from Classes.CE_Objective import CEObjective
 from tests.conftest import make_game, make_objective
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-def _po(points: int, name: str = "Test PO") -> object:
+def _po(points: int, name: str = "Test PO") -> CEObjective:
     """Primary objective with the given point value."""
     return make_objective(point_value=points, obj_type="Primary", name=name)
 
 
-def _so(points: int) -> object:
+def _so(points: int) -> CEObjective:
     """Secondary objective with the given point value."""
     return make_objective(point_value=points, obj_type="Secondary")
 
 
-def _uncleared_po() -> object:
+def _uncleared_po() -> CEObjective:
     """An uncleared primary objective (0 points)."""
     return make_objective(
         point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)"

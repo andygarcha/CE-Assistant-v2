@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import datetime
-from typing import Literal, cast, get_args
+from typing import Literal, get_args
 import logging
 
 import Modules.hm as hm
 
 from typing import TYPE_CHECKING
+
+from utils.game_utils import CATEGORIES
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
@@ -560,23 +562,18 @@ class CERoll:
 
     # ==== complex logic ====
 
-    def rolled_categories(self, database_name: list) -> list[str]:
+    def rolled_categories(self, database_name: list[CEGame]) -> list[CATEGORIES]:
         "Returns a list of the categories that have been rolled so far."
-        # type casting
-        from Classes.CE_Game import CEGame
-
-        database_name = cast(list[CEGame], database_name)
-
         # TODO casino fix: this does not work with dual categories
-        raise NotImplementedError
-        return list(
-            set(
-                [
-                    hm.get_item_from_list(game, database_name).category
-                    for game in self.games
-                ]
-            )
-        )
+        _categories = set()
+        for _game in self.games:
+            _game_supa = hm.get_item_from_list(_game, database_name)
+            if _game_supa is None:
+                raise Exception(
+                    f"Could not find game {_game} in database_name. rolled_categories"
+                )
+            _categories.update(_game_supa.categories)
+        return list(_categories)
 
     def get_win_message(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None
@@ -862,7 +859,18 @@ class CERoll:
             for game in user.owned_games:
                 if game.ce_id in self.games and game.is_completed(database_name):
                     # TODO: casino fix doesn't work with dual categories
-                    categories[game.get_category_v2(database_name)] += 1
+                    __category_check = game.get_category_v2(database_name)
+                    if __category_check is None:
+                        raise Exception(
+                            "The correct game was not passed in through database_name."
+                        )
+                    if len(__category_check) > 1:
+                        raise Exception("Cannot roll a dual-category game.")
+                    if len(__category_check) == 0:
+                        raise Exception("No categories are registered for this game.")
+
+                    categories[__category_check[0]] += 1
+
             completed_categories = 0
             for category in categories:
                 if categories[category] >= 3:
@@ -943,53 +951,33 @@ class CERoll:
         # TODO: finish this function
         return NotImplemented
 
-    def casino_increase(self, database_name: list[CEGame] | None = None) -> int:
+    def casino_increase(self) -> int:
         "Returns the number of casino points the user would gain if the roll is won."
 
         # relative points
         tup = CASINO_POINTS[self.roll_name]
         if tup is None:
-            if database_name is None:
-                logger.error(
-                    "When finding casino_increase for %s, database_name was None.",
-                    self.roll_name,
+            tier = self.tier_num
+            if tier is None:
+                raise Exception(
+                    f"`tier_num` undefined for roll of type {self.roll_name}."
                 )
-                raise Exception
-            game = hm.get_item_from_list(self.games[0], database_name)
-            if game is None:
-                logger.error(
-                    "When finding casino_increase for ID %s, game %s was not sent in db_name",
-                    self.games[0],
-                )
-                raise Exception
-            tier = game.tier_num
             return relative(tier)
 
         # normal case
         return tup[0]
 
-    def casino_decrease(self, database_name: list[CEGame] | None = None) -> int:
+    def casino_decrease(self) -> int:
         "Returns the number of casino points the user would lose if the roll is lost."
 
         # relative points
         tup = CASINO_POINTS[self.roll_name]
         if tup is None:
-            if database_name is None:
-                logger.error(
-                    "When finding casino_increase for %s, database_name was None.",
-                    self._id,
-                    self.roll_name,
+            tier = self.tier_num
+            if tier is None:
+                raise Exception(
+                    f"`tier_num` undefined for roll of type {self.roll_name}."
                 )
-                raise Exception
-            game = hm.get_item_from_list(self.games[0], database_name)
-            if game is None:
-                logger.error(
-                    "When finding casino_increase for ID %s, game %s was not sent in db_name",
-                    self._id,
-                    self.games[0],
-                )
-                raise Exception
-            tier = game.tier_num
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)
