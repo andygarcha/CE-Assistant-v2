@@ -904,7 +904,6 @@ def bulk_dump_rolls(
                     "rerolls_remaining": r.rerolls,
                     "rerolls_used": 0,
                     "winner": None,
-                    "updated_at_CE": now_iso,
                 }
             )
 
