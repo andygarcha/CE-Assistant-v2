@@ -6,6 +6,7 @@ import json
 import time
 from typing import Literal, cast
 import logging
+import typing
 
 import httpx
 from postgrest import APIError
@@ -527,10 +528,48 @@ def get_input(ce_id: str) -> CEInput:
     raise NotImplementedError
 
 
-def get_database_tier() -> dict:
-    raise NotImplementedError
+def get_database_tier(database_name: list[CEGame]) -> dict:
+    """
+    Gets database_tier from Supabase.
+    The output `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    - Note that multi-category games will be placed
+      in all category arrays that they belong to.
+    """
     response = supabase.table("tier").select().execute().data
-    return response
+
+    database_name_mapping: dict[str, CEGame] = {}
+    for game in database_name:
+        # neither of these conditions should ever happen
+        if game.is_t0:
+            continue
+        if game.platform != "steam":
+            continue
+        database_name_mapping[game.ce_id] = game
+    
+    # separate out games by tier and category
+    database_tier: dict[str, dict[str, list[dict]]] = {}
+
+    for tier in range(1, 8):
+        database_tier[str(tier)] = {}
+        for category in typing.get_args(hm.CATEGORIES):
+            database_tier[str(tier)][category] = []
+    
+    for tier_entry in response:
+        _game_object = database_name_mapping.get(tier_entry['ce_id'])
+        if _game_object is None:
+            logger.warning(
+                "Could not find game %s from database_name when generating database tier.",
+                tier_entry['ce_id']
+            )
+            continue
+
+        for _cat in _game_object.categories:
+            database_tier[str(_game_object.tier_num)][_cat].append(tier_entry)
+
+    return database_tier
 
 
 def get_curator_ids() -> list[str]:
@@ -983,9 +1022,43 @@ def dump_curator_count(cc: int):
     raise NotImplementedError
 
 
-def dump_database_tier(database_tier: list[dict]):
-    for tier_record in database_tier:
-        supabase.table("tier").upsert(tier_record).execute()
+def dump_database_tier(database_tier: dict):
+    """
+    Dumps database_tier back to Supabase.
+    The input `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    """
+
+    # sort out
+    all_entries: list[dict] = []
+
+    for tier in range(1, 8):
+        for category in list(typing.get_args(hm.CATEGORIES)):
+            all_entries.extend(database_tier[str(tier)][category])
+
+    # remove duplicates (multi-category)
+    ids: set = set()
+    for item in all_entries.copy():
+        if item['ce_id'] not in ids:
+            ids.add(item['ce_id'])
+        else:
+            all_entries.remove(item)
+            
+
+    # dump 100 at a time
+    BATCH_SIZE = 100
+    for i in range(0, len(all_entries), BATCH_SIZE):
+        batch = all_entries[i : i + BATCH_SIZE]
+
+        payload = []
+
+        for entry in batch:
+            payload.append(entry)
+    
+        if payload:
+            supabase.table('tier').upsert(payload).execute()
 
 
 def dump_loop(dt: datetime.datetime):

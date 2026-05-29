@@ -2,6 +2,7 @@
 THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 import sys
 import os
@@ -680,7 +681,7 @@ async def update_users(
     return updates, users, user_list_removed, []
 
 
-def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
+def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
     # separate out games by tier and category
     database_tier: dict[str, dict[str, list[dict]]] = {}
     for tier in range(1, 8):
@@ -735,6 +736,7 @@ def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
             logger.error("app_ids=%s", steam_ids[i : i + GAMES_PER_REQUEST])
             logger.error("response_prices_json=%s", response_prices_json)
             return None
+        
         for key, value in response_prices_json.items():
             if not value["success"]:
                 steam_ids.remove(int(key))
@@ -787,7 +789,6 @@ def generate_database_tier(database_name: list[CEAPIGame]) -> dict | None:
             database_tier[str(game.tier_num)][_cat].append(
                 {
                     "ce_id": game.ce_id,
-                    "name": game.game_name,
                     "price": prices[game.platform_id],
                     "sh_hours": hours[game.platform_id],
                 }
