@@ -162,7 +162,9 @@ class TestSoloRollGameCounts:
 
     # ── multi-stage solo rolls ────────────────────────────────────────────────
 
-    def test_two_week_t2_streak_game_count_in_range(self, by_name: dict[str, list[CERoll]]):
+    def test_two_week_t2_streak_game_count_in_range(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         rolls = by_name.get("Two Week T2 Streak", [])
         bad = _out_of_range(rolls, 1, 2)
         assert not bad, (
@@ -170,7 +172,9 @@ class TestSoloRollGameCounts:
             + "\n".join(f"  {r._id}: {len(r.games)} games" for r in bad)
         )
 
-    def test_two_week_t2_streak_won_has_two_games(self, by_name: dict[str, list[CERoll]]):
+    def test_two_week_t2_streak_won_has_two_games(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         won = _rolls_won(by_name.get("Two Week T2 Streak", []))
         bad = _wrong_count(won, 2)
         assert not bad, (
@@ -178,7 +182,9 @@ class TestSoloRollGameCounts:
             f"(expected 2):\n{_ids(bad)}"
         )
 
-    def test_two_two_week_t2_streak_streak_game_count_in_range(self, by_name: dict[str, list[CERoll]]):
+    def test_two_two_week_t2_streak_streak_game_count_in_range(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         rolls = by_name.get('Two "Two Week T2 Streak" Streak', [])
         bad = _out_of_range(rolls, 1, 4)
         assert not bad, (
@@ -187,7 +193,9 @@ class TestSoloRollGameCounts:
             + "\n".join(f"  {r._id}: {len(r.games)} games" for r in bad)
         )
 
-    def test_two_two_week_t2_streak_streak_won_has_four_games(self, by_name: dict[str, list[CERoll]]):
+    def test_two_two_week_t2_streak_streak_won_has_four_games(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         won = _rolls_won(by_name.get('Two "Two Week T2 Streak" Streak', []))
         bad = _wrong_count(won, 4)
         assert not bad, (
@@ -195,7 +203,9 @@ class TestSoloRollGameCounts:
             f"game count (expected 4):\n{_ids(bad)}"
         )
 
-    def test_fourward_thinking_game_count_in_range(self, by_name: dict[str, list[CERoll]]):
+    def test_fourward_thinking_game_count_in_range(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         rolls = by_name.get("Fourward Thinking", [])
         bad = _out_of_range(rolls, 1, 4)
         assert not bad, (
@@ -203,7 +213,9 @@ class TestSoloRollGameCounts:
             + "\n".join(f"  {r._id}: {len(r.games)} games" for r in bad)
         )
 
-    def test_fourward_thinking_won_has_four_games(self, by_name: dict[str, list[CERoll]]):
+    def test_fourward_thinking_won_has_four_games(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         won = _rolls_won(by_name.get("Fourward Thinking", []))
         bad = _wrong_count(won, 4)
         assert not bad, (
@@ -231,7 +243,9 @@ class TestCoopRollGameCounts:
             f"{len(bad)} 'Soul Mates' rolls have the wrong game count:\n{_ids(bad)}"
         )
 
-    def test_teamwork_makes_the_dream_work_has_four_games(self, by_name: dict[str, list[CERoll]]):
+    def test_teamwork_makes_the_dream_work_has_four_games(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         rolls = by_name.get("Teamwork Makes the Dream Work", [])
         bad = _wrong_count(rolls, 4)
         assert not bad, (
@@ -266,7 +280,9 @@ class TestCrossRollConsistency:
                 f"{_ids(bad)}"
             )
 
-    def test_active_multi_stage_rolls_have_valid_stage_count(self, by_name: dict[str, list[CERoll]]):
+    def test_active_multi_stage_rolls_have_valid_stage_count(
+        self, by_name: dict[str, list[CERoll]]
+    ):
         """Active multi-stage rolls should have at least 1 game and not exceed max."""
         checks = {
             "Two Week T2 Streak": 2,

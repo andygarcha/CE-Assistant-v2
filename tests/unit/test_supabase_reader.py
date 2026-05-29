@@ -109,21 +109,27 @@ class TestOutputStructure:
 class TestEntryShape:
     def test_entry_has_ce_id(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         entry = result["1"]["Action"][0]
         assert "ce_id" in entry
 
     def test_entry_has_price(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         entry = result["1"]["Action"][0]
         assert "price" in entry
 
     def test_entry_has_sh_hours(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         entry = result["1"]["Action"][0]
         assert "sh_hours" in entry
@@ -146,25 +152,31 @@ class TestTierPlacement:
     @pytest.mark.parametrize(
         "po_points, expected_tier",
         [
-            (10, "1"),   # T1: 5–19
-            (25, "2"),   # T2: 20–39
-            (50, "3"),   # T3: 40–79
+            (10, "1"),  # T1: 5–19
+            (25, "2"),  # T2: 20–39
+            (50, "3"),  # T3: 40–79
             (100, "4"),  # T4: 80–199
             (250, "5"),  # T5: 200–399
             (500, "6"),  # T6: 400–799
-            (1000, "7"), # T7: 800+
+            (1000, "7"),  # T7: 800+
         ],
     )
-    def test_game_placed_in_correct_tier(self, po_points: int, expected_tier: str) -> None:
+    def test_game_placed_in_correct_tier(
+        self, po_points: int, expected_tier: str
+    ) -> None:
         game = _steam_game(GAME_A, po_points=po_points, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         ids_in_expected = [e["ce_id"] for e in result[expected_tier]["Action"]]
         assert GAME_A in ids_in_expected
 
     def test_game_not_in_other_tiers(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action"])  # T1
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         for tier in ALL_TIERS:
             if tier == "1":
@@ -179,13 +191,17 @@ class TestTierPlacement:
 class TestCategoryPlacement:
     def test_single_category_game_in_correct_slot(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Strategy"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         assert any(e["ce_id"] == GAME_A for e in result["1"]["Strategy"])
 
     def test_single_category_game_absent_from_other_categories(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Strategy"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         for cat in ALL_CATS:
             if cat == "Strategy":
@@ -195,14 +211,18 @@ class TestCategoryPlacement:
 
     def test_multi_category_game_appears_in_all_its_categories(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action", "Arcade"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         assert any(e["ce_id"] == GAME_A for e in result["1"]["Action"])
         assert any(e["ce_id"] == GAME_A for e in result["1"]["Arcade"])
 
     def test_multi_category_game_absent_from_unrelated_categories(self) -> None:
         game = _steam_game(GAME_A, po_points=10, categories=["Action", "Arcade"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         for cat in ALL_CATS:
             if cat in ("Action", "Arcade"):
@@ -222,7 +242,9 @@ class TestExclusions:
             objectives=[make_objective(point_value=10)],
             platform="gog",
         )
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         for tier in ALL_TIERS:
             for cat in ALL_CATS:
@@ -230,7 +252,9 @@ class TestExclusions:
 
     def test_t0_game_excluded(self) -> None:
         game = _steam_game(GAME_A, po_points=0, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game])
         for tier in ALL_TIERS:
             for cat in ALL_CATS:
@@ -249,7 +273,9 @@ class TestExclusions:
         """GAME_A has a tier entry; GAME_B does not. Only GAME_A should appear."""
         game_a = _steam_game(GAME_A, po_points=10, categories=["Action"])
         game_b = _steam_game(GAME_B, po_points=10, categories=["Action"])
-        with patch("Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])):
+        with patch(
+            "Modules.SupabaseReader.supabase", _mock_supabase([_tier_row(GAME_A)])
+        ):
             result = get_database_tier([game_a, game_b])
         ids = [e["ce_id"] for e in result["1"]["Action"]]
         assert GAME_A in ids
@@ -271,8 +297,8 @@ class TestMultipleGames:
         assert GAME_B in ids
 
     def test_games_in_different_tiers_placed_correctly(self) -> None:
-        game_a = _steam_game(GAME_A, po_points=10, categories=["Action"])   # T1
-        game_b = _steam_game(GAME_B, po_points=25, categories=["Action"])   # T2
+        game_a = _steam_game(GAME_A, po_points=10, categories=["Action"])  # T1
+        game_b = _steam_game(GAME_B, po_points=25, categories=["Action"])  # T2
         rows = [_tier_row(GAME_A), _tier_row(GAME_B)]
         with patch("Modules.SupabaseReader.supabase", _mock_supabase(rows)):
             result = get_database_tier([game_a, game_b])

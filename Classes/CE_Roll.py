@@ -346,11 +346,11 @@ class CERoll:
     @property
     def tier_num(self) -> int | None:
         return self._tier_num
-    
+
     @property
     def id(self) -> str:
         return self._id
-    
+
     @property
     def lucky(self) -> bool:
         "Designates whether the roll was chosen for Jarvis's bonus (I don't even know what it is)"
@@ -484,7 +484,7 @@ class CERoll:
     @property
     def due_timestamp(self) -> int | None:
         return self._to_timestamp(self.due_time)
-    
+
     @property
     def due_discord_timestamp(self) -> str | None:
         """

@@ -736,7 +736,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
             logger.error("app_ids=%s", steam_ids[i : i + GAMES_PER_REQUEST])
             logger.error("response_prices_json=%s", response_prices_json)
             return None
-        
+
         for key, value in response_prices_json.items():
             if not value["success"]:
                 steam_ids.remove(int(key))

@@ -30,9 +30,7 @@ with open("secret_info.json") as f:
 supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_KEY,
-    options=ClientOptions(
-        httpx_client=httpx.Client(timeout=30, verify=True)
-    )
+    options=ClientOptions(httpx_client=httpx.Client(timeout=30, verify=True)),
 )
 
 logger = logging.getLogger(__name__)
@@ -548,7 +546,7 @@ def get_database_tier(database_name: list[CEGame]) -> dict:
         if game.platform != "steam":
             continue
         database_name_mapping[game.ce_id] = game
-    
+
     # separate out games by tier and category
     database_tier: dict[str, dict[str, list[dict]]] = {}
 
@@ -556,13 +554,13 @@ def get_database_tier(database_name: list[CEGame]) -> dict:
         database_tier[str(tier)] = {}
         for category in typing.get_args(hm.CATEGORIES):
             database_tier[str(tier)][category] = []
-    
+
     for tier_entry in response:
-        _game_object = database_name_mapping.get(tier_entry['ce_id'])
+        _game_object = database_name_mapping.get(tier_entry["ce_id"])
         if _game_object is None:
             logger.warning(
                 "Could not find game %s from database_name when generating database tier.",
-                tier_entry['ce_id']
+                tier_entry["ce_id"],
             )
             continue
 
@@ -1041,11 +1039,10 @@ def dump_database_tier(database_tier: dict):
     # remove duplicates (multi-category)
     ids: set = set()
     for item in all_entries.copy():
-        if item['ce_id'] not in ids:
-            ids.add(item['ce_id'])
+        if item["ce_id"] not in ids:
+            ids.add(item["ce_id"])
         else:
             all_entries.remove(item)
-            
 
     # dump 100 at a time
     BATCH_SIZE = 100
@@ -1056,9 +1053,9 @@ def dump_database_tier(database_tier: dict):
 
         for entry in batch:
             payload.append(entry)
-    
+
         if payload:
-            supabase.table('tier').upsert(payload).execute()
+            supabase.table("tier").upsert(payload).execute()
 
 
 def dump_loop(dt: datetime.datetime):
@@ -1314,7 +1311,7 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         partner_ce_id=roll.get("user2_ce_id"),
         rerolls=roll.get("rerolls_remaining", 0),
         status=roll.get("status", "pending"),
-        _id=roll['id'],
+        _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
     )
 

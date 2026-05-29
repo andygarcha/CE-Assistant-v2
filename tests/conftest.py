@@ -126,5 +126,5 @@ def make_roll(
         completed_time=completed_time,
         rerolls=rerolls,
         tier_num=tier_num,
-        _id=str(uuid.uuid4())
+        _id=str(uuid.uuid4()),
     )
