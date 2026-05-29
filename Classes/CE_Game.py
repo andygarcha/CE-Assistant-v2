@@ -1,11 +1,9 @@
-from typing import cast
 from Classes.CE_Objective import CEObjective
 from Classes.OtherClasses import CECompletion
 import Modules.hm as hm
 from Modules import http_session
 import logging
 
-from utils.icons import __ICON_KEYS
 
 logger = logging.getLogger(__name__)
 
