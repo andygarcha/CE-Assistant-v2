@@ -345,7 +345,6 @@ class TestRollTwotwoweekt2streakstreak:
         assert result.games is None
         assert result.error is not None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_one_game_per_call(self):
         user = _user_with_completed("Two Week T2 Streak")
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]):
@@ -353,7 +352,6 @@ class TestRollTwotwoweekt2streakstreak:
         assert result.error is None
         assert result.games is not None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_error_when_no_games_available(self):
         user = _user_with_completed("Two Week T2 Streak")
         with patch("Modules.hm.get_rollable_game", return_value=None):
@@ -366,32 +364,28 @@ class TestRollTwotwoweekt2streakstreak:
 
 
 class TestRollNeverlucky:
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_single_game_on_success(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]):
             result = roll_neverlucky([], EMPTY_DT, make_user(), True, True)
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 1
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_no_completion_limit(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_neverlucky([], EMPTY_DT, make_user(), True, True)
         assert mock.call_args.kwargs["completion_limit"] is None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_tier_3(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_neverlucky([], EMPTY_DT, make_user(), True, True)
         assert mock.call_args.kwargs["tier_number"] == 3
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_price_limit_20(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_neverlucky([], EMPTY_DT, make_user(), True, True)
         assert mock.call_args.kwargs["price_limit"] == 20
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_error_when_no_games_available(self):
         with patch("Modules.hm.get_rollable_game", return_value=None):
             result = roll_neverlucky([], EMPTY_DT, make_user(), True, True)
@@ -403,35 +397,31 @@ class TestRollNeverlucky:
 
 
 class TestRollTriplethreat:
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_prerequisite_not_met_returns_error(self):
         result = roll_triplethreat([], EMPTY_DT, make_user(), True, True, "Action")
         assert result.games is None
         assert result.error is not None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_three_games_from_chosen_category(self):
         user = _user_with_completed("Never Lucky")
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:3]):
             result = roll_triplethreat([], EMPTY_DT, user, True, True, "Action")
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 3
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_chosen_category(self):
         user = _user_with_completed("Never Lucky")
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:3]) as mock:
             roll_triplethreat([], EMPTY_DT, user, True, True, "Strategy")
         assert mock.call_args.kwargs["category"] == "Strategy"
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_tier_3(self):
         user = _user_with_completed("Never Lucky")
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:3]) as mock:
             roll_triplethreat([], EMPTY_DT, user, True, True, "Action")
         assert mock.call_args.kwargs["tier_number"] == 3
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_error_when_not_enough_games(self):
         user = _user_with_completed("Never Lucky")
         with patch("Modules.hm.get_rollable_game", return_value=None):
@@ -444,32 +434,28 @@ class TestRollTriplethreat:
 
 
 class TestRollLetfatedecide:
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_single_game_on_success(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]):
             result = roll_letfatedecide([], EMPTY_DT, make_user(), True, True, "Action")
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 1
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_no_completion_limit(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_letfatedecide([], EMPTY_DT, make_user(), True, True, "Action")
         assert mock.call_args.kwargs["completion_limit"] is None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_tier_4(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_letfatedecide([], EMPTY_DT, make_user(), True, True, "Action")
         assert mock.call_args.kwargs["tier_number"] == 4
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_chosen_category(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
             roll_letfatedecide([], EMPTY_DT, make_user(), True, True, "Arcade")
         assert mock.call_args.kwargs["category"] == "Arcade"
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_error_when_no_games_available(self):
         with patch("Modules.hm.get_rollable_game", return_value=None):
             result = roll_letfatedecide([], EMPTY_DT, make_user(), True, True, "Action")
@@ -493,6 +479,7 @@ class TestRollFourwardthinking:
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]):
             result = roll_fourwardthinking([], EMPTY_DT, user, True, True, "Action")
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 4
 
     @pytest.mark.xfail(raises=NotImplementedError, strict=True)
