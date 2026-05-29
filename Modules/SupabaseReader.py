@@ -464,6 +464,42 @@ def get_roll(roll_id: str) -> CERoll | None:
     return __supabase_to_roll(roll_json, rollGames_json)
 
 
+def get_user_rolls(user_id: str) -> list[CERoll]:
+    """
+    Gets all rolls that this user is a part of (either user1 or user2).
+    """
+
+    result_rolls = (
+        supabase.table("rolls")
+        .select()
+        .or_(f"user1_ce_id.eq.{user_id},user2_ce_id.eq.{user_id}")
+        .execute()
+        .data
+    )
+    if len(result_rolls) == 0:
+        return []
+
+    result_games = (
+        supabase.table("rollGames")
+        .select()
+        .in_("roll_id", [r["id"] for r in result_rolls])
+        .execute()
+        .data
+    )
+    if len(result_rolls) == 0:
+        return []
+
+    _rolls = []
+    for roll in result_rolls:
+        _rolls.append(
+            __supabase_to_roll(
+                roll, [g for g in result_games if g["roll_id"] == roll["id"]]
+            )
+        )
+
+    return _rolls
+
+
 def get_all_rolls() -> list[CERoll]:
     rolls_json = supabase.table("rolls").select().execute().data
     rollGames_json = supabase.table("rollGames").select().execute().data
