@@ -2,8 +2,6 @@ import datetime
 
 import pytest
 
-import pytest
-
 from Classes.CE_Roll import relative
 from tests.conftest import make_game, make_roll
 
