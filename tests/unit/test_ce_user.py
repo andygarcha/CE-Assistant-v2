@@ -1,5 +1,6 @@
 import pytest
 
+from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CASINO_POINTS, relative
 from Classes.CE_User import MUTELIST_CEIDS
 from Classes.CE_User_Game import CEUserGame
@@ -12,9 +13,9 @@ from tests.conftest import (
     make_user_objective,
 )
 
-GAME_ID_A = "game-aaa-0000-0000-000000000000"
-GAME_ID_B = "game-bbb-0000-0000-000000000000"
-OBJ_ID = "obj-0001-0000-0000-000000000000"
+GAME_ID_A: str = "game-aaa-0000-0000-000000000000"
+GAME_ID_B: str = "game-bbb-0000-0000-000000000000"
+OBJ_ID: str = "obj-0001-0000-0000-000000000000"
 
 
 def _user_game(ce_id: str, points: int) -> CEUserGame:
@@ -199,12 +200,12 @@ class TestMention:
 # ── completions ───────────────────────────────────────────────────────────────
 
 
-def _completed_ug(game_id: str, points: int = 100):
+def _completed_ug(game_id: str, points: int = 100) -> CEUserGame:
     uobj = make_user_objective(ce_id=OBJ_ID, game_ce_id=game_id, user_points=points)
     return make_user_game(ce_id=game_id, user_objectives=[uobj])
 
 
-def _db_game(game_id: str, points: int = 100):
+def _db_game(game_id: str, points: int = 100) -> CEGame:
     obj = make_objective(ce_id=OBJ_ID, point_value=points, game_ce_id=game_id)
     return make_game(ce_id=game_id, objectives=[obj])
 

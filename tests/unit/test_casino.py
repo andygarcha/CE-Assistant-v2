@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from Classes.CE_User import CEUser
 from commands.casino import (
     RollResult,
     roll_fourwardthinking,
@@ -20,21 +21,21 @@ from tests.conftest import make_game, make_roll, make_user
 
 # ── shared constants ──────────────────────────────────────────────────────────
 
-GAME_IDS = [f"game-{i:03d}-0000-0000-000000000000" for i in range(30)]
-PREV_GAME_ID = "game-prev-0000-0000-000000000000"
-ALL_CATS = list(get_args(hm.CATEGORIES))  # 6 categories
-EMPTY_DT = {}  # database_tier; irrelevant when get_rollable_game is mocked
+GAME_IDS: list[str] = [f"game-{i:03d}-0000-0000-000000000000" for i in range(30)]
+PREV_GAME_ID: str = "game-prev-0000-0000-000000000000"
+ALL_CATS: list[str] = list(get_args(hm.CATEGORIES))  # 6 categories
+EMPTY_DT: dict = {}  # database_tier; irrelevant when get_rollable_game is mocked
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-def _user_with_completed(roll_name: str):
+def _user_with_completed(roll_name: str) -> CEUser:
     u = make_user()
     u.add_completed_roll(make_roll(roll_name=roll_name))
     return u
 
 
-def _user_with_waiting(roll_name: str, games: list[str]):
+def _user_with_waiting(roll_name: str, games: list[str]) -> CEUser:
     u = make_user()
     roll = make_roll(roll_name=roll_name, status="waiting", games=games)
     u._rolls.append(roll)
@@ -248,6 +249,7 @@ class TestRollOnehellofamonth:
             patch("commands.casino.random.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
+        assert result.error is not None
         assert ALL_CATS[0] in result.error  # "Action"
         assert ALL_CATS[1] in result.error  # "Arcade"
 

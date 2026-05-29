@@ -331,9 +331,9 @@ class TestCERollToDict:
 
 # ── rolled_categories ─────────────────────────────────────────────────────────
 
-GAME_A = "game-aaa-0000-0000-000000000000"
-GAME_B = "game-bbb-0000-0000-000000000000"
-GAME_C = "game-ccc-0000-0000-000000000000"
+GAME_A: str = "game-aaa-0000-0000-000000000000"
+GAME_B: str = "game-bbb-0000-0000-000000000000"
+GAME_C: str = "game-ccc-0000-0000-000000000000"
 
 
 class TestRolledCategories:
