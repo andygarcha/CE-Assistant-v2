@@ -1,5 +1,6 @@
 """This module is for all casino-related commands."""
 
+from dataclasses import dataclass
 import datetime
 import random
 from typing import get_args
@@ -73,344 +74,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     pass
 
 
-""" === CLASSES === """
-
-
-class TripleThreatDropdown(discord.ui.Select):
-    def __init__(
-        self, user_ce_id: str, price_restriction: bool, hours_restriction: bool
-    ):
-        # store the user
-        self.__user_ce_id = user_ce_id
-        self.__price_restriction = price_restriction
-        self.__hours_restriction = hours_restriction
-
-        # initialize and set options
-        options: list[discord.SelectOption] = []
-        for category in get_args(hm.CATEGORIES):
-            options.append(
-                discord.SelectOption(label=category, emoji=hm.get_emoji(category))
-            )
-
-        # init the superclass
-        super().__init__(
-            placeholder="Select a category.",
-            min_values=1,
-            max_values=1,
-            options=options,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        "The callback."
-
-        user = SupabaseReader.get_user(self.__user_ce_id)
-        if user is None:
-            raise Exception(
-                f"Could not find user with ID {self.__user_ce_id} in Supabase."
-            )
-
-        # stop other users from clicking the dropdown
-        if interaction.user.id != user.discord_id:
-            return await interaction.response.send_message(
-                "Stop that! This isn't your roll.", ephemeral=True
-            )
-
-        if interaction.message is None:
-            raise Exception("Invalid message.")
-
-        # defer the message
-        await interaction.response.defer()
-
-        # define our category
-        category = self.values[0]
-
-        # roll a game with these parameters
-        database_name = SupabaseReader.get_database_name()
-        database_tier = SupabaseReader.get_database_tier()
-        rolled_games: list[str] = []
-        for _ in range(3):
-            __rolled_game = await hm.get_rollable_game(
-                database_name=database_name,
-                database_tier=database_tier,
-                completion_limit=40,
-                price_limit=20,
-                tier_number=3,
-                user=user,
-                price_restriction=self.__price_restriction,
-                category=category,
-                already_rolled_games=rolled_games,
-                hours_restriction=self.__hours_restriction,
-            )
-            if __rolled_game is None:
-                user.remove_pending("Triple Threat")
-                SupabaseReader.dump_user(user)
-                return await interaction.followup.send("Not enough qualifiable games.")
-            rolled_games.append(__rolled_game)
-
-        roll = CERoll(
-            roll_name="Triple Threat",
-            user_ce_id=user.ce_id,
-            games=rolled_games,
-            status="current",
-            is_current=True,
-        )
-
-        user.remove_pending("Triple Threat")
-        user.add_current_roll(roll)
-        SupabaseReader.dump_user(user)
-
-        view = discord.ui.View()
-        embeds = await Discord_Helper.get_roll_embeds(
-            roll=roll, database_name=database_name
-        )
-        await Discord_Helper.get_buttons(view, embeds)
-
-        return await interaction.followup.edit_message(
-            message_id=interaction.message.id,
-            # content=f"Your rolled game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
-            embed=embeds[0],
-            view=view,
-        )
-
-
-class LetFateDecideDropdown(discord.ui.Select):
-    def __init__(self, user: CEUser, price_restriction: bool, hours_restriction: bool):
-        # store the user
-        self.__user = user
-        self.__price_restriction = price_restriction
-        self.__hours_restriction = hours_restriction
-
-        # initialize and set options
-        options: list[discord.SelectOption] = []
-        for category in get_args(hm.CATEGORIES):
-            options.append(
-                discord.SelectOption(label=category, emoji=hm.get_emoji(category))
-            )
-
-        # init the superclass
-        super().__init__(
-            placeholder="Select a category.",
-            min_values=1,
-            max_values=1,
-            options=options,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        "The callback."
-
-        user = SupabaseReader.get_user(self.__user.ce_id)
-
-        if user is None:
-            raise ValueError("User is not registered!")
-
-        # stop other users from clicking the dropdown
-        if interaction.user.id != user.discord_id:
-            return await interaction.response.send_message(
-                "Stop that! This isn't your roll.", ephemeral=True
-            )
-
-        if interaction.message is None:
-            raise Exception("Invalid message.")
-
-        # defer the message
-        await interaction.response.defer()
-
-        # define our category
-        category = self.values[0]
-
-        # roll a game with these parameters
-        database_name = SupabaseReader.get_database_name()
-        database_tier = SupabaseReader.get_database_tier()
-        rolled_game_id = await hm.get_rollable_game(
-            database_name=database_name,
-            database_tier=database_tier,
-            completion_limit=None,
-            price_limit=20,
-            tier_number=4,
-            user=user,
-            price_restriction=self.__price_restriction,
-            category=category,
-            hours_restriction=self.__hours_restriction,
-        )
-
-        if rolled_game_id is None:
-            return await interaction.followup.send("Could not find you a game.")
-
-        roll = CERoll(
-            roll_name="Let Fate Decide",
-            user_ce_id=user.ce_id,
-            games=[rolled_game_id],
-            is_current=True,
-            status="current",
-        )
-
-        user.remove_pending("Let Fate Decide")
-        user.add_current_roll(roll)
-        SupabaseReader.dump_user(user)
-
-        view = discord.ui.View()
-        embeds = await Discord_Helper.get_roll_embeds(
-            roll=roll, database_name=database_name
-        )
-        await Discord_Helper.get_buttons(view, embeds)
-
-        return await interaction.followup.edit_message(
-            message_id=interaction.message.id,
-            # content=f"Your rolled game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
-            embed=embeds[0],
-            view=view,
-        )
-
-
-class FourwardThinkingDropdown(discord.ui.Select):
-    def __init__(
-        self,
-        past_roll: CERoll,
-        database_name: list[CEGame],
-        price_restriction: bool,
-        hours_restriction: bool,
-        user_id: str,
-    ):
-        # store the user
-        self.__price_restriction = price_restriction
-        self.__hours_restriction = hours_restriction
-        self.__user_ce_id = user_id
-
-        # initialize options
-        options: list[discord.SelectOption] = []
-
-        # if haven't rolled before, here are options
-        if past_roll is None:
-            options = [
-                discord.SelectOption(label=cat, emoji=hm.get_emoji(cat))
-                for cat in get_args(hm.CATEGORIES)
-            ]
-
-        # if they have rolled before, get new options
-        else:
-            already_rolled_categories = past_roll.rolled_categories(
-                database_name=database_name
-            )
-            for cat in get_args(hm.CATEGORIES):
-                if cat not in already_rolled_categories:
-                    options.append(
-                        discord.SelectOption(label=cat, emoji=hm.get_emoji(cat))
-                    )
-
-        super().__init__(
-            placeholder="Select a category.",
-            min_values=1,
-            max_values=1,
-            options=options,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        "The callback."
-
-        user = SupabaseReader.get_user(self.__user_ce_id)
-        if user is None:
-            raise Exception("Could not find user.")
-
-        # stop other users from clicking the dropdown
-        if interaction.user.id != user.discord_id:
-            return await interaction.response.send_message(
-                "Stop that! This isn't your roll.", ephemeral=True
-            )
-
-        if interaction.message is None:
-            raise Exception("Invalid message.")
-
-        # defer the message
-        await interaction.response.defer()
-
-        # get past_roll
-        past_roll = user.get_waiting_roll("Fourward Thinking")
-        if past_roll is None:
-            past_roll = CERoll(
-                roll_name="Fourward Thinking",
-                user_ce_id=user.ce_id,
-                games=[],
-                is_current=True,
-                status="current",
-            )
-
-        # get the data
-        database_name = SupabaseReader.get_database_name()
-        database_tier = SupabaseReader.get_database_tier()
-        next_phase_num = len(past_roll.games) + 1
-        category = self.values[0]
-        game_id = await hm.get_rollable_game(
-            database_name=database_name,
-            database_tier=database_tier,
-            completion_limit=40 * next_phase_num,
-            price_limit=20,
-            tier_number=next_phase_num,
-            user=user,
-            category=category,
-            price_restriction=self.__price_restriction,
-            hours_restriction=self.__hours_restriction,
-        )
-
-        if game_id is None:
-            return await interaction.followup.send(
-                "Could not find any rolls fitting your criteria."
-            )
-
-        # add the new game and reset the due time.
-        past_roll.add_game(game_id)
-        past_roll.reset_due_time()
-
-        # replace the roll and push the user to mongo
-        user.update_waiting_roll(past_roll)
-        user.unwait_waiting_roll("Fourward Thinking")
-        user.remove_pending("Fourward Thinking")
-        SupabaseReader.dump_user(user)
-
-        # now send the message
-        game_object = hm.get_item_from_list(game_id, database_name)
-        if game_object is None:
-            raise Exception(f"Could not find {game_id} in database name")
-
-        return await interaction.followup.edit_message(
-            message_id=interaction.message.id,
-            content=f"Your new game is [{game_object.game_name}](https://cedb.me/game/{game_object.ce_id}).",
-            view=discord.ui.View(),
-        )
-
-
-class RerollView(discord.ui.View):
-    def __init__(self, user_ce_id: str, event_name: str):
-        self.__user_ce_id = user_ce_id
-        self.__event_name = event_name
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
-    async def yes_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        # pull database user and get user
-        user = SupabaseReader.get_user(self.__user_ce_id)
-        if user is None:
-            raise Exception(f"Could not find user {self.__user_ce_id} in supabase.")
-
-        user.remove_current_roll(self.__event_name)  # type: ignore
-
-        SupabaseReader.dump_user(user)
-
-        self.clear_items()
-        await interaction.response.edit_message(
-            content=f"You can now reroll {self.__event_name}.", view=self
-        )
-
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def no_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        self.clear_items()
-        await interaction.response.edit_message(
-            content="Reroll cancelled. Your old roll is still intact.", view=self
-        )
-
 
 #   _____    ____    _         ____      _____     ____    _        _
 #  / ____|  / __ \  | |       / __ \    |  __ \   / __ \  | |      | |
@@ -459,8 +122,7 @@ async def solo_roll(
 
             if _cooldown_date is None or _cooldown_date <= hm.get_datetime("now"):
                 return await interaction.followup.send(
-                    f"Would you like to reset your {event_name} roll?",
-                    view=RerollView(user.ce_id, event_name),
+                    f"Rerolling {event_name} rolls is not yet implemented."
                 )
 
     # user currently rolled => not rerollable
@@ -468,6 +130,7 @@ async def solo_roll(
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
         )
+
     # user has pending
     if user.has_pending(event_name):
         return await interaction.followup.send(
@@ -486,381 +149,478 @@ async def solo_roll(
         )
 
     # -- set up vars --
-    rolled_games: list[str] = []
+    result: RollResult
 
-    # in this switch statement, grab the games. the roll will be set up at the end.
     match event_name:
         case "One Hell of a Day":
-            # -- grab games --
-            _game = await hm.get_rollable_game(
+            result = roll_onehellofaday(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "One Hell of a Week":
+            result = roll_onehellofaweek(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "One Hell of a Month":
+            result = roll_onehellofamonth(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Two Week T2 Streak":
+            result = roll_twoweekt2streak(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Two \"Two Week T2 Streak\" Streak":
+            result = roll_twotwoweekt2streakstreak(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Never Lucky":
+            result = roll_neverlucky(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Triple Threat":
+            result = RollResult(None, "Triple Threat is not currently implemented.")
+            # result = roll_triplethreat(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Let Fate Decide":
+            result = RollResult(None, "Let Fate Decide is not currently implemented.")
+            # result = roll_letfatedecide(database_name, database_tier, user, price_restriction, hours_restriction)
+        case "Fourward Thinking":
+            result = RollResult(None, "Fourward Thinking is not currently implemented.")
+        case _:
+            result = RollResult(None, f"{event_name} is not a valid event name.")
+    
+    if result.error:
+        return await interaction.followup.send(result.error)
+    
+    roll = CERoll(
+        roll_name=event_name,
+        user_ce_id=user.ce_id,
+        games=result.games,
+        status="current",
+        partner_ce_id=None,
+        is_current=True
+    )
+
+
+@dataclass
+class RollResult:
+    games: list[str] | None = None
+    error: str | None = None
+
+
+def roll_onehellofaday(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    One Hell of a Day
+    - 10 hour completion limit
+    - $10 price limit
+    - Tier 1
+    - Any category
+    - 1 game
+    - Multi-Category: Allowed
+    """
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=10,
+        price_limit=10,
+        tier_number=1,
+        user=user,
+        already_rolled_games=[],
+        has_points_restriction=False,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
+    )
+
+    if _game is None:
+        return RollResult(None, "Not enough rollable games.")
+    return RollResult([_game], None)
+
+
+def roll_onehellofaweek(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    One Hell of a Week
+    - 10 hour completion limit
+    - $10 price limit
+    - Tier 1
+    - Each game from a different category
+    - 5 games
+    - Multi-Category: Disallowed
+    - Requires 'One Hell of a Day' completion.
+    """
+
+    if not user.has_completed_roll("One Hell of a Day"):
+        return RollResult(
+            None,
+            "You must first complete 'One Hell of a Day' to attempt One Hell of a Week!",
+        )
+
+    # iterate five times
+    categories: list[str] = list(get_args(hm.CATEGORIES))
+    valid_games: list[str] = []
+    while len(valid_games) != 5:
+        _game = hm.get_rollable_game(
+            database_name=database_name,
+            database_tier=database_tier,
+            completion_limit=10,
+            price_limit=10,
+            tier_number=1,
+            user=user,
+            category=categories,
+            already_rolled_games=[],
+            has_points_restriction=False,
+            price_restriction=price_restriction,
+            hours_restriction=hours_restriction,
+            allow_multi_category=False,
+        )
+
+        if _game is None:
+            return RollResult(None, "Not enough rollable games.")
+
+        _game_supa = hm.get_item_from_list(_game, database_name)
+        if _game_supa is None:
+            return RollResult(
+                None, "Rolled game could not be found in Supabase. Please try again."
+            )
+        categories.remove(
+            _game_supa.categories[0]
+        )  # guaranteed to have only one category
+        valid_games.append(_game)
+
+    return RollResult(valid_games, None)
+
+
+def roll_onehellofamonth(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    One Hell of a Month
+    - 10 hour completion limit
+    - $10 price limit
+    - Tier 1
+    - 25 games split evenly from 5 categories
+    - Multi-Category: Disallowed
+    - Requires 'One Hell of a Week' completion.
+    """
+
+    if not user.has_completed_roll("One Hell of a Week"):
+        return RollResult(
+            None,
+            "You must first complete 'One Hell of a Week' to attempt One Hell of a Month!",
+        )
+
+    categories_total = list(get_args(hm.CATEGORIES))
+    categories_remaining = categories_total.copy()
+    rolled_games: list[str] = []
+    categories_failed: list[str] = []
+    max_failures = len(categories_total) - 5
+
+    while len(rolled_games) < 25:
+        category_curr = random.choice(categories_remaining)
+        categories_remaining.remove(category_curr)
+
+        category_games: list[str] = []
+        for _ in range(5):
+            game = hm.get_rollable_game(
                 database_name=database_name,
                 database_tier=database_tier,
                 completion_limit=10,
                 price_limit=10,
                 tier_number=1,
                 user=user,
+                category=category_curr,
+                already_rolled_games=category_games,
+                has_points_restriction=False,
                 price_restriction=price_restriction,
                 hours_restriction=hours_restriction,
+                allow_multi_category=False,
             )
-            if _game is None:
-                return await interaction.followup.send(
-                    "There are no rollable games at this time."
+            if game is None:
+                break
+            category_games.append(game)
+
+        if len(category_games) < 5:
+            categories_failed.append(category_curr)
+            if len(categories_failed) > max_failures:
+                return RollResult(
+                    error=f"Not enough rollable games in: {', '.join(categories_failed)}."
                 )
-            rolled_games = [_game]
+            continue
 
-        case "One Hell of a Week":
-            # -- if the user hasn't done day, return --
-            if not user.has_completed_roll("One Hell of a Day"):
-                return await interaction.followup.send(
-                    f"You need to complete One Hell of a Day before rolling {event_name}!"
-                )
+        rolled_games.extend(category_games)
 
-            # -- grab games --
-            rolled_games: list[str] = []
-            valid_categories = list(get_args(hm.CATEGORIES))
-            for i in range(5):
-                _game = await hm.get_rollable_game(
-                    database_name=database_name,
-                    database_tier=database_tier,
-                    completion_limit=10,
-                    price_limit=10,
-                    tier_number=1,
-                    user=user,
-                    category=valid_categories,
-                    already_rolled_games=rolled_games,
-                    price_restriction=price_restriction,
-                    hours_restriction=hours_restriction,
-                )
-                if _game is None:
-                    return await interaction.followup.send(
-                        "No valid options at the moment."
-                    )
-                rolled_games.append(_game)
-                # TODO casino fix: won't work with dual category
-                raise NotImplementedError
-                valid_categories.remove(
-                    hm.get_item_from_list(rolled_games[i], database_name).category
-                )
+    return RollResult(rolled_games, None)
 
-        case "One Hell of a Month":
-            # -- if user doesn't have week, return --
-            # return await interaction.followup.send("roll under construction for a few days...")
-            # if not user.has_completed_roll('One Hell of a Week') :
-            #     return await interaction.followup.send(
-            #         f"You need to complete One Hell of a Week before rolling {event_name}!"
-            #     )
 
-            # -- grab games --
-            logger.debug("Initializing roll at time %s.", datetime.datetime.now())
-            rolled_games: list[str] = []
-            valid_categories = list(get_args(hm.CATEGORIES))
-            failed_category = None  # initialise variable to catch 2x category fails
+def roll_twoweekt2streak(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    Two Week T2 Streak
+    - 40 hour completion limit
+    - $20 price limit
+    - Tier 2
+    - Multi-Category: Allowed
+    - Multi-Stage. 2 games total.
+    """
 
-            for i in range(5):
-                selected_category = random.choice(valid_categories)
-                rolled_temp: list[str] = []
+    # make sure user has one in limbo already
+    _roll = user.get_waiting_roll("Two Week T2 Streak")
+    already_rolled_games: list[str] = []
+    # if so, pull the game so we don't roll the same one
+    if _roll:
+        already_rolled_games = _roll.games
 
-                for j in range(5):  # roll 5 games from the selected category
-                    logger.debug("Rolling game %d.", (i + 1) * (j + 1))
-                    _game = await hm.get_rollable_game(
-                            database_name=database_name,
-                            database_tier=database_tier,
-                            completion_limit=10,
-                            price_limit=10,
-                            tier_number=1,
-                            user=user,
-                            category=selected_category,
-                            already_rolled_games=rolled_temp,
-                            price_restriction=price_restriction,
-                            hours_restriction=hours_restriction,
-                        )
-                    if _game is None:
-                        raise Exception
-                    rolled_temp.append(_game)
-
-                # debugging
-                logger.info(
-                    "User (ID: %s, Name: %s) rolled the %s category, with rolled games %s.",
-                    user.ce_id,
-                    user.display_name,
-                    selected_category,
-                    rolled_temp,
-                )
-
-                if (
-                    None in rolled_temp and failed_category is None
-                ):  # if not enough rolls in a given category, and this is the first failed category, remove and try again
-                    # remove failed category and reroll (without incrementing 'i')
-                    failed_category = selected_category
-                    valid_categories.remove(selected_category)
-                    selected_category = random.choice(valid_categories)
-
-                    # debugging
-                    logger.warning(
-                        "There were not enough rollable games for User ID: %s in the %s category.",
-                        user.ce_id,
-                        failed_category,
-                    )
-                    logger.warning("Retrying with category: %s", selected_category)
-
-                    rolled_temp: list[str] = []
-
-                    for j in range(5):
-                        _game = await hm.get_rollable_game(
-                                database_name=database_name,
-                                database_tier=database_tier,
-                                completion_limit=10,
-                                price_limit=10,
-                                tier_number=1,
-                                user=user,
-                                category=selected_category,
-                                already_rolled_games=rolled_temp,
-                                price_restriction=price_restriction,
-                                hours_restriction=hours_restriction,
-                            )
-                        if _game is None:
-                            raise Exception
-                        rolled_temp.append(_game)
-
-                    # debugging
-                    logger.info(
-                        "User (ID: %s, Name: %s) rolled the %s category, with rolled games %s.",
-                        user.ce_id,
-                        user.display_name,
-                        selected_category,
-                        rolled_temp,
-                    )
-
-                if (
-                    None in rolled_temp and failed_category is not None
-                ):  # not enough rolls in category, and another category has already failed
-                    return await interaction.followup.send(
-                        f"There weren't enough rollable games in two categories: {failed_category} and {selected_category}. "
-                        + "The event is unrollable for you until enough new T1 games with valid criteria get added to the site, "
-                        + "or you relax the roll criteria (hours/price restrictions)."
-                    )
-
-                for j in range(
-                    5
-                ):  # append the rolled games from the temp list to the main list
-                    rolled_games.append(rolled_temp[j])
-
-                # debugging
-                logger.info(
-                    "The following games from the %s category were added to User %s's Hell Month roll list: %s",
-                    selected_category,
-                    user.ce_id,
-                    rolled_temp,
-                )
-
-                valid_categories.remove(selected_category)
-
-        case "Two Week T2 Streak":
-            if user.has_waiting_roll("Two Week T2 Streak"):
-                "If user's current roll is ready for next stage, roll it for them."
-                past_roll: CERoll = user.get_waiting_roll("Two Week T2 Streak")
-                if past_roll.ready_for_next:
-                    valid_categories = list(get_args(hm.CATEGORIES))
-                    for game in database_name:
-                        if game.ce_id in past_roll.games:
-                            # TODO casino fix: won't work with dual category
-                            raise NotImplementedError
-                            valid_categories.remove(game.category)
-
-                    new_game_id = await hm.get_rollable_game(
-                        database_name=database_name,
-                        database_tier=database_tier,
-                        completion_limit=40,
-                        price_limit=20,
-                        tier_number=2,
-                        user=user,
-                        category=valid_categories,
-                        already_rolled_games=past_roll.games,
-                        price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                    )
-                    past_roll.add_game(new_game_id)
-                    past_roll.reset_due_time()
-                    new_game_object = hm.get_item_from_list(new_game_id, database_name)
-                    user.update_waiting_roll(past_roll)
-                    user.unwait_waiting_roll("Two Week T2 Streak")
-                    SupabaseReader.dump_user(user)
-                    return await interaction.followup.send(
-                        f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). "
-                        + f"It is due on <t:{past_roll.due_timestamp}>. "
-                        f"Run /check-rolls to see more information."
-                    )
-                else:
-                    return await interaction.followup.send(
-                        "You need to finish the first half of Two Week T2 Streak first!"
-                    )
-
-            else:
-                rolled_games = [
-                    await hm.get_rollable_game(
-                        database_name=database_name,
-                        database_tier=database_tier,
-                        completion_limit=40,
-                        price_limit=20,
-                        tier_number=2,
-                        user=user,
-                        price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                    )
-                ]
-        case 'Two "Two Week T2 Streak" Streak':
-            if not user.has_completed_roll("Two Week T2 Streak"):
-                return await interaction.followup.send(
-                    f"You need to complete Two Week T2 Steak before rolling {event_name}!"
-                )
-            if user.has_waiting_roll('Two "Two Week T2 Streak" Streak'):
-                # if the user is currently working
-                past_roll = user.get_waiting_roll('Two "Two Week T2 Streak" Streak')
-                if past_roll.ready_for_next:
-                    valid_categories = list(get_args(hm.CATEGORIES))
-                    for game in database_name:
-                        if game.ce_id in past_roll.games:
-                            # TODO casino fix: won't work with dual category
-                            raise NotImplementedError
-                            valid_categories.remove(game.category)
-                    new_game_id = await hm.get_rollable_game(
-                        database_name=database_name,
-                        database_tier=database_tier,
-                        completion_limit=40,
-                        price_limit=20,
-                        tier_number=2,
-                        user=user,
-                        category=valid_categories,
-                        already_rolled_games=past_roll.games,
-                        price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                    )
-                    past_roll.add_game(new_game_id)
-                    past_roll.reset_due_time()
-                    new_game_object = hm.get_item_from_list(new_game_id, database_name)
-                    user.update_waiting_roll(past_roll)
-                    user.unwait_waiting_roll('Two "Two Week T2 Streak" Streak')
-                    SupabaseReader.dump_user(user)
-                    return await interaction.followup.send(
-                        f"Your next game is [{new_game_object.game_name}](https://cedb.me/game/{new_game_object.ce_id}). "
-                        + f"It is due on <t:{past_roll.due_timestamp}>. "
-                        + "Run /check-rolls to see more information."
-                    )
-                else:
-                    return await interaction.followup.send(
-                        "You need to finish your current games before you roll your next one!"
-                    )
-
-            else:
-                rolled_games = [
-                    await hm.get_rollable_game(
-                        database_name=database_name,
-                        database_tier=database_tier,
-                        completion_limit=40,
-                        price_limit=20,
-                        tier_number=2,
-                        user=user,
-                        price_restriction=price_restriction,
-                        hours_restriction=hours_restriction,
-                    )
-                ]
-        case "Never Lucky":
-            rolled_games = [
-                await hm.get_rollable_game(
-                    database_name=database_name,
-                    database_tier=database_tier,
-                    completion_limit=None,
-                    price_limit=20,
-                    tier_number=3,
-                    user=user,
-                    price_restriction=price_restriction,
-                    hours_restriction=hours_restriction,
-                )
-            ]
-
-        case "Triple Threat":
-            if not user.has_completed_roll("Never Lucky"):
-                return await interaction.followup.send(
-                    "You need to complete Never Lucky before rolling Triple Threat!"
-                )
-            user.add_pending("Triple Threat")
-            SupabaseReader.dump_user(user)
-
-            view.add_item(
-                TripleThreatDropdown(user.ce_id, price_restriction, hours_restriction)
+    # find out which category / categories were already rolled
+    valid_categories = set(get_args(hm.CATEGORIES))
+    for _game_ceid in already_rolled_games:
+        _game_supa = hm.get_item_from_list(_game_ceid, database_name)
+        if _game_supa is None:
+            return RollResult(
+                None,
+                f"Could not find previously rolled game in database. Please notify andy. {_game_ceid}",
             )
-            view.timeout = 600
+        valid_categories -= set(_game_supa.categories)
 
-            return await interaction.followup.send("Choose your category.", view=view)
+    # find game
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=40,
+        price_limit=20,
+        tier_number=2,
+        user=user,
+        category=list(valid_categories),
+        already_rolled_games=already_rolled_games,
+        has_points_restriction=False,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
+    )
 
-        case "Let Fate Decide":
-            # add the pending
-            user.add_pending("Let Fate Decide")
-            SupabaseReader.dump_user(user)
+    if _game is None:
+        return RollResult(None, "Not enough rollable games.")
+    return RollResult([_game], None)
 
-            view.add_item(
-                LetFateDecideDropdown(user, price_restriction, hours_restriction)
-            )
-            view.timeout = 600
 
-            return await interaction.followup.send("Choose your category.", view=view)
+def roll_twotwoweekt2streakstreak(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    Two 'Two Week T2 Streak' Streak
+    - 40 hour completion limit
+    - $20 price limit
+    - Tier 2
+    - Multi-Category: Disallowed
+    - Multi-Stage. 4 games total.
+    - Requires 'Two Week T2 Streak' completion.
+    """
 
-        case "Fourward Thinking":
-            if not user.has_completed_roll("Let Fate Decide"):
-                return await interaction.followup.send(
-                    "You need to complete Let Fate Decide before rolling Fourward Thinking!"
-                )
-
-            # grab the previous roll (if there is one)
-            past_roll: CERoll | None = user.get_current_roll("Fourward Thinking")
-
-            # check to make sure this person is ready for the next iteration of their roll
-            if past_roll is not None and not past_roll.ready_for_next:
-                return await interaction.followup.send(
-                    "You need to finish your previous game first! Run /check-rolls to check them."
-                )
-
-            past_roll = user.get_waiting_roll("Fourward Thinking")
-
-            # add the pending and dump it
-            user.add_pending("Fourward Thinking")
-            SupabaseReader.dump_user(user)
-
-            view.timeout = 600
-            view.add_item(
-                FourwardThinkingDropdown(
-                    past_roll,
-                    database_name,
-                    price_restriction,
-                    hours_restriction,
-                    user.ce_id,
-                )
-            )
-
-            return await interaction.followup.send("Choose your category.", view=view)
-
-    # -- check to make sure there were enough rollable games --
-    if None in rolled_games:
-        return await interaction.followup.send(
-            "There weren't enough rollable games that matched this event's criteria."
-            + " Please try again later (and contact andy!)."
+    if not user.has_completed_roll("Two Week T2 Streak"):
+        return RollResult(
+            None,
+            "You must first complete 'One Hell of a Week' to attempt One Hell of a Month!",
         )
+    
+    # make sure user has one in limbo already
+    _roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
+    already_rolled_games: list[str] = []
+    # if so, pull the game so we don't roll the same one
+    if _roll:
+        already_rolled_games = _roll.games
 
-    # -- create roll object --
-    roll = CERoll(
-        roll_name=event_name, user_ce_id=user.ce_id, games=rolled_games, is_current=True
+    # find out which category / categories were already rolled
+    valid_categories = set(get_args(hm.CATEGORIES))
+    for _game_ceid in already_rolled_games:
+        _game_supa = hm.get_item_from_list(_game_ceid, database_name)
+        if _game_supa is None:
+            return RollResult(
+                None,
+                f"Could not find previously rolled game in database. Please notify andy. {_game_ceid}",
+            )
+        valid_categories -= set(_game_supa.categories)
+
+    # find game
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=40,
+        price_limit=20,
+        tier_number=2,
+        user=user,
+        category=list(valid_categories),
+        already_rolled_games=already_rolled_games,
+        has_points_restriction=False,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
     )
-    user.add_current_roll(roll)
 
-    # -- create embeds --
+    if _game is None:
+        return RollResult(None, "Not enough rollable games.")
+    return RollResult([_game], None)
 
-    embeds = await Discord_Helper.get_roll_embeds(
-        roll=roll, database_name=database_name
+
+def roll_neverlucky(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    Never Lucky.
+    - No completion limit!
+    - $20 price limit
+    - Tier 3
+    - Any category
+    - No time limit! Can reroll 1 month after init time
+    """
+
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=None,
+        price_limit=20,
+        tier_number=3,
+        user=user,
+        category=None,
+        already_rolled_games=None,
+        has_points_restriction=False,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True
     )
 
-    await Discord_Helper.get_buttons(view=view, embeds=embeds)
-    SupabaseReader.dump_user(user=user)
-    return await interaction.followup.send(embed=embeds[0], view=view)
+    if _game is None:
+        return RollResult(None, "Not enough rollable games.")
+    return RollResult([_game], None)
+
+
+def roll_triplethreat(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+    category: hm.CATEGORIES,
+) -> RollResult:
+    """
+    Triple Threat.
+    - 40 hour completion limit
+    - $20 price limit
+    - Tier 3
+    - Chosen category.
+    - 3 games
+    - Requires 'Never Lucky' completion.
+    """
+    
+    if not user.has_completed_roll("Never Lucky"):
+        return RollResult(None, "You must first complete 'Never Lucky' to attempt Triple Threat!")
+    
+    rolled_games: list[str] = []
+    for _ in range(3):
+        _game = hm.get_rollable_game(
+            database_name=database_name,
+            database_tier=database_tier,
+            completion_limit=40,
+            price_limit=20,
+            tier_number=3,
+            user=user,
+            category=category,
+            already_rolled_games=rolled_games,
+            has_points_restriction=False,
+            price_restriction=price_restriction,
+            hours_restriction=hours_restriction,
+            allow_multi_category=True
+        )
+        if _game is None:
+            return RollResult(None, "Not enough rollable games.")
+        rolled_games.append(_game)
+    
+    return RollResult(rolled_games, None)
+
+
+def roll_letfatedecide(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+    category: hm.CATEGORIES,
+) -> RollResult:
+    """
+    Let Fate Decide.
+    - No completion limit.
+    - $20 price limit.
+    - Tier 4
+    - Chosen category
+    - No time limit! Can reroll 3 months after init time.
+    """
+
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=None,
+        price_limit=20,
+        tier_number=4,
+        user=user,
+        category=category,
+        already_rolled_games=None,
+        has_points_restriction=False,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True
+    )
+    
+    if _game is None:
+        return RollResult(None, "Not enough rollable games.")
+    return RollResult([_game], None)
+
+
+def roll_fourwardthinking(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+    category: hm.CATEGORIES,
+) -> RollResult:
+    """
+    Fourward Thinking.
+    - 4 games, multi-stage.
+    - Each game is of Tier i, where i starts at 1 and goes to 4.
+    - 40 * i completion limit
+    - $20 price limit
+    - Requires 'Let Fate Decide',
+    - Chosen category.
+    - Multi-Category: Disallowed
+    """
+    raise NotImplementedError
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 """ === CLASSES === """
