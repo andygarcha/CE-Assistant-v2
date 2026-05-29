@@ -69,6 +69,7 @@ class TestRollOnehellofaday:
     def test_returns_exactly_one_game(self):
         with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]):
             result = roll_onehellofaday([], EMPTY_DT, make_user(), True, True)
+        assert result.games is not None
         assert len(result.games) == 1
 
     def test_returns_error_when_no_games_available(self):
@@ -131,6 +132,7 @@ class TestRollOnehellofaweek:
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:5]):
             result = roll_onehellofaweek(db, EMPTY_DT, user, True, True)
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 5
 
     def test_games_are_from_different_categories(self):
@@ -138,6 +140,7 @@ class TestRollOnehellofaweek:
         db = [make_game(ce_id=GAME_IDS[i], categories=[ALL_CATS[i]]) for i in range(5)]
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:5]):
             result = roll_onehellofaweek(db, EMPTY_DT, user, True, True)
+        assert result.games is not None
         rolled_cats = [
             next(g.categories[0] for g in db if g.ce_id == gid) for gid in result.games
         ]
@@ -184,6 +187,7 @@ class TestRollOnehellofamonth:
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 25
 
     def test_games_split_across_five_categories(self):
@@ -201,6 +205,7 @@ class TestRollOnehellofamonth:
         ):
             result = roll_onehellofamonth(db, EMPTY_DT, user, True, True)
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 25
 
     def test_one_failed_category_recovers(self):
@@ -217,6 +222,7 @@ class TestRollOnehellofamonth:
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
+        assert result.games is not None
         assert len(result.games) == 25
 
     def test_two_failed_categories_returns_error(self):
