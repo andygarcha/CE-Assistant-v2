@@ -442,7 +442,7 @@ class CEUser:
                 self._rolls[i] = roll
                 return
 
-        roll.set_status("waiting")
+        roll.set_status("between_stages")
         self._rolls.append(roll)
 
     def unwait_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> None:

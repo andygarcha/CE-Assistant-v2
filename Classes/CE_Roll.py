@@ -89,13 +89,15 @@ def relative(tier_num: int) -> int:
     return RELATIVE.get(tier_num, 20)
 
 
-ROLL_STATUS = Literal["current", "won", "failed", "pending", "waiting", "removed"]
+ROLL_STATUS = Literal[
+    "current", "won", "failed", "pending", "between_stages", "removed", "won_legacy"
+]
 """The status of rolls. 
 Current means currently active.
 Won means the roll has been completed and was won.
 Failed means the roll was failed and was lost.
 Pending is our normal 10-minute thing for discord.
-Waiting is for multi-stage rolls.
+BetweenStages is for multi-stage rolls.
 Removed means the roll has been manually removed."""
 
 
