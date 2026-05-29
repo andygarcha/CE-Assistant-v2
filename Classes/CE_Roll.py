@@ -185,6 +185,7 @@ class CERoll:
         rerolls: int | None = None,
         is_current: bool = False,
         tier_num: int | None = None,
+        lucky: bool = False,
     ):
         """Initializer for the CE Roll class."""
         self._roll_name: hm.ALL_ROLL_EVENT_NAMES = roll_name
@@ -197,6 +198,7 @@ class CERoll:
         self._partner_ce_id: str | None = partner_ce_id
         self._id: str = _id
         self._tier_num: int | None = tier_num
+        self._lucky: bool = lucky
 
         # if the roll isn't being created right now
         # (and therefore is probably being read from Supabase)
@@ -348,6 +350,11 @@ class CERoll:
     @property
     def id(self) -> str:
         return self._id
+    
+    @property
+    def lucky(self) -> bool:
+        "Designates whether the roll was chosen for Jarvis's bonus (I don't even know what it is)"
+        return self._lucky
 
     def __status_mongo_to_supabase(self):
         if self.init_time == 0 and self.due_time is None or self.games is None:
