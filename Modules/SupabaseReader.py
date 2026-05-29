@@ -1314,7 +1314,7 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         partner_ce_id=roll.get("user2_ce_id"),
         rerolls=roll.get("rerolls_remaining", 0),
         status=roll.get("status", "pending"),
-        _id=roll.get("id"),
+        _id=roll['id'],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
     )
 
