@@ -37,7 +37,7 @@ def get_rollable_game(
     tier_number: int | None,
     user: list[CEUser] | CEUser,
     category: str | list[str] | None = None,
-    already_rolled_games: list = [],
+    already_rolled_games: list | None = None,
     has_points_restriction: bool = False,
     price_restriction: bool = True,
     hours_restriction: bool = True,
@@ -111,6 +111,9 @@ def get_rollable_game(
         category = [category]
     if isinstance(user, CEUser):
         user = [user]
+
+    if already_rolled_games is None:
+        already_rolled_games = []
 
     # NOTE: if tier_number == 6, then we need to be able to roll any t5, t6, or t7.
 
