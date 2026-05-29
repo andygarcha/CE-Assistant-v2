@@ -121,7 +121,7 @@ def get_rollable_game(
     # YES category and YES tier (tier != 6)
     if category is not None and tier_number is not None and tier_number != 6:
         for _cat in category:
-            database_tier_games = database_tier[str(tier_number)][_cat]
+            database_tier_games.extend(database_tier[str(tier_number)][_cat])
     # YES category and YES tier (tier == 6)
     elif category is not None and tier_number == 6:
         for c in category:
@@ -140,7 +140,7 @@ def get_rollable_game(
     elif category is None and tier_number == 6:
         for c in get_args(CATEGORIES):
             for t in range(5, 8):
-                database_tier_games = database_tier[str(t)][c]
+                database_tier_games.extend(database_tier[str(t)][c])
     # NO category and NO tier
     else:
         for tn in range(1, 8):
