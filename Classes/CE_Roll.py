@@ -175,6 +175,7 @@ class CERoll:
         user_ce_id: str,
         games: list[str] | None,
         status: ROLL_STATUS,
+        _id: str,
         partner_ce_id: str | None = None,
         init_time: datetime.datetime | None = None,
         due_time: datetime.datetime | None = None,
@@ -182,7 +183,6 @@ class CERoll:
         rerolls: int | None = None,
         is_current: bool = False,
         tier_num: int | None = None,
-        _id: str | None = None,
     ):
         """Initializer for the CE Roll class."""
         self._roll_name: hm.ALL_ROLL_EVENT_NAMES = roll_name
@@ -193,7 +193,7 @@ class CERoll:
             self._games: list[str] = games
         self._status: ROLL_STATUS = status
         self._partner_ce_id: str | None = partner_ce_id
-        self._id: str | None = _id
+        self._id: str = _id
         self._tier_num: int | None = tier_num
 
         # if the roll isn't being created right now
@@ -342,6 +342,10 @@ class CERoll:
     @property
     def tier_num(self) -> int | None:
         return self._tier_num
+    
+    @property
+    def id(self) -> str:
+        return self._id
 
     def __status_mongo_to_supabase(self):
         if self.init_time == 0 and self.due_time is None or self.games is None:
@@ -471,6 +475,13 @@ class CERoll:
     @property
     def due_timestamp(self) -> int | None:
         return self._to_timestamp(self.due_time)
+    
+    @property
+    def due_discord_timestamp(self) -> str | None:
+        """
+        Returns a `str` formatted like: <t:1234567890> (or <t:None>).
+        """
+        return f"<t:{self.due_timestamp}>"
 
     @property
     def completed_timestamp(self) -> int | None:

@@ -5,6 +5,7 @@ everything else gets a safe default.
 """
 
 import datetime
+import uuid
 
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Game import CEGame
@@ -125,4 +126,5 @@ def make_roll(
         completed_time=completed_time,
         rerolls=rerolls,
         tier_num=tier_num,
+        _id=str(uuid.uuid4())
     )
