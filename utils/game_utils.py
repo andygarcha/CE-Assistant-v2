@@ -103,7 +103,7 @@ def get_rollable_game(
         This would be turned off for events like 'One Hell of a Week',
         which requires all five games to be different categories.
     """
-    
+
     from Classes.CE_User import CEUser
 
     # fix the problem with multiple categories (this is super gross)

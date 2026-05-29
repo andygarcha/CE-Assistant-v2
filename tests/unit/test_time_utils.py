@@ -59,7 +59,7 @@ class TestCETimestampToDatetime:
 
 class TestGetDatetime:
     def test_none_days_returns_none(self):
-        assert get_datetime(days=None) is None # type: ignore
+        assert get_datetime(days=None) is None  # type: ignore
 
     def test_now_returns_timezone_aware(self):
         result = get_datetime(days="now")

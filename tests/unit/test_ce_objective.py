@@ -65,7 +65,6 @@ class TestHasPartial:
         assert make_objective(point_value_partial=5).has_partial() is True
 
     def test_none_partial_returns_false(self):
-
         obj = make_objective()
         assert isinstance(obj, CEObjective)
         obj._point_value_partial = 0

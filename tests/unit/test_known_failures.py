@@ -109,13 +109,17 @@ def test_is_curatable_low_percentage_ten_votes():
 
 
 def test_get_category_v2_returns_category():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Action", "Arcade"])
+    game = make_game(
+        ce_id="game-001-0000-0000-000000000000", categories=["Action", "Arcade"]
+    )
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
     result = ug.get_category_v2([game])
     assert result is not None
 
 
 def test_get_category_v2_returns_correct_category():
-    game = make_game(ce_id="game-001-0000-0000-000000000000", categories=["Strategy", "First-Person"])
+    game = make_game(
+        ce_id="game-001-0000-0000-000000000000", categories=["Strategy", "First-Person"]
+    )
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
     assert ug.get_category_v2([game]) == ["Strategy", "First-Person"]

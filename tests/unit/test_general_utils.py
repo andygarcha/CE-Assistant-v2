@@ -24,7 +24,7 @@ class TestGetItemFromList:
         items = [_item("aaa"), _item("bbb"), _item("ccc")]
         result = get_item_from_list("bbb", items)
         assert hasattr(result, "ce_id")
-        assert result.ce_id == "bbb" # type: ignore
+        assert result.ce_id == "bbb"  # type: ignore
 
     def test_returns_none_when_not_found(self):
         assert get_item_from_list("zzz", [_item("aaa"), _item("bbb")]) is None

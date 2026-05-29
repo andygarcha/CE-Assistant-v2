@@ -552,7 +552,7 @@ class CEUser:
             if game.ce_id == game_id:
                 return game.get_user_points() != 0
         return False
-    
+
     def has_po_points(self, game_id: str) -> bool:
         """Returns true if this user has points in Primary Objectives in this game."""
         for game in self.owned_games:

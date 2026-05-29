@@ -569,7 +569,9 @@ class CERoll:
         for _game in self.games:
             _game_supa = hm.get_item_from_list(_game, database_name)
             if _game_supa is None:
-                raise Exception(f"Could not find game {_game} in database_name. rolled_categories")
+                raise Exception(
+                    f"Could not find game {_game} in database_name. rolled_categories"
+                )
             _categories.update(_game_supa.categories)
         return list(_categories)
 
@@ -859,14 +861,16 @@ class CERoll:
                     # TODO: casino fix doesn't work with dual categories
                     __category_check = game.get_category_v2(database_name)
                     if __category_check is None:
-                        raise Exception("The correct game was not passed in through database_name.")
+                        raise Exception(
+                            "The correct game was not passed in through database_name."
+                        )
                     if len(__category_check) > 1:
                         raise Exception("Cannot roll a dual-category game.")
                     if len(__category_check) == 0:
                         raise Exception("No categories are registered for this game.")
-                    
+
                     categories[__category_check[0]] += 1
-            
+
             completed_categories = 0
             for category in categories:
                 if categories[category] >= 3:
@@ -955,7 +959,9 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                raise Exception(f"`tier_num` undefined for roll of type {self.roll_name}.")
+                raise Exception(
+                    f"`tier_num` undefined for roll of type {self.roll_name}."
+                )
             return relative(tier)
 
         # normal case
@@ -969,7 +975,9 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                raise Exception(f"`tier_num` undefined for roll of type {self.roll_name}.")
+                raise Exception(
+                    f"`tier_num` undefined for roll of type {self.roll_name}."
+                )
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)

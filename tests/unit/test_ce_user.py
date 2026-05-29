@@ -273,12 +273,12 @@ class TestGetCompletedGames2:
     def test_raises_on_none_database(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2(None) # type: ignore
+            user.get_completed_games_2(None)  # type: ignore
 
     def test_raises_on_database_containing_none(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2([None]) # type: ignore
+            user.get_completed_games_2([None])  # type: ignore
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
@@ -319,14 +319,17 @@ class TestCasinoScore:
         "roll_name, expected_increase",
         [
             ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][0]),  # type: ignore
-            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][0]), # type: ignore
-            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][0]), # type: ignore
-            ("Never Lucky", CASINO_POINTS["Never Lucky"][0]), # type: ignore
-            ("Triple Threat", CASINO_POINTS["Triple Threat"][0]), # type: ignore
-            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]), # type: ignore
-            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]), # type: ignore
-            ("Game Theory", CASINO_POINTS["Game Theory"][0]), # type: ignore
-            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][0]), # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][0]),  # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][0]),  # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][0]),  # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][0]),  # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]),  # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]),  # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][0]),  # type: ignore
+            (
+                "Teamwork Makes the Dream Work",
+                CASINO_POINTS["Teamwork Makes the Dream Work"][0],
+            ),  # type: ignore
         ],
     )
     def test_won_fixed_roll_adds_correct_increase(self, roll_name, expected_increase):
@@ -338,18 +341,23 @@ class TestCasinoScore:
     @pytest.mark.parametrize(
         "roll_name, expected_decrease",
         [
-            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][1]), # type: ignore
-            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][1]), # type: ignore
-            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][1]), # type: ignore
-            ("Never Lucky", CASINO_POINTS["Never Lucky"][1]), # type: ignore
-            ("Triple Threat", CASINO_POINTS["Triple Threat"][1]), # type: ignore
-            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]), # type: ignore
-            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]), # type: ignore
-            ("Game Theory", CASINO_POINTS["Game Theory"][1]), # type: ignore
-            ("Teamwork Makes the Dream Work", CASINO_POINTS["Teamwork Makes the Dream Work"][1]), # type: ignore
+            ("One Hell of a Day", CASINO_POINTS["One Hell of a Day"][1]),  # type: ignore
+            ("One Hell of a Week", CASINO_POINTS["One Hell of a Week"][1]),  # type: ignore
+            ("One Hell of a Month", CASINO_POINTS["One Hell of a Month"][1]),  # type: ignore
+            ("Never Lucky", CASINO_POINTS["Never Lucky"][1]),  # type: ignore
+            ("Triple Threat", CASINO_POINTS["Triple Threat"][1]),  # type: ignore
+            ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]),  # type: ignore
+            ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]),  # type: ignore
+            ("Game Theory", CASINO_POINTS["Game Theory"][1]),  # type: ignore
+            (
+                "Teamwork Makes the Dream Work",
+                CASINO_POINTS["Teamwork Makes the Dream Work"][1],
+            ),  # type: ignore
         ],
     )
-    def test_failed_fixed_roll_adds_correct_decrease(self, roll_name, expected_decrease):
+    def test_failed_fixed_roll_adds_correct_decrease(
+        self, roll_name, expected_decrease
+    ):
         roll = make_roll(roll_name=roll_name, status="failed")
         assert make_user().casino_score([roll]) == expected_decrease
 
@@ -401,23 +409,23 @@ class TestCasinoScore:
     # ── multiple rolls accumulate correctly ───────────────────────────────────
 
     def test_multiple_won_rolls_sum(self):
-        r1 = make_roll(roll_name="One Hell of a Day", status="won")    # +1
-        r2 = make_roll(roll_name="One Hell of a Week", status="won")   # +7
+        r1 = make_roll(roll_name="One Hell of a Day", status="won")  # +1
+        r2 = make_roll(roll_name="One Hell of a Week", status="won")  # +7
         assert make_user().casino_score([r1, r2]) == 8
 
     def test_multiple_failed_rolls_sum(self):
-        r1 = make_roll(roll_name="One Hell of a Week", status="failed")   # -2
+        r1 = make_roll(roll_name="One Hell of a Week", status="failed")  # -2
         r2 = make_roll(roll_name="One Hell of a Month", status="failed")  # -5
         assert make_user().casino_score([r1, r2]) == -7
 
     def test_mixed_won_failed_current_accumulates(self):
-        won = make_roll(roll_name="One Hell of a Month", status="won")     # +18
+        won = make_roll(roll_name="One Hell of a Month", status="won")  # +18
         failed = make_roll(roll_name="One Hell of a Month", status="failed")  # -5
         current = make_roll(roll_name="One Hell of a Month", status="current")  # 0
         assert make_user().casino_score([won, failed, current]) == 13
 
     def test_only_won_and_failed_contribute_not_others(self):
-        won = make_roll(roll_name="Let Fate Decide", status="won")       # +8
+        won = make_roll(roll_name="Let Fate Decide", status="won")  # +8
         pending = make_roll(roll_name="Let Fate Decide", status="pending")
         waiting = make_roll(roll_name="Let Fate Decide", status="waiting")
         removed = make_roll(roll_name="Let Fate Decide", status="removed")

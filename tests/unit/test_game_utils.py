@@ -90,12 +90,20 @@ class TestGenreIdToName:
 #   price: game["price"] <= price_limit * 100  → at-limit is ALLOWED
 #   hours: game["sh_hours"] > completion_limit * 60  → at-limit is ALLOWED
 
-_ALL_CATS = ["Action", "Arcade", "Bullet Hell", "First-Person", "Platformer", "Strategy"]
+_ALL_CATS = [
+    "Action",
+    "Arcade",
+    "Bullet Hell",
+    "First-Person",
+    "Platformer",
+    "Strategy",
+]
 
 GAME_A = "game-aaa-0000-0000-000000000000"
 GAME_B = "game-bbb-0000-0000-000000000000"
 OBJ_A = "obj-aaaa-0000-0000-000000000000"
 OBJ_B = "obj-bbbb-0000-0000-000000000000"
+
 
 # safe defaults: $5.00 (500 cents), 60 minutes (1 hour)
 def _tier_entry(ce_id: str, price: int = 500, sh_hours: int = 60) -> dict:
@@ -735,10 +743,12 @@ class TestGetRollableGame:
 
     def test_multi_category_game_excluded_when_flag_false(self):
         game = make_game(ce_id=GAME_A, categories=["Action", "Arcade"])
-        dt = _make_dt({
-            (1, "Action"): [_tier_entry(GAME_A)],
-            (1, "Arcade"): [_tier_entry(GAME_A)],
-        })
+        dt = _make_dt(
+            {
+                (1, "Action"): [_tier_entry(GAME_A)],
+                (1, "Arcade"): [_tier_entry(GAME_A)],
+            }
+        )
         result = get_rollable_game(
             database_name=[game],
             database_tier=dt,
@@ -753,10 +763,12 @@ class TestGetRollableGame:
 
     def test_multi_category_game_allowed_when_flag_true(self):
         game = make_game(ce_id=GAME_A, categories=["Action", "Arcade"])
-        dt = _make_dt({
-            (1, "Action"): [_tier_entry(GAME_A)],
-            (1, "Arcade"): [_tier_entry(GAME_A)],
-        })
+        dt = _make_dt(
+            {
+                (1, "Action"): [_tier_entry(GAME_A)],
+                (1, "Arcade"): [_tier_entry(GAME_A)],
+            }
+        )
         result = get_rollable_game(
             database_name=[game],
             database_tier=dt,
@@ -789,11 +801,16 @@ class TestGetRollableGame:
     def test_only_valid_game_returned_when_other_filtered_by_price(self):
         game_a = _db_game(GAME_A, OBJ_A)
         game_b = _db_game(GAME_B, OBJ_B)
-        dt = _make_dt({
-            # GAME_A: $50.00 (5000 cents) > $10 limit → excluded
-            # GAME_B: $5.00 (500 cents) < $10 limit → allowed
-            (1, "Action"): [_tier_entry(GAME_A, price=5000), _tier_entry(GAME_B, price=500)],
-        })
+        dt = _make_dt(
+            {
+                # GAME_A: $50.00 (5000 cents) > $10 limit → excluded
+                # GAME_B: $5.00 (500 cents) < $10 limit → allowed
+                (1, "Action"): [
+                    _tier_entry(GAME_A, price=5000),
+                    _tier_entry(GAME_B, price=500),
+                ],
+            }
+        )
         result = get_rollable_game(
             database_name=[game_a, game_b],
             database_tier=dt,
@@ -809,12 +826,14 @@ class TestGetRollableGame:
     def test_all_filters_combined_returns_only_match(self):
         game_a = _db_game(GAME_A, OBJ_A, categories=["Arcade"])
         game_b = _db_game(GAME_B, OBJ_B, categories=["Action"])
-        dt = _make_dt({
-            # GAME_A: $5.00 (500 cents), 3h (180 min) → passes both limits
-            (2, "Arcade"): [_tier_entry(GAME_A, price=500, sh_hours=180)],
-            # GAME_B: $30.00 (3000 cents) → fails $10 price limit
-            (2, "Action"): [_tier_entry(GAME_B, price=3000, sh_hours=180)],
-        })
+        dt = _make_dt(
+            {
+                # GAME_A: $5.00 (500 cents), 3h (180 min) → passes both limits
+                (2, "Arcade"): [_tier_entry(GAME_A, price=500, sh_hours=180)],
+                # GAME_B: $30.00 (3000 cents) → fails $10 price limit
+                (2, "Action"): [_tier_entry(GAME_B, price=3000, sh_hours=180)],
+            }
+        )
         result = get_rollable_game(
             database_name=[game_a, game_b],
             database_tier=dt,
