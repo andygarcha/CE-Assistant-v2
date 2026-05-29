@@ -7,8 +7,9 @@ import time
 from typing import Literal, cast
 import logging
 
+import httpx
 from postgrest import APIError
-from supabase import create_client, Client
+from supabase import ClientOptions, create_client, Client
 
 # -- local --
 from Classes.CE_Game import CEGame
@@ -25,7 +26,13 @@ with open("secret_info.json") as f:
     SUPABASE_URL = x["supabase_url"]
     SUPABASE_KEY = x["supabase_key_secret"]
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY,
+    options=ClientOptions(
+        httpx_client=httpx.Client(timeout=30, verify=True)
+    )
+)
 
 logger = logging.getLogger(__name__)
 
