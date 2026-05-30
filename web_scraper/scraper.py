@@ -216,6 +216,15 @@ async def process_loop(
     # Step 3: Check curator
     check_curator_steam()
 
+    # Step 3.5: Check rolls
+    # TODO: send back all users
+    _updates, rolls_updated, rolls_deleted = update_rolls(
+        database_name=database_name_new,
+        database_user=users_new
+    )
+    updates.extend(_updates)
+
+
     # Step 4: write all of our stuff
     if SAVEDATA:
         logger.info("saving data")
@@ -239,6 +248,11 @@ async def process_loop(
 
         logger.debug("len(rolls_updated)=%d", len(rolls_updated))
         SupabaseReader.bulk_dump_rolls(rolls_updated)
+
+        logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
+        for r in rolls_deleted:
+            r.set_status('removed')
+        SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
     # Send updates!
     # TODO upload these to the database in a future update
