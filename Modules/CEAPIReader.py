@@ -316,6 +316,7 @@ async def get_api_users_all(
     You can pass in the entire database_user here, or just a list of registered ids. Either work."""
 
     # Step 0: check if database_user was passed
+    registered_ids = []
     if database_user is not None and len(database_user) > 0:
         registered_ids: list[str] = []
         if isinstance(database_user[0], CEUser):

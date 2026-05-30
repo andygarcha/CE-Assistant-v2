@@ -1,5 +1,6 @@
 import datetime
 from typing import Sequence, cast, get_args
+import uuid
 import aiohttp
 from Classes.CE_Roll import CERoll
 from Classes.CE_Game import CEGame
@@ -391,6 +392,7 @@ class CEUser:
                 status="pending",
                 init_time=hm.get_datetime("now"),
                 due_time=hm.get_datetime(minutes=10),
+                _id=str(uuid.uuid4())
             )
         )
         pass
@@ -530,6 +532,7 @@ class CEUser:
                         completed_time=None,
                         rerolls=None,
                         status="won",
+                        _id=str(uuid.uuid4())
                     )
                 )
 
@@ -850,6 +853,7 @@ class CEAPIUser(CEUser):
         genre_dict: dict[str, int] = {}
 
         # get the data
+        total = -1
         for tier in self.api_tier_summary:
             genre_name = hm.genre_id_to_name(tier["genreId"])
             if genre_name is None:

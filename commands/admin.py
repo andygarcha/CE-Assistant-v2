@@ -1,6 +1,7 @@
 """This module contains all the admin commands for the bot."""
 
 import datetime
+import uuid
 import discord
 import logging
 from discord import app_commands
@@ -423,7 +424,7 @@ async def clear_roll_portion(
         game_removed = "<error, removed game was 'null'>"
     else:
         game_removed = game_removed.name_with_link
-    roll.set_status("waiting")
+    roll.set_status("between_stages")
     roll.due_time = None
 
     logger.info("Roll (after changes): %s", roll.to_dict())
@@ -471,6 +472,7 @@ async def force_add(
             games=None,
             status="won",
             completed_time=datetime.datetime.now(),
+            _id=str(uuid.uuid4())
         )
     )
 

@@ -5,14 +5,16 @@ everything else gets a safe default.
 """
 
 import datetime
+from typing import cast
 import uuid
 
 from Classes.CE_Objective import CEObjective
 from Classes.CE_Game import CEGame
-from Classes.CE_Roll import CERoll
+from Classes.CE_Roll import CERoll, ROLL_STATUS
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
+from Modules import hm
 
 
 def make_objective(
@@ -27,7 +29,7 @@ def make_objective(
 ) -> CEObjective:
     return CEObjective(
         ce_id=ce_id,
-        objective_type=obj_type,
+        objective_type=obj_type, # type: ignore
         description="A test objective.",
         point_value=point_value,
         name=name,
@@ -48,11 +50,11 @@ def make_game(
     return CEGame(
         ce_id=ce_id,
         game_name=game_name,
-        platform=platform,
+        platform=platform, # type: ignore
         platform_id="123456",
-        categories=categories if categories is not None else ["Action"],
+        categories=categories if categories is not None else ["Action"], # type: ignore
         objectives=objectives if objectives is not None else [],
-        last_updated=0,
+        last_updated=None,
     )
 
 
@@ -66,7 +68,7 @@ def make_user_objective(
     return CEUserObjective(
         ce_id=ce_id,
         game_ce_id=game_ce_id,
-        type=obj_type,
+        type=cast(hm.OBJECTIVE_TYPES, obj_type),
         user_points=user_points,
         name=name,
     )
@@ -114,10 +116,10 @@ def make_roll(
     tier_num: int | None = None,
 ) -> CERoll:
     return CERoll(
-        roll_name=roll_name,
+        roll_name=cast(hm.ALL_ROLL_EVENT_NAMES, roll_name),
         user_ce_id="user-001-0000-0000-000000000000",
         games=games if games is not None else ["game-001-0000-0000-000000000000"],
-        status=status,
+        status=cast(ROLL_STATUS, status),
         partner_ce_id=partner_ce_id,
         init_time=init_time
         if init_time is not None
