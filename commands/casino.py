@@ -90,9 +90,6 @@ async def solo_roll(
 ):
     await interaction.response.defer()
 
-    # return await interaction.followup.send("Sorry, but rolling is still under construction! Please come back later...")
-    view = discord.ui.View()
-
     lucky = False
 
     # pull mongo database
@@ -1251,5 +1248,5 @@ async def check_rolls(interaction: discord.Interaction):
     await interaction.response.defer()
 
     return await interaction.followup.send(
-        f"[click me :)]https://ce-assistant-frontend.vercel.app/rolls"
+        "[click me :)]https://ce-assistant-frontend.vercel.app/rolls"
     )
