@@ -698,5 +698,5 @@ async def check_rolls(interaction: discord.Interaction):
     await interaction.response.defer()
 
     return await interaction.followup.send(
-        "[click me :)]https://ce-assistant-frontend.vercel.app/rolls"
+        "[click me :)](https://ce-assistant-frontend.vercel.app/rolls)"
     )
