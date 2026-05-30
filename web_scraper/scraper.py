@@ -206,7 +206,7 @@ async def process_loop(
     logger.debug("len(database_name_new)=%d", len(database_name_new))
 
     logger.info("UPDATE USERS: begin")
-    _updates, users_new, removed_users, rolls_updated = await update_users(
+    _updates, users_new, removed_users = await update_users(
         database_name_old, database_name_new, full_scrape, notIsFinished
     )
     updates.extend(_updates)
@@ -215,6 +215,15 @@ async def process_loop(
 
     # Step 3: Check curator
     check_curator_steam()
+
+    # Step 3.5: Check rolls
+    # TODO: send back all users
+    _updates, rolls_updated, rolls_deleted = update_rolls(
+        database_name=database_name_new,
+        database_user=users_new
+    )
+    updates.extend(_updates)
+
 
     # Step 4: write all of our stuff
     if SAVEDATA:
@@ -239,6 +248,11 @@ async def process_loop(
 
         logger.debug("len(rolls_updated)=%d", len(rolls_updated))
         SupabaseReader.bulk_dump_rolls(rolls_updated)
+
+        logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
+        for r in rolls_deleted:
+            r.set_status('removed')
+        SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
     # Send updates!
     # TODO upload these to the database in a future update
@@ -479,7 +493,7 @@ async def update_users(
     full_scrape=False,
     notIsFinished: set = set(),
 ) -> tuple[
-    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]
+    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]
 ]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
@@ -625,7 +639,7 @@ async def update_users(
 
     # TODO future update
     # only return users who *actually* had something changed.
-    return updates, users, user_list_removed, []
+    return updates, users, user_list_removed
 
 
 def update_rolls(
