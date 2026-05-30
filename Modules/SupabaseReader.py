@@ -6,9 +6,11 @@ import json
 import time
 from typing import Literal, cast
 import logging
+import typing
 
+import httpx
 from postgrest import APIError
-from supabase import create_client, Client
+from supabase import ClientOptions, create_client, Client
 
 # -- local --
 from Classes.CE_Game import CEGame
@@ -25,7 +27,11 @@ with open("secret_info.json") as f:
     SUPABASE_URL = x["supabase_url"]
     SUPABASE_KEY = x["supabase_key_secret"]
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY,
+    options=ClientOptions(httpx_client=httpx.Client(timeout=30, verify=True)),
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +152,8 @@ def get_game(ce_id: str) -> CEGame | None:
 # GET USER
 def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     # TODO: simplify this stuff with joins
+
+    # table: "users"
     if not use_discord_id:
         user_json = supabase.table("users").select().eq("ce_id", ce_id).execute().data
     else:
@@ -158,19 +166,23 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     if use_discord_id:
         ce_id = user_json["ce_id"]
 
+    # table: "userGames"
     userGames_json = (
         supabase.table("userGames").select().eq("user_ce_id", ce_id).execute().data
     )
+
+    # table: "userObjectives"
     userObjectives_json = (
         supabase.table("userObjectives").select().eq("user_ce_id", ce_id).execute().data
     )
     userobjectives_list = [o["objective_ce_id"] for o in userObjectives_json]
 
-    # Use chunked fetch to avoid very large `in_` queries which can cause Bad Request
+    # table: "objectives"
     objectives_json = _fetch_in_chunks(
         "objectives", "ce_id", userobjectives_list, chunk_size=100
     )
 
+    # table: "rolls"
     rolls_json = (
         supabase.table("rolls")
         .select()
@@ -179,18 +191,8 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
         .data
     )
     roll_ids = [item["id"] for item in rolls_json]
-    # ensure objectives_json is populated (already fetched above using chunked helper)
-    if not objectives_json:
-        objectives_json = []
 
-    rolls_json = (
-        supabase.table("rolls")
-        .select()
-        .or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}")
-        .execute()
-        .data
-    )
-    roll_ids = [item["id"] for item in rolls_json]
+    # table: "rollGames"
     if roll_ids:
         userRollGames_json = (
             supabase.table("rollGames")
@@ -203,6 +205,7 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     else:
         userRollGames_json = []
 
+    # transform them
     return __supabase_to_user(
         user_json,
         userGames_json,
@@ -484,10 +487,48 @@ def get_input(ce_id: str) -> CEInput:
     raise NotImplementedError
 
 
-def get_database_tier() -> dict:
-    raise NotImplementedError
+def get_database_tier(database_name: list[CEGame]) -> dict:
+    """
+    Gets database_tier from Supabase.
+    The output `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    - Note that multi-category games will be placed
+      in all category arrays that they belong to.
+    """
     response = supabase.table("tier").select().execute().data
-    return response
+
+    database_name_mapping: dict[str, CEGame] = {}
+    for game in database_name:
+        # neither of these conditions should ever happen
+        if game.is_t0:
+            continue
+        if game.platform != "steam":
+            continue
+        database_name_mapping[game.ce_id] = game
+
+    # separate out games by tier and category
+    database_tier: dict[str, dict[str, list[dict]]] = {}
+
+    for tier in range(1, 8):
+        database_tier[str(tier)] = {}
+        for category in typing.get_args(hm.CATEGORIES):
+            database_tier[str(tier)][category] = []
+
+    for tier_entry in response:
+        _game_object = database_name_mapping.get(tier_entry["ce_id"])
+        if _game_object is None:
+            logger.warning(
+                "Could not find game %s from database_name when generating database tier.",
+                tier_entry["ce_id"],
+            )
+            continue
+
+        for _cat in _game_object.categories:
+            database_tier[str(_game_object.tier_num)][_cat].append(tier_entry)
+
+    return database_tier
 
 
 def get_curator_ids() -> list[str]:
@@ -561,7 +602,9 @@ def bulk_dump_games(
                     "category_primary": None,
                     "image_header": game._banner,
                     "image_icon": "",
-                    "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "updated_at_CE": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat(),
                 }
             )
 
@@ -866,7 +909,6 @@ def bulk_dump_rolls(
                     "rerolls_remaining": r.rerolls,
                     "rerolls_used": 0,
                     "winner": None,
-                    "updated_at_CE": now_iso,
                 }
             )
 
@@ -905,8 +947,8 @@ def dump_roll(roll: CERoll):
         "time_created": _iso_or_none(roll.init_time),
         "time_due": _iso_or_none(roll.due_time),
         "time_completed": _iso_or_none(roll.completed_time),
-        "is_lucky": False,  # TODO: determine from roll data
-        "chosen_tier": None,  # TODO: populate if available
+        "is_lucky": roll.lucky,  # TODO: determine from roll data
+        "chosen_tier": roll._tier_num,  # TODO: populate if available
         "status": roll.status,
         "rerolls_remaining": roll.rerolls,
         "rerolls_used": 0,  # TODO: calculate or track
@@ -939,9 +981,37 @@ def dump_curator_count(cc: int):
     raise NotImplementedError
 
 
-def dump_database_tier(database_tier: list[dict]):
-    for tier_record in database_tier:
-        supabase.table("tier").upsert(tier_record).execute()
+def dump_database_tier(database_tier: dict):
+    """
+    Dumps database_tier back to Supabase.
+    The input `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    """
+
+    # sort out
+    all_entries: list[dict] = []
+
+    for tier in range(1, 8):
+        for category in list(typing.get_args(hm.CATEGORIES)):
+            all_entries.extend(database_tier[str(tier)][category])
+
+    # remove duplicates (multi-category)
+    all_entries = list({e['ce_id']: e for e in all_entries}.values())
+
+    # dump 100 at a time
+    BATCH_SIZE = 100
+    for i in range(0, len(all_entries), BATCH_SIZE):
+        batch = all_entries[i : i + BATCH_SIZE]
+
+        payload = []
+
+        for entry in batch:
+            payload.append(entry)
+
+        if payload:
+            supabase.table("tier").upsert(payload).execute()
 
 
 def dump_loop(dt: datetime.datetime):
@@ -1003,7 +1073,7 @@ def delete_objectives_many(objs: list[str]):
 # === MAINTENANCE ===
 def clean_db():
     """Cleans out the database. Any user games and user objectives with no corresponding
-    real game or objective get deleted."""
+    real game or objective  deleted."""
     games = supabase.table("games").select("ce_id").execute().data or []
     objectives = supabase.table("objectives").select("ce_id").execute().data or []
 
@@ -1197,8 +1267,9 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         partner_ce_id=roll.get("user2_ce_id"),
         rerolls=roll.get("rerolls_remaining", 0),
         status=roll.get("status", "pending"),
-        _id=roll.get("id"),
+        _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
+        tier_num=roll.get("chosen_tier", None),
     )
 
 

@@ -89,13 +89,15 @@ def relative(tier_num: int) -> int:
     return RELATIVE.get(tier_num, 20)
 
 
-ROLL_STATUS = Literal["current", "won", "failed", "pending", "waiting", "removed"]
+ROLL_STATUS = Literal[
+    "current", "won", "failed", "pending", "between_stages", "removed", "won_legacy"
+]
 """The status of rolls. 
 Current means currently active.
 Won means the roll has been completed and was won.
 Failed means the roll was failed and was lost.
 Pending is our normal 10-minute thing for discord.
-Waiting is for multi-stage rolls.
+BetweenStages is for multi-stage rolls.
 Removed means the roll has been manually removed."""
 
 
@@ -175,6 +177,7 @@ class CERoll:
         user_ce_id: str,
         games: list[str] | None,
         status: ROLL_STATUS,
+        _id: str,
         partner_ce_id: str | None = None,
         init_time: datetime.datetime | None = None,
         due_time: datetime.datetime | None = None,
@@ -182,7 +185,7 @@ class CERoll:
         rerolls: int | None = None,
         is_current: bool = False,
         tier_num: int | None = None,
-        _id: str | None = None,
+        lucky: bool = False,
     ):
         """Initializer for the CE Roll class."""
         self._roll_name: hm.ALL_ROLL_EVENT_NAMES = roll_name
@@ -193,8 +196,9 @@ class CERoll:
             self._games: list[str] = games
         self._status: ROLL_STATUS = status
         self._partner_ce_id: str | None = partner_ce_id
-        self._id: str | None = _id
+        self._id: str = _id
         self._tier_num: int | None = tier_num
+        self._lucky: bool = lucky
 
         # if the roll isn't being created right now
         # (and therefore is probably being read from Supabase)
@@ -343,6 +347,15 @@ class CERoll:
     def tier_num(self) -> int | None:
         return self._tier_num
 
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def lucky(self) -> bool:
+        "Designates whether the roll was chosen for Jarvis's bonus (I don't even know what it is)"
+        return self._lucky
+
     def __status_mongo_to_supabase(self):
         if self.init_time == 0 and self.due_time is None or self.games is None:
             return "won_legacy"
@@ -471,6 +484,13 @@ class CERoll:
     @property
     def due_timestamp(self) -> int | None:
         return self._to_timestamp(self.due_time)
+
+    @property
+    def due_discord_timestamp(self) -> str | None:
+        """
+        Returns a `str` formatted like: <t:1234567890> (or <t:None>).
+        """
+        return f"<t:{self.due_timestamp}>"
 
     @property
     def completed_timestamp(self) -> int | None:
@@ -809,7 +829,7 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name})."
+                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
             )
         else:
@@ -975,9 +995,7 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                raise Exception(
-                    f"`tier_num` undefined for roll of type {self.roll_name}."
-                )
+                tier = 1 # TODO cheating
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)

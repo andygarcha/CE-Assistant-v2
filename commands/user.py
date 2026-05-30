@@ -197,15 +197,16 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
 
     # make sure they're registered
     ce_user = SupabaseReader.get_user(_user.id, use_discord_id=True)
-    if ce_user is None and asked_for_friend:
-        return await interaction.followup.send(
-            f"Sorry! <@{_user.id}> is not registered. Please have them run /register!",
-            allowed_mentions=discord.AllowedMentions.none(),
-        )
-    if ce_user is None and not asked_for_friend:
-        return await interaction.followup.send(
-            "Sorry! You are not registered. Please run /register and try again!"
-        )
+    if ce_user is None:
+        if asked_for_friend:
+            return await interaction.followup.send(
+                f"Sorry! <@{_user.id}> is not registered. Please have them run /register!",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        else:
+            return await interaction.followup.send(
+                "Sorry! You are not registered. Please run /register and try again!"
+            )
 
     # get the embed and the view
     returns = await Discord_Helper.get_user_embeds(

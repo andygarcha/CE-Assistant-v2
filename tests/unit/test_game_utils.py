@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+from Classes.CE_Game import CEGame
+from Classes.CE_User import CEUser
 from utils.game_utils import achievements_are_equal, genre_id_to_name, get_rollable_game
 from tests.conftest import (
     make_game,
@@ -90,7 +92,7 @@ class TestGenreIdToName:
 #   price: game["price"] <= price_limit * 100  → at-limit is ALLOWED
 #   hours: game["sh_hours"] > completion_limit * 60  → at-limit is ALLOWED
 
-_ALL_CATS = [
+_ALL_CATS: list[str] = [
     "Action",
     "Arcade",
     "Bullet Hell",
@@ -99,37 +101,47 @@ _ALL_CATS = [
     "Strategy",
 ]
 
-GAME_A = "game-aaa-0000-0000-000000000000"
-GAME_B = "game-bbb-0000-0000-000000000000"
-OBJ_A = "obj-aaaa-0000-0000-000000000000"
-OBJ_B = "obj-bbbb-0000-0000-000000000000"
+GAME_A: str = "game-aaa-0000-0000-000000000000"
+GAME_B: str = "game-bbb-0000-0000-000000000000"
+OBJ_A: str = "obj-aaaa-0000-0000-000000000000"
+OBJ_B: str = "obj-bbbb-0000-0000-000000000000"
+
+TierEntry = dict[str, int | str]
+DatabaseTier = dict[str, dict[str, list[TierEntry]]]
 
 
 # safe defaults: $5.00 (500 cents), 60 minutes (1 hour)
-def _tier_entry(ce_id: str, price: int = 500, sh_hours: int = 60) -> dict:
+def _tier_entry(ce_id: str, price: int = 500, sh_hours: int = 60) -> TierEntry:
     return {"ce_id": ce_id, "price": price, "sh_hours": sh_hours}
 
 
-def _make_dt(slots: dict | None = None) -> dict:
+def _make_dt(
+    slots: dict[tuple[int, str], list[TierEntry]] | None = None,
+) -> DatabaseTier:
     """Build a full 7-tier database_tier dict with all categories initialised to [].
 
     `slots` maps (tier_int, category_str) → list[tier_entry].
     """
-    dt = {str(t): {c: [] for c in _ALL_CATS} for t in range(1, 8)}
+    dt: DatabaseTier = {str(t): {c: [] for c in _ALL_CATS} for t in range(1, 8)}
     if slots:
         for (tier, cat), entries in slots.items():
             dt[str(tier)][cat].extend(entries)
     return dt
 
 
-def _completed_user(game_id: str, obj_id: str, points: int = 10):
+def _completed_user(game_id: str, obj_id: str, points: int = 10) -> CEUser:
     """User who has fully completed `game_id` (all primary objectives done)."""
     uobj = make_user_objective(ce_id=obj_id, game_ce_id=game_id, user_points=points)
     ug = make_user_game(ce_id=game_id, user_objectives=[uobj])
     return make_user(owned_games=[ug])
 
 
-def _db_game(ce_id: str, obj_id: str, points: int = 10, categories=None):
+def _db_game(
+    ce_id: str,
+    obj_id: str,
+    points: int = 10,
+    categories: list[str] | None = None,
+) -> CEGame:
     """CEGame with one cleared primary objective worth `points`."""
     obj = make_objective(ce_id=obj_id, game_ce_id=ce_id, point_value=points)
     return make_game(ce_id=ce_id, categories=categories or ["Action"], objectives=[obj])

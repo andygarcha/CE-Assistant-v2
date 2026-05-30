@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 from typing import Literal, get_args, TYPE_CHECKING
 from utils.general_utils import get_item_from_list
@@ -13,20 +14,25 @@ if TYPE_CHECKING:
 
 def get_banned_games() -> list[str] | None:
     "Returns the list of CE IDs of banned rollable games."
-    import Modules.SpreadsheetHandler as SpreadsheetHandler
+    # import Modules.SpreadsheetHandler as SpreadsheetHandler
 
-    BANNED_GAMES = SpreadsheetHandler.get_sheet_data(
-        SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, SpreadsheetHandler.CE_SHEET_ID
-    )
-    if BANNED_GAMES is None:
-        return None
-    # Returns as [CE ID, Game Name, Reason]
+    # BANNED_GAMES = SpreadsheetHandler.get_sheet_data(
+    #     SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, SpreadsheetHandler.CE_SHEET_ID
+    # )
+    # if BANNED_GAMES is None:
+    #     return None
+    # # Returns as [CE ID, Game Name, Reason]
 
-    banned_games_ids = []
+    # banned_games_ids = []
 
-    for item in BANNED_GAMES:
-        banned_games_ids.append(item[0])
-    return banned_games_ids
+    # for item in BANNED_GAMES:
+    #     banned_games_ids.append(item[0])
+
+    # return banned_game_ids
+
+    with open("./Assets/games_banned.json", "r") as f:
+        lines = json.load(f)
+    return lines
 
 
 def get_rollable_game(
@@ -121,7 +127,7 @@ def get_rollable_game(
     # YES category and YES tier (tier != 6)
     if category is not None and tier_number is not None and tier_number != 6:
         for _cat in category:
-            database_tier_games = database_tier[str(tier_number)][_cat]
+            database_tier_games.extend(database_tier[str(tier_number)][_cat])
     # YES category and YES tier (tier == 6)
     elif category is not None and tier_number == 6:
         for c in category:
@@ -140,7 +146,7 @@ def get_rollable_game(
     elif category is None and tier_number == 6:
         for c in get_args(CATEGORIES):
             for t in range(5, 8):
-                database_tier_games = database_tier[str(t)][c]
+                database_tier_games.extend(database_tier[str(t)][c])
     # NO category and NO tier
     else:
         for tn in range(1, 8):

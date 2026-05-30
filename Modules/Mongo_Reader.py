@@ -7,6 +7,7 @@ Version 3 : Object-Oriented, and each item has its own document.
 import json
 from typing import Literal
 import logging
+import uuid
 
 # -- local --
 from Classes.CE_Game import CEAPIGame, CEGame
@@ -239,6 +240,7 @@ def __mongo_to_roll(roll: dict) -> CERoll:
         partner_ce_id=roll["partner_ce_id"],
         rerolls=roll["rerolls"],
         status=roll["status"],
+        _id=str(uuid.uuid4())
     )
 
 

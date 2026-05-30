@@ -1,5 +1,6 @@
 import datetime
 from typing import Sequence, cast, get_args
+import uuid
 import aiohttp
 from Classes.CE_Roll import CERoll
 from Classes.CE_Game import CEGame
@@ -338,7 +339,11 @@ class CEUser:
     def completed_rolls(self) -> list[CERoll]:
         """Returns an array of :class:`CERoll`'s
         that this user has previously completed."""
-        return [roll for roll in self.rolls if roll.status == "won"]
+        return [
+            roll
+            for roll in self.rolls
+            if roll.status == "won" or roll.status == "won_legacy"
+        ]
 
     def add_completed_roll(self, roll: CERoll) -> None:
         """Adds `roll` to this user's Completed Rolls section."""
@@ -387,6 +392,7 @@ class CEUser:
                 status="pending",
                 init_time=hm.get_datetime("now"),
                 due_time=hm.get_datetime(minutes=10),
+                _id=str(uuid.uuid4())
             )
         )
         pass
@@ -424,31 +430,34 @@ class CEUser:
     def has_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         "Returns true if this user has a waiting roll."
         for roll in self.rolls:
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 return True
         return False
 
     def get_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
         "Returns the waiting roll."
         for roll in self.rolls:
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 return roll
         return None
 
     def update_waiting_roll(self, roll: CERoll) -> None:
         "Updates a waiting roll."
         for i, self_roll in enumerate(self.rolls):
-            if roll.roll_name == self_roll.roll_name and self_roll.status == "waiting":
+            if (
+                roll.roll_name == self_roll.roll_name
+                and self_roll.status == "between_stages"
+            ):
                 self._rolls[i] = roll
                 return
 
-        roll.set_status("waiting")
+        roll.set_status("between_stages")
         self._rolls.append(roll)
 
     def unwait_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> None:
         "Sets the waiting roll to current."
         for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 self._rolls[i].status = "current"
                 return
 
@@ -523,6 +532,7 @@ class CEUser:
                         completed_time=None,
                         rerolls=None,
                         status="won",
+                        _id=str(uuid.uuid4())
                     )
                 )
 
@@ -843,6 +853,7 @@ class CEAPIUser(CEUser):
         genre_dict: dict[str, int] = {}
 
         # get the data
+        total = -1
         for tier in self.api_tier_summary:
             genre_name = hm.genre_id_to_name(tier["genreId"])
             if genre_name is None:
