@@ -182,7 +182,9 @@ async def process_loop(
     # fix this is mad inefficient
 
     # step 2a) generate name_old and name_new
-    database_name_old = SupabaseReader.get_games_bulk(SupabaseReader.get_list("name"))
+    database_name_old = await asyncio.to_thread(
+        lambda: SupabaseReader.get_games_bulk(SupabaseReader.get_list("name"))
+    )
     database_name_new: list[CEGame | CEAPIGame] = database_name_old.copy()
 
     # propogate all removals
@@ -218,41 +220,45 @@ async def process_loop(
 
     # Step 3.5: Check rolls
     # TODO: send back all users
-    _updates, rolls_updated, rolls_deleted = update_rolls(
+    _updates, rolls_updated, rolls_deleted = await asyncio.to_thread(
+        update_rolls,
         database_name=database_name_new,
-        database_user=users_new
+        database_user=users_new,
     )
     updates.extend(_updates)
 
 
     # Step 4: write all of our stuff
     if SAVEDATA:
-        logger.info("saving data")
+        def _save_all():
+            logger.info("saving data")
 
-        logger.debug("len(games_new)=%d", len(games_new))
-        SupabaseReader.bulk_dump_games(games_new)
+            logger.debug("len(games_new)=%d", len(games_new))
+            SupabaseReader.bulk_dump_games(games_new)
 
-        logger.debug("len(removed_games)=%d", len(removed_games))
-        for i, _game_id in enumerate(removed_games):
-            SupabaseReader.delete_game(_game_id)
+            logger.debug("len(removed_games)=%d", len(removed_games))
+            for _game_id in removed_games:
+                SupabaseReader.delete_game(_game_id)
 
-        logger.debug("len(removed_objectives)=%d", len(removed_objectives))
-        SupabaseReader.delete_objectives_many(removed_objectives)
+            logger.debug("len(removed_objectives)=%d", len(removed_objectives))
+            SupabaseReader.delete_objectives_many(removed_objectives)
 
-        logger.debug("len(users_new)=%d", len(users_new))
-        SupabaseReader.bulk_dump_users(users_new)
+            logger.debug("len(users_new)=%d", len(users_new))
+            SupabaseReader.bulk_dump_users(users_new)
 
-        logger.debug("len(removed_users)=%d", len(removed_users))
-        for i, _user_id in enumerate(removed_users):
-            SupabaseReader.delete_user(_user_id)
+            logger.debug("len(removed_users)=%d", len(removed_users))
+            for _user_id in removed_users:
+                SupabaseReader.delete_user(_user_id)
 
-        logger.debug("len(rolls_updated)=%d", len(rolls_updated))
-        SupabaseReader.bulk_dump_rolls(rolls_updated)
+            logger.debug("len(rolls_updated)=%d", len(rolls_updated))
+            SupabaseReader.bulk_dump_rolls(rolls_updated)
 
-        logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
-        for r in rolls_deleted:
-            r.set_status('removed')
-        SupabaseReader.bulk_dump_rolls(rolls_deleted)
+            logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
+            for r in rolls_deleted:
+                r.set_status('removed')
+            SupabaseReader.bulk_dump_rolls(rolls_deleted)
+
+        await asyncio.to_thread(_save_all)
 
     # Send updates!
     # TODO upload these to the database in a future update
@@ -304,7 +310,7 @@ async def process_loop(
     )
 
     if SAVEDATA and not full_scrape:
-        SupabaseReader.dump_loop(time_current)
+        await asyncio.to_thread(SupabaseReader.dump_loop, time_current)
 
 
 """ MEDIUM LEVEL FUNCTIONS """
@@ -451,7 +457,7 @@ async def update_games(
 
     # Step 3: Find all removed games.
     logger.debug("Pulling list of Game IDs from Supabase.")
-    game_list_old = set(SupabaseReader.get_list("name"))
+    game_list_old = set(await asyncio.to_thread(SupabaseReader.get_list, "name"))
     logger.debug("Pulling /api/games.")
     game_list_new = set(await CEAPIReader.get_api_games())
     logger.debug("Requests complete.")
