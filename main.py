@@ -851,9 +851,9 @@ async def on_ready():
     await hm.send_message(
         client,
         "privatelog",
-        f":arrow_right_hook: bot started at <t:{int(hm.get_datetime('now').timestamp())}>"
+        f":arrow_right_hook: bot started at <t:{int(hm.get_datetime('now').timestamp())}>",
     )
-    
+
     # asyncio.create_task(start_webhook_server())
 
     # master loop

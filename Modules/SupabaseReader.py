@@ -184,7 +184,11 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
 
     # table: "rolls"
     rolls_json = (
-        supabase.table("rolls").select().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
+        supabase.table("rolls")
+        .select()
+        .or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}")
+        .execute()
+        .data
     )
     roll_ids = [item["id"] for item in rolls_json]
 

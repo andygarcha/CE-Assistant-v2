@@ -203,7 +203,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
                 f"Sorry! <@{_user.id}> is not registered. Please have them run /register!",
                 allowed_mentions=discord.AllowedMentions.none(),
             )
-        else :
+        else:
             return await interaction.followup.send(
                 "Sorry! You are not registered. Please run /register and try again!"
             )

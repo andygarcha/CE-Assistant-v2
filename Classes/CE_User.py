@@ -338,7 +338,11 @@ class CEUser:
     def completed_rolls(self) -> list[CERoll]:
         """Returns an array of :class:`CERoll`'s
         that this user has previously completed."""
-        return [roll for roll in self.rolls if roll.status == "won" or roll.status == "won_legacy"]
+        return [
+            roll
+            for roll in self.rolls
+            if roll.status == "won" or roll.status == "won_legacy"
+        ]
 
     def add_completed_roll(self, roll: CERoll) -> None:
         """Adds `roll` to this user's Completed Rolls section."""
@@ -438,7 +442,10 @@ class CEUser:
     def update_waiting_roll(self, roll: CERoll) -> None:
         "Updates a waiting roll."
         for i, self_roll in enumerate(self.rolls):
-            if roll.roll_name == self_roll.roll_name and self_roll.status == "between_stages":
+            if (
+                roll.roll_name == self_roll.roll_name
+                and self_roll.status == "between_stages"
+            ):
                 self._rolls[i] = roll
                 return
 

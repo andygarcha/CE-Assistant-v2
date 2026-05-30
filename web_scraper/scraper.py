@@ -478,7 +478,9 @@ async def update_users(
     games_new: list[CEGame],
     full_scrape=False,
     notIsFinished: set = set(),
-) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]]:
+) -> tuple[
+    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]
+]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
 
@@ -608,9 +610,7 @@ async def update_users(
                     else:
                         user_new.replace_owned_game(_game_old)
 
-            _updates = update_one_user(
-                user_old, user_new, games_old, games_new
-            )
+            _updates = update_one_user(user_old, user_new, games_old, games_new)
             if _updates is not None:
                 updates.extend(_updates)
 
@@ -629,9 +629,8 @@ async def update_users(
 
 
 def update_rolls(
-        database_name: Sequence[CEGame],
-        database_user: Sequence[CEUser]
-        ) -> tuple[list[UpdateMessageForScraperProcess], list[CERoll], list[CERoll]]:
+    database_name: Sequence[CEGame], database_user: Sequence[CEUser]
+) -> tuple[list[UpdateMessageForScraperProcess], list[CERoll], list[CERoll]]:
     """
     Update all rolls in the database.
     Pulls the rolls within this function.
@@ -646,7 +645,7 @@ def update_rolls(
         The list of all users in the site.
         This is the up-to-date version generated
         by `.update_users()`.
-    
+
     Returns
     ---
     updates: `list[UpdateMessageForScraperProcess]`
@@ -660,7 +659,7 @@ def update_rolls(
         As of right now, the only case this would happen
         is in the event of a 'pending' roll.
     """
-    
+
     # TODO future update
     # only pull the second user **after** you've confirmed it would potentially pass the current player's game
 
@@ -697,9 +696,7 @@ def update_rolls(
         # and now for the partner
         user2 = None
         if _roll.partner_ce_id is not None:
-            logger.debug(
-                "Looking for partner with User ID: %s", _roll.partner_ce_id
-            )
+            logger.debug("Looking for partner with User ID: %s", _roll.partner_ce_id)
             user2 = hm.get_item_from_list(_roll.partner_ce_id, database_user)
             if user2 is None:
                 logger.debug("Couldn't find locally. Pulling from Supabase.")
@@ -727,14 +724,13 @@ def update_rolls(
         logger.debug("Beginning update")
         _update, _roll_updated, _delete = update_one_roll(_roll, user1, user2, games)
 
-
         if _update is not None:
             updates.append(_update)
         if _roll_updated is not None:
             rolls_updated.append(_roll_updated)
         if _delete:
             rolls_updated.append(_roll)
-        
+
     return updates, rolls_updated, rolls_deleted
 
 
@@ -748,7 +744,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
         The current database_name. This is
         needed so that we can place each
         game in the correct tier and category.
-    
+
     Returns
     ---
     database_tier: `dict`
@@ -1114,7 +1110,7 @@ def update_one_roll(
         update.location = "casino"
         update.is_embed = False
         update.text = roll.get_fail_message(games, user1, user2)
-        roll.set_status('failed')
+        roll.set_status("failed")
 
         return update, roll, False
 
@@ -1206,7 +1202,7 @@ def create_update_updated_game(
         The previous data for this game.
     game_new: `CEAPIGame`
         The new data for this game.
-        Comes with the added bonus of having 
+        Comes with the added bonus of having
         additional site information.
 
     Returns

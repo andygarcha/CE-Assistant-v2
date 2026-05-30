@@ -227,7 +227,7 @@ async def solo_roll(
             is_current=True,
             lucky=lucky,
         )
-        # get the 
+        # get the
         game_strings: list[str] = []
         game_strings_backup: list[str] = []
         for g in result.games:
