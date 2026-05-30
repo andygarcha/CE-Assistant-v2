@@ -206,7 +206,7 @@ async def process_loop(
     logger.debug("len(database_name_new)=%d", len(database_name_new))
 
     logger.info("UPDATE USERS: begin")
-    _updates, users_new, removed_users, rolls_updated = await update_users(
+    _updates, users_new, removed_users = await update_users(
         database_name_old, database_name_new, full_scrape, notIsFinished
     )
     updates.extend(_updates)
@@ -493,7 +493,7 @@ async def update_users(
     full_scrape=False,
     notIsFinished: set = set(),
 ) -> tuple[
-    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]
+    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]
 ]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
@@ -639,7 +639,7 @@ async def update_users(
 
     # TODO future update
     # only return users who *actually* had something changed.
-    return updates, users, user_list_removed, []
+    return updates, users, user_list_removed
 
 
 def update_rolls(
