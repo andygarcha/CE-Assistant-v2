@@ -848,13 +848,12 @@ async def on_ready():
         logger.info("Killed logging for %s.", name)
 
     # set up channels
-    private_log_channel = client.get_channel(hm.PRIVATE_LOG_ID)
-
-    # send online update
-    await private_log_channel.send(
+    await hm.send_message(
+        client,
+        "privatelog",
         f":arrow_right_hook: bot started at <t:{int(hm.get_datetime('now').timestamp())}>"
     )
-
+    
     # asyncio.create_task(start_webhook_server())
 
     # master loop

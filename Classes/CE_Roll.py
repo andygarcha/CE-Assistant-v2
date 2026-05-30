@@ -829,7 +829,7 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name})."
+                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
             )
         else:

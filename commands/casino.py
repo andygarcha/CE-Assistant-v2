@@ -1,15 +1,15 @@
 """This module is for all casino-related commands."""
 
 from dataclasses import dataclass
-import datetime
 import random
 from typing import get_args
+import uuid
 import discord
 from discord import app_commands
 from Classes.CE_User import CEUser
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
-from Modules import Discord_Helper, SupabaseReader, hm
+from Modules import SupabaseReader, hm
 import logging
 
 """ === GETTING CLIENT TO WORK === """
@@ -40,7 +40,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         price_restriction: bool = True,
         hours_restriction: bool = True,
     ):
-        return await interaction.response.send_message("Under construction.")
+        # return await interaction.response.send_message("Under construction.")
         await solo_roll(interaction, event_name, price_restriction, hours_restriction)
         pass
 
@@ -74,7 +74,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     pass
 
 
-
 #   _____    ____    _         ____      _____     ____    _        _
 #  / ____|  / __ \  | |       / __ \    |  __ \   / __ \  | |      | |
 # | (___   | |  | | | |      | |  | |   | |__) | | |  | | | |      | |
@@ -98,7 +97,7 @@ async def solo_roll(
 
     # pull mongo database
     database_name = SupabaseReader.get_database_name()
-    database_tier = SupabaseReader.get_database_tier()
+    database_tier = SupabaseReader.get_database_tier(database_name)
 
     # grab the user
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
@@ -139,7 +138,8 @@ async def solo_roll(
         )
 
     # jarvis's random event!
-    if random.randint(0, 99) == 0:
+    # -- make sure to not reroll this on every time they move forward
+    if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
         lucky = True
         await hm.send_message(
             client,
@@ -153,17 +153,29 @@ async def solo_roll(
 
     match event_name:
         case "One Hell of a Day":
-            result = roll_onehellofaday(database_name, database_tier, user, price_restriction, hours_restriction)
+            result = roll_onehellofaday(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
         case "One Hell of a Week":
-            result = roll_onehellofaweek(database_name, database_tier, user, price_restriction, hours_restriction)
+            result = roll_onehellofaweek(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
         case "One Hell of a Month":
-            result = roll_onehellofamonth(database_name, database_tier, user, price_restriction, hours_restriction)
+            result = roll_onehellofamonth(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
         case "Two Week T2 Streak":
-            result = roll_twoweekt2streak(database_name, database_tier, user, price_restriction, hours_restriction)
-        case "Two \"Two Week T2 Streak\" Streak":
-            result = roll_twotwoweekt2streakstreak(database_name, database_tier, user, price_restriction, hours_restriction)
+            result = roll_twoweekt2streak(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
+        case 'Two "Two Week T2 Streak" Streak':
+            result = roll_twotwoweekt2streakstreak(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
         case "Never Lucky":
-            result = roll_neverlucky(database_name, database_tier, user, price_restriction, hours_restriction)
+            result = roll_neverlucky(
+                database_name, database_tier, user, price_restriction, hours_restriction
+            )
         case "Triple Threat":
             result = RollResult(None, "Triple Threat is not currently implemented.")
             # result = roll_triplethreat(database_name, database_tier, user, price_restriction, hours_restriction)
@@ -174,18 +186,84 @@ async def solo_roll(
             result = RollResult(None, "Fourward Thinking is not currently implemented.")
         case _:
             result = RollResult(None, f"{event_name} is not a valid event name.")
-    
+
     if result.error:
         return await interaction.followup.send(result.error)
-    
-    roll = CERoll(
-        roll_name=event_name,
-        user_ce_id=user.ce_id,
-        games=result.games,
-        status="current",
-        partner_ce_id=None,
-        is_current=True
-    )
+    if result.games is None:
+        return await interaction.followup.send(
+            "No games were returned, but no error was reported. Please contact andy!"
+        )
+
+    roll: CERoll | None = None
+    message: str
+
+    # Case 1: We need some kind of user input
+    # TODO
+
+    # Case 2: We're initiating a new stage of an existing roll
+    roll = user.get_waiting_roll(event_name)
+    if roll is not None:
+        roll.set_status("current")
+        roll.reset_due_time()
+        roll.add_game(result.games[0])
+
+        game = hm.get_item_from_list(result.games[0], database_name)
+        if game is None:
+            return await interaction.followup.send(
+                f"Error: Could not find {result.games[0]} in database_name."
+            )
+        message = (
+            f"The next stage of your {event_name} roll is {game.name_with_link}. "
+            f"You have until {roll.due_discord_timestamp} to complete this. Good luck!"
+        )
+
+    # Case 3: We're creating a brand new roll
+    else:
+        # make the roll
+        roll = CERoll(
+            roll_name=event_name,
+            user_ce_id=user.ce_id,
+            games=result.games,
+            status="current",
+            _id=str(uuid.uuid4()),
+            partner_ce_id=None,
+            is_current=True,
+            lucky=lucky,
+        )
+        # get the 
+        game_strings: list[str] = []
+        game_strings_backup: list[str] = []
+        for g in result.games:
+            _game_object = hm.get_item_from_list(g, database_name)
+            if _game_object is None:
+                return await interaction.followup.send(
+                    f"Error: Could not find {g} in database_name."
+                )
+
+            game_strings.append(_game_object.name_with_link)
+            game_strings_backup.append(_game_object.game_name)
+
+        message = (
+            f"In your {event_name} roll, "
+            f"you rolled the following games: {hm.get_grammar_str(game_strings)}. "
+            f"You have until {roll.due_discord_timestamp} to complete this event!"
+        )
+
+        if len(message) > 2000:
+            message = (
+                f"In your {event_name} roll, "
+                f"you rolled the following games: {hm.get_grammar_str(game_strings_backup)}. "
+                f"You have until {roll.due_discord_timestamp} to complete this event!"
+            )
+
+    SupabaseReader.dump_roll(roll)
+
+    if len(message) > 2000:
+        message = (
+            f"Could not display all {len(result.games)} games in one message. "
+            f"You have until {roll.due_discord_timestamp} to complete this event!"
+        )
+    return await interaction.followup.send(message)
 
 
 @dataclass
@@ -431,9 +509,9 @@ def roll_twotwoweekt2streakstreak(
             None,
             "You must first complete 'One Hell of a Week' to attempt One Hell of a Month!",
         )
-    
+
     # make sure user has one in limbo already
-    _roll = user.get_waiting_roll("Two \"Two Week T2 Streak\" Streak")
+    _roll = user.get_waiting_roll('Two "Two Week T2 Streak" Streak')
     already_rolled_games: list[str] = []
     # if so, pull the game so we don't roll the same one
     if _roll:
@@ -499,7 +577,7 @@ def roll_neverlucky(
         has_points_restriction=False,
         price_restriction=price_restriction,
         hours_restriction=hours_restriction,
-        allow_multi_category=True
+        allow_multi_category=True,
     )
 
     if _game is None:
@@ -524,10 +602,12 @@ def roll_triplethreat(
     - 3 games
     - Requires 'Never Lucky' completion.
     """
-    
+
     if not user.has_completed_roll("Never Lucky"):
-        return RollResult(None, "You must first complete 'Never Lucky' to attempt Triple Threat!")
-    
+        return RollResult(
+            None, "You must first complete 'Never Lucky' to attempt Triple Threat!"
+        )
+
     rolled_games: list[str] = []
     for _ in range(3):
         _game = hm.get_rollable_game(
@@ -542,12 +622,12 @@ def roll_triplethreat(
             has_points_restriction=False,
             price_restriction=price_restriction,
             hours_restriction=hours_restriction,
-            allow_multi_category=True
+            allow_multi_category=True,
         )
         if _game is None:
             return RollResult(None, "Not enough rollable games.")
         rolled_games.append(_game)
-    
+
     return RollResult(rolled_games, None)
 
 
@@ -580,9 +660,9 @@ def roll_letfatedecide(
         has_points_restriction=False,
         price_restriction=price_restriction,
         hours_restriction=hours_restriction,
-        allow_multi_category=True
+        allow_multi_category=True,
     )
-    
+
     if _game is None:
         return RollResult(None, "Not enough rollable games.")
     return RollResult([_game], None)
@@ -607,20 +687,6 @@ def roll_fourwardthinking(
     - Multi-Category: Disallowed
     """
     raise NotImplementedError
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 """ === CLASSES === """
@@ -1184,13 +1250,6 @@ async def check_rolls(interaction: discord.Interaction):
     # defer the message
     await interaction.response.defer()
 
-    # find the user
-    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
-    if user is None:
-        return await interaction.followup.send(
-            content="You're not registered! Please run /register."
-        )
-
     return await interaction.followup.send(
-        f"[click me :)](https://ce-assistant-frontend.vercel.app/users/{user.ce_id})"
+        f"[click me :)]https://ce-assistant-frontend.vercel.app/rolls"
     )

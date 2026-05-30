@@ -54,6 +54,8 @@ class UpdateMessageForScraperProcess:
         else:
             string += f"{repr(self.text)}\n"
 
+        print(string)
+
         if full and info:
             logger.info(string)
         elif full:
@@ -476,12 +478,26 @@ async def update_users(
     games_new: list[CEGame],
     full_scrape=False,
     notIsFinished: set = set(),
-) -> tuple[
-    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]
-]:
+) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str], list[CERoll]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
 
+    Parameters
+    ---
+    games_old: `list[CEGame]`
+        The previous version of database_name.
+    games_new: `list[CEGame]`
+        The current version of database_name.
+    full_scrape: `bool`
+        Whether or not to do a full scrape.
+        A full scrape entails pulling *everybody's* data,
+        and then running updates on it. This is in
+        the event the bot goes down or misses information.
+    notIsFinished: `set[str]`
+        A list of ce_ids relating to games that have the
+        'isFinished' flag turned to False. We need these
+        so that we don't run updates on userGames corresponding
+        to these 'unfinished' games.
     """
 
     # Step 0: Determine the last time the loop ran.
@@ -593,7 +609,7 @@ async def update_users(
                         user_new.replace_owned_game(_game_old)
 
             _updates = update_one_user(
-                user_old, user_new, games_old, games_new, update_rolls=False
+                user_old, user_new, games_old, games_new
             )
             if _updates is not None:
                 updates.extend(_updates)
@@ -607,81 +623,140 @@ async def update_users(
     # TODO future update
     user_list_removed: list[str] = []
 
-    # Step 5: Update all the rolls
-    # TODO future update
-    # only pull the second user **after** you've confirmed it would potentially pass the current player's game
-    SKIPROLLS = True
-    rolls_updated = []
-    if SKIPROLLS:
-        logger.warning("Skipping rolls.")
-    else:
-        logger.info("Updating rolls.")
-        logger.info("Pulling rolls from Supabase...")
-        rolls = SupabaseReader.get_all_rolls()
-        logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
-        rolls_updated: list[CERoll] = []
-
-        for i, _roll in enumerate(rolls):
-            if i % 15 == 0:
-                logger.debug("Updating roll %d of %d.", i, len(rolls))
-            if _roll.status != "current" and _roll.status != "pending":
-                continue
-
-            # first, see if we have any updated data from the user.
-            # if that misses, just get them from Supabase
-            user1 = hm.get_item_from_list(_roll.user_ce_id, users)
-            if user1 is None:
-                user1 = SupabaseReader.get_user(_roll.user_ce_id)
-            if user1 is None:
-                logger.error(
-                    "Could not find user with ID %s in update_users", _roll.user_ce_id
-                )
-                continue
-
-            # and now for the partner
-            user2 = None
-            if _roll.partner_ce_id is not None:
-                logger.debug(
-                    "Looking for partner with User ID: %s", _roll.partner_ce_id
-                )
-                user2 = hm.get_item_from_list(_roll.partner_ce_id, users)
-                if user2 is None:
-                    logger.debug("Couldn't find locally. Pulling from Supabase.")
-                    user2 = SupabaseReader.get_user(_roll.partner_ce_id)
-                if user2 is None:
-                    logger.error(
-                        "Could not find partner (User ID %s) in Supabase.",
-                        _roll.partner_ce_id,
-                    )
-                    continue
-            logger.debug("Partner found.")
-
-            # and for the games
-            logger.debug("Pulling games from Supabase.")
-            games: list[CEGame] = []
-            for _game in _roll.games:
-                game_obj = hm.get_item_from_list(_game, games_new)
-                if game_obj is None:
-                    game_obj = SupabaseReader.get_game(_game)
-                if game_obj is None:
-                    logger.error(f"Could not find game with ID {_game} in Supabase.")
-                    continue
-                games.append(game_obj)
-
-            logger.debug("Beginning update")
-            _update, _roll_updated = update_one_roll(_roll, user1, user2, games)
-
-            if _update is not None:
-                updates.append(_update)
-            if _roll_updated is not None:
-                rolls_updated.append(_roll_updated)
-
     # TODO future update
     # only return users who *actually* had something changed.
     return updates, users, user_list_removed, []
 
 
+def update_rolls(
+        database_name: Sequence[CEGame],
+        database_user: Sequence[CEUser]
+        ) -> tuple[list[UpdateMessageForScraperProcess], list[CERoll], list[CERoll]]:
+    """
+    Update all rolls in the database.
+    Pulls the rolls within this function.
+
+    Parameters
+    ---
+    database_name: `list[CEGame]`
+        The list of all games in the site.
+        This is the up-to-date version generated
+        by `.update_games()`.
+    database_user: `list[CEUser]`
+        The list of all users in the site.
+        This is the up-to-date version generated
+        by `.update_users()`.
+    
+    Returns
+    ---
+    updates: `list[UpdateMessageForScraperProcess]`
+        A list of updates related to these rolls.
+    rolls_updated: `list[CERoll]
+        A list of rolls to replace in the database.
+        Maybe a game was added, maybe a status was changed.
+        Who knows!
+    rolls_to_delete: `list[CERoll]`
+        A list of rolls that need to be deleted.
+        As of right now, the only case this would happen
+        is in the event of a 'pending' roll.
+    """
+    
+    # TODO future update
+    # only pull the second user **after** you've confirmed it would potentially pass the current player's game
+
+    rolls_updated: list[CERoll] = []
+    updates: list[UpdateMessageForScraperProcess] = []
+    rolls_deleted: list[CERoll] = []
+
+    logger.info("Updating rolls.")
+    logger.info("Pulling rolls from Supabase...")
+    rolls = SupabaseReader.get_all_rolls()
+    logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
+    rolls_updated: list[CERoll] = []
+
+    for i, _roll in enumerate(rolls):
+        # log
+        if i % 15 == 0:
+            logger.debug("Updating roll %d of %d.", i, len(rolls))
+
+        # skip any rolls that we don't care about
+        if _roll.status != "current" and _roll.status != "pending":
+            continue
+
+        # first, see if we have any updated data from the user.
+        # if that misses, just get them from Supabase
+        user1 = hm.get_item_from_list(_roll.user_ce_id, database_user)
+        if user1 is None:
+            user1 = SupabaseReader.get_user(_roll.user_ce_id)
+        if user1 is None:
+            logger.error(
+                "Could not find user with ID %s in update_users", _roll.user_ce_id
+            )
+            continue
+
+        # and now for the partner
+        user2 = None
+        if _roll.partner_ce_id is not None:
+            logger.debug(
+                "Looking for partner with User ID: %s", _roll.partner_ce_id
+            )
+            user2 = hm.get_item_from_list(_roll.partner_ce_id, database_user)
+            if user2 is None:
+                logger.debug("Couldn't find locally. Pulling from Supabase.")
+                user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+            if user2 is None:
+                logger.error(
+                    "Could not find partner (User ID %s) in Supabase.",
+                    _roll.partner_ce_id,
+                )
+                continue
+            logger.debug("Partner found.")
+
+        # and for the games
+        logger.debug("Pulling games from Supabase.")
+        games: list[CEGame] = []
+        for _game in _roll.games:
+            game_obj = hm.get_item_from_list(_game, database_name)
+            if game_obj is None:
+                game_obj = SupabaseReader.get_game(_game)
+            if game_obj is None:
+                logger.error(f"Could not find game with ID {_game} in Supabase.")
+                continue
+            games.append(game_obj)
+
+        logger.debug("Beginning update")
+        _update, _roll_updated, _delete = update_one_roll(_roll, user1, user2, games)
+
+
+        if _update is not None:
+            updates.append(_update)
+        if _roll_updated is not None:
+            rolls_updated.append(_roll_updated)
+        if _delete:
+            rolls_updated.append(_roll)
+        
+    return updates, rolls_updated, rolls_deleted
+
+
 def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
+    """
+    Generates database_tier using the Steam and SteamHunters APIs.
+
+    Parameters
+    ---
+    database_name: `list[CEGame]`
+        The current database_name. This is
+        needed so that we can place each
+        game in the correct tier and category.
+    
+    Returns
+    ---
+    database_tier: `dict`
+        This will be formatted as such:
+        database_tier[str(tiernum)][category] = [entry, ...]
+        Each entry will have three keys:
+        "ce_id", "sh_hours", and "price".
+    """
     # separate out games by tier and category
     database_tier: dict[str, dict[str, list[dict]]] = {}
     for tier in range(1, 8):
@@ -826,9 +901,33 @@ def update_one_user(
     site_data: CEAPIUser,
     database_name_old: list[CEGame],
     database_name_new: list[CEGame],
-    update_rolls: bool,
 ) -> list[UpdateMessageForScraperProcess]:
-    """Provides updates for one user."""
+    """
+    Provides updates for one user.
+
+    Parameters
+    ---
+    user: `CEUser`
+        The original data for the user (pulled from Supabase)
+    site_data: `CEAPIUser`
+        The user's data that was *just* pulled down from the CEDB API
+    database_name_old: `list[CEGame]`
+        The previous iteration of the games database. This is here to
+        determine if a game is "newly completed", or if the requirements
+        just changed.
+    database_name_new: `list[CEGame]`.
+        The new iteration of the games database.
+
+    Returns
+    ---
+    updates: `list[UpdateMessageForScraperProcess]`.
+        A list of updates regarding this user.
+        Examples of updates:
+        - rank up
+        - high tier completion
+        - completion count is a new multiple of 25
+        - unlocked a new role (high points in a category, etc.)
+    """
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -900,18 +999,41 @@ def update_one_user(
 
 def update_one_roll(
     roll: CERoll, user1: CEUser, user2: CEUser | None, games: list[CEGame]
-) -> tuple[UpdateMessageForScraperProcess | None, CERoll | None]:
-    # Step 1: Filter out the rolls that don't matter.
-    """Weird statuses
-    waiting = this is a multi stage roll, waiting on user to prompt the next part
-    pending = this is a roll that requires some input so we set this to the same timeout as the first message
+) -> tuple[UpdateMessageForScraperProcess | None, CERoll | None, bool]:
+    """
+    Provides updates for one roll.
+
+    Parameters
+    ---
+    roll: `CERoll`
+        The roll we're generating the update for
+    user1: `CEUser`
+        The data corresponding to roll.user1_ce_id
+    user2: `CEUser | None`
+        The data corresponding to roll.user2_ce_id,
+        if it exists. `None` otherwise.
+    games: `list[CEGame]`
+        The data corresponding to each game in the
+        roll.games array.
+
+    Returns
+    ---
+    update: `UpdateMessageForScraperProcess | None`
+        An update regarding this roll, if one was
+        generated. `None` otherwise.
+    roll_updated: `CERoll | None`
+        If an update to the roll was made, this will
+        be the updated data. `None` otherwise.
+    delete_pending: `bool`
+        If a roll is 'pending', and that 'pending'
+        roll needs to be deleted, this will be
+        set to True.
     """
 
     # ERROR CHECKING: sending in a bad roll
-    raise NotImplementedError
-    status = roll.status2()
+    status = roll.status
     if status not in ["current", "pending"]:
-        return None, None
+        return None, None, False
 
     # ERROR CHECKING: handle the problem where a roll's game gets removed from the site
     update = UpdateMessageForScraperProcess()
@@ -919,29 +1041,27 @@ def update_one_roll(
         update.is_embed = False
         _user2_text = ""
         if user2 is not None:
-            _user2_text = f"and {user2.mention()}"
+            _user2_text = f" and {user2.mention()}"
 
         update.text = (
-            f"{user1.mention()} {_user2_text}, you rolled a game that has now been removed"
+            f"{user1.mention()}{_user2_text}, you rolled a game that has now been removed"
             + " from the site. This will not impact your casino score. Apologies for the inconvenience."
-            + " Please feel free to reach out to Andy for more information or reroll (no cooldown has"
-            + " been applied)."
+            + " Please feel free to reach out to Andy for more information or reroll. No cooldown has"
+            + " been applied."
         )
         update.location = "casino"
 
         roll.set_status("removed")
-        return update, roll
+        return update, roll, False
 
     # pendings
-    if roll.status2() == "pending":
+    if roll.status == "pending":
         due_dt = (
             roll._normalize_datetime(roll.due_time)
             if hasattr(roll, "_normalize_datetime")
             else roll.due_time
         )
         if due_dt is not None and due_dt <= hm.get_datetime("now"):
-            if SAVEDATA:
-                SupabaseReader.delete_roll(roll._id)
             update.is_embed = False
             update.location = "casino"
             _user2_text = ""
@@ -951,8 +1071,8 @@ def update_one_roll(
                 f"{user1.mention()} {_user2_text}, you may now re-initiate {roll.roll_name}. "
                 + "Any button presses to the previous message will do nothing."
             )
-            return update, None
-        return []
+            return update, None, True
+        return None, None, False
 
     update = UpdateMessageForScraperProcess()
     won = roll.is_won(games, user1, user2)
@@ -966,9 +1086,9 @@ def update_one_roll(
             + f"To roll your next stage, type /solo-roll {roll.roll_name} in <#{hm.CASINO_ID}> at any time."
         )
 
-        roll.set_status("waiting")
+        roll.set_status("between_stages")
         roll.due_time = None
-        return update, roll
+        return update, roll, False
 
     # Case 2: The roll is won.
     #  -- case 2a) the roll is single-player
@@ -984,7 +1104,7 @@ def update_one_roll(
 
         # Case 2A (singleplayer) and 2B (co-op)
         if not roll.is_pvp:
-            return update, roll
+            return update, roll, False
 
         # Case 2C (pvp)
         # -- not dealing with this.
@@ -994,18 +1114,26 @@ def update_one_roll(
         update.location = "casino"
         update.is_embed = False
         update.text = roll.get_fail_message(games, user1, user2)
+        roll.set_status('failed')
 
-        return update, roll
+        return update, roll, False
 
     # If we get here, then none of the following happened:
     #  -- roll was pending
     #  -- roll was current and won
     #  -- roll was current and expired
-    return None, None
+    return None, None, False
 
 
 def check_curator_steam():
-    """Checks steam for the last 10 curated games."""
+    """
+    Checks steam for the last 10 curated games.
+    Returns
+    ---
+    games: `list[str]`
+        A list of the Steam IDs for the most recent 10 games
+        put onto the Steam curator.
+    """
 
     # TODO: fill in this function
     return
@@ -1071,6 +1199,15 @@ def create_update_updated_game(
     game_old: CEGame, game_new: CEAPIGame
 ) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
     """Creates the `UpdateMessageForScraperProcess` for an updated game.
+
+    Parameters
+    ---
+    game_old: `CEGame`
+        The previous data for this game.
+    game_new: `CEAPIGame`
+        The new data for this game.
+        Comes with the added bonus of having 
+        additional site information.
 
     Returns
     -------

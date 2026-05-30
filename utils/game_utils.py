@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 from typing import Literal, get_args, TYPE_CHECKING
 from utils.general_utils import get_item_from_list
@@ -13,20 +14,26 @@ if TYPE_CHECKING:
 
 def get_banned_games() -> list[str] | None:
     "Returns the list of CE IDs of banned rollable games."
-    import Modules.SpreadsheetHandler as SpreadsheetHandler
+    # import Modules.SpreadsheetHandler as SpreadsheetHandler
 
-    BANNED_GAMES = SpreadsheetHandler.get_sheet_data(
-        SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, SpreadsheetHandler.CE_SHEET_ID
-    )
-    if BANNED_GAMES is None:
-        return None
-    # Returns as [CE ID, Game Name, Reason]
+    # BANNED_GAMES = SpreadsheetHandler.get_sheet_data(
+    #     SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, SpreadsheetHandler.CE_SHEET_ID
+    # )
+    # if BANNED_GAMES is None:
+    #     return None
+    # # Returns as [CE ID, Game Name, Reason]
 
-    banned_games_ids = []
+    # banned_games_ids = []
 
-    for item in BANNED_GAMES:
-        banned_games_ids.append(item[0])
-    return banned_games_ids
+    # for item in BANNED_GAMES:
+    #     banned_games_ids.append(item[0])
+
+    # return banned_game_ids
+
+    with open("./Assets/games_banned.json", 'r') as f:
+        lines = json.load(f)
+    return lines
+
 
 
 def get_rollable_game(

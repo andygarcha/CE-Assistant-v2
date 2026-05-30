@@ -152,6 +152,8 @@ def get_game(ce_id: str) -> CEGame | None:
 # GET USER
 def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     # TODO: simplify this stuff with joins
+
+    # table: "users"
     if not use_discord_id:
         user_json = supabase.table("users").select().eq("ce_id", ce_id).execute().data
     else:
@@ -164,39 +166,29 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     if use_discord_id:
         ce_id = user_json["ce_id"]
 
+    # table: "userGames"
     userGames_json = (
         supabase.table("userGames").select().eq("user_ce_id", ce_id).execute().data
     )
+
+    # table: "userObjectives"
     userObjectives_json = (
         supabase.table("userObjectives").select().eq("user_ce_id", ce_id).execute().data
     )
     userobjectives_list = [o["objective_ce_id"] for o in userObjectives_json]
 
-    # Use chunked fetch to avoid very large `in_` queries which can cause Bad Request
+    # table: "objectives"
     objectives_json = _fetch_in_chunks(
         "objectives", "ce_id", userobjectives_list, chunk_size=100
     )
 
+    # table: "rolls"
     rolls_json = (
-        supabase.table("rolls")
-        .select()
-        .or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}")
-        .execute()
-        .data
+        supabase.table("rolls").select().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
     )
     roll_ids = [item["id"] for item in rolls_json]
-    # ensure objectives_json is populated (already fetched above using chunked helper)
-    if not objectives_json:
-        objectives_json = []
 
-    rolls_json = (
-        supabase.table("rolls")
-        .select()
-        .or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}")
-        .execute()
-        .data
-    )
-    roll_ids = [item["id"] for item in rolls_json]
+    # table: "rollGames"
     if roll_ids:
         userRollGames_json = (
             supabase.table("rollGames")
@@ -209,6 +201,7 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     else:
         userRollGames_json = []
 
+    # transform them
     return __supabase_to_user(
         user_json,
         userGames_json,

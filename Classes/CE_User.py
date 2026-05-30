@@ -338,7 +338,7 @@ class CEUser:
     def completed_rolls(self) -> list[CERoll]:
         """Returns an array of :class:`CERoll`'s
         that this user has previously completed."""
-        return [roll for roll in self.rolls if roll.status == "won"]
+        return [roll for roll in self.rolls if roll.status == "won" or roll.status == "won_legacy"]
 
     def add_completed_roll(self, roll: CERoll) -> None:
         """Adds `roll` to this user's Completed Rolls section."""
@@ -424,21 +424,21 @@ class CEUser:
     def has_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         "Returns true if this user has a waiting roll."
         for roll in self.rolls:
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 return True
         return False
 
     def get_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
         "Returns the waiting roll."
         for roll in self.rolls:
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 return roll
         return None
 
     def update_waiting_roll(self, roll: CERoll) -> None:
         "Updates a waiting roll."
         for i, self_roll in enumerate(self.rolls):
-            if roll.roll_name == self_roll.roll_name and self_roll.status == "waiting":
+            if roll.roll_name == self_roll.roll_name and self_roll.status == "between_stages":
                 self._rolls[i] = roll
                 return
 
@@ -448,7 +448,7 @@ class CEUser:
     def unwait_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> None:
         "Sets the waiting roll to current."
         for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "waiting":
+            if roll.roll_name == roll_name and roll.status == "between_stages":
                 self._rolls[i].status = "current"
                 return
 
