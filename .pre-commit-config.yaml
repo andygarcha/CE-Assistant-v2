@@ -1,0 +1,9 @@
+repos:
+- repo: https://github.com/andygarcha/CE-Assistant-v2
+  # Ruff version.
+  rev: v0.15.15
+  hooks:
+    # Run the linter.
+    - id: ruff-check
+    # Run the formatter.
+    - id: ruff-format
