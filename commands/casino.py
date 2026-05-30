@@ -340,7 +340,7 @@ def roll_onehellofaweek(
             tier_number=1,
             user=user,
             category=categories,
-            already_rolled_games=[],
+            already_rolled_games=valid_games,
             has_points_restriction=False,
             price_restriction=price_restriction,
             hours_restriction=hours_restriction,
@@ -504,7 +504,7 @@ def roll_twotwoweekt2streakstreak(
     if not user.has_completed_roll("Two Week T2 Streak"):
         return RollResult(
             None,
-            "You must first complete 'One Hell of a Week' to attempt One Hell of a Month!",
+            "You must first complete 'Two Week T2 Streak' to attempt Two \"Two Week T2 Streak\" Streak!",
         )
 
     # make sure user has one in limbo already

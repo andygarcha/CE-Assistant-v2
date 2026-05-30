@@ -37,7 +37,7 @@ def _user_with_completed(roll_name: str) -> CEUser:
 
 def _user_with_waiting(roll_name: str, games: list[str]) -> CEUser:
     u = make_user()
-    roll = make_roll(roll_name=roll_name, status="waiting", games=games)
+    roll = make_roll(roll_name=roll_name, status="between_stages", games=games)
     u._rolls.append(roll)
     return u
 

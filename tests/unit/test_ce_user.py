@@ -428,6 +428,6 @@ class TestCasinoScore:
     def test_only_won_and_failed_contribute_not_others(self):
         won = make_roll(roll_name="Let Fate Decide", status="won")  # +8
         pending = make_roll(roll_name="Let Fate Decide", status="pending")
-        waiting = make_roll(roll_name="Let Fate Decide", status="waiting")
+        waiting = make_roll(roll_name="Let Fate Decide", status="between_stages")
         removed = make_roll(roll_name="Let Fate Decide", status="removed")
         assert make_user().casino_score([won, pending, waiting, removed]) == 8

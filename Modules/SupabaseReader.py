@@ -467,42 +467,6 @@ def get_roll(roll_id: str) -> CERoll | None:
     return __supabase_to_roll(roll_json, rollGames_json)
 
 
-def get_user_rolls(user_id: str) -> list[CERoll]:
-    """
-    Gets all rolls that this user is a part of (either user1 or user2).
-    """
-
-    result_rolls = (
-        supabase.table("rolls")
-        .select()
-        .or_(f"user1_ce_id.eq.{user_id},user2_ce_id.eq.{user_id}")
-        .execute()
-        .data
-    )
-    if len(result_rolls) == 0:
-        return []
-
-    result_games = (
-        supabase.table("rollGames")
-        .select()
-        .in_("roll_id", [r["id"] for r in result_rolls])
-        .execute()
-        .data
-    )
-    if len(result_rolls) == 0:
-        return []
-
-    _rolls = []
-    for roll in result_rolls:
-        _rolls.append(
-            __supabase_to_roll(
-                roll, [g for g in result_games if g["roll_id"] == roll["id"]]
-            )
-        )
-
-    return _rolls
-
-
 def get_all_rolls() -> list[CERoll]:
     rolls_json = supabase.table("rolls").select().execute().data
     rollGames_json = supabase.table("rollGames").select().execute().data
@@ -984,7 +948,7 @@ def dump_roll(roll: CERoll):
         "time_due": _iso_or_none(roll.due_time),
         "time_completed": _iso_or_none(roll.completed_time),
         "is_lucky": False,  # TODO: determine from roll data
-        "chosen_tier": None,  # TODO: populate if available
+        "chosen_tier": roll._tier_num,  # TODO: populate if available
         "status": roll.status,
         "rerolls_remaining": roll.rerolls,
         "rerolls_used": 0,  # TODO: calculate or track
@@ -1034,12 +998,7 @@ def dump_database_tier(database_tier: dict):
             all_entries.extend(database_tier[str(tier)][category])
 
     # remove duplicates (multi-category)
-    ids: set = set()
-    for item in all_entries.copy():
-        if item["ce_id"] not in ids:
-            ids.add(item["ce_id"])
-        else:
-            all_entries.remove(item)
+    all_entries = list({e['ce_id']: e for e in all_entries}.values())
 
     # dump 100 at a time
     BATCH_SIZE = 100
@@ -1114,7 +1073,7 @@ def delete_objectives_many(objs: list[str]):
 # === MAINTENANCE ===
 def clean_db():
     """Cleans out the database. Any user games and user objectives with no corresponding
-    real game or objective get deleted."""
+    real game or objective  deleted."""
     games = supabase.table("games").select("ce_id").execute().data or []
     objectives = supabase.table("objectives").select("ce_id").execute().data or []
 
@@ -1310,6 +1269,7 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         status=roll.get("status", "pending"),
         _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
+        tier_num=roll.get("chosen_tier", None),
     )
 
 

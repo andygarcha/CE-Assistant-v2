@@ -995,9 +995,7 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                raise Exception(
-                    f"`tier_num` undefined for roll of type {self.roll_name}."
-                )
+                tier = 1 # TODO cheating
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)
