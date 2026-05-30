@@ -538,7 +538,7 @@ def roll_twotwoweekt2streakstreak(
         has_points_restriction=False,
         price_restriction=price_restriction,
         hours_restriction=hours_restriction,
-        allow_multi_category=True,
+        allow_multi_category=False,
     )
 
     if _game is None:

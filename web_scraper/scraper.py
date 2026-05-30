@@ -729,7 +729,7 @@ def update_rolls(
         if _roll_updated is not None:
             rolls_updated.append(_roll_updated)
         if _delete:
-            rolls_updated.append(_roll)
+            rolls_deleted.append(_roll)
 
     return updates, rolls_updated, rolls_deleted
 
