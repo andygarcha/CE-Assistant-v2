@@ -32,9 +32,7 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - name: Install dependencies
-        run: |
-          pip install pyright
-          pip install -r requirements.txt
+        run: pip install pyright -r requirements.txt
       - name: Run pyright
         run: pyright
 
@@ -48,8 +46,6 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - name: Install dependencies
-        run: |
-          pip install pytest
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
       - name: Run pytest
         run: pytest

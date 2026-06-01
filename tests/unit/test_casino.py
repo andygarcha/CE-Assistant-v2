@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from typing import get_args
 from unittest.mock import AsyncMock, patch
 
-import pytest
 
 from Classes.CE_User import CEUser
 from commands.casino import (
