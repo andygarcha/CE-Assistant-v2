@@ -515,12 +515,7 @@ def get_checkable_rolls() -> list[CERoll]:
 
     # pull rollgames
     ids = [r['id'] for r in rolls_json]
-    roll_games_json = (
-        supabase.table("rollGames")
-        .select()
-        .in_("roll_id", ids)
-        .execute().data
-    )
+    roll_games_json = _fetch_in_chunks("rollGames", "roll_id", ids)
 
     # convert and return
     _rolls = []
