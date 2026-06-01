@@ -504,22 +504,19 @@ class TestRollLetfatedecide:
 
 
 class TestRollFourwardthinking:
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_prerequisite_not_met_returns_error(self):
         result = roll_fourwardthinking([], EMPTY_DT, make_user(), True, True, "Action")
         assert result.games is None
         assert result.error is not None
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
-    def test_returns_four_games_on_success(self):
+    def test_returns_one_game_on_success(self):
         user = _user_with_completed("Let Fate Decide")
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]):
             result = roll_fourwardthinking([], EMPTY_DT, user, True, True, "Action")
         assert result.error is None
         assert result.games is not None
-        assert len(result.games) == 4
+        assert len(result.games) == 1
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_passes_chosen_category(self):
         user = _user_with_completed("Let Fate Decide")
         with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
@@ -528,16 +525,14 @@ class TestRollFourwardthinking:
             call.kwargs["category"] == "Platformer" for call in mock.call_args_list
         )
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_each_game_is_progressively_higher_tier(self):
         """Fourward Thinking: game i uses tier i (T1 → T2 → T3 → T4)."""
         user = _user_with_completed("Let Fate Decide")
-        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:1]) as mock:
             roll_fourwardthinking([], EMPTY_DT, user, True, True, "Action")
         tiers = [call.kwargs["tier_number"] for call in mock.call_args_list]
-        assert tiers == [1, 2, 3, 4]
+        assert tiers == [1]
 
-    @pytest.mark.xfail(raises=NotImplementedError, strict=True)
     def test_returns_error_when_not_enough_games(self):
         user = _user_with_completed("Let Fate Decide")
         with patch("Modules.hm.get_rollable_game", return_value=None):

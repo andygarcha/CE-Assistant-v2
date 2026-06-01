@@ -1,4 +1,5 @@
 # ruff: noqa: E402
+import datetime
 import importlib.util
 import sys
 import types
@@ -7,34 +8,32 @@ import types
 def install_dependency_stubs():
     if importlib.util.find_spec("aiohttp") is None:
         aiohttp = types.ModuleType("aiohttp")
-        aiohttp.ContentTypeError = type("ContentTypeError", (Exception,), {})
-        aiohttp.ClientConnectionError = type("ClientConnectionError", (Exception,), {})
-        aiohttp.ClientTimeout = type(
-            "ClientTimeout", (), {"__init__": lambda *_, **__: None}
-        )
-        aiohttp.ClientSession = type("ClientSession", (), {})
+        setattr(aiohttp, "ContentTypeError", type("ContentTypeError", (Exception,), {}))
+        setattr(aiohttp, "ClientConnectionError", type("ClientConnectionError", (Exception,), {}))
+        setattr(aiohttp, "ClientTimeout", type("ClientTimeout", (), {"__init__": lambda *_, **__: None}))
+        setattr(aiohttp, "ClientSession", type("ClientSession", (), {}))
         sys.modules["aiohttp"] = aiohttp
 
     if importlib.util.find_spec("discord") is None:
         discord = types.ModuleType("discord")
-        discord.Client = type("Client", (), {})
-        discord.Embed = type("Embed", (), {})
-        discord.Interaction = type("Interaction", (), {})
-        discord.ForumChannel = type("ForumChannel", (), {})
-        discord.CategoryChannel = type("CategoryChannel", (), {})
-        discord.ConnectionClosed = type("ConnectionClosed", (Exception,), {})
-        discord.HTTPException = type("HTTPException", (Exception,), {})
-        discord.AllowedMentions = type(
+        setattr(discord, "Client", type("Client", (), {}))
+        setattr(discord, "Embed", type("Embed", (), {}))
+        setattr(discord, "Interaction", type("Interaction", (), {}))
+        setattr(discord, "ForumChannel", type("ForumChannel", (), {}))
+        setattr(discord, "CategoryChannel", type("CategoryChannel", (), {}))
+        setattr(discord, "ConnectionClosed", type("ConnectionClosed", (Exception,), {}))
+        setattr(discord, "HTTPException", type("HTTPException", (Exception,), {}))
+        setattr(discord, "AllowedMentions", type(
             "AllowedMentions",
             (),
             {
                 "all": staticmethod(lambda: object()),
                 "none": staticmethod(lambda: object()),
             },
-        )
-        discord.abc = types.SimpleNamespace(
+        ))
+        setattr(discord, "abc", types.SimpleNamespace(
             PrivateChannel=type("PrivateChannel", (), {}),
-        )
+        ))
         sys.modules["discord"] = discord
 
 
@@ -66,7 +65,7 @@ class TestCEUserGameCompletion:
                     game_ce_id=game_id,
                 )
             ],
-            last_updated=0,
+            last_updated=None,
         )
 
     def user_game(self, game_id="game-1", objective_id="objective-1"):
@@ -91,7 +90,7 @@ class TestCEUserGameCompletion:
             rolls=[],
             display_name="User",
             avatar="",
-            last_updated=0,
+            last_updated=datetime.datetime.now(),
         )
 
     def test_is_completed_accepts_game_lookup(self):

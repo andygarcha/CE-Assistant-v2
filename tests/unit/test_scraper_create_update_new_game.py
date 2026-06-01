@@ -1,28 +1,29 @@
+from Classes.CE_Objective import CEObjective
 from web_scraper.scraper import create_update_new_game
 from tests.conftest import make_api_game, make_objective
 
 
-def _po(points: int, name: str = "Test PO") -> object:
+def _po(points: int, name: str = "Test PO") -> CEObjective:
     return make_objective(point_value=points, obj_type="Primary", name=name)
 
 
-def _uncleared_po() -> object:
+def _uncleared_po() -> CEObjective:
     return make_objective(
         point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)"
     )
 
 
-def _so(points: int, name: str = "Test SO") -> object:
+def _so(points: int, name: str = "Test SO") -> CEObjective:
     return make_objective(point_value=points, obj_type="Secondary", name=name)
 
 
-def _uncleared_so() -> object:
+def _uncleared_so() -> CEObjective:
     return make_objective(
         point_value=0, obj_type="Secondary", name="Uncleared SO (UNCLEARED)"
     )
 
 
-def _co() -> object:
+def _co() -> CEObjective:
     return make_objective(point_value=0, obj_type="Community", name="Test CO")
 
 
