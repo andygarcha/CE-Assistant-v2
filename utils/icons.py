@@ -130,5 +130,5 @@ CE_JAMES_ICON = "https://i.imgur.com/fcdHTvx.png"
 FINAL_CE_ICON = "https://i.imgur.com/O9J7fg2.png"
 """The icon made by @crappy for CE Assistant."""
 
-SCREENSHOT_FAILED_IMAGE = 'https://upload.cedb.me/S-DdnU9VB.png'
-GAME_REMOVED_IMAGE = 'https://upload.cedb.me/CnmhiII6r.png'
+SCREENSHOT_FAILED_IMAGE = "https://upload.cedb.me/S-DdnU9VB.png"
+GAME_REMOVED_IMAGE = "https://upload.cedb.me/CnmhiII6r.png"

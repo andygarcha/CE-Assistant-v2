@@ -1,4 +1,3 @@
-
 from web_scraper.scraper import create_update_new_game
 from tests.conftest import make_api_game, make_objective
 
@@ -8,7 +7,9 @@ def _po(points: int, name: str = "Test PO") -> object:
 
 
 def _uncleared_po() -> object:
-    return make_objective(point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)")
+    return make_objective(
+        point_value=0, obj_type="Primary", name="Uncleared PO (UNCLEARED)"
+    )
 
 
 def _so(points: int, name: str = "Test SO") -> object:
@@ -16,7 +17,9 @@ def _so(points: int, name: str = "Test SO") -> object:
 
 
 def _uncleared_so() -> object:
-    return make_objective(point_value=0, obj_type="Secondary", name="Uncleared SO (UNCLEARED)")
+    return make_objective(
+        point_value=0, obj_type="Secondary", name="Uncleared SO (UNCLEARED)"
+    )
 
 
 def _co() -> object:

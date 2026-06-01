@@ -240,7 +240,7 @@ def __mongo_to_roll(roll: dict) -> CERoll:
         partner_ce_id=roll["partner_ce_id"],
         rerolls=roll["rerolls"],
         status=roll["status"],
-        _id=str(uuid.uuid4())
+        _id=str(uuid.uuid4()),
     )
 
 

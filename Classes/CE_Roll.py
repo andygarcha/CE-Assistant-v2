@@ -860,7 +860,7 @@ class CERoll:
             return None
 
         return hm.get_datetime(days=days, old_datetime=self.init_time)
-    
+
     def calculate_cooldown_timestamp(self) -> int | None:
         return self._to_timestamp(self.calculate_cooldown_date())
 
@@ -998,7 +998,7 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                tier = 1 # TODO cheating
+                tier = 1  # TODO cheating
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)

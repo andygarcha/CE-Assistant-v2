@@ -45,7 +45,9 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         hours_restriction: bool = True,
     ):
         # return await interaction.response.send_message("Under construction.")
-        await solo_roll(interaction, event_name, category, price_restriction, hours_restriction)
+        await solo_roll(
+            interaction, event_name, category, price_restriction, hours_restriction
+        )
         pass
 
     # ---- coop roll command ----
@@ -62,7 +64,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         partner: discord.Member,
     ):
         return await interaction.response.send_message("Under construction.")
-
 
     # ---- check rolls command ----
     @tree.command(
@@ -120,7 +121,7 @@ async def solo_roll(
                 return await interaction.followup.send(
                     f"You can reroll {event_name} after <t:{_current_roll.calculate_cooldown_timestamp()}>"
                 )
-            
+
             # if we get here, we can cancel
             view = ConfirmCancelView(user.discord_id)
             await interaction.followup.send(
@@ -131,7 +132,9 @@ async def solo_roll(
 
             # they said no
             if not view.confirmed:
-                return await interaction.edit_original_response(content="Reroll cancelled.", view=None)
+                return await interaction.edit_original_response(
+                    content="Reroll cancelled.", view=None
+                )
 
             # they said yes!
             _current_roll.set_status("failed")
@@ -139,7 +142,7 @@ async def solo_roll(
             await interaction.edit_original_response(
                 content="Previous roll failed. Rolling new game...", view=None
             )
-    
+
     # user currently rolled => not cancellable or rerollable
     if user.has_current_roll(event_name):
         return await interaction.followup.send(
@@ -208,18 +211,30 @@ async def solo_roll(
             if category is None:
                 return await interaction.followup.send("Please list a category!")
             result = roll_triplethreat(
-                database_name, database_tier, user, price_restriction, hours_restriction, category
+                database_name,
+                database_tier,
+                user,
+                price_restriction,
+                hours_restriction,
+                category,
             )
         case "Let Fate Decide":
             if category is None:
                 return await interaction.followup.send("Please list a category!")
             result = roll_letfatedecide(
-                database_name, database_tier, user, price_restriction, hours_restriction, category
+                database_name,
+                database_tier,
+                user,
+                price_restriction,
+                hours_restriction,
+                category,
             )
         case "Fourward Thinking":
             result = RollResult(None, "Fourward Thinking is not currently implemented.")
         case _:
-            return await interaction.followup.send(f"{event_name} is not a valid event name!")
+            return await interaction.followup.send(
+                f"{event_name} is not a valid event name!"
+            )
 
     if result.error:
         return await interaction.followup.send(result.error)
@@ -716,15 +731,16 @@ def roll_fourwardthinking(
 
     if not user.has_completed_roll("Let Fate Decide"):
         return RollResult(
-            None, "You must first complete 'Let Fate Decide' to attempt Fourward Thinking!"
+            None,
+            "You must first complete 'Let Fate Decide' to attempt Fourward Thinking!",
         )
-    
+
     roll = user.get_current_roll("Fourward Thinking")
     if roll is None:
         already_rolled_games = []
     else:
         already_rolled_games = roll.games
-    
+
     tier = len(already_rolled_games) + 1
 
     _game = hm.get_rollable_game(
@@ -739,11 +755,12 @@ def roll_fourwardthinking(
         has_points_restriction=False,
         price_restriction=price_restriction,
         hours_restriction=hours_restriction,
-        allow_multi_category=False
+        allow_multi_category=False,
     )
     if _game is None:
         return RollResult(None, "Not enough rollable games.")
     return RollResult([_game], None)
+
 
 #   _____   _    _   ______    _____   _  __           _____     ____    _        _         _____
 #  / ____| | |  | | |  ____|  / ____| | |/ /          |  __ \   / __ \  | |      | |       / ____|

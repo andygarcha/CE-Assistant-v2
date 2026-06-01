@@ -183,7 +183,9 @@ class CEGame:
     def get_so_points(self, include_uncleareds=False) -> int:
         "The total number of points in Secondary Objectives."
         total_points = 0
-        for objective in self.get_secondary_objectives(include_uncleareds=include_uncleareds):
+        for objective in self.get_secondary_objectives(
+            include_uncleareds=include_uncleareds
+        ):
             total_points += objective.point_value
         return total_points
 

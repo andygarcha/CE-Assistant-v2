@@ -227,9 +227,9 @@ async def process_loop(
     )
     updates.extend(_updates)
 
-
     # Step 4: write all of our stuff
     if SAVEDATA:
+
         def _save_all():
             logger.info("saving data")
 
@@ -255,7 +255,7 @@ async def process_loop(
 
             logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
             for r in rolls_deleted:
-                r.set_status('removed')
+                r.set_status("removed")
             SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
         await asyncio.to_thread(_save_all)
@@ -499,9 +499,7 @@ async def update_users(
     games_new: list[CEGame],
     full_scrape=False,
     notIsFinished: set = set(),
-) -> tuple[
-    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]
-]:
+) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
 
@@ -603,7 +601,9 @@ async def update_users(
                 bstart + batch_size,
             )
             batch_users = await asyncio.to_thread(
-                SupabaseReader.get_users_bulk, batch_ids, False # DONT PULL ROLLS!
+                SupabaseReader.get_users_bulk,
+                batch_ids,
+                False,  # DONT PULL ROLLS!
             )
             users_old.extend(batch_users)
 
@@ -1181,7 +1181,9 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
 
     # primary
     num_pos = len(game_new.get_primary_objectives())
-    num_po_uncleareds = len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
+    num_po_uncleareds = (
+        len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
+    )
     if num_pos != 0 or num_po_uncleareds != 0:
         update.description += (
             f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} "
@@ -1190,20 +1192,26 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
 
     # primary (uncleared)
     if num_po_uncleareds != 0:
-        update.description += f" (+{num_po_uncleareds} Uncleared{'s' if num_po_uncleareds != 1 else ''})"
-    
+        update.description += (
+            f" (+{num_po_uncleareds} Uncleared{'s' if num_po_uncleareds != 1 else ''})"
+        )
+
     # secondary
     num_sos = len(game_new.get_secondary_objectives())
-    num_so_uncleareds = len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
+    num_so_uncleareds = (
+        len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
+    )
     if num_sos != 0 or num_so_uncleareds != 0:
         update.description += (
             f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''} "
             f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
         )
-    
+
     # secondary (uncleared)
     if num_so_uncleareds != 0:
-        update.description += f" (+{num_so_uncleareds} Uncleared{'s' if num_so_uncleareds != 1 else ''})"
+        update.description += (
+            f" (+{num_so_uncleareds} Uncleared{'s' if num_so_uncleareds != 1 else ''})"
+        )
 
     # community
     num_cos = len(game_new.get_community_objectives())
@@ -1211,7 +1219,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
         update.description += (
             f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''} "
         )
-    
+
     update.image = game_new.header
     return update
 
