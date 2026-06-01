@@ -566,6 +566,35 @@ def get_checkable_rolls() -> list[CERoll]:
         )
     return _rolls
 
+def get_user_rolls(user_id: str) -> list[CERoll]:
+    """
+    Pulls all rolls pertaining to a certain user.
+    """
+    # table: "rolls"
+    rolls_json = (
+        supabase.table("rolls")
+        .select()
+        .or_(f"user1_ce_id.eq.{user_id},user2_ce_id.eq.{user_id}")
+        .execute().data
+    )
+    roll_ids = [item["id"] for item in rolls_json]
+    rollGames_json = (
+        supabase.table("rollGames")
+        .select()
+        .in_("roll_id", roll_ids)
+        .execute().data
+    )
+
+    # convert and return
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(
+            __supabase_to_roll(
+                roll, [g for g in rollGames_json if g['roll_id'] == roll['id']]
+            )
+        )
+    return _rolls
+
 
 def get_input(ce_id: str) -> CEInput:
     # TODO: Implement after input schema is finalized
