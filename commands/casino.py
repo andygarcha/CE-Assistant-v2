@@ -85,16 +85,13 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
 async def solo_roll(
     interaction: discord.Interaction,
     event_name: hm.SOLO_ROLL_EVENT_NAMES,
+    category: hm.CATEGORIES | None = None,
     price_restriction: bool = True,
     hours_restriction: bool = True,
 ):
     await interaction.response.defer()
 
     lucky = False
-
-    # pull mongo database
-    database_name = SupabaseReader.get_database_name()
-    database_tier = SupabaseReader.get_database_tier(database_name)
 
     # grab the user
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
@@ -120,6 +117,14 @@ async def solo_roll(
                 return await interaction.followup.send(
                     f"Rerolling {event_name} rolls is not yet implemented."
                 )
+            
+    # roll requires category
+    #  (must come after rerolling bc user could just try rerolling... no category needed)
+    CATEGORY_REQUIRED = ["Triple Threat", "Let Fate Decide", "Fourward Thinking"]
+    if event_name in CATEGORY_REQUIRED and category is None:
+        return await interaction.followup.send(
+            f"{event_name} requires a chosen category. Please rerun the command and select your category."
+        )
 
     # user currently rolled => not rerollable
     if user.has_current_roll(event_name):
@@ -144,6 +149,10 @@ async def solo_roll(
             f"Congratulations {interaction.user.mention}! You've won Jarvis's super secret reward. "
             "Please DM him for your prize :)",
         )
+
+    # pull mongo database (only done once all checks have passed)
+    database_name = SupabaseReader.get_database_name()
+    database_tier = SupabaseReader.get_database_tier(database_name)
 
     # -- set up vars --
     result: RollResult
@@ -174,11 +183,11 @@ async def solo_roll(
                 database_name, database_tier, user, price_restriction, hours_restriction
             )
         case "Triple Threat":
-            result = RollResult(None, "Triple Threat is not currently implemented.")
-            # result = roll_triplethreat(database_name, database_tier, user, price_restriction, hours_restriction)
+            assert category is not None
+            result = roll_triplethreat(database_name, database_tier, user, price_restriction, hours_restriction, category)
         case "Let Fate Decide":
-            result = RollResult(None, "Let Fate Decide is not currently implemented.")
-            # result = roll_letfatedecide(database_name, database_tier, user, price_restriction, hours_restriction)
+            assert category is not None
+            result = roll_letfatedecide(database_name, database_tier, user, price_restriction, hours_restriction, category)
         case "Fourward Thinking":
             result = RollResult(None, "Fourward Thinking is not currently implemented.")
         case _:
@@ -229,16 +238,13 @@ async def solo_roll(
         )
         # get the
         game_strings: list[str] = []
-        game_strings_backup: list[str] = []
         for g in result.games:
             _game_object = hm.get_item_from_list(g, database_name)
             if _game_object is None:
                 return await interaction.followup.send(
                     f"Error: Could not find {g} in database_name."
                 )
-
             game_strings.append(_game_object.name_with_link)
-            game_strings_backup.append(_game_object.game_name)
 
         message = (
             f"In your {event_name} roll, "
@@ -249,17 +255,11 @@ async def solo_roll(
         if len(message) > 2000:
             message = (
                 f"In your {event_name} roll, "
-                f"you rolled the following games: {hm.get_grammar_str(game_strings_backup)}. "
+                f"the games you rolled did not fit in one message. Please run /check-rolls to see the full list. "
                 f"You have until {roll.due_discord_timestamp} to complete this event!"
             )
 
     SupabaseReader.dump_roll(roll)
-
-    if len(message) > 2000:
-        message = (
-            f"Could not display all {len(result.games)} games in one message. "
-            f"You have until {roll.due_discord_timestamp} to complete this event!"
-        )
     return await interaction.followup.send(message)
 
 
