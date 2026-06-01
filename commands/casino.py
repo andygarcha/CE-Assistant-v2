@@ -29,6 +29,9 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(event_name="The event you'd like to roll.")
     @app_commands.describe(
+        category="If the event requires a chosen category, select it here. If the event doesn't require it, it will be ignored."
+    )
+    @app_commands.describe(
         price_restriction="Set this to false if you'd like to be able to roll any game, regardless of price."
     )
     @app_commands.describe(
