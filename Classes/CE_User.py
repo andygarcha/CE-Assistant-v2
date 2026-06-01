@@ -357,7 +357,7 @@ class CEUser:
         "Removes all completed rolls associated with roll_name."
         for i, roll in enumerate(self.rolls):
             if roll.roll_name == roll_name and roll.status == "won":
-                del self._rolls[i]
+                self._rolls[i].set_status("removed")
         pass
 
     def has_completed_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:

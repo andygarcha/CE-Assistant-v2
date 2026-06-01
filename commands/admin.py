@@ -384,7 +384,7 @@ async def clear_roll(
     if pending:
         user.remove_pending(roll_name)
 
-    SupabaseReader.dump_user(user)
+    SupabaseReader.bulk_dump_rolls(user.rolls)
     return await interaction.followup.send("Done!")
 
 
