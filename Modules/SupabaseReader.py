@@ -497,7 +497,7 @@ def get_all_rolls() -> list[CERoll]:
 
 def get_checkable_rolls() -> list[CERoll]:
     """
-    This function differs from `self.get_all_rolls` in only one manner:
+    This function differs from `get_all_rolls` in only one manner:
     we only pull rolls that are 'current' or 'pending'. This will
     drastically speed up our time spent pulling from Supabase as 
     the majority of rolls are already completed.
