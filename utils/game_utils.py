@@ -334,8 +334,8 @@ CATEGORIES = Literal[
     "Action", "Arcade", "Bullet Hell", "First-Person", "Platformer", "Strategy"
 ]
 
-GAME_ID_CHALLENGE_ENTHUSIASTS = '76574ec1-42df-4488-a511-b9f2d9290e5d'
-GAME_ID_CLOWN_TOWN = '09f100aa-caa7-4154-a224-1c3e9277eea4'
+GAME_ID_CHALLENGE_ENTHUSIASTS = "76574ec1-42df-4488-a511-b9f2d9290e5d"
+GAME_ID_CLOWN_TOWN = "09f100aa-caa7-4154-a224-1c3e9277eea4"
 
 
 def achievements_are_equal(

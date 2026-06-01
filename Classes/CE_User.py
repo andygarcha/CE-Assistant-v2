@@ -394,7 +394,7 @@ class CEUser:
                 status="pending",
                 init_time=hm.get_datetime("now"),
                 due_time=hm.get_datetime(minutes=10),
-                _id=str(uuid.uuid4())
+                _id=str(uuid.uuid4()),
             )
         )
         pass
@@ -491,7 +491,7 @@ class CEUser:
                 if cooldown_date is not None and cooldown_date > hm.get_datetime("now"):
                     return cooldown_date
         return None
-    
+
     def get_cooldown_timestamp(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int | None:
         """
         Returns the UNIX Timestamp of the datetime that `roll_name`'s cooldown ends.
@@ -541,7 +541,7 @@ class CEUser:
                         completed_time=None,
                         rerolls=None,
                         status="won",
-                        _id=str(uuid.uuid4())
+                        _id=str(uuid.uuid4()),
                     )
                 )
 
@@ -775,9 +775,9 @@ class CEAPIUser(CEUser):
         ]
 
         # now get the objects and zip them with the completion dates
-        objective_tuples: list[tuple[CEUserObjective | str, datetime.datetime, str]] = (
-            []
-        )
+        objective_tuples: list[
+            tuple[CEUserObjective | str, datetime.datetime, str]
+        ] = []
         for pair in ordered_pairs:
             objective_object = self.get_objective(pair[1])
             objective_tuples.append(

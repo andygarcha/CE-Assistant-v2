@@ -315,6 +315,7 @@ class TestCalculateCooldownDate:
         # days = 2*14 + months_to_days(1) = 28 + ~30
         assert result > INIT + datetime.timedelta(days=28)
 
+
 class TestCooldownTimestamp:
     def test_none_cooldown_rolls_return_none(self):
         for name in [
@@ -323,7 +324,7 @@ class TestCooldownTimestamp:
         ]:
             roll = make_roll(roll_name=name, init_time=INIT)
             assert roll.calculate_cooldown_timestamp() is None
-    
+
     def test_one_hell_of_a_day_cooldown_7_days_from_init(self):
         roll = make_roll(roll_name="One Hell of a Day", init_time=INIT)
         result = roll.calculate_cooldown_timestamp()

@@ -46,7 +46,7 @@ def _iso_or_none(value):
     ---
     dt = datetime.datetime(2025, 1, 2, 3, 40, 5) # 3:40:05PM on January 2, 2025
     _iso_or_none(dt) --> '2025-01-02T03:40:05+00:00'
-    
+
     """
     if value is None:
         return None
@@ -80,7 +80,7 @@ def _fetch_in_chunks(
         The values you're checking against a column
     chunk_size: `int` (default 100)
         The chunk size. Probably shouldn't adjust this.
-    
+
     Example
     ---
     I want to find all userGames that belong to users with ids ['a', 'b', 'c']\n
@@ -438,8 +438,12 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     # rolls (if include_rolls == True)
     if include_rolls:
         # pull rolls
-        rolls_user1 = _fetch_in_chunks("rolls", "user1_ce_id", user_ce_ids, chunk_size=200)
-        rolls_user2 = _fetch_in_chunks("rolls", "user2_ce_id", user_ce_ids, chunk_size=200)
+        rolls_user1 = _fetch_in_chunks(
+            "rolls", "user1_ce_id", user_ce_ids, chunk_size=200
+        )
+        rolls_user2 = _fetch_in_chunks(
+            "rolls", "user2_ce_id", user_ce_ids, chunk_size=200
+        )
         # roll id --> roll mapping
         rolls_map: dict[str, dict] = {}
         for r in (rolls_user1 or []) + (rolls_user2 or []):
@@ -482,7 +486,9 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
 
             # rollGames relevant for this user's rolls
             user_roll_ids = [r["id"] for r in user_rolls]
-            user_rollgames = [rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids]
+            user_rollgames = [
+                rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids
+            ]
         else:
             user_rolls = []
             user_roll_ids = []
@@ -537,11 +543,12 @@ def get_all_rolls() -> list[CERoll]:
 
     return _rolls
 
+
 def get_checkable_rolls() -> list[CERoll]:
     """
     This function differs from `get_all_rolls` in only one manner:
     we only pull rolls that are 'current' or 'pending'. This will
-    drastically speed up our time spent pulling from Supabase as 
+    drastically speed up our time spent pulling from Supabase as
     the majority of rolls are already completed.
     """
     # pull rolls
@@ -549,11 +556,12 @@ def get_checkable_rolls() -> list[CERoll]:
         supabase.table("rolls")
         .select()
         .in_("status", ["current", "pending"])
-        .execute().data
+        .execute()
+        .data
     )
 
     # pull rollgames
-    ids = [r['id'] for r in rolls_json]
+    ids = [r["id"] for r in rolls_json]
     roll_games_json = _fetch_in_chunks("rollGames", "roll_id", ids)
 
     # convert and return
@@ -561,10 +569,11 @@ def get_checkable_rolls() -> list[CERoll]:
     for roll in rolls_json:
         _rolls.append(
             __supabase_to_roll(
-                roll, [g for g in roll_games_json if g['roll_id'] == roll['id']]
+                roll, [g for g in roll_games_json if g["roll_id"] == roll["id"]]
             )
         )
     return _rolls
+
 
 def get_user_rolls(user_id: str) -> list[CERoll]:
     """
@@ -575,14 +584,12 @@ def get_user_rolls(user_id: str) -> list[CERoll]:
         supabase.table("rolls")
         .select()
         .or_(f"user1_ce_id.eq.{user_id},user2_ce_id.eq.{user_id}")
-        .execute().data
+        .execute()
+        .data
     )
     roll_ids = [item["id"] for item in rolls_json]
     rollGames_json = (
-        supabase.table("rollGames")
-        .select()
-        .in_("roll_id", roll_ids)
-        .execute().data
+        supabase.table("rollGames").select().in_("roll_id", roll_ids).execute().data
     )
 
     # convert and return
@@ -590,7 +597,7 @@ def get_user_rolls(user_id: str) -> list[CERoll]:
     for roll in rolls_json:
         _rolls.append(
             __supabase_to_roll(
-                roll, [g for g in rollGames_json if g['roll_id'] == roll['id']]
+                roll, [g for g in rollGames_json if g["roll_id"] == roll["id"]]
             )
         )
     return _rolls
@@ -1112,7 +1119,7 @@ def dump_database_tier(database_tier: dict):
             all_entries.extend(database_tier[str(tier)][category])
 
     # remove duplicates (multi-category)
-    all_entries = list({e['ce_id']: e for e in all_entries}.values())
+    all_entries = list({e["ce_id"]: e for e in all_entries}.values())
 
     # dump 100 at a time
     BATCH_SIZE = 100

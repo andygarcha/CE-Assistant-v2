@@ -29,7 +29,7 @@ def make_objective(
 ) -> CEObjective:
     return CEObjective(
         ce_id=ce_id,
-        objective_type=obj_type, # type: ignore
+        objective_type=obj_type,  # type: ignore
         description="A test objective.",
         point_value=point_value,
         name=name,
@@ -50,9 +50,9 @@ def make_game(
     return CEGame(
         ce_id=ce_id,
         game_name=game_name,
-        platform=platform, # type: ignore
+        platform=platform,  # type: ignore
         platform_id="123456",
-        categories=categories if categories is not None else ["Action"], # type: ignore
+        categories=categories if categories is not None else ["Action"],  # type: ignore
         objectives=objectives if objectives is not None else [],
         last_updated=None,
     )
