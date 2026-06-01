@@ -37,11 +37,12 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def solo_roll_command(
         interaction: discord.Interaction,
         event_name: hm.SOLO_ROLL_EVENT_NAMES,
+        category: hm.CATEGORIES | None = None,
         price_restriction: bool = True,
         hours_restriction: bool = True,
     ):
         # return await interaction.response.send_message("Under construction.")
-        await solo_roll(interaction, event_name, price_restriction, hours_restriction)
+        await solo_roll(interaction, event_name, category, price_restriction, hours_restriction)
         pass
 
     # ---- coop roll command ----
