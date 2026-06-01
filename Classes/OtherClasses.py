@@ -244,7 +244,23 @@ class RAData(GameData):
 
 
 class CRData:
-    "A wrapper class for a user's CR."
+    """
+    A wrapper class for a user's CR. This class
+    - Calculates CR for all categories
+    - Calculates Total CR.
+
+    Category CR Formula
+    ---
+    cr = 0.90^i * point_value, for all point_value in sorted(point_values) high to low
+
+    Total CR Formula
+    ---
+    - This should be the same, but since the addition of multi-category games, we've made changes
+    - The Total CR Formula *used* to be just a sum of all Category CRs
+    - However, this now has one small change:
+      - any multi-category game will *only* contribute to the category in which it will have the *biggest* effect
+      - this rule is only applied when calculating total CR.
+    """
 
     @staticmethod
     def calculate_cr(games: list):
