@@ -9,7 +9,7 @@ from typing import cast
 import uuid
 
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Game import CEGame
+from Classes.CE_Game import CEGame, CEAPIGame
 from Classes.CE_Roll import CERoll, ROLL_STATUS
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
@@ -83,6 +83,35 @@ def make_user_game(
         ce_id=ce_id,
         user_objectives=user_objectives if user_objectives is not None else [],
         name=name,
+    )
+
+
+def make_api_game(
+    ce_id: str = "game-001-0000-0000-000000000000",
+    game_name: str = "Test Game",
+    categories: list[str] | None = None,
+    objectives: list[CEObjective] | None = None,
+    platform: str = "steam",
+    header: str = "https://example.com/header.jpg",
+    icon: str = "https://example.com/icon.jpg",
+    is_finished: bool = True,
+    information: str = "",
+) -> CEAPIGame:
+    full_data = {
+        "header": header,
+        "icon": icon,
+        "isFinished": is_finished,
+        "information": information,
+    }
+    return CEAPIGame(
+        ce_id=ce_id,
+        game_name=game_name,
+        platform=platform,  # type: ignore
+        platform_id="123456",
+        categories=categories if categories is not None else ["Action"],  # type: ignore
+        objectives=objectives if objectives is not None else [],
+        last_updated=None,
+        full_data=full_data,
     )
 
 

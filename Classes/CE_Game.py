@@ -105,11 +105,16 @@ class CEGame:
                 p.append(objective)
         return p
 
-    def get_secondary_objectives(self) -> list[CEObjective]:
-        "Returns an array of all secondary objectives."
+    def get_secondary_objectives(self, include_uncleareds=False) -> list[CEObjective]:
+        """Returns an array of all secondary objectives.
+
+        NOTE: This excludes uncleared objectives unless `include_uncleareds=True`.
+        """
         o = []
         for objective in self.all_objectives:
-            if objective.type == "Secondary":
+            if objective.type == "Secondary" and (
+                not objective.is_uncleared() or include_uncleareds
+            ):
                 o.append(objective)
         return o
 
@@ -175,12 +180,10 @@ class CEGame:
             total_points += objective.point_value
         return total_points
 
-    def get_so_points(self) -> int:
+    def get_so_points(self, include_uncleareds=False) -> int:
         "The total number of points in Secondary Objectives."
         total_points = 0
-        for objective in self.get_secondary_objectives():
-            if objective.is_uncleared():
-                continue
+        for objective in self.get_secondary_objectives(include_uncleareds=include_uncleareds):
             total_points += objective.point_value
         return total_points
 
@@ -239,7 +242,7 @@ class CEGame:
     @property
     def has_uncleared_so(self) -> bool:
         """Returns true if this game has an Uncleared Secondary Objective."""
-        for objective in self.get_secondary_objectives():
+        for objective in self.get_secondary_objectives(include_uncleareds=True):
             if objective.is_uncleared():
                 return True
         return False

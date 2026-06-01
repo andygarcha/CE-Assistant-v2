@@ -1159,7 +1159,17 @@ def check_curator_steam():
 
 
 def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProcess:
-    """Creates the `UpdateMessageForScraperProcess` for a new game."""
+    """
+    Creates the `UpdateMessageForScraperProcess` for a new game.
+
+    Example
+    ---
+    GAMENAME added to the site:
+    - Tier4Emoji, ActionEmoji
+    - 3 Primary Objectives worth 25 points (+2 Uncleareds)
+    - 5 Secondary Objectives worth 100 points (+1 Uncleared)
+    - 1 Community Objective
+    """
     update = UpdateMessageForScraperProcess()
     update.is_embed = True
     update.title = f"__ {game_new.game_name} __ added to the site:"
@@ -1168,34 +1178,40 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
 
-    if len(game_new.get_primary_objectives()) != 0:
-        num_pos = len(game_new.get_primary_objectives())
+    # primary
+    num_pos = len(game_new.get_primary_objectives())
+    num_po_uncleareds = len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
+    if num_pos != 0 or num_po_uncleareds != 0:
         update.description += (
             f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} "
-            + f"worth {game_new.get_po_points()} {hm.get_emoji('Points')}"
-        )
-    if len(game_new.get_uncleared_objectives()) != 0:
-        num_uncleareds = len(game_new.get_uncleared_objectives())
-        update.description += f"\n- {num_uncleareds} Uncleared Objective{'s' if num_uncleareds != 1 else ''}"
-    if len(game_new.get_community_objectives()) != 0:
-        num_cos = len(game_new.get_community_objectives())
-        update.description += (
-            f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''}"
-        )
-    if len(game_new.get_secondary_objectives()) != 0:
-        num_sos = len(game_new.get_secondary_objectives())
-        update.description += (
-            f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}"
-            + f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
-        )
-    if len(game_new.get_badge_objectives()) != 0:
-        num_bos = len(game_new.get_badge_objectives())
-        update.description += (
-            f"\n- {num_bos} Badge Objective{'s' if num_bos != 1 else ''}"
+            f"worth {game_new.get_po_points()} {hm.get_emoji('Points')}"
         )
 
+    # primary (uncleared)
+    if num_po_uncleareds != 0:
+        update.description += f" (+{num_po_uncleareds} Uncleared{'s' if num_po_uncleareds != 1 else ''})"
+    
+    # secondary
+    num_sos = len(game_new.get_secondary_objectives())
+    num_so_uncleareds = len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
+    if num_sos != 0 or num_so_uncleareds != 0:
+        update.description += (
+            f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''} "
+            f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
+        )
+    
+    # secondary (uncleared)
+    if num_so_uncleareds != 0:
+        update.description += f" (+{num_so_uncleareds} Uncleared{'s' if num_so_uncleareds != 1 else ''})"
+
+    # community
+    num_cos = len(game_new.get_community_objectives())
+    if num_cos != 0:
+        update.description += (
+            f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''} "
+        )
+    
     update.image = game_new.header
-
     return update
 
 
