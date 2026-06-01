@@ -1,5 +1,7 @@
+import asyncio
+from types import SimpleNamespace
 from typing import get_args
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -15,6 +17,7 @@ from commands.casino import (
     roll_triplethreat,
     roll_twoweekt2streak,
     roll_twotwoweekt2streakstreak,
+    solo_roll,
 )
 from Modules import hm
 from tests.conftest import make_game, make_roll, make_user
@@ -55,6 +58,32 @@ class TestRollResult:
         r = RollResult(games=None, error="oops")
         assert r.games is None
         assert r.error == "oops"
+
+
+class TestSoloRoll:
+    def test_category_required_event_without_category_returns_error(self):
+        interaction = SimpleNamespace(
+            user=SimpleNamespace(id=123, mention="@test-user"),
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+        user = make_user(discord_id=123)
+
+        with patch("commands.casino.SupabaseReader.get_user", return_value=user):
+            asyncio.run(
+                solo_roll(
+                    interaction=interaction,
+                    event_name="Triple Threat",
+                    category=None,
+                    price_restriction=True,
+                    hours_restriction=True,
+                )
+            )
+
+        interaction.response.defer.assert_awaited_once()
+        interaction.followup.send.assert_awaited_once_with(
+            "Triple Threat requires a chosen category. Please rerun the command and select your category."
+        )
 
 
 # ── roll_onehellofaday ────────────────────────────────────────────────────────
