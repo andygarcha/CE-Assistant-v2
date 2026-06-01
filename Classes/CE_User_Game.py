@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.CE_Game import CEGame
@@ -84,10 +86,17 @@ class CEUserGame:
 
         return await CEAPIReader.get_game(self.ce_id)
 
-    def is_completed(self, database_name: list[CEGame] | CEGame) -> bool:
+    def is_completed(
+        self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame
+    ) -> bool:
         """Returns true if this game has been completed, false if not."""
         if isinstance(database_name, CEGame):
             return self.__is_completed_helper(database_name)
+        if isinstance(database_name, Mapping):
+            game = database_name.get(self.ce_id)
+            if game is None:
+                return False
+            return self.__is_completed_helper(game)
         if isinstance(database_name, list):
             for game in database_name:
                 if game.ce_id == self.ce_id:
@@ -97,7 +106,8 @@ class CEUserGame:
     def __is_completed_helper(self, game: CEGame):
         """Only Primary Objectives should count towards completion.
         We cannot simply count the number of POs, as some may be *partial*.
-        We also simply cannot check the user points, since this would skip uncleareds."""
+        We also simply cannot check the user points, since this would skip uncleareds.
+        """
         user_pos = self.get_user_primary_objectives()
         game_pos = game.get_primary_objectives(include_uncleareds=True)
 
