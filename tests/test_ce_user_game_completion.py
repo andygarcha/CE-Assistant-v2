@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import importlib.util
 import sys
 import types

@@ -1,4 +1,3 @@
-import pytest
 
 from web_scraper.scraper import create_update_new_game
 from tests.conftest import make_api_game, make_objective

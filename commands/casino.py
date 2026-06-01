@@ -62,8 +62,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         partner: discord.Member,
     ):
         return await interaction.response.send_message("Under construction.")
-        await coop_roll(interaction, event_name, partner)
-        pass
+
 
     # ---- check rolls command ----
     @tree.command(
@@ -138,7 +137,7 @@ async def solo_roll(
             _current_roll.set_status("failed")
             SupabaseReader.dump_roll(_current_roll)
             await interaction.edit_original_response(
-                content=f"Previous roll failed. Rolling new game...", view=None
+                content="Previous roll failed. Rolling new game...", view=None
             )
     
     # user currently rolled => not cancellable or rerollable

@@ -11,7 +11,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from types import NoneType  # noqa: E402
 import discord  # noqa: E402
 from discord import app_commands  # noqa: E402
 
@@ -20,9 +19,6 @@ import json  # noqa: E402
 from typing import Literal  # noqa: E402
 
 # --------- local class imports --------
-from Classes.CE_Game import CEGame  # noqa: E402
-from Classes.CE_Objective import CEObjective  # noqa: E402
-from Classes.OtherClasses import CEInput  # noqa: E402
 
 # from Modules.WebInteractor import master_loop
 from web_scraper.scraper import process_loop  # noqa: E402
@@ -34,7 +30,6 @@ from commands.games import get_game_auto  # noqa: E402
 from discord.ext import tasks  # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
-import io  # noqa: E402
 
 
 # -------------------------------- normal bot code -----------------------------------
