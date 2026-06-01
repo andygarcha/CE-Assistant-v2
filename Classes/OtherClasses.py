@@ -302,13 +302,19 @@ class CRData:
         for category in get_args(hm.CATEGORIES):
             cr_groups[category] = []
 
+        multi_cats: list[tuple[int, list[hm.CATEGORIES]]] = []
+
         # now go through all of their games and sort them into their categories
         for game in owned_games:
             mongo_game = hm.get_item_from_list(game.ce_id, database_name)
             if mongo_game is None:
                 continue
-            for _cat in mongo_game.categories:
-                cr_groups[_cat].append(game.get_user_points())
+
+            if len(mongo_game.categories) == 1:
+                cr_groups[mongo_game.categories[0]].append(game.get_user_points())
+            
+            else:
+                multi_cats.append((game.get_user_points(), mongo_game.categories))
 
         # now that they've all been sorted, calculate the individual crs, and store THAT dict.
         final_dict = {key: self.calculate_cr(cr_groups[key]) for key in cr_groups}
