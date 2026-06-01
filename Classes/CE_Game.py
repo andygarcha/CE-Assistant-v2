@@ -106,7 +106,10 @@ class CEGame:
         return p
 
     def get_secondary_objectives(self, include_uncleareds=False) -> list[CEObjective]:
-        "Returns an array of all secondary objectives."
+        """Returns an array of all secondary objectives.
+
+        NOTE: This excludes uncleared objectives unless `include_uncleareds=True`.
+        """
         o = []
         for objective in self.all_objectives:
             if objective.type == "Secondary" and (
