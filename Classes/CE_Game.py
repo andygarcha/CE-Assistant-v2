@@ -208,7 +208,7 @@ class CEGame:
     @property
     def is_t0(self) -> bool:
         """Returns true if the game is a Tier 0."""
-        return self.get_total_points() == 0
+        return self.get_po_points() == 0
 
     @property
     def is_role_t4(self) -> bool:
