@@ -449,9 +449,6 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
         # objectives subset already fetched above
         user_objectives_list = objectives_json
 
-        if not include_rolls:
-            user_rolls = []
-            user_roll_ids = []
         out_users.append(
             __supabase_to_user(
                 user_json,
@@ -500,7 +497,7 @@ def get_all_rolls() -> list[CERoll]:
 
 def get_checkable_rolls() -> list[CERoll]:
     """
-    This function differs from `self.get_all_rolls` in only one manner:
+    This function differs from `get_all_rolls` in only one manner:
     we only pull rolls that are 'current' or 'pending'. This will
     drastically speed up our time spent pulling from Supabase as 
     the majority of rolls are already completed.
