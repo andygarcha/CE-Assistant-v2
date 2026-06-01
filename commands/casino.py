@@ -154,7 +154,7 @@ async def solo_roll(
             "Please DM him for your prize :)",
         )
 
-    # pull mongo database (only done once all checks have passed)
+    # fetch game database (only done once all checks have passed)
     database_name = SupabaseReader.get_database_name()
     database_tier = SupabaseReader.get_database_tier(database_name)
 
