@@ -352,23 +352,24 @@ def get_database_user() -> list[CEUser]:
     return _users
 
 
-def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
+def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     """Fetch many users and their related data in bulk using chunked requests.
 
     Returns a list of `CEUser` objects corresponding to the provided `ce_ids`.
     Uses `_fetch_in_chunks` to avoid oversized `.in_()` requests.
     """
+    # null check
     if not ce_ids:
         return []
 
-    # Fetch users
+    # users
     users_json = _fetch_in_chunks("users", "ce_id", ce_ids, chunk_size=100)
     if not users_json:
         return []
 
     user_ce_ids = [u["ce_id"] for u in users_json]
 
-    # Fetch userGames and userObjectives for these users
+    # userGames and userObjectives
     userGames_json = _fetch_in_chunks(
         "userGames", "user_ce_id", user_ce_ids, chunk_size=200
     )
@@ -376,32 +377,7 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
         "userObjectives", "user_ce_id", user_ce_ids, chunk_size=200
     )
 
-    # Fetch objectives referenced by the userObjectives
-    objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
-    objectives_json = (
-        _fetch_in_chunks("objectives", "ce_id", objective_ids, chunk_size=200)
-        if objective_ids
-        else []
-    )
-
-    # Fetch rolls where either user1 or user2 is in our set
-    rolls_user1 = _fetch_in_chunks("rolls", "user1_ce_id", user_ce_ids, chunk_size=200)
-    rolls_user2 = _fetch_in_chunks("rolls", "user2_ce_id", user_ce_ids, chunk_size=200)
-    # Merge rolls and deduplicate by id
-    rolls_map: dict[str, dict] = {}
-    for r in (rolls_user1 or []) + (rolls_user2 or []):
-        rolls_map[r["id"]] = r
-    rolls = list(rolls_map.values())
-
-    # Fetch rollGames for all roll ids
-    roll_ids = [r["id"] for r in rolls]
-    rollGames_json = (
-        _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
-        if roll_ids
-        else []
-    )
-
-    # Organize by user for assembly
+    # userId --> userGame and userId --> userObjective mapping
     ugames_by_user: dict[str, list[dict]] = {}
     for ug in userGames_json:
         ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
@@ -409,13 +385,47 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
     for uo in userObjectives_json:
         uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
 
-    rolls_by_user: dict[str, list[dict]] = {}
-    for r in rolls:
-        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
-        if r["user2_ce_id"] is not None:
-            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
+    # objectives
+    objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
+    objectives_json = (
+        _fetch_in_chunks("objectives", "ce_id", objective_ids, chunk_size=200)
+        if objective_ids
+        else []
+    )
 
-    # Build users list preserving provided order when possible
+    # rolls (if include_rolls == True)
+    if include_rolls:
+        # pull rolls
+        rolls_user1 = _fetch_in_chunks("rolls", "user1_ce_id", user_ce_ids, chunk_size=200)
+        rolls_user2 = _fetch_in_chunks("rolls", "user2_ce_id", user_ce_ids, chunk_size=200)
+        # roll id --> roll mapping
+        rolls_map: dict[str, dict] = {}
+        for r in (rolls_user1 or []) + (rolls_user2 or []):
+            rolls_map[r["id"]] = r
+        rolls = list(rolls_map.values())
+        # pull rollGames
+        roll_ids = [r["id"] for r in rolls]
+        rollGames_json = (
+            _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
+            if roll_ids
+            else []
+        )
+        # userId --> roll mapping
+        rolls_by_user: dict[str, list[dict]] = {}
+        for r in rolls:
+            rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
+            if r["user2_ce_id"] is not None:
+                rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
+    else:
+        rolls_user1 = []
+        rolls_user2 = []
+        rolls_map = {}
+        rolls = []
+        roll_ids = []
+        rollGames_json = []
+        rolls_by_user = {}
+
+    # merge users
     out_users: list[CEUser] = []
     users_index = {u["ce_id"]: u for u in users_json}
     for ce_id in ce_ids:
@@ -425,15 +435,23 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
 
         ugames = ugames_by_user.get(ce_id, [])
         uobjectives = uobjs_by_user.get(ce_id, [])
-        user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
+        if include_rolls:
+            user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
 
-        # rollGames relevant for this user's rolls
-        user_roll_ids = [r["id"] for r in user_rolls]
-        user_rollgames = [rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids]
+            # rollGames relevant for this user's rolls
+            user_roll_ids = [r["id"] for r in user_rolls]
+            user_rollgames = [rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids]
+        else:
+            user_rolls = []
+            user_roll_ids = []
+            user_rollgames = []
 
         # objectives subset already fetched above
         user_objectives_list = objectives_json
 
+        if not include_rolls:
+            user_rolls = []
+            user_roll_ids = []
         out_users.append(
             __supabase_to_user(
                 user_json,
