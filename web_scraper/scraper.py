@@ -284,7 +284,7 @@ async def process_loop(
             continue
 
         embed = discord.Embed()
-        embed.color = update.color
+        embed.colour = update.color
         embed.title = update.title
         embed.description = update.description
         # TODO removal image
