@@ -449,9 +449,6 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
         # objectives subset already fetched above
         user_objectives_list = objectives_json
 
-        if not include_rolls:
-            user_rolls = []
-            user_roll_ids = []
         out_users.append(
             __supabase_to_user(
                 user_json,
