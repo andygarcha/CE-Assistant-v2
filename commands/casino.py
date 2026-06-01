@@ -137,7 +137,7 @@ async def solo_roll(
             # they said yes!
             _current_roll.set_status("failed")
             SupabaseReader.dump_roll(_current_roll)
-            return await interaction.edit_original_response(
+            await interaction.edit_original_response(
                 content=f"Previous roll failed. Rolling new game...", view=None
             )
     
