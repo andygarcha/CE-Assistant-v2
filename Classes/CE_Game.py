@@ -239,7 +239,7 @@ class CEGame:
     @property
     def has_uncleared_so(self) -> bool:
         """Returns true if this game has an Uncleared Secondary Objective."""
-        for objective in self.get_secondary_objectives():
+        for objective in self.get_secondary_objectives(include_uncleareds=True):
             if objective.is_uncleared():
                 return True
         return False
