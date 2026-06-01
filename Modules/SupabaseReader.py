@@ -37,7 +37,17 @@ logger = logging.getLogger(__name__)
 
 
 def _iso_or_none(value):
-    """Return ISO string for datetime-like values, return the original string if already a string, or None for falsy/unparseable values."""
+    """
+    Return ISO string for datetime-like values.
+    - Return the original string if already a string
+    - Return None for falsy/unparseable values.
+
+    Example
+    ---
+    dt = datetime.datetime(2025, 1, 2, 3, 40, 5) # 3:40:05PM on January 2, 2025
+    _iso_or_none(dt) --> '2025-01-02T03:40:05+00:00'
+    
+    """
     if value is None:
         return None
     if isinstance(value, str):
@@ -54,10 +64,27 @@ def _iso_or_none(value):
 def _fetch_in_chunks(
     table_name: str, column: str, values: list, chunk_size: int = 100
 ) -> list[dict]:
-    """Fetch rows using .in_() in chunks to avoid oversized requests/Bad Request errors.
+    """
+    Fetch rows using .in_() in chunks to avoid oversized requests/Bad Request errors.
 
     Supabase/PostgREST can reject very long `in()` queries (URL length or server limits).
     This helper splits `values` into batches and aggregates results.
+
+    Parameters
+    ---
+    table_name: `str`
+        The name of the table you're pulling from.
+    column: `str`
+        The column you're checking if certain values are in
+    values: `list`
+        The values you're checking against a column
+    chunk_size: `int` (default 100)
+        The chunk size. Probably shouldn't adjust this.
+    
+    Example
+    ---
+    I want to find all userGames that belong to users with ids ['a', 'b', 'c']\n
+    `_fetch_in_chunks('userGames', 'user_ce_id', ['a', 'b', 'c'])`
     """
     if not values:
         return []
@@ -89,6 +116,13 @@ def _delete_in_chunks(
 
 # GET LIST
 def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[str]:
+    """
+    Returns a list of ce-ids in that database.
+    - name = games
+    - user = users
+    - input = ???
+    - objectives = objectives
+    """
     table = None
     match database:
         case "name":
@@ -107,6 +141,14 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
 
 # GET GAME
 def get_game(ce_id: str) -> CEGame | None:
+    """
+    Gets the data for a game signified by `ce_id` from Supabase.
+    
+    Parameters
+    ---
+    ce_id: `str`
+        The CE ID of the game you are looking for.
+    """
     games_json = supabase.table("games").select().eq("ce_id", ce_id).execute().data
     if len(games_json) == 0:
         return None
