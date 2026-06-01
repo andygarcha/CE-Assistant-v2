@@ -316,7 +316,7 @@ class TestCalculateCooldownDate:
         assert result > INIT + datetime.timedelta(days=28)
 
 class TestCooldownTimestamp:
-    def test_none_colldown_rolls_return_none(self):
+    def test_none_cooldown_rolls_return_none(self):
         for name in [
             "Two Week T2 Streak",
             'Two "Two Week T2 Streak" Streak',
