@@ -122,7 +122,61 @@ async def solo_roll(
                     f"Rerolling {event_name} rolls is not yet implemented."
                 )
             
-    # user currently rolled => not rerollable
+            # if we get here, we can cancel
+            view = ConfirmCancelView(user.discord_id)
+            await interaction.followup.send(
+                f"You have an active **{event_name}** roll. Rerolling will **fail** it permanently. Continue?",
+                view=view,
+            )
+            await view.wait()
+
+            # they said no
+            if not view.confirmed:
+                return await interaction.edit_original_response(content="Reroll cancelled.", view=None)
+
+            # they said yes!
+            _current_roll.set_status("failed")
+            SupabaseReader.dump_roll(_current_roll)
+            return await interaction.edit_original_response(
+                content=f"Previous roll failed. Rolling new game...", view=None
+            )
+    
+    # user currently rolled => is rerollable
+    if event_name == "Fourward Thinking":
+        _current_roll = user.get_current_roll(event_name)
+
+        if _current_roll is not None:
+            if _current_roll._rerolls is None:
+                return await interaction.followup.send(
+                    "Error, rerolls not found. Please contact andy!"
+                )
+            if _current_roll.rerolls == 0:
+                return await interaction.followup.send(
+                    "You have no remaining rerolls. Please complete your current stage to receive your next one!"
+                )
+            
+            view = ConfirmRerollView(user.discord_id)
+            await interaction.followup.send(
+                f"Would you like to spend one of your {_current_roll.rerolls} rerolls now?", 
+                view=view
+            )
+            await view.wait()
+
+            # they said no
+            if not view.confirmed:
+                return await interaction.edit_original_response(content="Reroll cancelled.", view=None)
+            
+            # they said yes!
+            _current_roll._rerolls -= 1
+            _current_roll._games = _current_roll.games[:-1]
+            _current_roll.set_status("between_stages")
+            SupabaseReader.dump_roll(_current_roll)
+            await interaction.edit_original_response(
+                content=f"Old game removed. Now searching for a new game...",
+                view=None
+            )
+            
+    # user currently rolled => not cancellable or rerollable
     if user.has_current_roll(event_name):
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
@@ -199,7 +253,11 @@ async def solo_roll(
                 database_name, database_tier, user, price_restriction, hours_restriction, category
             )
         case "Fourward Thinking":
-            result = RollResult(None, "Fourward Thinking is not currently implemented.")
+            if category is None:
+                return await interaction.followup.send("Please list a category!")
+            result = roll_fourwardthinking(
+                database_name, database_tier, user, price_restriction, hours_restriction, category
+            )
         case _:
             return await interaction.followup.send(f"{event_name} is not a valid event name!")
 
@@ -710,3 +768,48 @@ async def check_rolls(interaction: discord.Interaction):
     return await interaction.followup.send(
         "[click me :)](https://ce-assistant-frontend.vercel.app/rolls)"
     )
+
+
+class ConfirmCancelView(discord.ui.View):
+    def __init__(self, user_discord_id: int):
+        super().__init__(timeout=60)
+        self.confirmed: bool | None = None
+        self.user_id: int = user_discord_id
+
+    @discord.ui.button(label="Yes, fail my roll", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return
+        self.confirmed = True
+        self.stop()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return
+        self.confirmed = False
+        self.stop()
+        await interaction.response.defer()
+
+class ConfirmRerollView(discord.ui.View):
+    def __init__(self, user_discord_id: int):
+        super().__init__(timeout=60)
+        self.confirmed: bool | None = None
+        self.user_id: int = user_discord_id
+
+    @discord.ui.button(label="Yes, reroll!", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return
+        self.confirmed = True
+        self.stop()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return
+        self.confirmed = False
+        self.stop()
+        await interaction.response.defer()
