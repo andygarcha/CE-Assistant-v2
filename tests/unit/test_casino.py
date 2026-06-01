@@ -72,7 +72,7 @@ class TestSoloRoll:
         with patch("commands.casino.SupabaseReader.get_user", return_value=user):
             asyncio.run(
                 solo_roll(
-                    interaction=interaction,
+                    interaction=interaction, # type: ignore
                     event_name="Triple Threat",
                     category=None,
                     price_restriction=True,
