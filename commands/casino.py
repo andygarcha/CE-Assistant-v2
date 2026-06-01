@@ -122,14 +122,6 @@ async def solo_roll(
                     f"Rerolling {event_name} rolls is not yet implemented."
                 )
             
-    # roll requires category
-    #  (must come after rerolling bc user could just try rerolling... no category needed)
-    CATEGORY_REQUIRED = ["Triple Threat", "Let Fate Decide", "Fourward Thinking"]
-    if event_name in CATEGORY_REQUIRED and category is None:
-        return await interaction.followup.send(
-            f"{event_name} requires a chosen category. Please rerun the command and select your category."
-        )
-
     # user currently rolled => not rerollable
     if user.has_current_roll(event_name):
         return await interaction.followup.send(
@@ -141,6 +133,14 @@ async def solo_roll(
         return await interaction.followup.send(
             "You just tried rolling this event. Please wait about 10 minutes before trying again."
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+
+    # roll requires category
+    #  (must come after rerolling bc user could just try rerolling... no category needed)
+    CATEGORY_REQUIRED = ["Triple Threat", "Let Fate Decide", "Fourward Thinking"]
+    if event_name in CATEGORY_REQUIRED and category is None:
+        return await interaction.followup.send(
+            f"{event_name} requires a chosen category. Please rerun the command and select your category."
         )
 
     # jarvis's random event!
@@ -187,15 +187,21 @@ async def solo_roll(
                 database_name, database_tier, user, price_restriction, hours_restriction
             )
         case "Triple Threat":
-            assert category is not None
-            result = roll_triplethreat(database_name, database_tier, user, price_restriction, hours_restriction, category)
+            if category is None:
+                return await interaction.followup.send("Please list a category!")
+            result = roll_triplethreat(
+                database_name, database_tier, user, price_restriction, hours_restriction, category
+            )
         case "Let Fate Decide":
-            assert category is not None
-            result = roll_letfatedecide(database_name, database_tier, user, price_restriction, hours_restriction, category)
+            if category is None:
+                return await interaction.followup.send("Please list a category!")
+            result = roll_letfatedecide(
+                database_name, database_tier, user, price_restriction, hours_restriction, category
+            )
         case "Fourward Thinking":
             result = RollResult(None, "Fourward Thinking is not currently implemented.")
         case _:
-            result = RollResult(None, f"{event_name} is not a valid event name.")
+            return await interaction.followup.send(f"{event_name} is not a valid event name!")
 
     if result.error:
         return await interaction.followup.send(result.error)
