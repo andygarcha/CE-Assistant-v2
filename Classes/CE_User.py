@@ -520,11 +520,8 @@ class CEUser:
     def get_ce_rolls(self) -> list[CERoll]:
         "Returns a list of CERolls pulled from CE."
 
-        # set the constant
-        CE_GAME_ID = "76574ec1-42df-4488-a511-b9f2d9290e5d"
-
         # get the game, and if it's None, return
-        ce_game = self.get_owned_game(CE_GAME_ID)
+        ce_game = self.get_owned_game(hm.GAME_ID_CHALLENGE_ENTHUSIASTS)
         if ce_game is None:
             return []
 

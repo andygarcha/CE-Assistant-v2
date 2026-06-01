@@ -143,7 +143,7 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
 def get_game(ce_id: str) -> CEGame | None:
     """
     Gets the data for a game signified by `ce_id` from Supabase.
-    
+
     Parameters
     ---
     ce_id: `str`
@@ -332,8 +332,8 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
 
         game_categories = categories_by_game.get(ce_id)
         if not game_categories and ce_id not in [
-            "76574ec1-42df-4488-a511-b9f2d9290e5d",
-            "09f100aa-caa7-4154-a224-1c3e9277eea4",
+            hm.GAME_ID_CHALLENGE_ENTHUSIASTS,
+            hm.GAME_ID_CLOWN_TOWN,
         ]:
             logger.error("Game with ID %s has no categories.", ce_id)
             continue
@@ -1243,9 +1243,9 @@ def __supabase_to_game(
         )
     # TODO update this logic
     if cats is None:
-        if game["ce_id"] == "76574ec1-42df-4488-a511-b9f2d9290e5d":
+        if game["ce_id"] == hm.GAME_ID_CHALLENGE_ENTHUSIASTS:
             categories = ["Arcade"]
-        elif game["ce_id"] == "09f100aa-caa7-4154-a224-1c3e9277eea4":
+        elif game["ce_id"] == hm.GAME_ID_CLOWN_TOWN:
             categories = ["Action"]
         else:
             raise Exception("Sent in cats=None and game is not CE or Clown Town.")
