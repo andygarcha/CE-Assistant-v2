@@ -287,9 +287,10 @@ async def process_loop(
         embed.colour = update.color
         embed.title = update.title
         embed.description = update.description
-        # TODO removal image
         if update.image is not None and update.image != "":
             embed.set_image(url=update.image)
+        else:
+            embed.set_image(url=hm.SCREENSHOT_FAILED_IMAGE)
         embed.url = update.url
 
         # regular stuff
@@ -1221,7 +1222,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.is_embed = True
     update.title = f"__ {game_old.game_name} __ removed from the site"
     update.color = 0xCE4E2C
-    update.image = ""
+    update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
 
     return update
