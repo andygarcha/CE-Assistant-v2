@@ -860,6 +860,12 @@ class CERoll:
             return None
 
         return hm.get_datetime(days=days, old_datetime=self.init_time)
+    
+    def calculate_cooldown_timestamp(self) -> int | None:
+        result = self.calculate_cooldown_date()
+        if result is None:
+            return None
+        return int(result.timestamp())
 
     def is_won(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None = None
