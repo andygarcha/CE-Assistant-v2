@@ -246,7 +246,7 @@ async def solo_roll(
             _game_object = hm.get_item_from_list(g, database_name)
             if _game_object is None:
                 return await interaction.followup.send(
-                    f"Error: Could not find {g} in database_name."
+                    f"Error: Could not find {g} in the game database."
                 )
             game_strings.append(_game_object.name_with_link)
 
