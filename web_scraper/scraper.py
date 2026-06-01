@@ -1180,27 +1180,27 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
 
     # primary
     num_pos = len(game_new.get_primary_objectives())
-    if num_pos != 0:
+    num_po_uncleareds = len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
+    if num_pos != 0 or num_po_uncleareds != 0:
         update.description += (
             f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} "
-            f"worth {game_new.get_po_points()} {hm.get_emoji("Points")}"
+            f"worth {game_new.get_po_points()} {hm.get_emoji('Points')}"
         )
 
     # primary (uncleared)
-    num_po_uncleareds = len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
     if num_po_uncleareds != 0:
         update.description += f" (+{num_po_uncleareds} Uncleared{'s' if num_po_uncleareds != 1 else ''})"
     
     # secondary
     num_sos = len(game_new.get_secondary_objectives())
-    if num_sos != 0:
+    num_so_uncleareds = len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
+    if num_sos != 0 or num_so_uncleareds != 0:
         update.description += (
             f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''} "
             f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
         )
     
     # secondary (uncleared)
-    num_so_uncleareds = len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
     if num_so_uncleareds != 0:
         update.description += f" (+{num_so_uncleareds} Uncleared{'s' if num_so_uncleareds != 1 else ''})"
 
