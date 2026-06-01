@@ -405,7 +405,6 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
     ugames_by_user: dict[str, list[dict]] = {}
     for ug in userGames_json:
         ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
-
     uobjs_by_user: dict[str, list[dict]] = {}
     for uo in userObjectives_json:
         uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
@@ -479,6 +478,40 @@ def get_all_rolls() -> list[CERoll]:
             )
         )
 
+    return _rolls
+
+def get_checkable_rolls() -> list[CERoll]:
+    """
+    This function differs from `self.get_all_rolls` in only one manner:
+    we only pull rolls that are 'current' or 'pending'. This will
+    drastically speed up our time spent pulling from Supabase as 
+    the majority of rolls are already completed.
+    """
+    # pull rolls
+    rolls_json = (
+        supabase.table("rolls")
+        .select()
+        .in_("status", ["current", "pending"])
+        .execute().data
+    )
+
+    # pull rollgames
+    ids = [r['id'] for r in rolls_json]
+    roll_games_json = (
+        supabase.table("rollGames")
+        .select()
+        .in_("roll_id", ids)
+        .execute().data
+    )
+
+    # convert and return
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(
+            __supabase_to_roll(
+                roll, [g for g in roll_games_json if g['roll_id'] == roll['id']]
+            )
+        )
     return _rolls
 
 
