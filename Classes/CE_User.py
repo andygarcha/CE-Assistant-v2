@@ -10,9 +10,7 @@ from Classes.OtherClasses import CRData
 from Modules import http_session
 import logging
 
-MUTELIST_CEIDS = [
-    "e790e8f0-f67e-4646-8fa9-de436b2c8d5e"  # athenavenny
-]
+MUTELIST_CEIDS = ["e790e8f0-f67e-4646-8fa9-de436b2c8d5e"]  # athenavenny
 
 RANK_THRESHOLDS = [
     (10000, 8),  # EX
@@ -173,9 +171,13 @@ class CEUser:
         if None in database_name:
             raise ValueError("Argument 'database_name' contains None.")
 
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
+
         completed_games: list[CEGame] = []
         for game_user in self.owned_games:
-            game_data = hm.get_item_from_list(game_user.ce_id, database_name)
+            game_data = games_by_ce_id.get(game_user.ce_id)
             if game_data is None:
                 logger.error(
                     "Could not find a game in database_name for %s", game_user.ce_id
@@ -610,9 +612,12 @@ class CEUser:
 
     def completions(self, database_name: list[CEGame]) -> int:
         "Returns the number of completions this user has."
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
         completions = 0
         for owned_game in self.owned_games:
-            if owned_game.is_completed(database_name=database_name):
+            if owned_game.is_completed(database_name=games_by_ce_id):
                 completions += 1
         return completions
 
@@ -773,9 +778,9 @@ class CEAPIUser(CEUser):
         ]
 
         # now get the objects and zip them with the completion dates
-        objective_tuples: list[
-            tuple[CEUserObjective | str, datetime.datetime, str]
-        ] = []
+        objective_tuples: list[tuple[CEUserObjective | str, datetime.datetime, str]] = (
+            []
+        )
         for pair in ordered_pairs:
             objective_object = self.get_objective(pair[1])
             objective_tuples.append(
