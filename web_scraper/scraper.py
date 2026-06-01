@@ -602,7 +602,7 @@ async def update_users(
                 bstart + batch_size,
             )
             batch_users = await asyncio.to_thread(
-                SupabaseReader.get_users_bulk, batch_ids
+                SupabaseReader.get_users_bulk, batch_ids, False # DONT PULL ROLLS!
             )
             users_old.extend(batch_users)
 
@@ -689,7 +689,7 @@ def update_rolls(
 
     logger.info("Updating rolls.")
     logger.info("Pulling rolls from Supabase...")
-    rolls = SupabaseReader.get_all_rolls()
+    rolls = SupabaseReader.get_checkable_rolls()
     logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
     rolls_updated: list[CERoll] = []
 
