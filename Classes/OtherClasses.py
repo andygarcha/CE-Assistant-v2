@@ -286,6 +286,15 @@ class CRData:
 
         # and return it.
         return cr
+    
+    @staticmethod
+    def calculate_total_cr(single_cat_points: dict[str, list[int]], multi_cat_games: list[tuple[int, list[hm.CATEGORIES]]]):
+        """
+        Calculates Total CR.
+        See CRData's docstring for information on how this is calculated.
+        """
+
+
 
     def __init__(self, owned_games: list[CEUserGame], database_name: list[CEGame]):
         # iterate through every category and set up an array in the dict
