@@ -85,12 +85,13 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
     if json_response["genre"] is None:
         logger.error("Null genre found for game with ID %s", json_response["id"])
         return None
-    if "gameCategories" not in json_response:
-        _categories = []
-    elif json_response['id'] == hm.GAME_ID_CHALLENGE_ENTHUSIASTS:
+
+    if json_response['id'] == hm.GAME_ID_CHALLENGE_ENTHUSIASTS:
         _categories = ['Arcade']
     elif json_response['id'] == hm.GAME_ID_CLOWN_TOWN:
         _categories = ['Action']
+    elif "gameCategories" not in json_response:
+        _categories = []
     # pull the categories (we can't be sure they're ordered)
     else:
         _categories_unordered: list[tuple[str, int]] = []
