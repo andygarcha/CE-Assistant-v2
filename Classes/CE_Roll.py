@@ -812,14 +812,14 @@ class CERoll:
         if self.roll_name == "Fourward Thinking":
             return (
                 f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. "
-                + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_date()}>."
+                + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.is_co_op:
             if partner is None:
                 return "Error code 5. Contact andy."
             return (
                 f"Sorry {user.mention()} and {partner.display_name}, you failed your {self.roll_name} roll. "
-                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.roll_name == "One Hell of a Day":
             game = hm.get_item_from_list(self.games[0], database_name)
@@ -830,12 +830,12 @@ class CERoll:
                 raise Exception("Could not find game with ID in database_name.")
             return (
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name}). "
-                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         else:
             return (
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. "
-                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_date()}>."
+                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
 
     def calculate_cooldown_date(self) -> datetime.datetime | None:

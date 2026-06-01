@@ -106,7 +106,7 @@ async def solo_roll(
     # user has cooldown
     if user.has_cooldown(event_name):
         return await interaction.followup.send(
-            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_time(event_name)}>. "
+            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_timestamp(event_name)}>. "
         )
 
     # user currently rolled => is rerollable
