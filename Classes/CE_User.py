@@ -489,6 +489,16 @@ class CEUser:
                 if cooldown_date is not None and cooldown_date > hm.get_datetime("now"):
                     return cooldown_date
         return None
+    
+    def get_cooldown_timestamp(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int | None:
+        """
+        Returns the UNIX Timestamp of the datetime that `roll_name`'s cooldown ends.
+        If the user does not have a cooldown in this event, this will return None.
+        """
+        cooldown = self.get_cooldown_time(roll_name)
+        if cooldown is None:
+            return None
+        return int(cooldown.timestamp())
 
     def had_cooldown(
         self, roll_name: hm.ALL_ROLL_EVENT_NAMES, old_time: datetime.datetime
