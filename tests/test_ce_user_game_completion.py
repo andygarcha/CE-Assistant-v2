@@ -9,8 +9,16 @@ def install_dependency_stubs():
     if importlib.util.find_spec("aiohttp") is None:
         aiohttp = types.ModuleType("aiohttp")
         setattr(aiohttp, "ContentTypeError", type("ContentTypeError", (Exception,), {}))
-        setattr(aiohttp, "ClientConnectionError", type("ClientConnectionError", (Exception,), {}))
-        setattr(aiohttp, "ClientTimeout", type("ClientTimeout", (), {"__init__": lambda *_, **__: None}))
+        setattr(
+            aiohttp,
+            "ClientConnectionError",
+            type("ClientConnectionError", (Exception,), {}),
+        )
+        setattr(
+            aiohttp,
+            "ClientTimeout",
+            type("ClientTimeout", (), {"__init__": lambda *_, **__: None}),
+        )
         setattr(aiohttp, "ClientSession", type("ClientSession", (), {}))
         sys.modules["aiohttp"] = aiohttp
 
@@ -23,17 +31,25 @@ def install_dependency_stubs():
         setattr(discord, "CategoryChannel", type("CategoryChannel", (), {}))
         setattr(discord, "ConnectionClosed", type("ConnectionClosed", (Exception,), {}))
         setattr(discord, "HTTPException", type("HTTPException", (Exception,), {}))
-        setattr(discord, "AllowedMentions", type(
+        setattr(
+            discord,
             "AllowedMentions",
-            (),
-            {
-                "all": staticmethod(lambda: object()),
-                "none": staticmethod(lambda: object()),
-            },
-        ))
-        setattr(discord, "abc", types.SimpleNamespace(
-            PrivateChannel=type("PrivateChannel", (), {}),
-        ))
+            type(
+                "AllowedMentions",
+                (),
+                {
+                    "all": staticmethod(lambda: object()),
+                    "none": staticmethod(lambda: object()),
+                },
+            ),
+        )
+        setattr(
+            discord,
+            "abc",
+            types.SimpleNamespace(
+                PrivateChannel=type("PrivateChannel", (), {}),
+            ),
+        )
         sys.modules["discord"] = discord
 
 
