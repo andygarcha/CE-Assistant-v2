@@ -315,6 +315,31 @@ class TestCalculateCooldownDate:
         # days = 2*14 + months_to_days(1) = 28 + ~30
         assert result > INIT + datetime.timedelta(days=28)
 
+class TestCooldownTimestamp:
+    def test_none_cooldown_rolls_return_none(self):
+        for name in [
+            "Two Week T2 Streak",
+            'Two "Two Week T2 Streak" Streak',
+        ]:
+            roll = make_roll(roll_name=name, init_time=INIT)
+            assert roll.calculate_cooldown_timestamp() is None
+    
+    def test_one_hell_of_a_day_cooldown_7_days_from_init(self):
+        roll = make_roll(roll_name="One Hell of a Day", init_time=INIT)
+        result = roll.calculate_cooldown_timestamp()
+        expected = int((INIT + datetime.timedelta(days=7)).timestamp())
+        assert result == expected
+
+    def test_fourward_thinking_cooldown_based_on_games_and_rerolls(self):
+        # 2 games, 0 rerolls used (rerolls=0 means 1 allowed, 1 used = rerolls_used = 2 - (0+1) = 1)
+        roll = make_roll(
+            roll_name="Fourward Thinking", games=["g1", "g2"], rerolls=0, init_time=INIT
+        )
+        result = roll.calculate_cooldown_timestamp()
+        assert isinstance(result, int)
+        # days = 2*14 + months_to_days(1) = 28 + ~30
+        assert result > int((INIT + datetime.timedelta(days=28)).timestamp())
+
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
 
