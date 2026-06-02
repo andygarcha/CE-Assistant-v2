@@ -802,23 +802,43 @@ class CERoll:
     def get_fail_message(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None
     ) -> str:
-        """Returns a string to send to #casino if this roll is failed."""
-        # TODO: finish this function
+        """
+        Returns a string to send to #casino if this roll is failed.
 
-        # and grab the objects
-        if not self.is_co_op:
-            partner = None
+        Parameters
+        ---
+        database_name: `list[CEGame]`
+            A list of CEGame objects that will need to be
+            referenced in this message.
+        user: `CEUser`
+            The user who rolled this event.
+        partner: `CEUser | None`
+            If this is a multi-player event, the user information
+            for the partner.
 
+        Returns
+        ---
+        message: `str`
+            The message to be sent to #casino. Examples:
+            - Sorry <@12345>, you have failed your Tier 1 in Fourward Thinking. You are now on cooldown
+              for Fourward Thinking until <t:12345>.
+            - Sorry <@12345> and <@67890>, you have failed your Soul Mates roll. You are now on cooldown for
+              Soul Mates until <t:12345>.
+            - Sorry <@12345>, you have failed your One Hell of a Day roll (Froggy's Battle). You are now on cooldown
+              until <t:12345>
+            - Sorry <@12345>, you have failed your Two Week T2 Streak roll. This event has no cooldown!
+
+        """
         if self.roll_name == "Fourward Thinking":
             return (
-                f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. "
+                f"Sorry {user.mention()}, you failed your Tier {len(self.games)} in Fourward Thinking. "
                 + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.is_co_op:
             if partner is None:
                 return "Error code 5. Contact andy."
             return (
-                f"Sorry {user.mention()} and {partner.display_name}, you failed your {self.roll_name} roll. "
+                f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.roll_name == "One Hell of a Day":
@@ -829,8 +849,13 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name}). "
+                f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.game_name}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
+            )
+        elif self.calculate_cooldown_date() is None:
+            return (
+                f"Sorry {user.mention()}, you failed your {self.roll_name} roll. "
+                "This event has no cooldown!"
             )
         else:
             return (

@@ -289,18 +289,26 @@ async def solo_roll(
                 )
             game_strings.append(_game_object.name_with_link)
 
+        # write the message
         message = (
             f"In your {event_name} roll, "
             f"you rolled the following games: {hm.get_grammar_str(game_strings)}. "
-            f"You have until {roll.due_discord_timestamp} to complete this event!"
         )
 
-        if len(message) > 2000:
+        # message was too long
+        if len(message) > 1900:
             message = (
-                f"In your {event_name} roll, "
-                f"the games you rolled did not fit in one message. Please run /check-rolls to see the full list. "
+                f"In your {event_name} roll, the games you rolled did not "
+                "fit in one message. Please run /check-rolls to see the full list. "
+            )
+
+        # tack on at the end
+        if roll.ends:
+            message += (
                 f"You have until {roll.due_discord_timestamp} to complete this event!"
             )
+        else:
+            message += "This event has no time limit. To fail and restart this event, run /solo-roll again!"
 
     SupabaseReader.dump_roll(roll)
     return await interaction.followup.send(message)
