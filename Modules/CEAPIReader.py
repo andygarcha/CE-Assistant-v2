@@ -2,10 +2,21 @@
 This module is dedicated to interactions with the Challenge Enthusiasts API.
 
 To pull data from individual game or user pages, use `get_api_page_data()`.
-
 To pull data from all games on the site, use `get_api_games_full()`.
-
 To pull data from all users on the site, use `get_api_users_all()`.
+
+All Endpoints
+---
+Games
+- /api/game/[gameId]
+- /api/games
+- /api/games/ids
+- /api/games/full
+
+Users
+- /api/user/[userId]
+- /api/users/all
+
 """
 
 import asyncio
