@@ -843,6 +843,8 @@ class CERoll:
         (or `None` if not applicable)."""
 
         days: int | None | dict[int, int] = roll_cooldowns[self.roll_name]
+
+        # Fourward thinking: num_games * 2 Weeks + num_rerolls_used * 1 Month
         if self.roll_name == "Fourward Thinking":
             if self._rerolls is None:
                 self._rerolls = 0
