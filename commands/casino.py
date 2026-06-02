@@ -268,16 +268,12 @@ async def solo_roll(
         roll.set_status("current")
         roll.reset_due_time()
         roll.add_game(result.games[0])
-
-        game = hm.get_item_from_list(result.games[0], database_name)
-        if game is None:
+        _result = roll.get_reup_message(database_name)
+        if _result is None:
             return await interaction.followup.send(
-                f"Error: Could not find {result.games[0]} in database_name."
+                "Errored when trying to find the game's name."
             )
-        message = (
-            f"The next stage of your {event_name} roll is {game.name_with_link}. "
-            f"You have until {roll.due_discord_timestamp} to complete this. Good luck!"
-        )
+        message = _result
 
     # Case 3: We're creating a brand new roll
     else:
@@ -292,36 +288,12 @@ async def solo_roll(
             is_current=True,
             lucky=lucky,
         )
-        # get the
-        game_strings: list[str] = []
-        for g in result.games:
-            _game_object = hm.get_item_from_list(g, database_name)
-            if _game_object is None:
-                return await interaction.followup.send(
-                    f"Error: Could not find {g} in the game database."
-                )
-            game_strings.append(_game_object.name_with_link)
-
-        # write the message
-        message = (
-            f"In your {event_name} roll, "
-            f"you rolled the following games: {hm.get_grammar_str(game_strings)}. "
-        )
-
-        # message was too long
-        if len(message) > 1900:
-            message = (
-                f"In your {event_name} roll, the games you rolled did not "
-                "fit in one message. Please run /check-rolls to see the full list. "
+        _result = roll.get_initialization_message(database_name)
+        if _result is None:
+            return await interaction.followup.send(
+                "Errored when trying to find game names."
             )
-
-        # tack on at the end
-        if roll.ends:
-            message += (
-                f"You have until {roll.due_discord_timestamp} to complete this event!"
-            )
-        else:
-            message += "This event has no time limit. To fail and restart this event, run /solo-roll again!"
+        message = _result
 
     SupabaseReader.dump_roll(roll)
     return await interaction.followup.send(message)
