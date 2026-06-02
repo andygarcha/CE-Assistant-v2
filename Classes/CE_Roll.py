@@ -862,6 +862,64 @@ class CERoll:
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
+        
+    def get_initialization_message(self, database_name: list[CEGame]) -> str | None:
+        """
+        Creates the message sent when the roll is being rolled.
+        
+        This will return the message that's to be sent when the event is 
+        rolled for the first time (i.e. the user has just run /solo-roll).
+
+        Returns
+        ---
+        The message to be sent to #casino on rolling
+        """
+        # get the actual game links
+        game_strings: list[str] = []
+        for g in self.games:
+            _game_object = hm.get_item_from_list(g, database_name)
+            if _game_object is None:
+                return None
+            game_strings.append(_game_object.name_with_link)
+        # write the message
+        message = (
+            f"In your {self.roll_name} roll, "
+            f"you rolled the following games: {hm.get_grammar_str(game_strings)}. "
+        )
+        # message was too long
+        if len(message) > 1900:
+            message = (
+                f"In your {self.roll_name} roll, the games you rolled did not "
+                "fit in one message. Please run /check-rolls to see the full list. "
+            )
+        # tack on at the end
+        if self.ends:
+            message += (
+                f"You have until {self.due_discord_timestamp} to complete this event!"
+            )
+        else:
+            message += "This event has no time limit. To fail and restart this event, run /solo-roll again!"
+        return message
+
+    def get_reup_message(self, database_name: list[CEGame]) -> str | None:
+        """
+        Creates the message sent when the roll has been re-upped for a new round.
+
+        This will return the message that's to announce
+        the new game for the event. For example, if this is a Two Week T2 Streak
+        roll, and self.status == "waiting", this will be the message sent to announce
+        the second (and final) game in the roll.
+        """
+        game = hm.get_item_from_list(self.games[-1], database_name)
+        if game is None:
+            return None
+        message = (
+            f"The next stage of your {self.roll_name} roll is {game.name_with_link}. "
+            f"You have until {self.due_discord_timestamp} to complete this. Good luck!"
+        )
+        return message
+
+
 
     def calculate_cooldown_date(self) -> datetime.datetime | None:
         """Calculates the date of which the cooldown should be set
