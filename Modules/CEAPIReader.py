@@ -92,6 +92,8 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         _categories = ["Action"]
     elif "gameCategories" not in json_response:
         _categories = []
+    elif len(json_response["gameCategories"]) == 0:
+        _categories = json_response["genre"]["name"]
     # pull the categories (we can't be sure they're ordered)
     else:
         _categories_unordered: list[tuple[str, int]] = []
