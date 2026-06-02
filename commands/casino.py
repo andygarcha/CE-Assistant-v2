@@ -795,9 +795,14 @@ async def check_rolls(interaction: discord.Interaction):
     # defer the message
     await interaction.response.defer()
 
-    return await interaction.followup.send(
-        "[click me :)](https://ce-assistant-frontend.vercel.app/rolls/recent)"
-    )
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+
+    message: str = ""
+    if user is not None:
+        message += f"[Click here to see all of your rolls](https://ce-assistant-frontend.vercel.app/rolls/{user.ce_id})\n"
+    message += "[Click here to see all rolls from the past month](https://ce-assistant-frontend.vercel.app/rolls/recent)\n"
+
+    return await interaction.followup.send(message)
 
 
 class ConfirmCancelView(discord.ui.View):
