@@ -1231,6 +1231,22 @@ def create_update_updated_game(
         The update that comes out of this game. It can also be None.
     removed_objective_ids: `list[str]` or `None`
         A list of Objective IDs that need to be removed.
+
+    Example
+    ---
+    Celeste updated on the site:
+    - Total points unchanged!
+    - PO 'Strawberry Lunatic' updated
+      - Description updated
+      - Requirements updated
+      - 3 achievements added
+    - New Secondary Objective 'Double Dash' added:
+      - 100
+      - Complete 9D.
+    - SO 'Speed Berry' decreased from 30 to 20
+      - 1 achievement removed, 17 achievements added
+    - CO 'Solid Gold' updated
+      - Description updated
     """
 
     update = UpdateMessageForScraperProcess()

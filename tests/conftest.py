@@ -26,11 +26,12 @@ def make_objective(
     requirements: str | None = None,
     achievement_ce_ids: list[str] | None = None,
     point_value_partial: int = 0,
+    description: str = "A test objective.",
 ) -> CEObjective:
     return CEObjective(
         ce_id=ce_id,
         objective_type=obj_type,  # type: ignore
-        description="A test objective.",
+        description=description,
         point_value=point_value,
         name=name,
         game_ce_id=game_ce_id,
