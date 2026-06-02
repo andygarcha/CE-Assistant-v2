@@ -407,6 +407,12 @@ class CEUser:
                 break
         pass
 
+    def get_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
+        for p in self.rolls:
+            if p.roll_name == pending and p.status == "pending":
+                return p
+        return None
+
     def has_pending(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently on pending for `roll_name`."""
         for pending in self.pending_rolls:
