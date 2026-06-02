@@ -160,7 +160,7 @@ async def get_api_games() -> list[str]:
 
     for attempt in range(TRY_LIMIT):
         try:
-            async with session.get("https://cedb.me/api/games") as response:
+            async with session.get("https://cedb.me/api/games/ids") as response:
                 games = await response.json()
                 return [g["id"] for g in games]
         except Exception as exc:
