@@ -1328,24 +1328,21 @@ def create_update_updated_game(
                 update.description += "\n  - Requirements updated"
 
             # if the achievements were updated
-            if not hm.achievements_are_equal(
-                old_objective.achievement_ce_ids, new_objective.achievement_ce_ids
-            ):
-                _old_set = set(old_objective.achievement_ce_ids or [])
-                _new_set = set(new_objective.achievement_ce_ids or [])
-                _count_removed = len(_old_set - _new_set)
-                _count_added = len(_new_set - _old_set)
-                parts = []
-                if _count_removed != 0:
-                    parts.append(
-                        f"{_count_removed} achievement{'s' if _count_removed != 1 else ''} removed"
-                    )
-                if _count_added != 0:
-                    parts.append(
-                        f"{_count_added} achievement{'s' if _count_added != 1 else ''} added"
-                    )
-                if parts:
-                    update.description += "\n  - " + ", ".join(parts)
+            _old_set = set(old_objective.achievement_ce_ids or [])
+            _new_set = set(new_objective.achievement_ce_ids or [])
+            _count_removed = len(_old_set - _new_set)
+            _count_added = len(_new_set - _old_set)
+            parts = []
+            if _count_removed != 0:
+                parts.append(
+                    f"{_count_removed} achievement{'s' if _count_removed != 1 else ''} removed"
+                )
+            if _count_added != 0:
+                parts.append(
+                    f"{_count_added} achievement{'s' if _count_added != 1 else ''} added"
+                )
+            if parts:
+                update.description += "\n  - " + ", ".join(parts)
 
             # if the partial points were updated
             if old_objective.partial_points != new_objective.partial_points:
