@@ -1296,19 +1296,24 @@ def create_update_updated_game(
             "Objective is updated."
             # if the points have changed
             if old_objective.is_uncleared() and not new_objective.is_uncleared():
-                update.description += f"\n- '**{new_objective.name}**' cleared, valued at {new_objective.point_value} {hm.get_emoji('Points')}"
+                update.description += (
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' cleared, valued at "
+                    f"{new_objective.point_value} {hm.get_emoji('Points')}"
+                )
             elif old_objective.point_value > new_objective.point_value:
                 update.description += (
-                    f"\n- '**{new_objective.name}**' decreased from {old_objective.point_value} {hm.get_emoji('Points')} "
-                    + f"to {new_objective.point_value} {hm.get_emoji('Points')}"
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' decreased from {old_objective.point_value} "
+                    + f"{hm.get_emoji('Points')} to {new_objective.point_value} {hm.get_emoji('Points')}"
                 )
             elif old_objective.point_value < new_objective.point_value:
                 update.description += (
-                    f"\n- '**{new_objective.name}**' increased from {old_objective.point_value} {hm.get_emoji('Points')} "
-                    + f"to {new_objective.point_value} {hm.get_emoji('Points')}"
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' increased from {old_objective.point_value} "
+                    + f"{hm.get_emoji('Points')} to {new_objective.point_value} {hm.get_emoji('Points')}"
                 )
             else:
-                update.description += f"\n- {new_objective.get_type_short()} '**{new_objective.name}**' updated"
+                update.description += (
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' updated"
+                )
 
             # if the type has changed
             if old_objective.type != new_objective.type:
@@ -1359,7 +1364,7 @@ def create_update_updated_game(
             )
             continue
         update.description += (
-            f"\n- {old_objective.get_type_short()} {old_objective.name} removed."
+            f"\n- {old_objective.type_short} {old_objective.name} removed."
         )
 
     # CHECK FOR GHOST UPDATE

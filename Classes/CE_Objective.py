@@ -56,7 +56,8 @@ class CEObjective:
         """Returns the type of objective."""
         return self._objective_type
 
-    def get_type_short(self) -> str:
+    @property
+    def type_short(self) -> str:
         "Returns this game's type as a short (PO, CO, SO)"
         return self.type[0] + "O"
 
