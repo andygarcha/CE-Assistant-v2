@@ -270,7 +270,9 @@ async def solo_roll(
         roll.add_game(result.games[0])
         _result = roll.get_reup_message(database_name)
         if _result is None:
-            return await interaction.followup.send("Errored when trying to find the game's name.")
+            return await interaction.followup.send(
+                "Errored when trying to find the game's name."
+            )
         message = _result
 
     # Case 3: We're creating a brand new roll
@@ -288,9 +290,10 @@ async def solo_roll(
         )
         _result = roll.get_initialization_message(database_name)
         if _result is None:
-            return await interaction.followup.send("Errored when trying to find game names.")
+            return await interaction.followup.send(
+                "Errored when trying to find game names."
+            )
         message = _result
-
 
     SupabaseReader.dump_roll(roll)
     return await interaction.followup.send(message)

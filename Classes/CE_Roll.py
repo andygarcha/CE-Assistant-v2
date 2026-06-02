@@ -862,12 +862,12 @@ class CERoll:
                 f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
-        
+
     def get_initialization_message(self, database_name: list[CEGame]) -> str | None:
         """
         Creates the message sent when the roll is being rolled.
-        
-        This will return the message that's to be sent when the event is 
+
+        This will return the message that's to be sent when the event is
         rolled for the first time (i.e. the user has just run /solo-roll).
 
         Returns
@@ -918,8 +918,6 @@ class CERoll:
             f"You have until {self.due_discord_timestamp} to complete this. Good luck!"
         )
         return message
-
-
 
     def calculate_cooldown_date(self) -> datetime.datetime | None:
         """Calculates the date of which the cooldown should be set
