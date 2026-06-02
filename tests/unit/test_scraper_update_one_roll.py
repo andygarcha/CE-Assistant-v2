@@ -37,6 +37,12 @@ def _roll(status: str):
     return make_roll(roll_name=ROLL_NAME, status=status, games=[GAME_ID])
 
 
+def _expired_current():
+    return make_roll(
+        roll_name=ROLL_NAME, status="current", due_time=_past(), games=[GAME_ID]
+    )
+
+
 def _user():
     return make_user()
 
@@ -208,15 +214,19 @@ class TestMutedUser:
         )
         assert delete_pending is False
 
-    def test_muted_user_update_if_present_goes_to_privatelog(self):
-        update, _, __ = update_one_roll(_roll("current"), _muted_user(), None, _games())
-        if update is not None:
-            assert update.location == "privatelog"
+    def test_muted_user_expired_roll_goes_to_casino_not_privatelog(self):
+        # update_one_roll routes casino messages to "casino"/"casinolog", never "privatelog"
+        # (privatelog routing is for scraper notifications like check_rank, not roll outcomes)
+        update, _, __ = update_one_roll(
+            _expired_current(), _muted_user(), None, _games()
+        )
+        assert update is not None
+        assert update.location != "privatelog"
 
-    def test_non_muted_user_update_if_present_does_not_go_to_privatelog(self):
-        update, _, __ = update_one_roll(_roll("current"), _user(), None, _games())
-        if update is not None:
-            assert update.location != "privatelog"
+    def test_non_muted_user_expired_roll_goes_to_casino_not_privatelog(self):
+        update, _, __ = update_one_roll(_expired_current(), _user(), None, _games())
+        assert update is not None
+        assert update.location != "privatelog"
 
 
 # ── Update message — basic guarantees ────────────────────────────────────────
@@ -227,12 +237,12 @@ class TestUpdateMessageGuarantees:
         update, _, __ = update_one_roll(_pending(_future()), _user(), None, _games())
         assert update is None
 
-    def test_if_update_present_location_is_set(self):
-        update, _, __ = update_one_roll(_roll("current"), _user(), None, _games())
-        if update is not None:
-            assert update.location is not None
+    def test_expired_roll_update_has_location_set(self):
+        update, _, __ = update_one_roll(_expired_current(), _user(), None, _games())
+        assert update is not None
+        assert update.location is not None
 
-    def test_if_update_present_is_embed_is_bool(self):
-        update, _, __ = update_one_roll(_roll("current"), _user(), None, _games())
-        if update is not None:
-            assert isinstance(update.is_embed, bool)
+    def test_expired_roll_update_is_embed_is_bool(self):
+        update, _, __ = update_one_roll(_expired_current(), _user(), None, _games())
+        assert update is not None
+        assert isinstance(update.is_embed, bool)
