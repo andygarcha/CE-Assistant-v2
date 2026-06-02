@@ -422,10 +422,11 @@ async def update_games(
             "Pulling %d games one at a time using /api/game/[id].",
             len(_updated_game_ids),
         )
-        for i, gameId in enumerate(_updated_game_ids):
+        for i, gameId in enumerate(_updated_game_ids.copy()):
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
+                _updated_game_ids.remove(gameId)
                 continue
             # isFinished games should *not* have updates made for them,
             # nor should their data be persisted to local backend.
