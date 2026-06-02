@@ -948,6 +948,7 @@ def update_one_user(
 
     updates: list[UpdateMessageForScraperProcess] = []
 
+    # gather old info
     points_original = user.get_total_points()
     completed_games_original = user.get_completed_games_2(database_name_old)
     rank_original = user.get_rank()
@@ -956,6 +957,7 @@ def update_one_user(
     # update the user!
     user.owned_games = site_data.owned_games
 
+    # gather new info
     points_new = user.get_total_points()
     completed_games_new = user.get_completed_games_2(database_name_new)
     rank_new = user.get_rank()
@@ -969,48 +971,21 @@ def update_one_user(
         check_newly_completed_games(completed_games_original, completed_games_new, user)
     )
 
+    _result: None | UpdateMessageForScraperProcess = None
+
     # -- RANK UPDATE --
-    if rank_new != rank_original and points_new > points_original:
-        if not user.on_mutelist():
-            update = UpdateMessageForScraperProcess()
-            update.location = "userlog"
-            update.is_embed = False
-            update.text = (
-                f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank "
-                + f"{hm.get_emoji(rank_original)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
-            )
-        else:
-            update = UpdateMessageForScraperProcess()
-            update.location = "privatelog"
-            update.is_embed = False
-            update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_original} to {rank_new}."
-        updates.append(update)
+    _result = check_rank(rank_original, rank_new, points_original, points_new, user)
+    if _result is not None:
+        updates.append(_result)
 
     # -- COMPLETION COUNT UPDATE --
-    COMPLETION_INCREMENT = 25
-    if int(len(completed_games_original) / COMPLETION_INCREMENT) < int(
-        len(completed_games_new) / COMPLETION_INCREMENT
-    ):
-        if not user.on_mutelist():
-            update = UpdateMessageForScraperProcess()
-            update.location = "userlog"
-            update.is_embed = False
-            update.text = (
-                f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of "
-                + f"{int(len(completed_games_new) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
-            )
-        else:
-            update = UpdateMessageForScraperProcess()
-            update.location = "privatelog"
-            update.is_embed = False
-            update.text = (
-                f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of"
-                + f"{int(len(completed_games_new) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT}"
-            )
-        updates.append(update)
+    _result = check_completion_count(
+        len(completed_games_original), len(completed_games_new), user
+    )
+    if _result is not None:
+        updates.append(_result)
 
     user.set_last_updated(hm.get_datetime("now"))
-
     return updates
 
 
@@ -1529,15 +1504,71 @@ def check_newly_completed_games(
 def check_rank(
     rank_old: str, rank_new: str, points_old: int, points_new: int, user: CEUser
 ) -> UpdateMessageForScraperProcess | None:
-    # if rank_new != rank_old and points_new > points_old:
-    #     update = UpdateMessageForScraperProcess()
-    # TODO: complete this function
-    pass
+    """
+    Generates an Update Message for a user's rank up.
+    Parameters
+    ---
+    rank_old: `str`
+        The previous rank.
+    rank_new: `str`
+        The newly computed rank.
+    points_old: `int`
+        The number of points the user had before this scrape
+    points_new: `int`
+        The number of points the user has now
+    user: `CEUser`
+        The user we're checking in the first place
+    """
+    # no update needed
+    if rank_new == rank_old or points_new <= points_old:
+        return None
+
+    if not user.on_mutelist():
+        update = UpdateMessageForScraperProcess()
+        update.location = "userlog"
+        update.is_embed = False
+        update.text = (
+            f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank "
+            + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
+        )
+    else:
+        update = UpdateMessageForScraperProcess()
+        update.location = "privatelog"
+        update.is_embed = False
+        update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_old} to {rank_new}."
+    return update
 
 
-def check_completion_count():
-    # TODO: complete this function
-    pass
+def check_completion_count(
+    num_completions_og: int, num_completions_new: int, user: CEUser
+) -> None | UpdateMessageForScraperProcess:
+    """
+    Checks if a user has completed a new increment of COMPLETION_INCREMENT Games.
+    Currently set at 25.
+    """
+    COMPLETION_INCREMENT = 25
+
+    if int(num_completions_og / COMPLETION_INCREMENT) >= int(
+        num_completions_new / COMPLETION_INCREMENT
+    ):
+        return None
+    if not user.on_mutelist():
+        update = UpdateMessageForScraperProcess()
+        update.location = "userlog"
+        update.is_embed = False
+        update.text = (
+            f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of "
+            + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
+        )
+    else:
+        update = UpdateMessageForScraperProcess()
+        update.location = "privatelog"
+        update.is_embed = False
+        update.text = (
+            f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of "
+            + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games."
+        )
+    return update
 
 
 def database_reload():
