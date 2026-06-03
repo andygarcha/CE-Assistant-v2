@@ -4,6 +4,7 @@ from collections.abc import Sequence
 import datetime
 import json
 import time
+import uuid
 from typing import Literal, cast
 import logging
 import typing
@@ -1181,6 +1182,89 @@ def delete_roll(roll_id: str):
 
     # Delete roll
     supabase.table("rolls").delete().eq("id", roll_id).execute()
+
+
+def add_pending(
+    event_name: hm.ALL_ROLL_EVENT_NAMES,
+    user1_ce_id: str,
+    user2_ce_id: str | None = None,
+):
+    """
+    Adds a dummy "pending" roll for user1 and user2.
+
+    Parameters
+    ---
+    event_name: `ALL_ROLL_EVENT_NAMES`
+        The name of the event we'd like to
+        create the pending for.
+    user1_ce_id: `str`
+        The CE ID of the user whose pending we
+        are trying to create.
+    user2_ce_id: `str | None` (default None)
+        Optional second user to create the pending for.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    due = now + datetime.timedelta(minutes=10)
+
+    user_ids = [user1_ce_id] + ([user2_ce_id] if user2_ce_id is not None else [])
+    payload = [
+        {
+            "id": str(uuid.uuid4()),
+            "event_name": event_name,
+            "user1_ce_id": user_ce_id,
+            "user2_ce_id": None,
+            "time_created": _iso_or_none(now),
+            "time_due": _iso_or_none(due),
+            "time_completed": None,
+            "is_lucky": False,
+            "chosen_tier": None,
+            "status": "pending",
+            "rerolls_remaining": None,
+            "rerolls_used": 0,
+            "winner": None,
+        }
+        for user_ce_id in user_ids
+    ]
+    supabase.table("rolls").insert(payload).execute()
+
+
+def kill_pending(
+    event_name: hm.ALL_ROLL_EVENT_NAMES,
+    user1_ce_id: str,
+    user2_ce_id: str | None = None,
+):
+    """
+    Removes any pendings from this user involving `event_name`.
+
+    Parameters
+    ---
+    event_name: `ALL_ROLL_EVENT_NAMES`
+        The name of the event we'd like to
+        kill the pending for.
+    user1_ce_id: `str`
+        The CE ID of the user whose pending we
+        are trying to kill.
+    user2_ce_id: `str | None` (default None)
+        Optional second user to kill the pending for.
+    """
+    user_ids = [user1_ce_id] + ([user2_ce_id] if user2_ce_id is not None else [])
+    or_filter = ",".join(f"user1_ce_id.eq.{uid}" for uid in user_ids)
+    ids = [
+        row["id"]
+        for row in (
+            supabase.table("rolls")
+            .select("id")
+            .eq("event_name", event_name)
+            .eq("status", "pending")
+            .or_(or_filter)
+            .execute()
+            .data
+        )
+    ]
+    if not ids:
+        return
+    supabase.table("rollGames").delete().in_("roll_id", ids).execute()
+    supabase.table("rolls").delete().in_("id", ids).execute()
 
 
 def delete_objectives_many(objs: list[str]):

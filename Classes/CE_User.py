@@ -121,7 +121,18 @@ class CEUser:
         return f"{ranks[self.rank_num()]} Rank"
 
     def rank_num(self) -> int:
-        """Returns the rank as an int. E Rank is 0, D Rank is 1, etc."""
+        """
+        Returns the rank as an int.
+        - E Rank is 0
+        - D Rank is 1
+        - C Rank is 2
+        - B Rank is 3
+        - A Rank is 4
+        - S Rank is 5
+        - SS Rank is 6
+        - SSS Rank is 7
+        - EX Rank is 8
+        """
         points = self.get_total_points()
         for threshold, rank in RANK_THRESHOLDS:
             if points >= threshold:
@@ -318,7 +329,9 @@ class CEUser:
                 return event
         return None
 
-    def has_DA_roll(self, partner_ce_id, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
+    def has_current_roll_with(
+        self, partner_ce_id, roll_name: hm.ALL_ROLL_EVENT_NAMES
+    ) -> bool:
         """Returns true if this user has a DA roll with requested partner."""
         for event in self.current_rolls:
             if (event.roll_name == roll_name) and (
@@ -327,7 +340,7 @@ class CEUser:
                 return True
         return False
 
-    def count_DA_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int:
+    def count_current_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int:
         """Returns the count of current DA rolls."""
         x = 0
         for event in self.current_rolls:
