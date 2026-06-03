@@ -339,6 +339,12 @@ async def co_op_roll(
 
     lucky = False
 
+    # they tried to roll with themselves
+    if interaction.user.id == partner_.id:
+        return await interaction.followup.send(
+            "You can't roll with yourself. Please stop trying to break me :("
+        )
+
     # grab the user and partner
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user is None:
