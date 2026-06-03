@@ -1,7 +1,7 @@
 import asyncio
 from types import SimpleNamespace
 from typing import get_args
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 from Classes.CE_User import CEUser
@@ -551,11 +551,21 @@ class TestRollFourwardthinking:
 
 
 def _make_interaction_coop(user_id: int = 123) -> SimpleNamespace:
+    send_mock = AsyncMock()
+    send_mock.return_value.edit = AsyncMock()
     return SimpleNamespace(
         user=SimpleNamespace(id=user_id),
         response=SimpleNamespace(defer=AsyncMock()),
-        followup=SimpleNamespace(send=AsyncMock()),
+        followup=SimpleNamespace(send=send_mock),
     )
+
+
+def _make_confirmed_view():
+    """Patches CoOpConfirmView so wait() returns instantly and the partner accepted."""
+    view = MagicMock()
+    view.wait = AsyncMock()
+    view.confirmed = True
+    return patch("commands.casino.CoOpConfirmView", return_value=view)
 
 
 def _make_partner_member(partner_id: int = 456) -> SimpleNamespace:
@@ -727,6 +737,7 @@ class TestCoOpRoll:
             patch(
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
+            _make_confirmed_view(),
             patch("commands.casino.SupabaseReader.add_pending"),
             patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
@@ -740,9 +751,13 @@ class TestCoOpRoll:
             ),
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
-        # Should NOT have sent the "too many" message
+        # Should NOT have sent the "too many" message via either channel
         sent_msgs = [c[0][0] for c in interaction.followup.send.call_args_list]
-        assert not any("too many" in m.lower() for m in sent_msgs)
+        edited_msgs = [
+            c.kwargs.get("content", "")
+            for c in interaction.followup.send.return_value.edit.call_args_list
+        ]
+        assert not any("too many" in m.lower() for m in sent_msgs + edited_msgs)
 
     def test_da_partner_at_max_five_rolls_sends_error(self):
         interaction = _make_interaction_coop()
@@ -811,6 +826,7 @@ class TestCoOpRoll:
             patch(
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
+            _make_confirmed_view(),
             patch("commands.casino.SupabaseReader.add_pending"),
             patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
@@ -824,7 +840,11 @@ class TestCoOpRoll:
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
         sent_msgs = [c[0][0] for c in interaction.followup.send.call_args_list]
-        assert not any("already" in m.lower() for m in sent_msgs)
+        edited_msgs = [
+            c.kwargs.get("content", "")
+            for c in interaction.followup.send.return_value.edit.call_args_list
+        ]
+        assert not any("already" in m.lower() for m in sent_msgs + edited_msgs)
 
     # ── pending guards ────────────────────────────────────────────────────────
 
@@ -861,6 +881,7 @@ class TestCoOpRoll:
             patch(
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
+            _make_confirmed_view(),
             patch("commands.casino.SupabaseReader.add_pending") as mock_add_pending,
             patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
@@ -887,6 +908,7 @@ class TestCoOpRoll:
             patch(
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
+            _make_confirmed_view(),
             patch("commands.casino.SupabaseReader.add_pending"),
             patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
@@ -896,8 +918,8 @@ class TestCoOpRoll:
             ),
         ):
             _run_coop(interaction, _make_partner_member(), "Winner Takes All")
-        interaction.followup.send.assert_awaited_once()
-        msg = interaction.followup.send.call_args[0][0]
+        # Error goes to confirm_msg.edit, not followup.send.
+        msg = interaction.followup.send.return_value.edit.call_args.kwargs["content"]
         assert "retired" in msg.lower()
 
     def test_retired_event_game_theory_sends_error(self):
@@ -908,6 +930,7 @@ class TestCoOpRoll:
             patch(
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
+            _make_confirmed_view(),
             patch("commands.casino.SupabaseReader.add_pending"),
             patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
@@ -917,8 +940,7 @@ class TestCoOpRoll:
             ),
         ):
             _run_coop(interaction, _make_partner_member(), "Game Theory")
-        interaction.followup.send.assert_awaited_once()
-        msg = interaction.followup.send.call_args[0][0]
+        msg = interaction.followup.send.return_value.edit.call_args.kwargs["content"]
         assert "retired" in msg.lower()
 
 

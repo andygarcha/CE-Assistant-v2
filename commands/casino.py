@@ -408,6 +408,30 @@ async def co_op_roll(
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
 
+    # -- partner confirmation --
+    confirm_view = CoOpConfirmView(partner.discord_id)
+    confirm_msg = await interaction.followup.send(
+        f"Hey {partner.mention()}, {user.mention()} wants to start a "
+        f"**{event_name}** roll with you! Do you accept?",
+        view=confirm_view,
+        wait=True,
+    )
+    await confirm_view.wait()
+
+    if confirm_view.confirmed is None:
+        return await confirm_msg.edit(
+            content="This co-op request timed out. Re-run the command if you'd still like to roll together.",
+            view=None,
+        )
+    if not confirm_view.confirmed:
+        return await confirm_msg.edit(
+            content=f"{partner.mention()} declined the roll. No worries!",
+            view=None,
+        )
+    await confirm_msg.edit(
+        content=f"{partner.mention()} accepted! Rolling...", view=None
+    )
+
     # jarvis's random event!
     # -- make sure to not reroll this on every time they move forward
     if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
@@ -465,11 +489,11 @@ async def co_op_roll(
     # -- report error -----
     if result.error:
         SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-        return await interaction.followup.send(result.error)
+        return await confirm_msg.edit(content=result.error)
     if result.games is None:
         SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-        return await interaction.followup.send(
-            "Error: There were no returned games, but no internal error was reported."
+        return await confirm_msg.edit(
+            content="Error: There were no returned games, but no internal error was reported."
         )
 
     # -- create the roll object -----
@@ -478,12 +502,12 @@ async def co_op_roll(
             _game = hm.get_item_from_list(result.games[0], database_name)
             if _game is None:
                 SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await interaction.followup.send("Error 7. Please contact andy.")
+                return await confirm_msg.edit(content="Error 7. Please contact andy.")
             tier = _game.tier_num
             if tier == 0:
                 SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await interaction.followup.send(
-                    "Oops! I accidentally rolled you a T0."
+                return await confirm_msg.edit(
+                    content="Oops! I accidentally rolled you a T0."
                 )
     assert tier is not None
     roll = CERoll(
@@ -502,12 +526,12 @@ async def co_op_roll(
     message = roll.get_initialization_message(database_name)
     if message is None:
         SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-        return await interaction.followup.send("Error pulling your rolled games.")
+        return await confirm_msg.edit(content="Error pulling your rolled games.")
 
     # -- save and quit -----
     SupabaseReader.dump_roll(roll)
     SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-    return await interaction.followup.send(message)
+    return await confirm_msg.edit(content=message)
 
 
 @dataclass
@@ -1191,6 +1215,29 @@ async def check_rolls(
     message += "[Click here to see all rolls from the past month](https://ce-assistant-frontend.vercel.app/rolls/recent)\n"
 
     return await interaction.followup.send(message)
+
+
+class CoOpConfirmView(discord.ui.View):
+    def __init__(self, partner_discord_id: int):
+        super().__init__(timeout=300)  # 5 minutes
+        self.confirmed: bool | None = None
+        self.partner_id: int = partner_discord_id
+
+    @discord.ui.button(label="I'm in!", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.partner_id:
+            return
+        self.confirmed = True
+        self.stop()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="Nah", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, _: discord.ui.Button):
+        if interaction.user.id != self.partner_id:
+            return
+        self.confirmed = False
+        self.stop()
+        await interaction.response.defer()
 
 
 class ConfirmCancelView(discord.ui.View):
