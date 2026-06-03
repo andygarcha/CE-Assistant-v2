@@ -1533,7 +1533,7 @@ def check_newly_completed_games(
                 user.display_name,
                 game.game_name,
                 game.tier_emoji,
-                game.get_total_points(),
+                game.get_po_points(),
                 hm.get_emoji("Points"),
             )
         )
