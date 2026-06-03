@@ -58,12 +58,14 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(event_name="The event you'd like to roll.")
     @app_commands.describe(partner="The partner you'd like to roll with.")
+    @app_commands.describe(tier="If the event requires a chosen tier, select it here.")
     async def coop_roll_command(
         interaction: discord.Interaction,
         event_name: hm.COOP_ROLL_EVENT_NAMES,
         partner: discord.Member,
+        tier: int | None = None,
     ):
-        return await interaction.response.send_message("Under construction.")
+        return await co_op_roll(interaction, partner, event_name, tier, True, True)
 
     # ---- check rolls command ----
     @tree.command(
