@@ -121,7 +121,18 @@ class CEUser:
         return f"{ranks[self.rank_num()]} Rank"
 
     def rank_num(self) -> int:
-        """Returns the rank as an int. E Rank is 0, D Rank is 1, etc."""
+        """
+        Returns the rank as an int.
+        - E Rank is 0
+        - D Rank is 1
+        - C Rank is 2
+        - B Rank is 3
+        - A Rank is 4
+        - S Rank is 5
+        - SS Rank is 6
+        - SSS Rank is 7
+        - EX Rank is 8
+        """
         points = self.get_total_points()
         for threshold, rank in RANK_THRESHOLDS:
             if points >= threshold:
