@@ -138,7 +138,7 @@ class CEUserGame:
         database_name: `list[CEGame] | Mapping[str, CEGame] | CEGame`
             There are many ways to send in data to this function.
             - `list[CEGame]` - just dump the full database_name in.
-            - `Mapping[str, CEGame]` - a mapping of game ids to 
+            - `Mapping[str, CEGame]` - a mapping of game ids to
               their respective CEGame objects.
             - `CEGame` - just the game by itself
         """

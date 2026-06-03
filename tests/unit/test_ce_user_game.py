@@ -187,19 +187,28 @@ class TestIsOvercompleted:
 
     def test_all_pos_and_all_sos_completed(self):
         game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
-        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")])
+        ug = make_user_game(
+            ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
+        )
         assert ug.is_overcompleted(game) is True
 
     def test_multiple_pos_and_sos_all_completed(self):
         game = make_game(
             ce_id=GAME_ID,
-            objectives=[_po(10, "po-a"), _po(20, "po-b"), _so(30, "so-a"), _so(40, "so-b")],
+            objectives=[
+                _po(10, "po-a"),
+                _po(20, "po-b"),
+                _so(30, "so-a"),
+                _so(40, "so-b"),
+            ],
         )
         ug = make_user_game(
             ce_id=GAME_ID,
             user_objectives=[
-                _upo(10, "po-a"), _upo(20, "po-b"),
-                _uso(30, "so-a"), _uso(40, "so-b"),
+                _upo(10, "po-a"),
+                _upo(20, "po-b"),
+                _uso(30, "so-a"),
+                _uso(40, "so-b"),
             ],
         )
         assert ug.is_overcompleted(game) is True
@@ -212,12 +221,16 @@ class TestIsOvercompleted:
 
     def test_overcompleted_via_database_list(self):
         game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
-        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")])
+        ug = make_user_game(
+            ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
+        )
         assert ug.is_overcompleted([game]) is True
 
     def test_overcompleted_via_mapping(self):
         game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
-        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")])
+        ug = make_user_game(
+            ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
+        )
         assert ug.is_overcompleted({GAME_ID: game}) is True
 
     # ── user-supplied starter cases ───────────────────────────────────────────
@@ -243,15 +256,23 @@ class TestIsOvercompleted:
         game = make_game(
             ce_id=GAME_ID,
             objectives=[
-                _po(10, "po-a"), _po(20, "po-b"), _po(30, "po-c"), _po(40, "po-d"),
-                _so(10, "so-a"), _so(20, "so-b"), _so(30, "so-c"), _so(40, "so-d"),
+                _po(10, "po-a"),
+                _po(20, "po-b"),
+                _po(30, "po-c"),
+                _po(40, "po-d"),
+                _so(10, "so-a"),
+                _so(20, "so-b"),
+                _so(30, "so-c"),
+                _so(40, "so-d"),
             ],
         )
         ug = make_user_game(
             ce_id=GAME_ID,
             user_objectives=[
-                _upo(10, "po-a"), _upo(20, "po-b"),
-                _uso(10, "so-a"), _uso(20, "so-b"),
+                _upo(10, "po-a"),
+                _upo(20, "po-b"),
+                _uso(10, "so-a"),
+                _uso(20, "so-b"),
             ],
         )
         assert ug.is_overcompleted(game) is False
@@ -290,7 +311,9 @@ class TestIsOvercompleted:
         assert ug.is_overcompleted(game) is False
 
     def test_game_not_in_database_list_returns_false(self):
-        other = make_game(ce_id="other-00-0000-0000-000000000000", objectives=[_po(10, "po-a")])
+        other = make_game(
+            ce_id="other-00-0000-0000-000000000000", objectives=[_po(10, "po-a")]
+        )
         ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a")])
         assert ug.is_overcompleted([other]) is False
 
@@ -314,7 +337,9 @@ class TestIsOvercompleted:
             ce_id=GAME_ID,
             user_objectives=[
                 _upo(10, "po-a"),
-                make_user_objective(ce_id=unc_id, game_ce_id=GAME_ID, obj_type="Primary", user_points=0),
+                make_user_objective(
+                    ce_id=unc_id, game_ce_id=GAME_ID, obj_type="Primary", user_points=0
+                ),
                 _uso(20, "so-a"),
             ],
         )
@@ -327,7 +352,12 @@ class TestIsOvercompleted:
             objectives=[
                 _po(10, "po-a"),
                 _so(20, "so-a"),
-                make_objective(ce_id="co-a", point_value=100, obj_type="Community", game_ce_id=GAME_ID),
+                make_objective(
+                    ce_id="co-a",
+                    point_value=100,
+                    obj_type="Community",
+                    game_ce_id=GAME_ID,
+                ),
             ],
         )
         ug = make_user_game(
