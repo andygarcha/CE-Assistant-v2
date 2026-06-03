@@ -221,8 +221,6 @@ async def solo_roll(
                 database_name, database_tier, user, price_restriction, hours_restriction
             )
         case "Triple Threat":
-            if category is None:
-                return await interaction.followup.send("Please list a category!")
             result = roll_triplethreat(
                 database_name,
                 database_tier,
@@ -232,8 +230,6 @@ async def solo_roll(
                 category,
             )
         case "Let Fate Decide":
-            if category is None:
-                return await interaction.followup.send("Please list a category!")
             result = roll_letfatedecide(
                 database_name,
                 database_tier,
@@ -624,7 +620,7 @@ def roll_triplethreat(
     user: CEUser,
     price_restriction: bool,
     hours_restriction: bool,
-    category: hm.CATEGORIES,
+    category: hm.CATEGORIES | None,
 ) -> RollResult:
     """
     Triple Threat.
@@ -635,6 +631,9 @@ def roll_triplethreat(
     - 3 games
     - Requires 'Never Lucky' completion.
     """
+
+    if category is None:
+        return RollResult(None, "Please rerun the command and select a category!")
 
     if not user.has_completed_roll("Never Lucky"):
         return RollResult(
@@ -670,7 +669,7 @@ def roll_letfatedecide(
     user: CEUser,
     price_restriction: bool,
     hours_restriction: bool,
-    category: hm.CATEGORIES,
+    category: hm.CATEGORIES | None,
 ) -> RollResult:
     """
     Let Fate Decide.
@@ -680,6 +679,9 @@ def roll_letfatedecide(
     - Chosen category
     - No time limit! Can reroll 3 months after init time.
     """
+
+    if category is None:
+        return RollResult(None, "Please rerun the command and select a category!")
 
     _game = hm.get_rollable_game(
         database_name=database_name,
