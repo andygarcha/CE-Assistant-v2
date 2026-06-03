@@ -35,6 +35,9 @@ def get_banned_games() -> list[str] | None:
     return lines
 
 
+DEFAULT_OWNED_GAMES_WEIGHT = 3
+
+
 def get_rollable_game(
     database_name: list[CEGame],
     database_tier: dict,
@@ -48,6 +51,7 @@ def get_rollable_game(
     price_restriction: bool = True,
     hours_restriction: bool = True,
     allow_multi_category: bool = True,
+    weight_owned_games: int | None = DEFAULT_OWNED_GAMES_WEIGHT,
 ) -> str | None:
     """
     Takes in a slew of parameters and returns a `str` of
@@ -73,7 +77,7 @@ def get_rollable_game(
         ... that is database_tier. However, if you would like
         to limit the amount of rollable games, you can only send in
         games you'd like to be rolled.
-    database_tier: `list[dict]`
+    database_tier: `dict`
         A mapping of game_ids, price, and average completion time.
         This is the list of games that this function will loop through.
         Example: database_tier[category][tier] = list[dict]
@@ -110,6 +114,12 @@ def get_rollable_game(
         allows a multi-category game to be chosen.
         This would be turned off for events like 'One Hell of a Week',
         which requires all five games to be different categories.
+    owned_games_weight: `int | None` (default DEFAULT_OWNED_GAMES_WEIGHT)
+        A multiplier that weights the user's
+        owned games in the rollable games list.
+        If there are more than one user passed in,
+        it will account for each user's owned games
+        equally (as if they were one user).
     """
 
     from Classes.CE_User import CEUser
@@ -154,6 +164,15 @@ def get_rollable_game(
         for tn in range(1, 8):
             for c in get_args(CATEGORIES):
                 database_tier_games.extend(database_tier[str(tn)][c])
+
+    # weight owned games
+    if weight_owned_games is not None:
+        _owned_games = {game.ce_id for u in user for game in u.owned_games}
+
+        matches = [
+            _game for _game in database_tier_games if _game["ce_id"] in _owned_games
+        ]
+        database_tier_games.extend(matches * weight_owned_games)
 
     random.shuffle(database_tier_games)
 
