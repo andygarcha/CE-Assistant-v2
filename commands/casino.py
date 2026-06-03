@@ -1156,23 +1156,32 @@ async def check_rolls(
     # defer the message
     await interaction.response.defer()
 
+    # pull from supabase
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
-
+    _friend_local = None
     if friend is not None:
         _friend_local = SupabaseReader.get_user(friend.id, use_discord_id=True)
-    else:
-        _friend_local = None
 
+    # if someone puts themselves as friend don't say anything
+    if (
+        user is not None
+        and _friend_local is not None
+        and user.ce_id == _friend_local.ce_id
+    ):
+        _friend_local = None
+        friend = None
+
+    # generate the message
     message: str = ""
     if user is not None:
         message += f"[Click here to see all of your rolls](https://ce-assistant-frontend.vercel.app/rolls/{user.ce_id})\n"
     if friend is not None and _friend_local is not None:
         message += (
             f"[Click here to see all of {_friend_local.display_name}'s rolls]"
-            f"(https://ce-assistant-frontend.vercel.app/rolls/{_friend_local.ce_id})"
+            f"(https://ce-assistant-frontend.vercel.app/rolls/{_friend_local.ce_id})\n"
         )
     elif friend is not None and _friend_local is None:
-        message += f"Could not find {friend.name} in CE Assistant's database. Please have them run /register."
+        message += f"Could not find {friend.name} in CE Assistant's database. Please have them run /register.\n"
     message += "[Click here to see all rolls from the past month](https://ce-assistant-frontend.vercel.app/rolls/recent)\n"
 
     return await interaction.followup.send(message)
