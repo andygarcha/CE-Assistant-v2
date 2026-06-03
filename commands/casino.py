@@ -397,7 +397,7 @@ async def co_op_roll(
             "Your partner just tried rolling this event. Please wait about 10 minutes before trying again."
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
-    
+
     # jarvis's random event!
     # -- make sure to not reroll this on every time they move forward
     if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
