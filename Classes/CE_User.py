@@ -133,7 +133,7 @@ class CEUser:
         - SSS Rank is 7
         - EX Rank is 8
         """
-        if self.ce_id == 'd7cb0869-5ed9-465c-87bf-0fb95aaebbd5':
+        if self.ce_id == "d7cb0869-5ed9-465c-87bf-0fb95aaebbd5":
             return 6
         points = self.get_total_points()
         for threshold, rank in RANK_THRESHOLDS:
