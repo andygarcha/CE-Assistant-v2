@@ -397,6 +397,17 @@ async def co_op_roll(
             "Your partner just tried rolling this event. Please wait about 10 minutes before trying again."
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
+    
+    # jarvis's random event!
+    # -- make sure to not reroll this on every time they move forward
+    if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
+        lucky = True
+        await hm.send_message(
+            client,
+            "userlog",
+            f"Congratulations {user.mention()} and {partner.mention()}! You've won Jarvis's super secret reward. "
+            "Please DM him for your prize :)",
+        )
 
     SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
 
@@ -427,6 +438,7 @@ async def co_op_roll(
                 tier,
             )
         case "Teamwork Makes the Dream Work":
+            tier = 3
             result = roll_teamworkmakesthedreamwork(
                 database_name,
                 database_tier,
@@ -435,15 +447,17 @@ async def co_op_roll(
                 price_restriction,
                 hours_restriction,
             )
-            tier = 3
         case "Game Theory" | "Winner Takes All":
             result = RollResult(None, "This event is retired.")
         case _:
             result = RollResult(None, f"{event_name} is not a valid co-op roll.")
 
+    # -- report error -----
     if result.error:
+        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await interaction.followup.send(result.error)
     if result.games is None:
+        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await interaction.followup.send(
             "Error: There were no returned games, but no internal error was reported."
         )
@@ -453,8 +467,14 @@ async def co_op_roll(
         if event_name == "Destiny Alignment":
             _game = hm.get_item_from_list(result.games[0], database_name)
             if _game is None:
+                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
                 return await interaction.followup.send("Error 7. Please contact andy.")
             tier = _game.tier_num
+            if tier == 0:
+                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+                return await interaction.followup.send(
+                    "Oops! I accidentally rolled you a T0."
+                )
     assert tier is not None
     roll = CERoll(
         roll_name=event_name,
@@ -471,6 +491,7 @@ async def co_op_roll(
     # -- get message -----
     message = roll.get_initialization_message(database_name)
     if message is None:
+        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await interaction.followup.send("Error pulling your rolled games.")
 
     # -- save and quit -----
@@ -1003,7 +1024,7 @@ def roll_destinyalignment(
         completion_limit=None,
         price_limit=20,
         tier_number=None,
-        user=user,
+        user=partner,
         category=None,
         already_rolled_games=None,
         has_points_restriction=True,
@@ -1043,14 +1064,10 @@ def roll_soulmates(
 
     HOUR_LIMITS = [15, 40, 80, 160, None, None]
 
-    completion_limit: int | None = HOUR_LIMITS[tier - 1]
-    if tier != 5 and tier != 6 and completion_limit is None:
-        return RollResult(None, "Error: Incorrect completion_limit detected.")
-
     _game = hm.get_rollable_game(
         database_name=database_name,
         database_tier=database_tier,
-        completion_limit=completion_limit,
+        completion_limit=HOUR_LIMITS[tier - 1],
         price_limit=20,
         tier_number=tier,
         user=[user, partner],

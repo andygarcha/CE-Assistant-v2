@@ -728,6 +728,7 @@ class TestCoOpRoll:
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
             patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
                 "commands.casino.SupabaseReader.get_database_tier",
@@ -811,6 +812,7 @@ class TestCoOpRoll:
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
             patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
                 "commands.casino.SupabaseReader.get_database_tier",
@@ -860,6 +862,7 @@ class TestCoOpRoll:
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
             patch("commands.casino.SupabaseReader.add_pending") as mock_add_pending,
+            patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
                 "commands.casino.SupabaseReader.get_database_tier",
@@ -885,6 +888,7 @@ class TestCoOpRoll:
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
             patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
                 "commands.casino.SupabaseReader.get_database_tier",
@@ -905,6 +909,7 @@ class TestCoOpRoll:
                 "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
             ),
             patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.kill_pending"),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
                 "commands.casino.SupabaseReader.get_database_tier",
@@ -1035,6 +1040,66 @@ class TestRollDestinyalignment:
         assert result.games is None
         assert result.error is not None
 
+    # ── user identity: correct player passed per call ─────────────────────────
+    #
+    # The first call rolls from partner's library — the USER is the one who will
+    # play it, so user's constraints are checked (user=user).
+    # The second call rolls from user's library — the PARTNER will play it, so
+    # partner's constraints are checked (user=partner).
+    # Swapping either produces a silent eligibility bug (the original user=user bug).
+
+    def test_first_call_checks_user_not_partner(self):
+        """First get_rollable_game call must pass user, not partner, as the user arg."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        raw = mock.call_args_list[0].kwargs["user"]
+        first_call_users = raw if isinstance(raw, list) else [raw]
+        assert user in first_call_users
+        assert partner not in first_call_users
+
+    def test_second_call_checks_partner_not_user(self):
+        """Second get_rollable_game call must pass partner, not user, as the user arg."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        raw = mock.call_args_list[1].kwargs["user"]
+        second_call_users = raw if isinstance(raw, list) else [raw]
+        assert partner in second_call_users
+        assert user not in second_call_users
+
+    def test_first_call_uses_partners_completed_games_as_pool(self):
+        """First roll's database_name must be partner's completed games, not user's."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        user_pool = [make_game(ce_id=GAME_IDS[0])]
+        partner_pool = [make_game(ce_id=GAME_IDS[1])]
+        with (
+            patch.object(user, "get_completed_games_2", return_value=user_pool),
+            patch.object(partner, "get_completed_games_2", return_value=partner_pool),
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock,
+        ):
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        first_call_db = mock.call_args_list[0].args[0]
+        assert first_call_db is partner_pool
+
+    def test_second_call_uses_users_completed_games_as_pool(self):
+        """Second roll's database_name must be user's completed games, not partner's."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        user_pool = [make_game(ce_id=GAME_IDS[0])]
+        partner_pool = [make_game(ce_id=GAME_IDS[1])]
+        with (
+            patch.object(user, "get_completed_games_2", return_value=user_pool),
+            patch.object(partner, "get_completed_games_2", return_value=partner_pool),
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock,
+        ):
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        second_call_db = mock.call_args_list[1].args[0]
+        assert second_call_db is user_pool
+
 
 # ── roll_soulmates ────────────────────────────────────────────────────────────
 #
@@ -1160,6 +1225,39 @@ class TestRollSoulmates:
             roll_soulmates([], EMPTY_DT, user, partner, True, False, 1)
         assert mock.call_args.kwargs["hours_restriction"] is False
 
+    # ── user identity: both players must be checked ───────────────────────────
+    #
+    # Soul Mates is a shared game — both players complete it together.  Passing
+    # only one player's identity means the other player's points / completion
+    # status is never checked, allowing an ineligible game to slip through.
+
+    def test_user_param_contains_user(self):
+        """Both user and partner must appear in the user list passed to get_rollable_game."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        passed_users = mock.call_args.kwargs["user"]
+        assert user in passed_users
+
+    def test_user_param_contains_partner(self):
+        """Omitting partner from the user list would skip partner's eligibility check."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        passed_users = mock.call_args.kwargs["user"]
+        assert partner in passed_users
+
+    def test_user_param_does_not_contain_only_one_player(self):
+        """Passing a single-element list would silently drop half the eligibility checks."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        passed_users = mock.call_args.kwargs["user"]
+        assert len(passed_users) >= 2
+
 
 # ── roll_teamworkmakesthedreamwork ────────────────────────────────────────────
 #
@@ -1273,3 +1371,36 @@ class TestRollTeamworkmakesthedreamwork:
         # Each call's exclusion list must be a superset of the previous one
         for i in range(1, len(exclusion_lists)):
             assert set(exclusion_lists[i - 1]).issubset(set(exclusion_lists[i]))
+
+    # ── user identity: both players must be checked on every call ─────────────
+    #
+    # Teamwork rolls four games that both players complete.  Every call must
+    # check both players' eligibility — dropping either one would silently allow
+    # a game they've already finished or have points in.
+
+    def test_every_call_contains_user_in_user_param(self):
+        """user must appear in the user list on every one of the four calls."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for i, call in enumerate(mock.call_args_list):
+            assert user in call.kwargs["user"], f"user missing from call {i}"
+
+    def test_every_call_contains_partner_in_user_param(self):
+        """partner must appear in the user list on every one of the four calls."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for i, call in enumerate(mock.call_args_list):
+            assert partner in call.kwargs["user"], f"partner missing from call {i}"
+
+    def test_every_call_user_param_has_both_players(self):
+        """Passing only one player on any call silently drops half the eligibility checks."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for i, call in enumerate(mock.call_args_list):
+            assert len(call.kwargs["user"]) >= 2, f"call {i} has fewer than 2 users"
