@@ -898,7 +898,10 @@ class CERoll:
                 f"You have until {self.due_discord_timestamp} to complete this event!"
             )
         else:
-            message += "This event has no time limit. To fail and restart this event, run /solo-roll again!"
+            message += "This event has no time limit."
+            # TODO: allow for rerolls of co op rolls
+            if not self.is_co_op:
+                message += " To fail and restart this event, run /solo-roll again!"
         return message
 
     def get_reup_message(self, database_name: list[CEGame]) -> str | None:
