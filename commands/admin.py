@@ -202,7 +202,7 @@ async def scrape(interaction: discord.Interaction):
 async def loop(
     interaction: discord.Interaction, full_scrape=False, send_updates: bool = True
 ):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
 
     # log this interaction
     await hm.log_command(
