@@ -7,12 +7,16 @@ from unittest.mock import AsyncMock, patch
 from Classes.CE_User import CEUser
 from commands.casino import (
     RollResult,
+    co_op_roll,
+    roll_destinyalignment,
     roll_fourwardthinking,
     roll_letfatedecide,
     roll_neverlucky,
     roll_onehellofaday,
     roll_onehellofamonth,
     roll_onehellofaweek,
+    roll_soulmates,
+    roll_teamworkmakesthedreamwork,
     roll_triplethreat,
     roll_twoweekt2streak,
     roll_twotwoweekt2streakstreak,
@@ -538,3 +542,734 @@ class TestRollFourwardthinking:
             result = roll_fourwardthinking([], EMPTY_DT, user, True, True, "Action")
         assert result.games is None
         assert result.error is not None
+
+
+# ── co_op_roll ────────────────────────────────────────────────────────────────
+#
+# Tests cover the guard/validation logic in the co_op_roll orchestrator.
+# Tests for the roll functions themselves (roll_destinyalignment, etc.) follow.
+
+
+def _make_interaction_coop(user_id: int = 123) -> SimpleNamespace:
+    return SimpleNamespace(
+        user=SimpleNamespace(id=user_id),
+        response=SimpleNamespace(defer=AsyncMock()),
+        followup=SimpleNamespace(send=AsyncMock()),
+    )
+
+
+def _make_partner_member(partner_id: int = 456) -> SimpleNamespace:
+    return SimpleNamespace(id=partner_id)
+
+
+def _run_coop(
+    interaction,
+    partner_,
+    event_name: str,
+    tier=None,
+    price_restriction: bool = True,
+    hours_restriction: bool = True,
+):
+    asyncio.run(
+        co_op_roll(
+            interaction=interaction,  # type: ignore
+            partner_=partner_,  # type: ignore
+            event_name=event_name,  # type: ignore
+            tier=tier,
+            price_restriction=price_restriction,
+            hours_restriction=hours_restriction,
+        )
+    )
+
+
+class TestCoOpRoll:
+    # ── user / partner registration ───────────────────────────────────────────
+
+    def test_unregistered_user_sends_error(self):
+        interaction = _make_interaction_coop()
+        with patch("commands.casino.SupabaseReader.get_user", return_value=None):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "not registered" in msg.lower()
+
+    def test_unregistered_partner_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        with patch("commands.casino.SupabaseReader.get_user", side_effect=[user, None]):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "partner" in msg.lower()
+        assert "not registered" in msg.lower()
+
+    # ── cooldowns ─────────────────────────────────────────────────────────────
+
+    def test_user_cooldown_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch.object(user, "has_cooldown", return_value=True),
+            patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "on cooldown" in msg.lower()
+
+    def test_user_cooldown_message_includes_timestamp(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch.object(user, "has_cooldown", return_value=True),
+            patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        msg = interaction.followup.send.call_args[0][0]
+        assert "9999999999" in msg
+
+    def test_partner_cooldown_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch.object(partner, "has_cooldown", return_value=True),
+            patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "partner" in msg.lower()
+        assert "on cooldown" in msg.lower()
+
+    def test_partner_cooldown_message_includes_timestamp(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch.object(partner, "has_cooldown", return_value=True),
+            patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        msg = interaction.followup.send.call_args[0][0]
+        assert "9999999999" in msg
+
+    # ── destiny alignment-specific guards ─────────────────────────────────────
+
+    def test_da_user_already_rolling_with_same_partner_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123, ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
+        user._rolls.append(
+            make_roll(
+                roll_name="Destiny Alignment",
+                status="current",
+                partner_ce_id=partner.ce_id,
+            )
+        )
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "already" in msg.lower()
+        assert "destiny alignment" in msg.lower()
+
+    def test_da_user_at_max_five_rolls_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123, ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
+        for i in range(5):
+            user._rolls.append(
+                make_roll(
+                    roll_name="Destiny Alignment",
+                    status="current",
+                    partner_ce_id=f"other-{i:03d}-0000-0000-000000000000",
+                )
+            )
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "too many" in msg.lower()
+
+    def test_da_four_rolls_is_below_max_and_allowed(self):
+        """Four DA rolls (< 5) must not trigger the limit guard."""
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123, ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
+        for i in range(4):
+            user._rolls.append(
+                make_roll(
+                    roll_name="Destiny Alignment",
+                    status="current",
+                    partner_ce_id=f"other-{i:03d}-0000-0000-000000000000",
+                )
+            )
+        with (
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+            patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
+            patch(
+                "commands.casino.SupabaseReader.get_database_tier",
+                return_value=EMPTY_DT,
+            ),
+            patch(
+                "commands.casino.roll_destinyalignment",
+                return_value=RollResult(None, "stub"),
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
+        # Should NOT have sent the "too many" message
+        sent_msgs = [c[0][0] for c in interaction.followup.send.call_args_list]
+        assert not any("too many" in m.lower() for m in sent_msgs)
+
+    def test_da_partner_at_max_five_rolls_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123, ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
+        for i in range(5):
+            partner._rolls.append(
+                make_roll(
+                    roll_name="Destiny Alignment",
+                    status="current",
+                    partner_ce_id=f"other-{i:03d}-0000-0000-000000000000",
+                )
+            )
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "partner" in msg.lower()
+        assert "too many" in msg.lower()
+
+    # ── non-DA duplicate roll guards ──────────────────────────────────────────
+
+    def test_non_da_user_already_in_roll_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        # tier_num=1 is required so calculate_cooldown_date can resolve Soul Mates' tier dict
+        user._rolls.append(
+            make_roll(roll_name="Soul Mates", status="current", tier_num=1)
+        )
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "already" in msg.lower()
+
+    def test_non_da_partner_already_in_roll_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        partner._rolls.append(
+            make_roll(roll_name="Soul Mates", status="current", tier_num=1)
+        )
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "partner" in msg.lower()
+        assert "already" in msg.lower()
+
+    def test_non_da_allows_different_rolls_to_coexist(self):
+        """A current 'Teamwork' roll must not block starting 'Soul Mates'."""
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        user._rolls.append(
+            make_roll(roll_name="Teamwork Makes the Dream Work", status="current")
+        )
+        with (
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+            patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
+            patch(
+                "commands.casino.SupabaseReader.get_database_tier",
+                return_value=EMPTY_DT,
+            ),
+            patch(
+                "commands.casino.roll_soulmates", return_value=RollResult(None, "stub")
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        sent_msgs = [c[0][0] for c in interaction.followup.send.call_args_list]
+        assert not any("already" in m.lower() for m in sent_msgs)
+
+    # ── pending guards ────────────────────────────────────────────────────────
+
+    def test_user_pending_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        user.add_pending("Soul Mates")
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+
+    def test_partner_pending_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        partner.add_pending("Soul Mates")
+        with patch(
+            "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "partner" in msg.lower()
+
+    def test_both_users_get_pending_added(self):
+        """add_pending must be called with both CE IDs before dispatching to the roll function."""
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123, ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
+        with (
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+            patch("commands.casino.SupabaseReader.add_pending") as mock_add_pending,
+            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
+            patch(
+                "commands.casino.SupabaseReader.get_database_tier",
+                return_value=EMPTY_DT,
+            ),
+            patch(
+                "commands.casino.roll_soulmates", return_value=RollResult(None, "stub")
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Soul Mates")
+        mock_add_pending.assert_called_once_with(
+            "Soul Mates", user.ce_id, partner.ce_id
+        )
+
+    # ── retired / invalid events ──────────────────────────────────────────────
+
+    def test_retired_event_winner_takes_all_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+            patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
+            patch(
+                "commands.casino.SupabaseReader.get_database_tier",
+                return_value=EMPTY_DT,
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Winner Takes All")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "retired" in msg.lower()
+
+    def test_retired_event_game_theory_sends_error(self):
+        interaction = _make_interaction_coop()
+        user = make_user(discord_id=123)
+        partner = make_user(discord_id=456)
+        with (
+            patch(
+                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
+            ),
+            patch("commands.casino.SupabaseReader.add_pending"),
+            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
+            patch(
+                "commands.casino.SupabaseReader.get_database_tier",
+                return_value=EMPTY_DT,
+            ),
+        ):
+            _run_coop(interaction, _make_partner_member(), "Game Theory")
+        interaction.followup.send.assert_awaited_once()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "retired" in msg.lower()
+
+
+# ── roll_destinyalignment ─────────────────────────────────────────────────────
+#
+# NOTE: roll_destinyalignment is currently an unimplemented stub (docstring
+# only).  All tests here describe the required behaviour and will fail with
+# AttributeError until the body is written.
+
+
+class TestRollDestinyalignment:
+    # ── return shape ──────────────────────────────────────────────────────────
+
+    def test_returns_roll_result_on_success(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert isinstance(result, RollResult)
+
+    def test_returns_two_games_on_success(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.error is None
+        assert result.games is not None
+        assert len(result.games) == 2
+
+    def test_returns_error_when_no_game_available(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=None):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.games is None
+        assert result.error is not None
+
+    # ── roll parameters ───────────────────────────────────────────────────────
+
+    def test_passes_no_completion_limit(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["completion_limit"] is None
+
+    def test_passes_price_limit_20(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["price_limit"] == 20
+
+    def test_passes_points_restriction(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["has_points_restriction"] is True
+
+    def test_forwards_price_restriction_flag(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock:
+            roll_destinyalignment([], EMPTY_DT, user, partner, False, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["price_restriction"] is False
+
+    # ── rank requirement ──────────────────────────────────────────────────────
+
+    def test_different_rank_players_get_error(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with (
+            patch.object(user, "rank_num", return_value=1),  # D Rank
+            patch.object(partner, "rank_num", return_value=3),  # B Rank
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
+        ):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.games is None
+        assert result.error is not None
+
+    def test_same_rank_players_are_allowed(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with (
+            patch.object(user, "rank_num", return_value=3),
+            patch.object(partner, "rank_num", return_value=3),
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
+        ):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.error is None
+
+    def test_ss_rank_and_sss_rank_are_allowed_together(self):
+        """Both players ≥ SS (rank_num ≥ 6) may pair regardless of exact rank."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with (
+            patch.object(user, "rank_num", return_value=6),  # SS
+            patch.object(partner, "rank_num", return_value=7),  # SSS
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
+        ):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.error is None
+
+    def test_ss_and_a_rank_are_not_allowed(self):
+        """SS (6) + A (4) — partner is below SS, so the exception doesn't apply."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with (
+            patch.object(user, "rank_num", return_value=6),  # SS
+            patch.object(partner, "rank_num", return_value=4),  # A
+            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
+        ):
+            result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
+        assert result.games is None
+        assert result.error is not None
+
+
+# ── roll_soulmates ────────────────────────────────────────────────────────────
+#
+# NOTE: roll_soulmates is currently an unimplemented stub.  All tests here
+# describe the required behaviour and will fail until the body is written.
+#
+# HOUR_LIMITS (per tier): [15, 40, 80, 160, None, None]
+# Tier 6 rolls from T5–T7.
+
+
+_SOUL_MATES_HOUR_LIMITS = {1: 15, 2: 40, 3: 80, 4: 160, 5: None, 6: None}
+
+
+class TestRollSoulmates:
+    # ── tier validation ───────────────────────────────────────────────────────
+
+    def test_returns_error_when_tier_is_none(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        result = roll_soulmates([], EMPTY_DT, user, partner, True, True, None)
+        assert result.games is None
+        assert result.error is not None
+
+    def test_returns_error_when_tier_is_zero(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        result = roll_soulmates([], EMPTY_DT, user, partner, True, True, 0)
+        assert result.games is None
+        assert result.error is not None
+
+    def test_returns_error_when_tier_exceeds_six(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        result = roll_soulmates([], EMPTY_DT, user, partner, True, True, 7)
+        assert result.games is None
+        assert result.error is not None
+
+    # ── return shape ──────────────────────────────────────────────────────────
+
+    def test_returns_exactly_one_game_on_success(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]):
+            result = roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        assert result.error is None
+        assert result.games is not None
+        assert len(result.games) == 1
+
+    def test_returns_error_when_no_game_available(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=None):
+            result = roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        assert result.games is None
+        assert result.error is not None
+
+    # ── tier → hour limit mapping ─────────────────────────────────────────────
+
+    import pytest as _pytest
+
+    @_pytest.mark.parametrize(
+        "tier, expected_hours",
+        [
+            (1, 15),
+            (2, 40),
+            (3, 80),
+            (4, 160),
+            (5, None),
+        ],
+    )
+    def test_completion_limit_per_tier(self, tier, expected_hours):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, tier)
+        assert mock.call_args.kwargs["completion_limit"] == expected_hours
+
+    def test_tier_6_passes_tier_number_6_to_get_rollable_game(self):
+        """Tier 6 in Soul Mates means 'T5–T7', which get_rollable_game handles
+        when tier_number=6 is passed."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 6)
+        assert mock.call_args.kwargs["tier_number"] == 6
+
+    # ── roll parameters ───────────────────────────────────────────────────────
+
+    def test_passes_price_limit_20(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        assert mock.call_args.kwargs["price_limit"] == 20
+
+    def test_passes_points_restriction(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        assert mock.call_args.kwargs["has_points_restriction"] is True
+
+    def test_passes_both_users(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, True, 1)
+        passed_users = mock.call_args.kwargs["user"]
+        assert user in passed_users
+        assert partner in passed_users
+
+    def test_forwards_price_restriction_false(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, False, True, 1)
+        assert mock.call_args.kwargs["price_restriction"] is False
+
+    def test_forwards_hours_restriction_false(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=GAME_IDS[0]) as mock:
+            roll_soulmates([], EMPTY_DT, user, partner, True, False, 1)
+        assert mock.call_args.kwargs["hours_restriction"] is False
+
+
+# ── roll_teamworkmakesthedreamwork ────────────────────────────────────────────
+#
+# NOTE: roll_teamworkmakesthedreamwork is currently an unimplemented stub.
+# All tests here describe the required behaviour and will fail until the body
+# is written.
+
+
+class TestRollTeamworkmakesthedreamwork:
+    # ── return shape ──────────────────────────────────────────────────────────
+
+    def test_returns_four_games_on_success(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]):
+            result = roll_teamworkmakesthedreamwork(
+                [], EMPTY_DT, user, partner, True, True
+            )
+        assert result.error is None
+        assert result.games is not None
+        assert len(result.games) == 4
+
+    def test_returned_games_are_unique(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]):
+            result = roll_teamworkmakesthedreamwork(
+                [], EMPTY_DT, user, partner, True, True
+            )
+        assert result.games is not None
+        assert len(set(result.games)) == 4
+
+    def test_returns_error_when_no_game_available(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", return_value=None):
+            result = roll_teamworkmakesthedreamwork(
+                [], EMPTY_DT, user, partner, True, True
+            )
+        assert result.games is None
+        assert result.error is not None
+
+    # ── roll parameters ───────────────────────────────────────────────────────
+
+    def test_passes_tier_3(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["tier_number"] == 3
+
+    def test_passes_completion_limit_40(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["completion_limit"] == 40
+
+    def test_passes_price_limit_20(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["price_limit"] == 20
+
+    def test_passes_points_restriction(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["has_points_restriction"] is True
+
+    def test_passes_both_users(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        for call in mock.call_args_list:
+            passed_users = call.kwargs["user"]
+            assert user in passed_users
+            assert partner in passed_users
+
+    def test_forwards_price_restriction_false(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, False, True)
+        for call in mock.call_args_list:
+            assert call.kwargs["price_restriction"] is False
+
+    def test_makes_four_calls_to_get_rollable_game(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        assert mock.call_count == 4
+
+    def test_already_rolled_games_accumulate_across_calls(self):
+        """Each successive call must exclude the games already chosen."""
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        partner = make_user(ce_id="user-002-0000-0000-000000000000")
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:4]) as mock:
+            roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
+        exclusion_lists = [
+            call.kwargs["already_rolled_games"] for call in mock.call_args_list
+        ]
+        # Each call's exclusion list must be a superset of the previous one
+        for i in range(1, len(exclusion_lists)):
+            assert set(exclusion_lists[i - 1]).issubset(set(exclusion_lists[i]))

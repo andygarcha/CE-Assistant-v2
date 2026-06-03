@@ -295,6 +295,190 @@ async def solo_roll(
     return await interaction.followup.send(message)
 
 
+async def co_op_roll(
+    interaction: discord.Interaction,
+    partner_: discord.Member,
+    event_name: hm.COOP_ROLL_EVENT_NAMES,
+    tier: int | None = None,
+    price_restriction: bool = True,
+    hours_restriction: bool = True,
+):
+    """
+    Co Op Rolling!
+    :)
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The interaction we'll be responding to.
+        In our case, this is a slash-command.
+    partner_: `discord.Member`
+        The partner we'll be rolling along with the
+        author of the interaction.
+    event_name: `COOP_ROLL_EVENT_NAMES`
+        The name of the event we're rolling.
+    tier: `int`
+        If the event requires a tier to be chosen
+        (like, for example, Soul Mates), it will
+        be passed in here.
+    price_restriction: `bool` (default True)
+        A flag that designates whether or not
+        we should adhere to the price limit.
+        This is optionally turned off by the roller.
+    hours_restriction: `bool` (default True)
+        A flag that designates whether or not
+        we should adhere to the median completion time
+        limit.
+        This is optionally turned off by the roller.
+    """
+    await interaction.response.defer()
+
+    lucky = False
+
+    # grab the user
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    if user is None:
+        return await interaction.followup.send(
+            "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
+        )
+
+    partner: CEUser | None = SupabaseReader.get_user(partner_.id, use_discord_id=True)
+    if partner is None:
+        return await interaction.followup.send(
+            "Sorry, your partner is not registered in the CE Assistant database. Please have them "
+            "run /register first!"
+        )
+
+    # user has cooldown
+    if user.has_cooldown(event_name):
+        return await interaction.followup.send(
+            f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_timestamp(event_name)}>."
+        )
+    if partner.has_cooldown(event_name):
+        return await interaction.followup.send(
+            f"Your partner is currently on cooldown for {event_name} "
+            f"until <t:{partner.get_cooldown_timestamp(event_name)}>."
+        )
+
+    # destiny alignment specific
+    if event_name == "Destiny Alignment":
+        if user.has_current_roll_with(partner.ce_id, event_name):
+            return await interaction.followup.send(
+                "You two are already in a Destiny Alignment together. Finish that one first!"
+            )
+        MAX_DESTINY_ALIGNMENTS = 5
+        if user.count_current_rolls(event_name) >= MAX_DESTINY_ALIGNMENTS:
+            return await interaction.followup.send(
+                "You are already in too many Destiny Alignment rolls to create another one!"
+            )
+        if partner.count_current_rolls(event_name) >= MAX_DESTINY_ALIGNMENTS:
+            return await interaction.followup.send(
+                "Your partner is already in too many Destiny Alignment rolls to create another one!"
+            )
+    # other co-ops don't allow for multiple instances
+    else:
+        if user.has_current_roll(event_name):
+            return await interaction.followup.send(
+                f"You are already in a {event_name} roll. Finish that one first!"
+            )
+        if partner.has_current_roll(event_name):
+            return await interaction.followup.send(
+                f"Your partner is already in a {event_name} roll. Have them finish that "
+                "one first, or choose a new partner."
+            )
+
+    if user.has_pending(event_name):
+        return await interaction.followup.send(
+            "You just tried rolling this event. Please wait about 10 minutes before trying again."
+            + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+    if partner.has_pending(event_name):
+        return await interaction.followup.send(
+            "Your partner just tried rolling this event. Please wait about 10 minutes before trying again."
+            + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+
+    SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
+
+    # -- pull from supabase -----
+    database_name = SupabaseReader.get_database_name()
+    database_tier = SupabaseReader.get_database_tier(database_name)
+
+    # -- roll the games ----
+    result: RollResult
+    match event_name:
+        case "Destiny Alignment":
+            result = roll_destinyalignment(
+                database_name,
+                database_tier,
+                user,
+                partner,
+                price_restriction,
+                hours_restriction,
+            )
+        case "Soul Mates":
+            result = roll_soulmates(
+                database_name,
+                database_tier,
+                user,
+                partner,
+                price_restriction,
+                hours_restriction,
+                tier,
+            )
+        case "Teamwork Makes the Dream Work":
+            result = roll_teamworkmakesthedreamwork(
+                database_name,
+                database_tier,
+                user,
+                partner,
+                price_restriction,
+                hours_restriction,
+            )
+            tier = 3
+        case "Game Theory" | "Winner Takes All":
+            result = RollResult(None, "This event is retired.")
+        case _:
+            result = RollResult(None, f"{event_name} is not a valid co-op roll.")
+
+    if result.error:
+        return await interaction.followup.send(result.error)
+    if result.games is None:
+        return await interaction.followup.send(
+            "Error: There were no returned games, but no internal error was reported."
+        )
+
+    # -- create the roll object -----
+    if tier is None:
+        if event_name == "Destiny Alignment":
+            _game = hm.get_item_from_list(result.games[0], database_name)
+            if _game is None:
+                return await interaction.followup.send("Error 7. Please contact andy.")
+            tier = _game.tier_num
+    assert tier is not None
+    roll = CERoll(
+        roll_name=event_name,
+        user_ce_id=user.ce_id,
+        games=result.games,
+        status="current",
+        _id=str(uuid.uuid4()),
+        partner_ce_id=partner.ce_id,
+        is_current=True,
+        tier_num=tier,
+        lucky=lucky,
+    )
+
+    # -- get message -----
+    message = roll.get_initialization_message(database_name)
+    if message is None:
+        return await interaction.followup.send("Error pulling your rolled games.")
+
+    # -- save and quit -----
+    SupabaseReader.dump_roll(roll)
+    SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+    return await interaction.followup.send(message)
+
+
 @dataclass
 class RollResult:
     games: list[str] | None = None
@@ -755,6 +939,171 @@ def roll_fourwardthinking(
     if _game is None:
         return RollResult(None, "Not enough rollable games.")
     return RollResult([_game], None)
+
+
+def roll_destinyalignment(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    partner: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    Destiny Alignment.
+    - Player 1 rolls a game from Player 2's completed game's list
+    - Player 2 rolls a game from Player 1's completed game's list
+    - There is no tier or category requirement here.
+    - No due time (rerolling this is gonna suck)
+    - $20 price limit
+    - No hours limit
+    - Neither player can have any points in their rolled game.
+    - Players must be the same rank
+      - UNLESS both players are rank SS and above.
+      - e.g. A Rank SSS and a Rank SS may play together.
+    """
+    # --- error checking ---
+    if (
+        user.rank_num() < 6 or partner.rank_num() < 6
+    ) and user.rank_num() != partner.rank_num():
+        return RollResult(
+            None,
+            (
+                "For Destiny Alignment, both users must be either:\n"
+                "- the same rank, or\n"
+                "- both be rank SS or above.\n"
+                f"You are {user.get_rank()} and your partner is {partner.get_rank()}."
+            ),
+        )
+
+    # roll user's game from partner's library
+    _player_1_game = hm.get_rollable_game(
+        partner.get_completed_games_2(database_name),
+        database_tier,
+        completion_limit=None,
+        price_limit=20,
+        tier_number=None,
+        user=user,
+        category=None,
+        already_rolled_games=None,
+        has_points_restriction=True,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
+    )
+    if _player_1_game is None:
+        return RollResult(
+            None, "Your partner did not have enough rollable completed games."
+        )
+
+    # roll partner's game from user's library
+    _player_2_game = hm.get_rollable_game(
+        user.get_completed_games_2(database_name),
+        database_tier,
+        completion_limit=None,
+        price_limit=20,
+        tier_number=None,
+        user=user,
+        category=None,
+        already_rolled_games=None,
+        has_points_restriction=True,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
+    )
+    if _player_2_game is None:
+        return RollResult(None, "You did not have enough rollable completed games.")
+    return RollResult([_player_1_game, _player_2_game], None)
+
+
+def roll_soulmates(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    partner: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+    tier: int | None,
+) -> RollResult:
+    """
+    Soul Mates.
+    - One game.
+    - Both players must complete it.
+    - Hour completion limit is dependent on the chosen tier.
+      - HOUR_LIMITS = [15, 40, 80, 160, None, None]
+      - If tier == 6, the user may roll any game T5-T7.
+      - Tier error checking is done in this function.
+    - $20 price limit.
+    - Neither player can have any points in this game.
+    """
+    if tier is None:
+        return RollResult(None, "Please rerun the command and select a tier.")
+    if tier < 1 or tier > 6:
+        return RollResult(None, "Please select a valid tier.")
+
+    HOUR_LIMITS = [15, 40, 80, 160, None, None]
+
+    completion_limit: int | None = HOUR_LIMITS[tier - 1]
+    if tier != 5 and tier != 6 and completion_limit is None:
+        return RollResult(None, "Error: Incorrect completion_limit detected.")
+
+    _game = hm.get_rollable_game(
+        database_name=database_name,
+        database_tier=database_tier,
+        completion_limit=completion_limit,
+        price_limit=20,
+        tier_number=tier,
+        user=[user, partner],
+        category=None,
+        already_rolled_games=None,
+        has_points_restriction=True,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+        allow_multi_category=True,
+    )
+
+    if _game is None:
+        return RollResult(None, f"Could not find a rollable game in Tier {tier}.")
+    return RollResult([_game], None)
+
+
+def roll_teamworkmakesthedreamwork(
+    database_name: list[CEGame],
+    database_tier: dict,
+    user: CEUser,
+    partner: CEUser,
+    price_restriction: bool,
+    hours_restriction: bool,
+) -> RollResult:
+    """
+    Teamwork Makes the Dream Work.
+    - Four T3s are rolled.
+    - Between Player 1 and Player 2, all games must be completed within one month.
+    - 40 hour completion limit
+    - $20 price limit
+    - Neither player can have any points in any of their rolled games.
+    """
+
+    rolled_games: list[str] = []
+    for _ in range(4):
+        _game = hm.get_rollable_game(
+            database_name=database_name,
+            database_tier=database_tier,
+            completion_limit=40,
+            price_limit=20,
+            tier_number=3,
+            user=[user, partner],
+            category=None,
+            already_rolled_games=rolled_games,
+            has_points_restriction=True,
+            price_restriction=price_restriction,
+            hours_restriction=hours_restriction,
+            allow_multi_category=True,
+        )
+        if _game is None:
+            return RollResult(None, "Not enough rollable games.")
+        rolled_games.append(_game)
+    return RollResult(rolled_games, None)
 
 
 #   _____   _    _   ______    _____   _  __           _____     ____    _        _         _____
