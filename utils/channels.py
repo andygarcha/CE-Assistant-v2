@@ -149,9 +149,12 @@ async def log_command(
     params = ", ".join(f"{k}={v}" for k, v in kwargs.items())
 
     __command_name = interaction.command.name if interaction.command else "unknown"
-    message = f"{prefix} run by <@{interaction.user.id}>: /{command_name}, interaction.command.name={__command_name}"
+    message = (
+        f"{prefix} run by <@{interaction.user.id}> ({interaction.user.name}): /{command_name}, "
+        f" interaction.command.name={__command_name}"
+    )
     if params:
         message += f", params: {params}"
 
-    await send_message(client, "privatelog", message, allowed_mentions=True)
+    await send_message(client, "privatelog", message, allowed_mentions=False)
     return
