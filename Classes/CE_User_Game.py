@@ -129,8 +129,18 @@ class CEUserGame:
     ) -> bool:
         """
         Returns true if htis game has been OVERcompleted, i.e.
+        - There is at least one SO.
         - All POs have been completed
         - All SOs have been completed.
+
+        Parameters
+        ---
+        database_name: `list[CEGame] | Mapping[str, CEGame] | CEGame`
+            There are many ways to send in data to this function.
+            - `list[CEGame]` - just dump the full database_name in.
+            - `Mapping[str, CEGame]` - a mapping of game ids to 
+              their respective CEGame objects.
+            - `CEGame` - just the game by itself
         """
         # CEGame
         if isinstance(database_name, CEGame):
@@ -169,6 +179,7 @@ class CEUserGame:
     def __is_overcompleted_helper(self, game: CEGame):
         """
         Both Primary Objectives and Secondary Objectives count towards overcompletion.
+        Returns true if and only if the user has full points in all POs and SOs in the game.
         """
         user_sos = self.get_user_secondary_objectives()
         game_sos = game.get_secondary_objectives(include_uncleareds=True)
