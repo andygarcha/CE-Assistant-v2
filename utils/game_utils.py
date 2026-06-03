@@ -70,7 +70,9 @@ def get_rollable_game(
     database_name : `list[CEGame]`
         A list of all games in the site.
         This is *NOT* the list of games this function will loop through...
-        ... that is database_tier.
+        ... that is database_tier. However, if you would like
+        to limit the amount of rollable games, you can only send in
+        games you'd like to be rolled.
     database_tier: `list[dict]`
         A mapping of game_ids, price, and average completion time.
         This is the list of games that this function will loop through.
