@@ -335,13 +335,12 @@ async def co_op_roll(
 
     lucky = False
 
-    # grab the user
+    # grab the user and partner
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user is None:
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
-
     partner: CEUser | None = SupabaseReader.get_user(partner_.id, use_discord_id=True)
     if partner is None:
         return await interaction.followup.send(
@@ -349,7 +348,7 @@ async def co_op_roll(
             "run /register first!"
         )
 
-    # user has cooldown
+    # user/partner has cooldown
     if user.has_cooldown(event_name):
         return await interaction.followup.send(
             f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_timestamp(event_name)}>."
@@ -387,6 +386,7 @@ async def co_op_roll(
                 "one first, or choose a new partner."
             )
 
+    # user/partner have pendings
     if user.has_pending(event_name):
         return await interaction.followup.send(
             "You just tried rolling this event. Please wait about 10 minutes before trying again."
