@@ -73,9 +73,11 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Check the status of your current and completed casino rolls!",
         guild=guild,
     )
-    async def check_rolls_command(interaction: discord.Interaction):
-        await check_rolls(interaction)
-        pass
+    @app_commands.describe(friend="The user whose rolls you want to see.")
+    async def check_rolls_command(
+        interaction: discord.Interaction, friend: discord.Member | None = None
+    ):
+        return await check_rolls(interaction, friend)
 
     pass
 
@@ -1133,15 +1135,53 @@ def roll_teamworkmakesthedreamwork(
 #  \_____| |_|  |_| |______|  \_____| |_|\_\          |_|  \_\  \____/  |______| |______| |_____/
 
 
-async def check_rolls(interaction: discord.Interaction):
+async def check_rolls(
+    interaction: discord.Interaction, friend: discord.Member | None = None
+):
+    """
+    Returns a message with links to CE Assistant's frontend showing rolls.
+    - If the author of the interaction is registered, it will show
+      a link to their rolls.
+    - If the `friend` parameter is not `None`, and they are registered,
+      it will show a link to their rolls as well.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The interaction this command is responding to.
+    friend: `discord.Member | None` (default None)
+        If the user wants to see rolls for somebody else,
+        they can select them here.
+    """
     # defer the message
     await interaction.response.defer()
 
+    # pull from supabase
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    _friend_local = None
+    if friend is not None:
+        _friend_local = SupabaseReader.get_user(friend.id, use_discord_id=True)
 
+    # if someone puts themselves as friend don't say anything
+    if (
+        user is not None
+        and _friend_local is not None
+        and user.ce_id == _friend_local.ce_id
+    ):
+        _friend_local = None
+        friend = None
+
+    # generate the message
     message: str = ""
     if user is not None:
         message += f"[Click here to see all of your rolls](https://ce-assistant-frontend.vercel.app/rolls/{user.ce_id})\n"
+    if friend is not None and _friend_local is not None:
+        message += (
+            f"[Click here to see all of {_friend_local.display_name}'s rolls]"
+            f"(https://ce-assistant-frontend.vercel.app/rolls/{_friend_local.ce_id})\n"
+        )
+    elif friend is not None and _friend_local is None:
+        message += f"Could not find {friend.name} in CE Assistant's database. Please have them run /register.\n"
     message += "[Click here to see all rolls from the past month](https://ce-assistant-frontend.vercel.app/rolls/recent)\n"
 
     return await interaction.followup.send(message)
