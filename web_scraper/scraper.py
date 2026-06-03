@@ -693,57 +693,75 @@ def update_rolls(
     logger.info("Pulling rolls from Supabase...")
     rolls = SupabaseReader.get_checkable_rolls()
     logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
-    rolls_updated: list[CERoll] = []
 
+    # Build O(1) lookup dicts from what the caller already fetched.
+    users_by_id: dict[str, CEUser] = {u.ce_id: u for u in database_user}
+    games_by_id: dict[str, CEGame] = {g.ce_id: g for g in database_name}
+
+    # Pre-pass: collect every user/game ID referenced by checkable rolls,
+    # then bulk-fetch any misses in two Supabase calls instead of one per roll.
+    needed_user_ids: set[str] = set()
+    needed_game_ids: set[str] = set()
+    for _roll in rolls:
+        if _roll.status not in ("current", "pending"):
+            continue
+        needed_user_ids.add(_roll.user_ce_id)
+        if _roll.partner_ce_id is not None:
+            needed_user_ids.add(_roll.partner_ce_id)
+        for game_id in _roll.games:
+            if game_id:
+                needed_game_ids.add(game_id)
+
+    missing_user_ids = [uid for uid in needed_user_ids if uid not in users_by_id]
+    missing_game_ids = [gid for gid in needed_game_ids if gid not in games_by_id]
+
+    if missing_user_ids:
+        logger.info(
+            "Bulk-fetching %d users not in database_user.", len(missing_user_ids)
+        )
+        for u in SupabaseReader.get_users_bulk(missing_user_ids, include_rolls=False):
+            users_by_id[u.ce_id] = u
+
+    if missing_game_ids:
+        logger.info(
+            "Bulk-fetching %d games not in database_name.", len(missing_game_ids)
+        )
+        for g in SupabaseReader.get_games_bulk(missing_game_ids):
+            games_by_id[g.ce_id] = g
+
+    # Main loop — all lookups are now O(1) dict reads, no per-roll Supabase calls.
     for i, _roll in enumerate(rolls):
-        # log
         if i % 15 == 0:
             logger.debug("Updating roll %d of %d.", i, len(rolls))
 
-        # skip any rolls that we don't care about
         if _roll.status != "current" and _roll.status != "pending":
             continue
 
-        # first, see if we have any updated data from the user.
-        # if that misses, just get them from Supabase
-        user1 = hm.get_item_from_list(_roll.user_ce_id, database_user)
-        if user1 is None:
-            user1 = SupabaseReader.get_user(_roll.user_ce_id)
+        user1 = users_by_id.get(_roll.user_ce_id)
         if user1 is None:
             logger.error(
                 "Could not find user with ID %s in update_users", _roll.user_ce_id
             )
             continue
 
-        # and now for the partner
         user2 = None
         if _roll.partner_ce_id is not None:
-            logger.debug("Looking for partner with User ID: %s", _roll.partner_ce_id)
-            user2 = hm.get_item_from_list(_roll.partner_ce_id, database_user)
-            if user2 is None:
-                logger.debug("Couldn't find locally. Pulling from Supabase.")
-                user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+            user2 = users_by_id.get(_roll.partner_ce_id)
             if user2 is None:
                 logger.error(
                     "Could not find partner (User ID %s) in Supabase.",
                     _roll.partner_ce_id,
                 )
                 continue
-            logger.debug("Partner found.")
 
-        # and for the games
-        logger.debug("Pulling games from Supabase.")
         games: list[CEGame] = []
-        for _game in _roll.games:
-            game_obj = hm.get_item_from_list(_game, database_name)
+        for game_id in _roll.games:
+            game_obj = games_by_id.get(game_id)
             if game_obj is None:
-                game_obj = SupabaseReader.get_game(_game)
-            if game_obj is None:
-                logger.error(f"Could not find game with ID {_game} in Supabase.")
+                logger.error("Could not find game with ID %s in Supabase.", game_id)
                 continue
             games.append(game_obj)
 
-        logger.debug("Beginning update")
         _update, _roll_updated, _delete = update_one_roll(_roll, user1, user2, games)
 
         if _update is not None:
