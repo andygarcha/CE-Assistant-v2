@@ -236,7 +236,7 @@ async def loop(
 
     await process_loop(client, full_scrape, send_updates)
 
-    return await interaction.followup.send("loop complete.")
+    return await interaction.followup.send("loop complete.", ephemeral=True)
 
 
 async def shutdown(interaction: discord.Interaction):
