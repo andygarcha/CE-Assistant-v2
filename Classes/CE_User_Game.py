@@ -50,6 +50,25 @@ class CEUserGame:
             total_points += objective.user_points
         return total_points
 
+    def get_user_secondary_objectives(self) -> list[CEUserObjective]:
+        """
+        Returns the array of Secondary CEUserObjectives associated
+        with this game. NOTE: Though this should never happen,
+        this *will* include any 'Uncleared' POs that this user has.
+        """
+        p = []
+        for obj in self.user_objectives:
+            if obj.type == "Secondary":
+                p.append(obj)
+        return p
+
+    def get_user_points_secondary(self):
+        "Returns the total number of points this user has from SOs in this game... INCLUDING uncleared SOs."
+        total_points = 0
+        for objective in self.get_user_secondary_objectives():
+            total_points += objective.user_points
+        return total_points
+
     def get_user_community_objectives(self) -> list[CEUserObjective]:
         """Returns the array of Community :class:`CEUserObjective`'s
         associated with this game."""
@@ -89,7 +108,9 @@ class CEUserGame:
     def is_completed(
         self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame
     ) -> bool:
-        """Returns true if this game has been completed, false if not."""
+        """
+        Returns true if this game has been completed, false if not.
+        """
         if isinstance(database_name, CEGame):
             return self.__is_completed_helper(database_name)
         if isinstance(database_name, Mapping):
@@ -97,6 +118,29 @@ class CEUserGame:
             if game is None:
                 return False
             return self.__is_completed_helper(game)
+        if isinstance(database_name, list):
+            for game in database_name:
+                if game.ce_id == self.ce_id:
+                    return self.__is_completed_helper(game)
+        return False
+
+    def is_overcompleted(
+        self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame
+    ) -> bool:
+        """
+        Returns true if htis game has been OVERcompleted, i.e.
+        - All POs have been completed
+        - All SOs have been completed.
+        """
+        # CEGame
+        if isinstance(database_name, CEGame):
+            return self.__is_overcompleted_helper(database_name)
+        # map[ce_id --> CEGame]
+        if isinstance(database_name, Mapping):
+            game = database_name.get(self.ce_id)
+            if game is None:
+                return False
+            return self.__is_overcompleted_helper(game)
         if isinstance(database_name, list):
             for game in database_name:
                 if game.ce_id == self.ce_id:
@@ -122,24 +166,23 @@ class CEUserGame:
             return False
         return True
 
-        # Completion should be based on each valued Primary objective being fully met.
-        required_primary = game.get_primary_objectives(include_uncleareds=False)
-        if len(required_primary) == 0:
+    def __is_overcompleted_helper(self, game: CEGame):
+        """
+        Both Primary Objectives and Secondary Objectives count towards overcompletion.
+        """
+        user_sos = self.get_user_secondary_objectives()
+        game_sos = game.get_secondary_objectives(include_uncleareds=True)
+
+        user_points = self.get_user_points_secondary()
+        game_points = game.get_so_points(include_uncleareds=True)
+
+        if len(user_sos) == 0:
             return False
-
-        # Deduplicate by objective id in case storage has duplicate rows; keep max points.
-        user_primary_points: dict[str, int] = {}
-        for objective in self.get_user_primary_objectives():
-            prev = user_primary_points.get(objective.ce_id, 0)
-            if objective.user_points > prev:
-                user_primary_points[objective.ce_id] = objective.user_points
-
-        for objective in required_primary:
-            user_points = user_primary_points.get(objective.ce_id)
-            if user_points is None:
-                return False
-            if user_points < objective.point_value:
-                return False
+        if len(user_sos) != len(game_sos):
+            return False
+        if user_points != game_points:
+            return False
+        return self.__is_completed_helper(game)
 
     def get_category_v2(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
         """Returns the category of this game."""
