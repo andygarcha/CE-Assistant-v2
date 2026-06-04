@@ -669,13 +669,11 @@ class CERoll:
                         "Could not find game with ID %s in database_name.", _game_id
                     )
                     raise Exception("Could not find game with ID in database_name.")
-                
+
                 return_str += "- " + _game_object.name_with_link
 
                 if _game_id in user_wins and _game_id in partner_wins:
-                    return_str += (
-                        f" - {user.mention()} and {partner.mention()}\n"
-                    )
+                    return_str += f" - {user.mention()} and {partner.mention()}\n"
                 elif _game_id not in user_wins and _game_id in partner_wins:
                     return_str += f" - {partner.mention()}\n"
                 elif _game_id in user_wins and _game_id not in partner_wins:
