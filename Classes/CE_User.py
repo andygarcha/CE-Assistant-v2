@@ -198,6 +198,32 @@ class CEUser:
                 completed_games.append(game_data)
         return completed_games
 
+    def get_completed_games_all(
+        self, database_name: Sequence[CEGame]
+    ) -> tuple[list[CEGame], list[CEGame]]:
+        """
+        Returns two lists of `CEGame`s: completed games, and overcompleted games.
+        """
+
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
+
+        completed_games: list[CEGame] = []
+        overcompleted_games: list[CEGame] = []
+        for game_user in self.owned_games:
+            game_data = games_by_ce_id.get(game_user.ce_id)
+            if game_data is None:
+                logger.error(
+                    "Could not find a game in database_name for %s", game_user.ce_id
+                )
+                continue
+            if game_user.is_completed(game_data):
+                completed_games.append(game_data)
+                if game_user.is_overcompleted(game_data):
+                    overcompleted_games.append(game_data)
+        return completed_games, overcompleted_games
+
     def get_objective(self, objective_id: str):
         "Takes in an ID and returns the CEUserObjective associated with it."
         for game in self.owned_games:

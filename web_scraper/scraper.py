@@ -969,7 +969,9 @@ def update_one_user(
 
     # gather old info
     points_original = user.get_total_points()
-    completed_games_original = user.get_completed_games_2(database_name_old)
+    completed_games_original, overcompleted_games_original = (
+        user.get_completed_games_all(database_name_old)
+    )
     rank_original = user.get_rank()
     games_original = user.owned_games.copy()
 
@@ -978,7 +980,9 @@ def update_one_user(
 
     # gather new info
     points_new = user.get_total_points()
-    completed_games_new = user.get_completed_games_2(database_name_new)
+    completed_games_new, overcompleted_games_new = user.get_completed_games_all(
+        database_name_new
+    )
     rank_new = user.get_rank()
     games_new = user.owned_games.copy()
 
@@ -987,7 +991,13 @@ def update_one_user(
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
     updates.extend(
-        check_newly_completed_games(completed_games_original, completed_games_new, user)
+        check_newly_completed_games(
+            completed_games_original,
+            completed_games_new,
+            user,
+            overcompleted_games_original,
+            overcompleted_games_new,
+        )
     )
 
     _result: None | UpdateMessageForScraperProcess = None
@@ -1479,7 +1489,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to <@{user.discord_id}>! "
+                    f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1491,7 +1501,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to <@{user.discord_id}>! "
+                f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
@@ -1501,19 +1511,57 @@ def check_roles(
 
 
 def check_newly_completed_games(
-    completed_games_old: list[CEGame], completed_games_new: list[CEGame], user: CEUser
+    completed_games_old: list[CEGame],
+    completed_games_new: list[CEGame],
+    user: CEUser,
+    overcompleted_games_old: list[CEGame],
+    overcompleted_games_new: list[CEGame],
 ) -> list[UpdateMessageForScraperProcess]:
-    updates = []
+    """
+    Generates updates for completions (and overcompletions!)
 
-    for game in completed_games_new:
-        TIER_MINIMUM = 4
+    Example
+    ---
+    - "Wow <@12345> (andyisindecisive)! You've completed Hollow Knight, a T4 worth 150 points."
+    - "Holy moly <@12345> (andyisindecisive)! You've now *over*completed Hollow Knight, a T4 worth 150
+      points, with an additional 150 points worth of SOs."
 
+    Nits
+    ---
+    - A game must be a certain tier for its base completion (PO points only) to be
+      worthy of report.
+    - In addition, a game must have a certain amount of SO points
+      for its overcompletion (PO points *and* SO points) to be worthy of report.
+    - For example, a game with 140 PO points and 10 PO points would
+      receive a completion message but no overcompletion message.
+    - Similarly, a game with 10 PO points and 140 PO points would
+      *only* receive a message on its overcompletion.
+
+    """
+    updates: list[UpdateMessageForScraperProcess] = []
+
+    # filter out ids
+    completed_games_old_ids: set[str] = {g.ce_id for g in completed_games_old}
+    overcompleted_games_old_ids: set[str] = {g.ce_id for g in overcompleted_games_old}
+
+    # Step 2: Games that are newly completed but NOT overcompleted (message 1).
+    newly_completed: list[CEGame] = [
+        g for g in completed_games_new if g.ce_id not in completed_games_old_ids
+    ]
+
+    # Step 3: Games that were already completed and are now newly overcompleted (message 2))
+    newly_overcompleted: list[CEGame] = [
+        g for g in overcompleted_games_new if g.ce_id not in overcompleted_games_old_ids
+    ]
+
+    # Step 4: Generate messages
+    TIER_MINIMUM = 4
+    SO_POINTS_MINIMUM = 80
+    SO_PERCENTAGE_MINIMUM = 40
+
+    # --- completion only ----------
+    for game in newly_completed:
         if game.tier_num < TIER_MINIMUM:
-            continue
-
-        # check if the game's been completed before
-        game_old = hm.get_item_from_list(game.ce_id, completed_games_old)
-        if game_old is not None:
             continue
 
         update = UpdateMessageForScraperProcess()
@@ -1524,14 +1572,13 @@ def check_newly_completed_games(
             update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
         else:
             update.location = "userlog"
-            update.text = ""
 
         update.is_embed = False
         update.text += (
             "Wow {} ({})! You've completed {}, a {} worth {} points {}".format(
                 user.mention(),
-                user.display_name,
-                game.game_name,
+                user.display_name_with_link(),
+                game.name_with_link,
                 game.tier_emoji,
                 game.get_po_points(),
                 hm.get_emoji("Points"),
@@ -1539,14 +1586,64 @@ def check_newly_completed_games(
         )
         updates.append(update)
 
-        if len(updates) != 0:
-            logger.debug(
-                "User with ID %s went from %d completed games to %d completed games (%d difference).",
-                user.ce_id,
-                len(completed_games_old),
-                len(completed_games_new),
-                len(completed_games_new) - len(completed_games_old),
+    # --- was completed, now overcompleted ----------
+    for game in newly_overcompleted:
+        # game at minimum needs to be a T4 (in terms of total points, not just PO points)
+        if game.tier_num_include_so < TIER_MINIMUM:
+            continue
+
+        # game at minimum needs to have 80 SO points...
+        # ... OR it can have 40 SO points and be 40% SO points...
+        # ... OR it can have been bumped from sub T4 to above T4.
+        if (
+            game.get_so_points() < SO_POINTS_MINIMUM
+            and (
+                game.get_so_points() < (SO_POINTS_MINIMUM / 2)
+                or game.so_percentage() < SO_PERCENTAGE_MINIMUM
             )
+            and game.tier_num >= TIER_MINIMUM
+        ):
+            continue
+
+        # Case 1: 75 PO, 5 SO --> sends message
+        # Case 2: 150 PO, 10 SO --> doesn't send message
+        # Case 3: 150 PO, 80 SO --> sends message
+        # Case 4: 50 PO, 30 SO --> sends message
+        # Case 5: 195 PO, 5 SO --> doesn't send message
+        # Case 6: 0 PO, 80 SO --> sends message
+
+        update = UpdateMessageForScraperProcess()
+
+        # check mutelist
+        if user.on_mutelist():
+            update.location = "privatelog"
+            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+        else:
+            update.location = "userlog"
+
+        update.is_embed = False
+        update.text += (
+            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            "worth of SOs."
+        ).format(
+            user.mention(),
+            user.display_name_with_link(),
+            game.name_with_link,
+            game.tier_emoji,
+            game.get_po_points(),
+            game.get_so_points(),
+        )
+        updates.append(update)
+
+    # REPORTING
+    if len(updates) != 0:
+        logger.debug(
+            "User with ID %s went from %d completed games to %d completed games (%d difference).",
+            user.ce_id,
+            len(completed_games_old),
+            len(completed_games_new),
+            len(completed_games_new) - len(completed_games_old),
+        )
     return updates
 
 
@@ -1577,7 +1674,7 @@ def check_rank(
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank "
+            f"Congrats to {user.mention()} ({user.display_name_with_link()}) for ranking up from Rank "
             + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
         )
     else:
@@ -1606,7 +1703,7 @@ def check_completion_count(
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of "
+            f"Amazing! {user.mention()} ({user.display_name_with_link()}) has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
         )
     else:

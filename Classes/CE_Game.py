@@ -152,15 +152,13 @@ class CEGame:
 
     # ==== point totals ====
 
-    def get_total_points(self) -> int:
+    def get_total_points(self, include_uncleareds: bool = True) -> int:
         """Returns the total number of points this game has.\n
         NOTE: This does include uncleared points, as well as Primary and Secondary!"""
 
-        INCLUDE_UNCLEAREDS: bool = True
-
         total_points = 0
         for objective in self.all_objectives:
-            if objective.is_uncleared() and not INCLUDE_UNCLEAREDS:
+            if objective.is_uncleared() and not include_uncleareds:
                 continue
             total_points += objective.point_value
 
@@ -189,6 +187,16 @@ class CEGame:
             total_points += objective.point_value
         return total_points
 
+    def so_percentage(self, include_uncleareds=False) -> int:
+        "Returns the percentage of points in this game that are from Secondary Objectives."
+        _total_points = self.get_total_points()
+        if _total_points == 0:
+            return 0
+
+        _so_points = self.get_so_points(include_uncleareds)
+
+        return int((_so_points / _total_points) * 100)
+
     # ==== tier methods ====
 
     @property
@@ -199,9 +207,16 @@ class CEGame:
     @property
     def tier_num(self) -> int:
         """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
-        points = self.get_po_points(
-            include_uncleareds=False
-        )  # don't include uncleareds
+        points = self.get_po_points(include_uncleareds=False)
+        for threshold, tier in TIER_THRESHOLDS:
+            if points >= threshold:
+                return tier
+        return 0
+
+    @property
+    def tier_num_include_so(self) -> int:
+        "Returns this tier as an int, if we counted SOs."
+        points = self.get_total_points(include_uncleareds=False)
         for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
@@ -222,6 +237,11 @@ class CEGame:
     def is_t5plus(self) -> bool:
         "Returns true if this game is Tier 5 or above."
         return self.tier_num >= 5
+
+    @property
+    def so_bumps_tier(self) -> bool:
+        "Returns true if this game's tier would be changed if we accounted for SOs."
+        return self.tier_num != self.tier_num_include_so
 
     # ==== derived properties ====
 
