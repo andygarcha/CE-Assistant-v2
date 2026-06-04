@@ -1534,11 +1534,11 @@ def check_newly_completed_games(
       worthy of report.
     - In addition, a game must have a certain amount of SO points
       for its overcompletion (PO points *and* SO points) to be worthy of report.
-    - For example, a game with 140 PO points and 10 PO points would 
+    - For example, a game with 140 PO points and 10 PO points would
       receive a completion message but no overcompletion message.
     - Similarly, a game with 10 PO points and 140 PO points would
       *only* receive a message on its overcompletion.
-    
+
     """
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -1548,13 +1548,13 @@ def check_newly_completed_games(
 
     # Step 2: Games that are newly completed but NOT overcompleted (message 1).
     newly_completed: list[CEGame] = [
-        g for g in completed_games_new
-        if g.ce_id not in completed_games_old_ids
+        g for g in completed_games_new if g.ce_id not in completed_games_old_ids
     ]
 
     # Step 3: Games that were already completed and are now newly overcompleted (message 2))
     newly_overcompleted: list[CEGame] = [
-        g for g in overcompleted_games_new
+        g
+        for g in overcompleted_games_new
         if g.ce_id not in overcompleted_games_old_ids and g.ce_id
     ]
 
@@ -1562,7 +1562,7 @@ def check_newly_completed_games(
     TIER_MINIMUM = 4
     SO_POINTS_MINIMUM = 80
     SO_PERCENTAGE_MINIMUM = 40
-    
+
     # --- completion only ----------
     for game in newly_completed:
         if game.tier_num < TIER_MINIMUM:
@@ -1589,10 +1589,9 @@ def check_newly_completed_games(
             )
         )
         updates.append(update)
-    
+
     # --- was completed, now overcompleted ----------
     for game in newly_overcompleted:
-
         # game at minimum needs to be a T4 (in terms of total points, not just PO points)
         if game.tier_num_include_so < TIER_MINIMUM:
             continue
@@ -1600,9 +1599,14 @@ def check_newly_completed_games(
         # game at minimum needs to have 80 SO points...
         # ... OR it can have 40 SO points and be 40% SO points...
         # ... OR it can have been bumped from sub T4 to above T4.
-        if (game.get_so_points() < SO_POINTS_MINIMUM
-             and (game.get_so_points() < (SO_POINTS_MINIMUM / 2) or game.so_percentage() < SO_PERCENTAGE_MINIMUM)
-             and game.tier_num >= TIER_MINIMUM):
+        if (
+            game.get_so_points() < SO_POINTS_MINIMUM
+            and (
+                game.get_so_points() < (SO_POINTS_MINIMUM / 2)
+                or game.so_percentage() < SO_PERCENTAGE_MINIMUM
+            )
+            and game.tier_num >= TIER_MINIMUM
+        ):
             continue
 
         # Case 1: 75 PO, 5 SO --> sends message
@@ -1622,15 +1626,15 @@ def check_newly_completed_games(
 
         update.is_embed = False
         update.text += (
-            ("Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
-            "worth of SOs.").format(
-                user.mention(),
-                user.display_name_with_link(),
-                game.name_with_link,
-                game.tier_emoji,
-                game.get_po_points(),
-                game.get_so_points()
-            )
+            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            "worth of SOs."
+        ).format(
+            user.mention(),
+            user.display_name_with_link(),
+            game.name_with_link,
+            game.tier_emoji,
+            game.get_po_points(),
+            game.get_so_points(),
         )
         updates.append(update)
 

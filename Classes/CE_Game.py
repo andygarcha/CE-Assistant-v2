@@ -188,7 +188,7 @@ class CEGame:
         ):
             total_points += objective.point_value
         return total_points
-    
+
     def so_percentage(self, include_uncleareds=False) -> int:
         "Returns the percentage of points in this game that are from Secondary Objectives."
         _so_points = self.get_so_points(include_uncleareds)
@@ -213,7 +213,7 @@ class CEGame:
             if points >= threshold:
                 return tier
         return 0
-    
+
     @property
     def tier_num_include_so(self) -> int:
         "Returns this tier as an int, if we counted SOs."
@@ -238,7 +238,7 @@ class CEGame:
     def is_t5plus(self) -> bool:
         "Returns true if this game is Tier 5 or above."
         return self.tier_num >= 5
-    
+
     @property
     def so_bumps_tier(self) -> bool:
         "Returns true if this game's tier would be changed if we accounted for SOs."
