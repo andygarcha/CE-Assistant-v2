@@ -165,6 +165,15 @@ async def get_user(ce_id: str) -> CEAPIUser | None:
 
 
 async def get_api_games() -> list[str]:
+    """
+    Pulls from /api/games/ids. Returns:
+    {
+        "id": "8176c6f4-0560-4fb8-a1e0-7f90057a62de",
+        "name": "#Snake2 DX: Reawakening"
+    }
+
+    This method will only return a list of the CE IDs.
+    """
     TRY_LIMIT = 4
     session = await http_session.get_session()
     last_error: Exception | None = None
