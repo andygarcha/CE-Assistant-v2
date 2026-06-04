@@ -128,13 +128,7 @@ async def solo_roll(
 
             # if we get here, we can cancel
             # MAKE SURE WE ADD THE PENDING SO THEY CAN'T DOUBLE DO THIS!!!
-            user.add_pending(event_name)
-            _pending: CERoll | None = user.get_pending(event_name)
-            if _pending is None:
-                return await interaction.followup.send(
-                    "Ran into an error with the pending system."
-                )
-            SupabaseReader.dump_roll(_pending)
+            SupabaseReader.add_pending(event_name, user.ce_id)
 
             # and now send the views
             view = ConfirmCancelView(user.discord_id)
@@ -145,9 +139,7 @@ async def solo_roll(
             await view.wait()
 
             # they said no (or yes) — tear down the pending guard
-            _pending_id = _pending._id
-            user.remove_pending(event_name)
-            SupabaseReader.delete_roll(_pending_id)
+            SupabaseReader.kill_pending(event_name, user.ce_id)
             if not view.confirmed:
                 return await interaction.edit_original_response(
                     content="Reroll cancelled.", view=None
