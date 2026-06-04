@@ -244,10 +244,41 @@ class RAData(GameData):
 
 
 class CRData:
-    "A wrapper class for a user's CR."
+    """
+    A wrapper class for a user's CR. This class calculates per-category CR
+    and Total CR.
+
+    Category CR Formula
+    ---
+    Games in a category are sorted by points descending. Each game contributes:
+
+        cr += min(points, 1000) * 0.90^i
+
+    where i is the game's index in that sorted list (0-based). Multi-category
+    games are counted in every category they belong to for this calculation.
+
+    Total CR Formula
+    ---
+    All games are sorted by points descending. A running power counter is kept
+    per category, starting at 0. For each game, the contribution to each of its
+    categories is:
+
+        contribution = min(points, 1000) * 0.90^(category_power)
+
+    The category_power for each of the game's categories is then incremented,
+    regardless of whether that category ends up being the best one. Only the
+    maximum contribution across all of a game's categories is added to the
+    total CR:
+
+        total_cr += max(contribution per category)
+
+    This means multi-category games advance the power counter (reducing future
+    multipliers) in ALL their categories, but only their single best contribution
+    counts toward the total. This matches the CE site's implementation.
+    """
 
     @staticmethod
-    def calculate_cr(games: list):
+    def calculate_cr(games: list) -> float:
         "Helper function that contains the CR equation."
 
         # set some constants before we begin.
@@ -271,26 +302,62 @@ class CRData:
         # and return it.
         return cr
 
-    def __init__(self, owned_games: list[CEUserGame], database_name: list[CEGame]):
-        # iterate through every category and set up an array in the dict
-        cr_groups: dict[str, list[int]] = {}
-        for category in get_args(hm.CATEGORIES):
-            cr_groups[category] = []
+    @staticmethod
+    def calculate_total_cr(
+        all_games: list[tuple[int, list[hm.CATEGORIES]]],
+    ) -> float:
+        """
+        Calculates Total CR.
+        See CRData's docstring for information on how this is calculated.
 
-        # now go through all of their games and sort them into their categories
+        Parameters
+        ---
+        all_games: `list[tuple[int, list[hm.CATEGORIES]]]`
+            All games as (points, categories) tuples, sorted by points DESC.
+            Multi-cat games advance the power counter for ALL their categories,
+            but only their max per-category contribution counts toward total CR.
+        """
+        powers: dict[str, int] = {cat: 0 for cat in get_args(hm.CATEGORIES)}
+        total_cr: float = 0.0
+
+        for points, categories in all_games:
+            max_contribution: float = 0.0
+            for cat in categories:
+                contribution = min(points, 1000) * (0.90 ** powers[cat])
+                powers[cat] += 1
+                max_contribution = max(max_contribution, contribution)
+            total_cr += max_contribution
+
+        return round(total_cr, 2)
+
+    def __init__(self, owned_games: list[CEUserGame], database_name: list[CEGame]):
+        cr_groups_multicat: dict[str, list[int]] = {
+            cat: [] for cat in get_args(hm.CATEGORIES)
+        }
+        all_games: list[tuple[int, list[hm.CATEGORIES]]] = []
+
         for game in owned_games:
             mongo_game = hm.get_item_from_list(game.ce_id, database_name)
             if mongo_game is None:
                 continue
-            for _cat in mongo_game.categories:
-                cr_groups[_cat].append(game.get_user_points())
 
-        # now that they've all been sorted, calculate the individual crs, and store THAT dict.
-        final_dict = {key: self.calculate_cr(cr_groups[key]) for key in cr_groups}
+            pts = game.get_user_points()
+            for _cat in mongo_game.categories:
+                cr_groups_multicat[_cat].append(pts)
+
+            all_games.append((pts, mongo_game.categories))
+
+        # per-category CRs use the full multicat list (games counted in all their categories)
+        final_dict = {
+            key: self.calculate_cr(sorted(cr_groups_multicat[key], reverse=True))
+            for key in cr_groups_multicat
+        }
         self.__final_cr_dict: dict[str, float] = final_dict
 
-        # finally, get the total CR for this user.
-        self.__total_cr = round(sum([final_dict[key] for key in final_dict]), 2)
+        # total CR: process all games sorted DESC, max per-category contribution per game
+        self.__total_cr = self.calculate_total_cr(
+            sorted(all_games, key=lambda x: x[0], reverse=True)
+        )
 
     @property
     def cr_dict(self) -> dict[str, float]:
@@ -327,7 +394,6 @@ class CRData:
     def cr_string(self) -> str:
         "A string representation meant to send in a profile embed."
         # set up the return string
-        return "CR: Currently under construction due to dual-categories!"
         return_str: str = ""
 
         # constant to denote how many CRs should be displayed per line
@@ -340,7 +406,7 @@ class CRData:
                 return_str += "\n"
 
             # now add the actual values
-            return_str += f"{hm.get_emoji(category)}: {self.cr_dict[category]}  "
+            return_str += f"{hm.get_emoji(category)}: {self.cr_dict[category]}  "  # type: ignore
 
         # add the total CR
         return_str += f"\nTotal: {self.total_cr}"
