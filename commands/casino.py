@@ -359,11 +359,11 @@ async def co_op_roll(
         )
 
     # user/partner has cooldown
-    if user.has_cooldown(event_name):
+    if user.has_cooldown(event_name) and event_name != "Destiny Alignment":
         return await interaction.followup.send(
             f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_timestamp(event_name)}>."
         )
-    if partner.has_cooldown(event_name):
+    if partner.has_cooldown(event_name) and event_name != "Destiny Alignment":
         return await interaction.followup.send(
             f"Your partner is currently on cooldown for {event_name} "
             f"until <t:{partner.get_cooldown_timestamp(event_name)}>."
@@ -407,6 +407,8 @@ async def co_op_roll(
             "Your partner just tried rolling this event. Please wait about 10 minutes before trying again."
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
+    
+    SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
 
     # -- partner confirmation --
     confirm_view = CoOpConfirmView(partner.discord_id)
@@ -419,11 +421,13 @@ async def co_op_roll(
     await confirm_view.wait()
 
     if confirm_view.confirmed is None:
+        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
             content="This co-op request timed out. Re-run the command if you'd still like to roll together.",
             view=None,
         )
     if not confirm_view.confirmed:
+        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
             content=f"{partner.mention()} declined the roll. No worries!",
             view=None,
@@ -443,7 +447,6 @@ async def co_op_roll(
             "Please DM him for your prize :)",
         )
 
-    SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
 
     # -- pull from supabase -----
     database_name = SupabaseReader.get_database_name()
