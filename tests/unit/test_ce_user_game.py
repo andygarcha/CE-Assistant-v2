@@ -373,6 +373,64 @@ class TestIsOvercompleted:
         assert ug.is_completed(game) is True
         assert ug.is_overcompleted(game) is False
 
+    # ── dispatch-discriminating tests ─────────────────────────────────────────
+    #
+    # These tests are structured so that calling the wrong internal helper
+    # (e.g. __is_completed_helper instead of __is_overcompleted_helper) would
+    # produce the wrong answer. The existing happy-path dispatch tests above
+    # pass even with the wrong helper because the user has both POs and SOs
+    # fully done — a state that satisfies both helpers.
+
+    def test_pos_done_sos_missing_via_list_returns_false(self):
+        """All POs done but SOs untouched, passed as list → False.
+        Wrong helper (__is_completed_helper) would return True here."""
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a")])
+        assert ug.is_overcompleted([game]) is False
+
+    def test_pos_done_sos_missing_via_mapping_returns_false(self):
+        """Same scenario via mapping."""
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a")])
+        assert ug.is_overcompleted({GAME_ID: game}) is False
+
+    def test_zero_pos_all_sos_is_overcompleted_direct(self):
+        """Game with no POs: all SOs done → overcompleted.
+        Wrong helper (without ignore_zero_pos=True) sees no user POs and returns False."""
+        game = make_game(ce_id=GAME_ID, objectives=[_so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_uso(20, "so-a")])
+        assert ug.is_overcompleted(game) is True
+
+    def test_zero_pos_all_sos_is_overcompleted_via_list(self):
+        """Same 0-PO scenario via list — the branch where the dispatch bug lived."""
+        game = make_game(ce_id=GAME_ID, objectives=[_so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_uso(20, "so-a")])
+        assert ug.is_overcompleted([game]) is True
+
+    def test_zero_pos_all_sos_is_overcompleted_via_mapping(self):
+        """Same 0-PO scenario via mapping."""
+        game = make_game(ce_id=GAME_ID, objectives=[_so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_uso(20, "so-a")])
+        assert ug.is_overcompleted({GAME_ID: game}) is True
+
+    def test_all_dispatch_paths_agree_when_overcompleted(self):
+        """CEGame, list, and mapping branches must all return True for the same state."""
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
+        ug = make_user_game(
+            ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
+        )
+        assert ug.is_overcompleted(game) is True
+        assert ug.is_overcompleted([game]) is True
+        assert ug.is_overcompleted({GAME_ID: game}) is True
+
+    def test_all_dispatch_paths_agree_when_sos_incomplete(self):
+        """CEGame, list, and mapping branches must all return False when SOs are unfinished."""
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10, "po-a")])
+        assert ug.is_overcompleted(game) is False
+        assert ug.is_overcompleted([game]) is False
+        assert ug.is_overcompleted({GAME_ID: game}) is False
+
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
 
