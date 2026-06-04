@@ -1489,7 +1489,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to <@{user.discord_id}>! "
+                    f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1501,7 +1501,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to <@{user.discord_id}>! "
+                f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
@@ -1674,7 +1674,7 @@ def check_rank(
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank "
+            f"Congrats to {user.mention()} ({user.display_name_with_link()}) for ranking up from Rank "
             + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
         )
     else:
@@ -1703,7 +1703,7 @@ def check_completion_count(
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of "
+            f"Amazing! {user.mention()} ({user.display_name_with_link()}) has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
         )
     else:
