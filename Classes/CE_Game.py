@@ -207,9 +207,7 @@ class CEGame:
     @property
     def tier_num(self) -> int:
         """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
-        points = self.get_po_points(
-            include_uncleareds=False
-        )  # don't include uncleareds
+        points = self.get_po_points(include_uncleareds=False)
         for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
@@ -218,9 +216,7 @@ class CEGame:
     @property
     def tier_num_include_so(self) -> int:
         "Returns this tier as an int, if we counted SOs."
-        points = self.get_total_points(
-            include_uncleareds=False
-        )
+        points = self.get_total_points(include_uncleareds=False)
         for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
