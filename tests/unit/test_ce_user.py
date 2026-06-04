@@ -329,7 +329,7 @@ class TestCasinoScore:
             ("Game Theory", CASINO_POINTS["Game Theory"][0]),  # type: ignore
             (
                 "Teamwork Makes the Dream Work",
-                CASINO_POINTS["Teamwork Makes the Dream Work"][0], # type: ignore
+                CASINO_POINTS["Teamwork Makes the Dream Work"][0],  # type: ignore
             ),  # type: ignore
         ],
     )
@@ -352,7 +352,7 @@ class TestCasinoScore:
             ("Game Theory", CASINO_POINTS["Game Theory"][1]),  # type: ignore
             (
                 "Teamwork Makes the Dream Work",
-                CASINO_POINTS["Teamwork Makes the Dream Work"][1], # type: ignore
+                CASINO_POINTS["Teamwork Makes the Dream Work"][1],  # type: ignore
             ),  # type: ignore
         ],
     )

@@ -2,10 +2,21 @@
 This module is dedicated to interactions with the Challenge Enthusiasts API.
 
 To pull data from individual game or user pages, use `get_api_page_data()`.
-
 To pull data from all games on the site, use `get_api_games_full()`.
-
 To pull data from all users on the site, use `get_api_users_all()`.
+
+All Endpoints
+---
+Games
+- /api/game/[gameId]
+- /api/games
+- /api/games/ids
+- /api/games/full
+
+Users
+- /api/user/[userId]
+- /api/users/all
+
 """
 
 import asyncio
@@ -85,8 +96,15 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
     if json_response["genre"] is None:
         logger.error("Null genre found for game with ID %s", json_response["id"])
         return None
-    if "gameCategories" not in json_response:
+
+    if json_response["id"] == hm.GAME_ID_CHALLENGE_ENTHUSIASTS:
+        _categories = ["Arcade"]
+    elif json_response["id"] == hm.GAME_ID_CLOWN_TOWN:
+        _categories = ["Action"]
+    elif "gameCategories" not in json_response:
         _categories = []
+    elif len(json_response["gameCategories"]) == 0:
+        _categories = json_response["genre"]["name"]
     # pull the categories (we can't be sure they're ordered)
     else:
         _categories_unordered: list[tuple[str, int]] = []
@@ -147,13 +165,22 @@ async def get_user(ce_id: str) -> CEAPIUser | None:
 
 
 async def get_api_games() -> list[str]:
+    """
+    Pulls from /api/games/ids. Returns:
+    {
+        "id": "8176c6f4-0560-4fb8-a1e0-7f90057a62de",
+        "name": "#Snake2 DX: Reawakening"
+    }
+
+    This method will only return a list of the CE IDs.
+    """
     TRY_LIMIT = 4
     session = await http_session.get_session()
     last_error: Exception | None = None
 
     for attempt in range(TRY_LIMIT):
         try:
-            async with session.get("https://cedb.me/api/games") as response:
+            async with session.get("https://cedb.me/api/games/ids") as response:
                 games = await response.json()
                 return [g["id"] for g in games]
         except Exception as exc:

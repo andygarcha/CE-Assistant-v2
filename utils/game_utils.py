@@ -70,7 +70,9 @@ def get_rollable_game(
     database_name : `list[CEGame]`
         A list of all games in the site.
         This is *NOT* the list of games this function will loop through...
-        ... that is database_tier.
+        ... that is database_tier. However, if you would like
+        to limit the amount of rollable games, you can only send in
+        games you'd like to be rolled.
     database_tier: `list[dict]`
         A mapping of game_ids, price, and average completion time.
         This is the list of games that this function will loop through.
@@ -333,6 +335,9 @@ PLATFORM_NAMES = Literal["steam", "retroachievements"]
 CATEGORIES = Literal[
     "Action", "Arcade", "Bullet Hell", "First-Person", "Platformer", "Strategy"
 ]
+
+GAME_ID_CHALLENGE_ENTHUSIASTS = "76574ec1-42df-4488-a511-b9f2d9290e5d"
+GAME_ID_CLOWN_TOWN = "09f100aa-caa7-4154-a224-1c3e9277eea4"
 
 
 def achievements_are_equal(

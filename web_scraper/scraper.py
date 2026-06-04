@@ -227,9 +227,9 @@ async def process_loop(
     )
     updates.extend(_updates)
 
-
     # Step 4: write all of our stuff
     if SAVEDATA:
+
         def _save_all():
             logger.info("saving data")
 
@@ -255,7 +255,7 @@ async def process_loop(
 
             logger.debug("len(rolls_deleted)=%d", len(rolls_deleted))
             for r in rolls_deleted:
-                r.set_status('removed')
+                r.set_status("removed")
             SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
         await asyncio.to_thread(_save_all)
@@ -284,12 +284,13 @@ async def process_loop(
             continue
 
         embed = discord.Embed()
-        embed.color = update.color
+        embed.colour = update.color
         embed.title = update.title
         embed.description = update.description
-        # TODO removal image
         if update.image is not None and update.image != "":
             embed.set_image(url=update.image)
+        else:
+            embed.set_image(url=hm.SCREENSHOT_FAILED_IMAGE)
         embed.url = update.url
 
         # regular stuff
@@ -421,10 +422,11 @@ async def update_games(
             "Pulling %d games one at a time using /api/game/[id].",
             len(_updated_game_ids),
         )
-        for i, gameId in enumerate(_updated_game_ids):
+        for i, gameId in enumerate(_updated_game_ids.copy()):
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
+                _updated_game_ids.remove(gameId)
                 continue
             # isFinished games should *not* have updates made for them,
             # nor should their data be persisted to local backend.
@@ -498,9 +500,7 @@ async def update_users(
     games_new: list[CEGame],
     full_scrape=False,
     notIsFinished: set = set(),
-) -> tuple[
-    list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]
-]:
+) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
 
@@ -602,7 +602,9 @@ async def update_users(
                 bstart + batch_size,
             )
             batch_users = await asyncio.to_thread(
-                SupabaseReader.get_users_bulk, batch_ids
+                SupabaseReader.get_users_bulk,
+                batch_ids,
+                False,  # DONT PULL ROLLS!
             )
             users_old.extend(batch_users)
 
@@ -689,59 +691,77 @@ def update_rolls(
 
     logger.info("Updating rolls.")
     logger.info("Pulling rolls from Supabase...")
-    rolls = SupabaseReader.get_all_rolls()
+    rolls = SupabaseReader.get_checkable_rolls()
     logger.info("Pulling complete. len(rolls)=%d. Beginning updates...", len(rolls))
-    rolls_updated: list[CERoll] = []
 
+    # Build O(1) lookup dicts from what the caller already fetched.
+    users_by_id: dict[str, CEUser] = {u.ce_id: u for u in database_user}
+    games_by_id: dict[str, CEGame] = {g.ce_id: g for g in database_name}
+
+    # Pre-pass: collect every user/game ID referenced by checkable rolls,
+    # then bulk-fetch any misses in two Supabase calls instead of one per roll.
+    needed_user_ids: set[str] = set()
+    needed_game_ids: set[str] = set()
+    for _roll in rolls:
+        if _roll.status not in ("current", "pending"):
+            continue
+        needed_user_ids.add(_roll.user_ce_id)
+        if _roll.partner_ce_id is not None:
+            needed_user_ids.add(_roll.partner_ce_id)
+        for game_id in _roll.games:
+            if game_id:
+                needed_game_ids.add(game_id)
+
+    missing_user_ids = [uid for uid in needed_user_ids if uid not in users_by_id]
+    missing_game_ids = [gid for gid in needed_game_ids if gid not in games_by_id]
+
+    if missing_user_ids:
+        logger.info(
+            "Bulk-fetching %d users not in database_user.", len(missing_user_ids)
+        )
+        for u in SupabaseReader.get_users_bulk(missing_user_ids, include_rolls=False):
+            users_by_id[u.ce_id] = u
+
+    if missing_game_ids:
+        logger.info(
+            "Bulk-fetching %d games not in database_name.", len(missing_game_ids)
+        )
+        for g in SupabaseReader.get_games_bulk(missing_game_ids):
+            games_by_id[g.ce_id] = g
+
+    # Main loop — all lookups are now O(1) dict reads, no per-roll Supabase calls.
     for i, _roll in enumerate(rolls):
-        # log
         if i % 15 == 0:
             logger.debug("Updating roll %d of %d.", i, len(rolls))
 
-        # skip any rolls that we don't care about
         if _roll.status != "current" and _roll.status != "pending":
             continue
 
-        # first, see if we have any updated data from the user.
-        # if that misses, just get them from Supabase
-        user1 = hm.get_item_from_list(_roll.user_ce_id, database_user)
-        if user1 is None:
-            user1 = SupabaseReader.get_user(_roll.user_ce_id)
+        user1 = users_by_id.get(_roll.user_ce_id)
         if user1 is None:
             logger.error(
                 "Could not find user with ID %s in update_users", _roll.user_ce_id
             )
             continue
 
-        # and now for the partner
         user2 = None
         if _roll.partner_ce_id is not None:
-            logger.debug("Looking for partner with User ID: %s", _roll.partner_ce_id)
-            user2 = hm.get_item_from_list(_roll.partner_ce_id, database_user)
-            if user2 is None:
-                logger.debug("Couldn't find locally. Pulling from Supabase.")
-                user2 = SupabaseReader.get_user(_roll.partner_ce_id)
+            user2 = users_by_id.get(_roll.partner_ce_id)
             if user2 is None:
                 logger.error(
                     "Could not find partner (User ID %s) in Supabase.",
                     _roll.partner_ce_id,
                 )
                 continue
-            logger.debug("Partner found.")
 
-        # and for the games
-        logger.debug("Pulling games from Supabase.")
         games: list[CEGame] = []
-        for _game in _roll.games:
-            game_obj = hm.get_item_from_list(_game, database_name)
+        for game_id in _roll.games:
+            game_obj = games_by_id.get(game_id)
             if game_obj is None:
-                game_obj = SupabaseReader.get_game(_game)
-            if game_obj is None:
-                logger.error(f"Could not find game with ID {_game} in Supabase.")
+                logger.error("Could not find game with ID %s in Supabase.", game_id)
                 continue
             games.append(game_obj)
 
-        logger.debug("Beginning update")
         _update, _roll_updated, _delete = update_one_roll(_roll, user1, user2, games)
 
         if _update is not None:
@@ -947,16 +967,22 @@ def update_one_user(
 
     updates: list[UpdateMessageForScraperProcess] = []
 
+    # gather old info
     points_original = user.get_total_points()
-    completed_games_original = user.get_completed_games_2(database_name_old)
+    completed_games_original, overcompleted_games_original = (
+        user.get_completed_games_all(database_name_old)
+    )
     rank_original = user.get_rank()
     games_original = user.owned_games.copy()
 
     # update the user!
     user.owned_games = site_data.owned_games
 
+    # gather new info
     points_new = user.get_total_points()
-    completed_games_new = user.get_completed_games_2(database_name_new)
+    completed_games_new, overcompleted_games_new = user.get_completed_games_all(
+        database_name_new
+    )
     rank_new = user.get_rank()
     games_new = user.owned_games.copy()
 
@@ -965,51 +991,30 @@ def update_one_user(
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
     updates.extend(
-        check_newly_completed_games(completed_games_original, completed_games_new, user)
+        check_newly_completed_games(
+            completed_games_original,
+            completed_games_new,
+            user,
+            overcompleted_games_original,
+            overcompleted_games_new,
+        )
     )
 
+    _result: None | UpdateMessageForScraperProcess = None
+
     # -- RANK UPDATE --
-    if rank_new != rank_original and points_new > points_original:
-        if not user.on_mutelist():
-            update = UpdateMessageForScraperProcess()
-            update.location = "userlog"
-            update.is_embed = False
-            update.text = (
-                f"Congrats to {user.mention()} ({user.display_name}) for ranking up from Rank "
-                + f"{hm.get_emoji(rank_original)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
-            )
-        else:
-            update = UpdateMessageForScraperProcess()
-            update.location = "privatelog"
-            update.is_embed = False
-            update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_original} to {rank_new}."
-        updates.append(update)
+    _result = check_rank(rank_original, rank_new, points_original, points_new, user)
+    if _result is not None:
+        updates.append(_result)
 
     # -- COMPLETION COUNT UPDATE --
-    COMPLETION_INCREMENT = 25
-    if int(len(completed_games_original) / COMPLETION_INCREMENT) < int(
-        len(completed_games_new) / COMPLETION_INCREMENT
-    ):
-        if not user.on_mutelist():
-            update = UpdateMessageForScraperProcess()
-            update.location = "userlog"
-            update.is_embed = False
-            update.text = (
-                f"Amazing! {user.mention()} ({user.display_name}) has passed the milestone of "
-                + f"{int(len(completed_games_new) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
-            )
-        else:
-            update = UpdateMessageForScraperProcess()
-            update.location = "privatelog"
-            update.is_embed = False
-            update.text = (
-                f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of"
-                + f"{int(len(completed_games_new) / COMPLETION_INCREMENT) * COMPLETION_INCREMENT}"
-            )
-        updates.append(update)
+    _result = check_completion_count(
+        len(completed_games_original), len(completed_games_new), user
+    )
+    if _result is not None:
+        updates.append(_result)
 
     user.set_last_updated(hm.get_datetime("now"))
-
     return updates
 
 
@@ -1159,7 +1164,17 @@ def check_curator_steam():
 
 
 def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProcess:
-    """Creates the `UpdateMessageForScraperProcess` for a new game."""
+    """
+    Creates the `UpdateMessageForScraperProcess` for a new game.
+
+    Example
+    ---
+    GAMENAME added to the site:
+    - Tier4Emoji, ActionEmoji
+    - 3 Primary Objectives worth 25 points (+2 Uncleareds)
+    - 5 Secondary Objectives worth 100 points (+1 Uncleared)
+    - 1 Community Objective
+    """
     update = UpdateMessageForScraperProcess()
     update.is_embed = True
     update.title = f"__ {game_new.game_name} __ added to the site:"
@@ -1168,34 +1183,48 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
 
-    if len(game_new.get_primary_objectives()) != 0:
-        num_pos = len(game_new.get_primary_objectives())
+    # primary
+    num_pos = len(game_new.get_primary_objectives())
+    num_po_uncleareds = (
+        len(game_new.get_primary_objectives(include_uncleareds=True)) - num_pos
+    )
+    if num_pos != 0 or num_po_uncleareds != 0:
         update.description += (
             f"\n- {num_pos} Primary Objective{'s' if num_pos != 1 else ''} "
-            + f"worth {game_new.get_po_points()} {hm.get_emoji('Points')}"
+            f"worth {game_new.get_po_points()} {hm.get_emoji('Points')}"
         )
-    if len(game_new.get_uncleared_objectives()) != 0:
-        num_uncleareds = len(game_new.get_uncleared_objectives())
-        update.description += f"\n- {num_uncleareds} Uncleared Objective{'s' if num_uncleareds != 1 else ''}"
-    if len(game_new.get_community_objectives()) != 0:
-        num_cos = len(game_new.get_community_objectives())
+
+    # primary (uncleared)
+    if num_po_uncleareds != 0:
         update.description += (
-            f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''}"
+            f" (+{num_po_uncleareds} Uncleared{'s' if num_po_uncleareds != 1 else ''})"
         )
-    if len(game_new.get_secondary_objectives()) != 0:
-        num_sos = len(game_new.get_secondary_objectives())
+
+    # secondary
+    num_sos = len(game_new.get_secondary_objectives())
+    num_so_uncleareds = (
+        len(game_new.get_secondary_objectives(include_uncleareds=True)) - num_sos
+    )
+    if num_sos != 0 or num_so_uncleareds != 0:
         update.description += (
-            f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''}"
-            + f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
+            f"\n- {num_sos} Secondary Objective{'s' if num_sos != 1 else ''} "
+            f"worth {game_new.get_so_points()} {hm.get_emoji('Points')}"
         )
-    if len(game_new.get_badge_objectives()) != 0:
-        num_bos = len(game_new.get_badge_objectives())
+
+    # secondary (uncleared)
+    if num_so_uncleareds != 0:
         update.description += (
-            f"\n- {num_bos} Badge Objective{'s' if num_bos != 1 else ''}"
+            f" (+{num_so_uncleareds} Uncleared{'s' if num_so_uncleareds != 1 else ''})"
+        )
+
+    # community
+    num_cos = len(game_new.get_community_objectives())
+    if num_cos != 0:
+        update.description += (
+            f"\n- {num_cos} Community Objective{'s' if num_cos != 1 else ''} "
         )
 
     update.image = game_new.header
-
     return update
 
 
@@ -1205,7 +1234,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.is_embed = True
     update.title = f"__ {game_old.game_name} __ removed from the site"
     update.color = 0xCE4E2C
-    update.image = ""
+    update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
 
     return update
@@ -1231,6 +1260,22 @@ def create_update_updated_game(
         The update that comes out of this game. It can also be None.
     removed_objective_ids: `list[str]` or `None`
         A list of Objective IDs that need to be removed.
+
+    Example
+    ---
+    Celeste updated on the site:
+    - Total points unchanged!
+    - PO 'Strawberry Lunatic' updated
+      - Description updated
+      - Requirements updated
+      - 3 achievements added
+    - New Secondary Objective 'Double Dash' added:
+      - 100
+      - Complete 9D.
+    - SO 'Speed Berry' decreased from 30 to 20
+      - 1 achievement removed, 17 achievements added
+    - CO 'Solid Gold' updated
+      - Description updated
     """
 
     update = UpdateMessageForScraperProcess()
@@ -1296,19 +1341,24 @@ def create_update_updated_game(
             "Objective is updated."
             # if the points have changed
             if old_objective.is_uncleared() and not new_objective.is_uncleared():
-                update.description += f"\n- '**{new_objective.name}**' cleared, valued at {new_objective.point_value} {hm.get_emoji('Points')}"
+                update.description += (
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' cleared, valued at "
+                    f"{new_objective.point_value} {hm.get_emoji('Points')}"
+                )
             elif old_objective.point_value > new_objective.point_value:
                 update.description += (
-                    f"\n- '**{new_objective.name}**' decreased from {old_objective.point_value} {hm.get_emoji('Points')} "
-                    + f"to {new_objective.point_value} {hm.get_emoji('Points')}"
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' decreased from {old_objective.point_value} "
+                    + f"{hm.get_emoji('Points')} to {new_objective.point_value} {hm.get_emoji('Points')}"
                 )
             elif old_objective.point_value < new_objective.point_value:
                 update.description += (
-                    f"\n- '**{new_objective.name}**' increased from {old_objective.point_value} {hm.get_emoji('Points')} "
-                    + f"to {new_objective.point_value} {hm.get_emoji('Points')}"
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' increased from {old_objective.point_value} "
+                    + f"{hm.get_emoji('Points')} to {new_objective.point_value} {hm.get_emoji('Points')}"
                 )
             else:
-                update.description += f"\n- {new_objective.get_type_short()} '**{new_objective.name}**' updated"
+                update.description += (
+                    f"\n- {new_objective.type_short} '**{new_objective.name}**' updated"
+                )
 
             # if the type has changed
             if old_objective.type != new_objective.type:
@@ -1323,12 +1373,21 @@ def create_update_updated_game(
                 update.description += "\n  - Requirements updated"
 
             # if the achievements were updated
-            # TODO: this can be made more specific in 2.1
-            # i.e. "2 achievements removed, 4 added"
-            if not hm.achievements_are_equal(
-                old_objective.achievement_ce_ids, new_objective.achievement_ce_ids
-            ):
-                update.description += "\n  - Achievements updated"
+            _old_set = set(old_objective.achievement_ce_ids or [])
+            _new_set = set(new_objective.achievement_ce_ids or [])
+            _count_removed = len(_old_set - _new_set)
+            _count_added = len(_new_set - _old_set)
+            parts = []
+            if _count_removed != 0:
+                parts.append(
+                    f"{_count_removed} achievement{'s' if _count_removed != 1 else ''} removed"
+                )
+            if _count_added != 0:
+                parts.append(
+                    f"{_count_added} achievement{'s' if _count_added != 1 else ''} added"
+                )
+            if parts:
+                update.description += "\n  - " + ", ".join(parts)
 
             # if the partial points were updated
             if old_objective.partial_points != new_objective.partial_points:
@@ -1359,7 +1418,7 @@ def create_update_updated_game(
             )
             continue
         update.description += (
-            f"\n- {old_objective.get_type_short()} {old_objective.name} removed."
+            f"\n- {old_objective.type_short} {old_objective.name} removed."
         )
 
     # CHECK FOR GHOST UPDATE
@@ -1430,7 +1489,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to <@{user.discord_id}>! "
+                    f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1442,7 +1501,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to <@{user.discord_id}>! "
+                f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
@@ -1452,19 +1511,57 @@ def check_roles(
 
 
 def check_newly_completed_games(
-    completed_games_old: list[CEGame], completed_games_new: list[CEGame], user: CEUser
+    completed_games_old: list[CEGame],
+    completed_games_new: list[CEGame],
+    user: CEUser,
+    overcompleted_games_old: list[CEGame],
+    overcompleted_games_new: list[CEGame],
 ) -> list[UpdateMessageForScraperProcess]:
-    updates = []
+    """
+    Generates updates for completions (and overcompletions!)
 
-    for game in completed_games_new:
-        TIER_MINIMUM = 4
+    Example
+    ---
+    - "Wow <@12345> (andyisindecisive)! You've completed Hollow Knight, a T4 worth 150 points."
+    - "Holy moly <@12345> (andyisindecisive)! You've now *over*completed Hollow Knight, a T4 worth 150
+      points, with an additional 150 points worth of SOs."
 
+    Nits
+    ---
+    - A game must be a certain tier for its base completion (PO points only) to be
+      worthy of report.
+    - In addition, a game must have a certain amount of SO points
+      for its overcompletion (PO points *and* SO points) to be worthy of report.
+    - For example, a game with 140 PO points and 10 PO points would
+      receive a completion message but no overcompletion message.
+    - Similarly, a game with 10 PO points and 140 PO points would
+      *only* receive a message on its overcompletion.
+
+    """
+    updates: list[UpdateMessageForScraperProcess] = []
+
+    # filter out ids
+    completed_games_old_ids: set[str] = {g.ce_id for g in completed_games_old}
+    overcompleted_games_old_ids: set[str] = {g.ce_id for g in overcompleted_games_old}
+
+    # Step 2: Games that are newly completed but NOT overcompleted (message 1).
+    newly_completed: list[CEGame] = [
+        g for g in completed_games_new if g.ce_id not in completed_games_old_ids
+    ]
+
+    # Step 3: Games that were already completed and are now newly overcompleted (message 2))
+    newly_overcompleted: list[CEGame] = [
+        g for g in overcompleted_games_new if g.ce_id not in overcompleted_games_old_ids
+    ]
+
+    # Step 4: Generate messages
+    TIER_MINIMUM = 4
+    SO_POINTS_MINIMUM = 80
+    SO_PERCENTAGE_MINIMUM = 40
+
+    # --- completion only ----------
+    for game in newly_completed:
         if game.tier_num < TIER_MINIMUM:
-            continue
-
-        # check if the game's been completed before
-        game_old = hm.get_item_from_list(game.ce_id, completed_games_old)
-        if game_old is not None:
             continue
 
         update = UpdateMessageForScraperProcess()
@@ -1475,44 +1572,149 @@ def check_newly_completed_games(
             update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
         else:
             update.location = "userlog"
-            update.text = ""
 
         update.is_embed = False
         update.text += (
             "Wow {} ({})! You've completed {}, a {} worth {} points {}".format(
                 user.mention(),
-                user.display_name,
-                game.game_name,
+                user.display_name_with_link(),
+                game.name_with_link,
                 game.tier_emoji,
-                game.get_total_points(),
+                game.get_po_points(),
                 hm.get_emoji("Points"),
             )
         )
         updates.append(update)
 
-        if len(updates) != 0:
-            logger.debug(
-                "User with ID %s went from %d completed games to %d completed games (%d difference).",
-                user.ce_id,
-                len(completed_games_old),
-                len(completed_games_new),
-                len(completed_games_new) - len(completed_games_old),
+    # --- was completed, now overcompleted ----------
+    for game in newly_overcompleted:
+        # game at minimum needs to be a T4 (in terms of total points, not just PO points)
+        if game.tier_num_include_so < TIER_MINIMUM:
+            continue
+
+        # game at minimum needs to have 80 SO points...
+        # ... OR it can have 40 SO points and be 40% SO points...
+        # ... OR it can have been bumped from sub T4 to above T4.
+        if (
+            game.get_so_points() < SO_POINTS_MINIMUM
+            and (
+                game.get_so_points() < (SO_POINTS_MINIMUM / 2)
+                or game.so_percentage() < SO_PERCENTAGE_MINIMUM
             )
+            and game.tier_num >= TIER_MINIMUM
+        ):
+            continue
+
+        # Case 1: 75 PO, 5 SO --> sends message
+        # Case 2: 150 PO, 10 SO --> doesn't send message
+        # Case 3: 150 PO, 80 SO --> sends message
+        # Case 4: 50 PO, 30 SO --> sends message
+        # Case 5: 195 PO, 5 SO --> doesn't send message
+        # Case 6: 0 PO, 80 SO --> sends message
+
+        update = UpdateMessageForScraperProcess()
+
+        # check mutelist
+        if user.on_mutelist():
+            update.location = "privatelog"
+            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+        else:
+            update.location = "userlog"
+
+        update.is_embed = False
+        update.text += (
+            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            "worth of SOs."
+        ).format(
+            user.mention(),
+            user.display_name_with_link(),
+            game.name_with_link,
+            game.tier_emoji,
+            game.get_po_points(),
+            game.get_so_points(),
+        )
+        updates.append(update)
+
+    # REPORTING
+    if len(updates) != 0:
+        logger.debug(
+            "User with ID %s went from %d completed games to %d completed games (%d difference).",
+            user.ce_id,
+            len(completed_games_old),
+            len(completed_games_new),
+            len(completed_games_new) - len(completed_games_old),
+        )
     return updates
 
 
 def check_rank(
     rank_old: str, rank_new: str, points_old: int, points_new: int, user: CEUser
 ) -> UpdateMessageForScraperProcess | None:
-    # if rank_new != rank_old and points_new > points_old:
-    #     update = UpdateMessageForScraperProcess()
-    # TODO: complete this function
-    pass
+    """
+    Generates an Update Message for a user's rank up.
+    Parameters
+    ---
+    rank_old: `str`
+        The previous rank.
+    rank_new: `str`
+        The newly computed rank.
+    points_old: `int`
+        The number of points the user had before this scrape
+    points_new: `int`
+        The number of points the user has now
+    user: `CEUser`
+        The user we're checking in the first place
+    """
+    # no update needed
+    if rank_new == rank_old or points_new <= points_old:
+        return None
+
+    if not user.on_mutelist():
+        update = UpdateMessageForScraperProcess()
+        update.location = "userlog"
+        update.is_embed = False
+        update.text = (
+            f"Congrats to {user.mention()} ({user.display_name_with_link()}) for ranking up from Rank "
+            + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
+        )
+    else:
+        update = UpdateMessageForScraperProcess()
+        update.location = "privatelog"
+        update.is_embed = False
+        update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_old} to {rank_new}."
+    return update
 
 
-def check_completion_count():
-    # TODO: complete this function
-    pass
+def check_completion_count(
+    num_completions_og: int, num_completions_new: int, user: CEUser
+) -> None | UpdateMessageForScraperProcess:
+    """
+    Checks if a user has completed a new increment of COMPLETION_INCREMENT Games.
+    Currently set at 25.
+    """
+    COMPLETION_INCREMENT = 25
+
+    if int(num_completions_og / COMPLETION_INCREMENT) >= int(
+        num_completions_new / COMPLETION_INCREMENT
+    ):
+        return None
+    if not user.on_mutelist():
+        update = UpdateMessageForScraperProcess()
+        update.location = "userlog"
+        update.is_embed = False
+        update.text = (
+            f"Amazing! {user.mention()} ({user.display_name_with_link()}) has passed the milestone of "
+            + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
+        )
+    else:
+        update = UpdateMessageForScraperProcess()
+        update.location = "privatelog"
+        update.is_embed = False
+        update.text = (
+            f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of "
+            + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games."
+        )
+    return update
 
 
 def database_reload():

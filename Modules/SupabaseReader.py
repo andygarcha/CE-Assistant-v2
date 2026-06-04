@@ -4,6 +4,7 @@ from collections.abc import Sequence
 import datetime
 import json
 import time
+import uuid
 from typing import Literal, cast
 import logging
 import typing
@@ -37,7 +38,17 @@ logger = logging.getLogger(__name__)
 
 
 def _iso_or_none(value):
-    """Return ISO string for datetime-like values, return the original string if already a string, or None for falsy/unparseable values."""
+    """
+    Return ISO string for datetime-like values.
+    - Return the original string if already a string
+    - Return None for falsy/unparseable values.
+
+    Example
+    ---
+    dt = datetime.datetime(2025, 1, 2, 3, 40, 5) # 3:40:05PM on January 2, 2025
+    _iso_or_none(dt) --> '2025-01-02T03:40:05+00:00'
+
+    """
     if value is None:
         return None
     if isinstance(value, str):
@@ -54,10 +65,27 @@ def _iso_or_none(value):
 def _fetch_in_chunks(
     table_name: str, column: str, values: list, chunk_size: int = 100
 ) -> list[dict]:
-    """Fetch rows using .in_() in chunks to avoid oversized requests/Bad Request errors.
+    """
+    Fetch rows using .in_() in chunks to avoid oversized requests/Bad Request errors.
 
     Supabase/PostgREST can reject very long `in()` queries (URL length or server limits).
     This helper splits `values` into batches and aggregates results.
+
+    Parameters
+    ---
+    table_name: `str`
+        The name of the table you're pulling from.
+    column: `str`
+        The column you're checking if certain values are in
+    values: `list`
+        The values you're checking against a column
+    chunk_size: `int` (default 100)
+        The chunk size. Probably shouldn't adjust this.
+
+    Example
+    ---
+    I want to find all userGames that belong to users with ids ['a', 'b', 'c']\n
+    `_fetch_in_chunks('userGames', 'user_ce_id', ['a', 'b', 'c'])`
     """
     if not values:
         return []
@@ -89,6 +117,13 @@ def _delete_in_chunks(
 
 # GET LIST
 def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[str]:
+    """
+    Returns a list of ce-ids in that database.
+    - name = games
+    - user = users
+    - input = ???
+    - objectives = objectives
+    """
     table = None
     match database:
         case "name":
@@ -107,6 +142,14 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
 
 # GET GAME
 def get_game(ce_id: str) -> CEGame | None:
+    """
+    Gets the data for a game signified by `ce_id` from Supabase.
+
+    Parameters
+    ---
+    ce_id: `str`
+        The CE ID of the game you are looking for.
+    """
     games_json = supabase.table("games").select().eq("ce_id", ce_id).execute().data
     if len(games_json) == 0:
         return None
@@ -290,8 +333,8 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
 
         game_categories = categories_by_game.get(ce_id)
         if not game_categories and ce_id not in [
-            "76574ec1-42df-4488-a511-b9f2d9290e5d",
-            "09f100aa-caa7-4154-a224-1c3e9277eea4",
+            hm.GAME_ID_CHALLENGE_ENTHUSIASTS,
+            hm.GAME_ID_CLOWN_TOWN,
         ]:
             logger.error("Game with ID %s has no categories.", ce_id)
             continue
@@ -352,23 +395,24 @@ def get_database_user() -> list[CEUser]:
     return _users
 
 
-def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
+def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     """Fetch many users and their related data in bulk using chunked requests.
 
     Returns a list of `CEUser` objects corresponding to the provided `ce_ids`.
     Uses `_fetch_in_chunks` to avoid oversized `.in_()` requests.
     """
+    # null check
     if not ce_ids:
         return []
 
-    # Fetch users
+    # users
     users_json = _fetch_in_chunks("users", "ce_id", ce_ids, chunk_size=100)
     if not users_json:
         return []
 
     user_ce_ids = [u["ce_id"] for u in users_json]
 
-    # Fetch userGames and userObjectives for these users
+    # userGames and userObjectives
     userGames_json = _fetch_in_chunks(
         "userGames", "user_ce_id", user_ce_ids, chunk_size=200
     )
@@ -376,7 +420,15 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
         "userObjectives", "user_ce_id", user_ce_ids, chunk_size=200
     )
 
-    # Fetch objectives referenced by the userObjectives
+    # userId --> userGame and userId --> userObjective mapping
+    ugames_by_user: dict[str, list[dict]] = {}
+    for ug in userGames_json:
+        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
+    uobjs_by_user: dict[str, list[dict]] = {}
+    for uo in userObjectives_json:
+        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
+
+    # objectives
     objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
     objectives_json = (
         _fetch_in_chunks("objectives", "ce_id", objective_ids, chunk_size=200)
@@ -384,39 +436,43 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
         else []
     )
 
-    # Fetch rolls where either user1 or user2 is in our set
-    rolls_user1 = _fetch_in_chunks("rolls", "user1_ce_id", user_ce_ids, chunk_size=200)
-    rolls_user2 = _fetch_in_chunks("rolls", "user2_ce_id", user_ce_ids, chunk_size=200)
-    # Merge rolls and deduplicate by id
-    rolls_map: dict[str, dict] = {}
-    for r in (rolls_user1 or []) + (rolls_user2 or []):
-        rolls_map[r["id"]] = r
-    rolls = list(rolls_map.values())
+    # rolls (if include_rolls == True)
+    if include_rolls:
+        # pull rolls
+        rolls_user1 = _fetch_in_chunks(
+            "rolls", "user1_ce_id", user_ce_ids, chunk_size=200
+        )
+        rolls_user2 = _fetch_in_chunks(
+            "rolls", "user2_ce_id", user_ce_ids, chunk_size=200
+        )
+        # roll id --> roll mapping
+        rolls_map: dict[str, dict] = {}
+        for r in (rolls_user1 or []) + (rolls_user2 or []):
+            rolls_map[r["id"]] = r
+        rolls = list(rolls_map.values())
+        # pull rollGames
+        roll_ids = [r["id"] for r in rolls]
+        rollGames_json = (
+            _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
+            if roll_ids
+            else []
+        )
+        # userId --> roll mapping
+        rolls_by_user: dict[str, list[dict]] = {}
+        for r in rolls:
+            rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
+            if r["user2_ce_id"] is not None:
+                rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
+    else:
+        rolls_user1 = []
+        rolls_user2 = []
+        rolls_map = {}
+        rolls = []
+        roll_ids = []
+        rollGames_json = []
+        rolls_by_user = {}
 
-    # Fetch rollGames for all roll ids
-    roll_ids = [r["id"] for r in rolls]
-    rollGames_json = (
-        _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
-        if roll_ids
-        else []
-    )
-
-    # Organize by user for assembly
-    ugames_by_user: dict[str, list[dict]] = {}
-    for ug in userGames_json:
-        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
-
-    uobjs_by_user: dict[str, list[dict]] = {}
-    for uo in userObjectives_json:
-        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
-
-    rolls_by_user: dict[str, list[dict]] = {}
-    for r in rolls:
-        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
-        if r["user2_ce_id"] is not None:
-            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
-
-    # Build users list preserving provided order when possible
+    # merge users
     out_users: list[CEUser] = []
     users_index = {u["ce_id"]: u for u in users_json}
     for ce_id in ce_ids:
@@ -426,11 +482,18 @@ def get_users_bulk(ce_ids: list[str]) -> list[CEUser]:
 
         ugames = ugames_by_user.get(ce_id, [])
         uobjectives = uobjs_by_user.get(ce_id, [])
-        user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
+        if include_rolls:
+            user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
 
-        # rollGames relevant for this user's rolls
-        user_roll_ids = [r["id"] for r in user_rolls]
-        user_rollgames = [rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids]
+            # rollGames relevant for this user's rolls
+            user_roll_ids = [r["id"] for r in user_rolls]
+            user_rollgames = [
+                rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids
+            ]
+        else:
+            user_rolls = []
+            user_roll_ids = []
+            user_rollgames = []
 
         # objectives subset already fetched above
         user_objectives_list = objectives_json
@@ -479,6 +542,65 @@ def get_all_rolls() -> list[CERoll]:
             )
         )
 
+    return _rolls
+
+
+def get_checkable_rolls() -> list[CERoll]:
+    """
+    This function differs from `get_all_rolls` in only one manner:
+    we only pull rolls that are 'current' or 'pending'. This will
+    drastically speed up our time spent pulling from Supabase as
+    the majority of rolls are already completed.
+    """
+    # pull rolls
+    rolls_json = (
+        supabase.table("rolls")
+        .select()
+        .in_("status", ["current", "pending"])
+        .execute()
+        .data
+    )
+
+    # pull rollgames
+    ids = [r["id"] for r in rolls_json]
+    roll_games_json = _fetch_in_chunks("rollGames", "roll_id", ids)
+
+    # convert and return
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(
+            __supabase_to_roll(
+                roll, [g for g in roll_games_json if g["roll_id"] == roll["id"]]
+            )
+        )
+    return _rolls
+
+
+def get_user_rolls(user_id: str) -> list[CERoll]:
+    """
+    Pulls all rolls pertaining to a certain user.
+    """
+    # table: "rolls"
+    rolls_json = (
+        supabase.table("rolls")
+        .select()
+        .or_(f"user1_ce_id.eq.{user_id},user2_ce_id.eq.{user_id}")
+        .execute()
+        .data
+    )
+    roll_ids = [item["id"] for item in rolls_json]
+    rollGames_json = (
+        supabase.table("rollGames").select().in_("roll_id", roll_ids).execute().data
+    )
+
+    # convert and return
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(
+            __supabase_to_roll(
+                roll, [g for g in rollGames_json if g["roll_id"] == roll["id"]]
+            )
+        )
     return _rolls
 
 
@@ -998,7 +1120,7 @@ def dump_database_tier(database_tier: dict):
             all_entries.extend(database_tier[str(tier)][category])
 
     # remove duplicates (multi-category)
-    all_entries = list({e['ce_id']: e for e in all_entries}.values())
+    all_entries = list({e["ce_id"]: e for e in all_entries}.values())
 
     # dump 100 at a time
     BATCH_SIZE = 100
@@ -1060,6 +1182,89 @@ def delete_roll(roll_id: str):
 
     # Delete roll
     supabase.table("rolls").delete().eq("id", roll_id).execute()
+
+
+def add_pending(
+    event_name: hm.ALL_ROLL_EVENT_NAMES,
+    user1_ce_id: str,
+    user2_ce_id: str | None = None,
+):
+    """
+    Adds a dummy "pending" roll for user1 and user2.
+
+    Parameters
+    ---
+    event_name: `ALL_ROLL_EVENT_NAMES`
+        The name of the event we'd like to
+        create the pending for.
+    user1_ce_id: `str`
+        The CE ID of the user whose pending we
+        are trying to create.
+    user2_ce_id: `str | None` (default None)
+        Optional second user to create the pending for.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    due = now + datetime.timedelta(minutes=10)
+
+    user_ids = [user1_ce_id] + ([user2_ce_id] if user2_ce_id is not None else [])
+    payload = [
+        {
+            "id": str(uuid.uuid4()),
+            "event_name": event_name,
+            "user1_ce_id": user_ce_id,
+            "user2_ce_id": None,
+            "time_created": _iso_or_none(now),
+            "time_due": _iso_or_none(due),
+            "time_completed": None,
+            "is_lucky": False,
+            "chosen_tier": None,
+            "status": "pending",
+            "rerolls_remaining": None,
+            "rerolls_used": 0,
+            "winner": None,
+        }
+        for user_ce_id in user_ids
+    ]
+    supabase.table("rolls").insert(payload).execute()
+
+
+def kill_pending(
+    event_name: hm.ALL_ROLL_EVENT_NAMES,
+    user1_ce_id: str,
+    user2_ce_id: str | None = None,
+):
+    """
+    Removes any pendings from this user involving `event_name`.
+
+    Parameters
+    ---
+    event_name: `ALL_ROLL_EVENT_NAMES`
+        The name of the event we'd like to
+        kill the pending for.
+    user1_ce_id: `str`
+        The CE ID of the user whose pending we
+        are trying to kill.
+    user2_ce_id: `str | None` (default None)
+        Optional second user to kill the pending for.
+    """
+    user_ids = [user1_ce_id] + ([user2_ce_id] if user2_ce_id is not None else [])
+    or_filter = ",".join(f"user1_ce_id.eq.{uid}" for uid in user_ids)
+    ids = [
+        row["id"]
+        for row in (
+            supabase.table("rolls")
+            .select("id")
+            .eq("event_name", event_name)
+            .eq("status", "pending")
+            .or_(or_filter)
+            .execute()
+            .data
+        )
+    ]
+    if not ids:
+        return
+    supabase.table("rollGames").delete().in_("roll_id", ids).execute()
+    supabase.table("rolls").delete().in_("id", ids).execute()
 
 
 def delete_objectives_many(objs: list[str]):
@@ -1129,9 +1334,9 @@ def __supabase_to_game(
         )
     # TODO update this logic
     if cats is None:
-        if game["ce_id"] == "76574ec1-42df-4488-a511-b9f2d9290e5d":
+        if game["ce_id"] == hm.GAME_ID_CHALLENGE_ENTHUSIASTS:
             categories = ["Arcade"]
-        elif game["ce_id"] == "09f100aa-caa7-4154-a224-1c3e9277eea4":
+        elif game["ce_id"] == hm.GAME_ID_CLOWN_TOWN:
             categories = ["Action"]
         else:
             raise Exception("Sent in cats=None and game is not CE or Clown Town.")

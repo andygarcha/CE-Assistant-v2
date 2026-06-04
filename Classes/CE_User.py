@@ -121,7 +121,18 @@ class CEUser:
         return f"{ranks[self.rank_num()]} Rank"
 
     def rank_num(self) -> int:
-        """Returns the rank as an int. E Rank is 0, D Rank is 1, etc."""
+        """
+        Returns the rank as an int.
+        - E Rank is 0
+        - D Rank is 1
+        - C Rank is 2
+        - B Rank is 3
+        - A Rank is 4
+        - S Rank is 5
+        - SS Rank is 6
+        - SSS Rank is 7
+        - EX Rank is 8
+        """
         points = self.get_total_points()
         for threshold, rank in RANK_THRESHOLDS:
             if points >= threshold:
@@ -186,6 +197,32 @@ class CEUser:
             if game_user.is_completed(game_data):
                 completed_games.append(game_data)
         return completed_games
+
+    def get_completed_games_all(
+        self, database_name: Sequence[CEGame]
+    ) -> tuple[list[CEGame], list[CEGame]]:
+        """
+        Returns two lists of `CEGame`s: completed games, and overcompleted games.
+        """
+
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
+
+        completed_games: list[CEGame] = []
+        overcompleted_games: list[CEGame] = []
+        for game_user in self.owned_games:
+            game_data = games_by_ce_id.get(game_user.ce_id)
+            if game_data is None:
+                logger.error(
+                    "Could not find a game in database_name for %s", game_user.ce_id
+                )
+                continue
+            if game_user.is_completed(game_data):
+                completed_games.append(game_data)
+                if game_user.is_overcompleted(game_data):
+                    overcompleted_games.append(game_data)
+        return completed_games, overcompleted_games
 
     def get_objective(self, objective_id: str):
         "Takes in an ID and returns the CEUserObjective associated with it."
@@ -318,7 +355,9 @@ class CEUser:
                 return event
         return None
 
-    def has_DA_roll(self, partner_ce_id, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
+    def has_current_roll_with(
+        self, partner_ce_id, roll_name: hm.ALL_ROLL_EVENT_NAMES
+    ) -> bool:
         """Returns true if this user has a DA roll with requested partner."""
         for event in self.current_rolls:
             if (event.roll_name == roll_name) and (
@@ -327,7 +366,7 @@ class CEUser:
                 return True
         return False
 
-    def count_DA_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int:
+    def count_current_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int:
         """Returns the count of current DA rolls."""
         x = 0
         for event in self.current_rolls:
@@ -357,7 +396,7 @@ class CEUser:
         "Removes all completed rolls associated with roll_name."
         for i, roll in enumerate(self.rolls):
             if roll.roll_name == roll_name and roll.status == "won":
-                del self._rolls[i]
+                self._rolls[i].set_status("removed")
         pass
 
     def has_completed_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
@@ -394,7 +433,7 @@ class CEUser:
                 status="pending",
                 init_time=hm.get_datetime("now"),
                 due_time=hm.get_datetime(minutes=10),
-                _id=str(uuid.uuid4())
+                _id=str(uuid.uuid4()),
             )
         )
         pass
@@ -406,6 +445,12 @@ class CEUser:
                 del self._rolls[i]
                 break
         pass
+
+    def get_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
+        for p in self.rolls:
+            if p.roll_name == pending and p.status == "pending":
+                return p
+        return None
 
     def has_pending(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently on pending for `roll_name`."""
@@ -491,7 +536,7 @@ class CEUser:
                 if cooldown_date is not None and cooldown_date > hm.get_datetime("now"):
                     return cooldown_date
         return None
-    
+
     def get_cooldown_timestamp(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> int | None:
         """
         Returns the UNIX Timestamp of the datetime that `roll_name`'s cooldown ends.
@@ -520,11 +565,8 @@ class CEUser:
     def get_ce_rolls(self) -> list[CERoll]:
         "Returns a list of CERolls pulled from CE."
 
-        # set the constant
-        CE_GAME_ID = "76574ec1-42df-4488-a511-b9f2d9290e5d"
-
         # get the game, and if it's None, return
-        ce_game = self.get_owned_game(CE_GAME_ID)
+        ce_game = self.get_owned_game(hm.GAME_ID_CHALLENGE_ENTHUSIASTS)
         if ce_game is None:
             return []
 
@@ -544,7 +586,7 @@ class CEUser:
                         completed_time=None,
                         rerolls=None,
                         status="won",
-                        _id=str(uuid.uuid4())
+                        _id=str(uuid.uuid4()),
                     )
                 )
 
@@ -778,9 +820,9 @@ class CEAPIUser(CEUser):
         ]
 
         # now get the objects and zip them with the completion dates
-        objective_tuples: list[tuple[CEUserObjective | str, datetime.datetime, str]] = (
-            []
-        )
+        objective_tuples: list[
+            tuple[CEUserObjective | str, datetime.datetime, str]
+        ] = []
         for pair in ordered_pairs:
             objective_object = self.get_objective(pair[1])
             objective_tuples.append(

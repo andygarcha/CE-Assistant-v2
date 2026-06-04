@@ -624,8 +624,8 @@ class CERoll:
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
                 + "You have both completed Destiny Alignment together."
-                + f"\n- <@{user.discord_id}> - {game0.game_name}"
-                + f"\n- <@{partner.discord_id}> - {game1.game_name}"
+                + f"\n- {user.mention()} - {game0.name_with_link}"
+                + f"\n- {partner.mention()} - {game1.name_with_link}"
             )
         # soul mates
         elif self.roll_name == "Soul Mates" and partner is not None:
@@ -637,10 +637,9 @@ class CERoll:
                 raise Exception("Could not find game with ID in database_name.")
 
             return (
-                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
+                f"Congratulations {user.mention()} and {partner.mention()}! "
                 + "You have both completed Soul Mates together."
-                + "\n- "
-                + game0.game_name
+                + f"\n- {game0.name_with_link}"
             )
         elif self.roll_name == "Teamwork Makes the Dream Work" and partner is not None:
             # get all completed games by both users
@@ -658,7 +657,7 @@ class CERoll:
 
             # and now make the actual string
             return_str = (
-                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
+                f"Congratulations {user.mention()} and {partner.mention()}! "
                 + "You have both completed Teamwork Makes the Dream Work.\n"
             )
 
@@ -670,16 +669,15 @@ class CERoll:
                         "Could not find game with ID %s in database_name.", _game_id
                     )
                     raise Exception("Could not find game with ID in database_name.")
-                game_name = _game_object.game_name
-                return_str += "- " + game_name
+
+                return_str += "- " + _game_object.name_with_link
+
                 if _game_id in user_wins and _game_id in partner_wins:
-                    return_str += (
-                        f" - <@{user.discord_id}> and <@{partner.discord_id}>\n"
-                    )
+                    return_str += f" - {user.mention()} and {partner.mention()}\n"
                 elif _game_id not in user_wins and _game_id in partner_wins:
-                    return_str += f" - <@{partner.discord_id}>\n"
+                    return_str += f" - {partner.mention()}\n"
                 elif _game_id in user_wins and _game_id not in partner_wins:
-                    return_str += f" - <@{user.discord_id}>\n"
+                    return_str += f" - {user.mention()}\n"
                 else:
                     return_str += "\n"
             return return_str
@@ -788,7 +786,7 @@ class CERoll:
             return return_str
 
         else:
-            s = f"Congratulations <@{user.discord_id}>! You have beaten {self.roll_name}."
+            s = f"Congratulations {user.mention()}! You have beaten {self.roll_name}."
             for game_id in self.games:
                 game_object = hm.get_item_from_list(game_id, database_name)
                 if game_object is None:
@@ -796,29 +794,49 @@ class CERoll:
                         "Could not find game with ID %s in database_name.", game_id
                     )
                     raise Exception("Could not find game with ID in database_name.")
-                s += f"\n- {game_object.game_name}"
+                s += f"\n- {game_object.name_with_link}"
             return s
 
     def get_fail_message(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None
     ) -> str:
-        """Returns a string to send to #casino if this roll is failed."""
-        # TODO: finish this function
+        """
+        Returns a string to send to #casino if this roll is failed.
 
-        # and grab the objects
-        if not self.is_co_op:
-            partner = None
+        Parameters
+        ---
+        database_name: `list[CEGame]`
+            A list of CEGame objects that will need to be
+            referenced in this message.
+        user: `CEUser`
+            The user who rolled this event.
+        partner: `CEUser | None`
+            If this is a multi-player event, the user information
+            for the partner.
 
+        Returns
+        ---
+        message: `str`
+            The message to be sent to #casino. Examples:
+            - Sorry <@12345>, you have failed your Tier 1 in Fourward Thinking. You are now on cooldown
+              for Fourward Thinking until <t:12345>.
+            - Sorry <@12345> and <@67890>, you have failed your Soul Mates roll. You are now on cooldown for
+              Soul Mates until <t:12345>.
+            - Sorry <@12345>, you have failed your One Hell of a Day roll (Froggy's Battle). You are now on cooldown
+              until <t:12345>
+            - Sorry <@12345>, you have failed your Two Week T2 Streak roll. This event has no cooldown!
+
+        """
         if self.roll_name == "Fourward Thinking":
             return (
-                f"Sorry <@{user.discord_id}>, you failed your Tier {len(self.games)} in Fourward Thinking. "
+                f"Sorry {user.mention()}, you failed your Tier {len(self.games)} in Fourward Thinking. "
                 + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.is_co_op:
             if partner is None:
                 return "Error code 5. Contact andy."
             return (
-                f"Sorry {user.mention()} and {partner.display_name}, you failed your {self.roll_name} roll. "
+                f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.roll_name == "One Hell of a Day":
@@ -829,8 +847,13 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll ({game.game_name}). "
+                f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.name_with_link}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
+            )
+        elif self.calculate_cooldown_date() is None:
+            return (
+                f"Sorry {user.mention()}, you failed your {self.roll_name} roll. "
+                "This event has no cooldown!"
             )
         else:
             return (
@@ -838,11 +861,72 @@ class CERoll:
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
 
+    def get_initialization_message(self, database_name: list[CEGame]) -> str | None:
+        """
+        Creates the message sent when the roll is being rolled.
+
+        This will return the message that's to be sent when the event is
+        rolled for the first time (i.e. the user has just run /solo-roll).
+
+        Returns
+        ---
+        The message to be sent to #casino on rolling
+        """
+        # get the actual game links
+        game_strings: list[str] = []
+        for g in self.games:
+            _game_object = hm.get_item_from_list(g, database_name)
+            if _game_object is None:
+                return None
+            game_strings.append(_game_object.name_with_link)
+        # write the message
+        message = (
+            f"In your {self.roll_name} roll, "
+            f"you rolled the following games: {hm.get_grammar_str(game_strings)}. "
+        )
+        # message was too long
+        if len(message) > 1900:
+            message = (
+                f"In your {self.roll_name} roll, the games you rolled did not "
+                "fit in one message. Please run /check-rolls to see the full list. "
+            )
+        # tack on at the end
+        if self.ends:
+            message += (
+                f"You have until {self.due_discord_timestamp} to complete this event!"
+            )
+        else:
+            message += "This event has no time limit."
+            # TODO: allow for rerolls of co op rolls
+            if not self.is_co_op:
+                message += " To fail and restart this event, run /solo-roll again!"
+        return message
+
+    def get_reup_message(self, database_name: list[CEGame]) -> str | None:
+        """
+        Creates the message sent when the roll has been re-upped for a new round.
+
+        This will return the message that's to announce
+        the new game for the event. For example, if this is a Two Week T2 Streak
+        roll, and self.status == "waiting", this will be the message sent to announce
+        the second (and final) game in the roll.
+        """
+        game = hm.get_item_from_list(self.games[-1], database_name)
+        if game is None:
+            return None
+        message = (
+            f"The next stage of your {self.roll_name} roll is {game.name_with_link}. "
+            f"You have until {self.due_discord_timestamp} to complete this. Good luck!"
+        )
+        return message
+
     def calculate_cooldown_date(self) -> datetime.datetime | None:
         """Calculates the date of which the cooldown should be set
         (or `None` if not applicable)."""
 
         days: int | None | dict[int, int] = roll_cooldowns[self.roll_name]
+
+        # Fourward thinking: num_games * 2 Weeks + num_rerolls_used * 1 Month
         if self.roll_name == "Fourward Thinking":
             if self._rerolls is None:
                 self._rerolls = 0
@@ -860,7 +944,7 @@ class CERoll:
             return None
 
         return hm.get_datetime(days=days, old_datetime=self.init_time)
-    
+
     def calculate_cooldown_timestamp(self) -> int | None:
         return self._to_timestamp(self.calculate_cooldown_date())
 
@@ -998,7 +1082,7 @@ class CERoll:
         if tup is None:
             tier = self.tier_num
             if tier is None:
-                tier = 1 # TODO cheating
+                tier = 1  # TODO cheating
             match self.roll_name:
                 case "Destiny Alignment":
                     return int(-1 * relative(tier) / 3)

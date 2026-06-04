@@ -202,7 +202,7 @@ async def scrape(interaction: discord.Interaction):
 async def loop(
     interaction: discord.Interaction, full_scrape=False, send_updates: bool = True
 ):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
 
     # log this interaction
     await hm.log_command(
@@ -236,7 +236,7 @@ async def loop(
 
     await process_loop(client, full_scrape, send_updates)
 
-    return await interaction.followup.send("loop complete.")
+    return await interaction.followup.send("loop complete.", ephemeral=True)
 
 
 async def shutdown(interaction: discord.Interaction):
@@ -384,7 +384,7 @@ async def clear_roll(
     if pending:
         user.remove_pending(roll_name)
 
-    SupabaseReader.dump_user(user)
+    SupabaseReader.bulk_dump_rolls(user.rolls)
     return await interaction.followup.send("Done!")
 
 
@@ -472,7 +472,7 @@ async def force_add(
             games=None,
             status="won",
             completed_time=datetime.datetime.now(),
-            _id=str(uuid.uuid4())
+            _id=str(uuid.uuid4()),
         )
     )
 

@@ -56,7 +56,8 @@ class CEObjective:
         """Returns the type of objective."""
         return self._objective_type
 
-    def get_type_short(self) -> str:
+    @property
+    def type_short(self) -> str:
         "Returns this game's type as a short (PO, CO, SO)"
         return self.type[0] + "O"
 
@@ -116,7 +117,7 @@ class CEObjective:
         return self._point_value_partial is not None and self._point_value_partial != 0
 
     def is_uncleared(self) -> bool:
-        """Returns true if this game is UNCLEARED."""
+        """Returns true if this objective is UNCLEARED."""
         return (
             self._point_value == 0
             or "(UNCLEARED)" in self.name

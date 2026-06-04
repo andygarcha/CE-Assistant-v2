@@ -102,7 +102,7 @@ class TestGetTypeShort:
         ],
     )
     def test_short_types(self, obj_type, expected):
-        assert make_objective(obj_type=obj_type).get_type_short() == expected
+        assert make_objective(obj_type=obj_type).type_short == expected
 
 
 # ── equals ────────────────────────────────────────────────────────────────────

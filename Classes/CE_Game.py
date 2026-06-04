@@ -105,11 +105,16 @@ class CEGame:
                 p.append(objective)
         return p
 
-    def get_secondary_objectives(self) -> list[CEObjective]:
-        "Returns an array of all secondary objectives."
+    def get_secondary_objectives(self, include_uncleareds=False) -> list[CEObjective]:
+        """Returns an array of all secondary objectives.
+
+        NOTE: This excludes uncleared objectives unless `include_uncleareds=True`.
+        """
         o = []
         for objective in self.all_objectives:
-            if objective.type == "Secondary":
+            if objective.type == "Secondary" and (
+                not objective.is_uncleared() or include_uncleareds
+            ):
                 o.append(objective)
         return o
 
@@ -147,15 +152,13 @@ class CEGame:
 
     # ==== point totals ====
 
-    def get_total_points(self) -> int:
+    def get_total_points(self, include_uncleareds: bool = True) -> int:
         """Returns the total number of points this game has.\n
         NOTE: This does include uncleared points, as well as Primary and Secondary!"""
 
-        INCLUDE_UNCLEAREDS: bool = True
-
         total_points = 0
         for objective in self.all_objectives:
-            if objective.is_uncleared() and not INCLUDE_UNCLEAREDS:
+            if objective.is_uncleared() and not include_uncleareds:
                 continue
             total_points += objective.point_value
 
@@ -175,14 +178,24 @@ class CEGame:
             total_points += objective.point_value
         return total_points
 
-    def get_so_points(self) -> int:
+    def get_so_points(self, include_uncleareds=False) -> int:
         "The total number of points in Secondary Objectives."
         total_points = 0
-        for objective in self.get_secondary_objectives():
-            if objective.is_uncleared():
-                continue
+        for objective in self.get_secondary_objectives(
+            include_uncleareds=include_uncleareds
+        ):
             total_points += objective.point_value
         return total_points
+
+    def so_percentage(self, include_uncleareds=False) -> int:
+        "Returns the percentage of points in this game that are from Secondary Objectives."
+        _total_points = self.get_total_points()
+        if _total_points == 0:
+            return 0
+
+        _so_points = self.get_so_points(include_uncleareds)
+
+        return int((_so_points / _total_points) * 100)
 
     # ==== tier methods ====
 
@@ -194,9 +207,16 @@ class CEGame:
     @property
     def tier_num(self) -> int:
         """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
-        points = self.get_po_points(
-            include_uncleareds=False
-        )  # don't include uncleareds
+        points = self.get_po_points(include_uncleareds=False)
+        for threshold, tier in TIER_THRESHOLDS:
+            if points >= threshold:
+                return tier
+        return 0
+
+    @property
+    def tier_num_include_so(self) -> int:
+        "Returns this tier as an int, if we counted SOs."
+        points = self.get_total_points(include_uncleareds=False)
         for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
@@ -205,7 +225,7 @@ class CEGame:
     @property
     def is_t0(self) -> bool:
         """Returns true if the game is a Tier 0."""
-        return self.get_total_points() == 0
+        return self.get_po_points() == 0
 
     @property
     def is_role_t4(self) -> bool:
@@ -217,6 +237,11 @@ class CEGame:
     def is_t5plus(self) -> bool:
         "Returns true if this game is Tier 5 or above."
         return self.tier_num >= 5
+
+    @property
+    def so_bumps_tier(self) -> bool:
+        "Returns true if this game's tier would be changed if we accounted for SOs."
+        return self.tier_num != self.tier_num_include_so
 
     # ==== derived properties ====
 
@@ -239,7 +264,7 @@ class CEGame:
     @property
     def has_uncleared_so(self) -> bool:
         """Returns true if this game has an Uncleared Secondary Objective."""
-        for objective in self.get_secondary_objectives():
+        for objective in self.get_secondary_objectives(include_uncleareds=True):
             if objective.is_uncleared():
                 return True
         return False
