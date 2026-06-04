@@ -125,7 +125,12 @@ async def solo_roll(
                 return await interaction.followup.send(
                     f"You can reroll {event_name} after <t:{_current_roll.calculate_cooldown_timestamp()}>"
                 )
-
+            
+            _game = SupabaseReader.get_game(_current_roll.games[0])
+            if _game is not None:
+                _game_message = _game.name_with_link
+            else:
+                _game_message = "Could not find game in database."
             # if we get here, we can cancel
             # MAKE SURE WE ADD THE PENDING SO THEY CAN'T DOUBLE DO THIS!!!
             SupabaseReader.add_pending(event_name, user.ce_id)
@@ -133,7 +138,10 @@ async def solo_roll(
             # and now send the views
             view = ConfirmCancelView(user.discord_id)
             await interaction.followup.send(
-                f"You have an active **{event_name}** roll. Rerolling will **fail** it permanently. Continue?",
+                (
+                    f"You have an active **{event_name}** roll ({_game_message}). "
+                    "Rerolling will **fail** it permanently. Continue?"
+                ),
                 view=view,
             )
             await view.wait()
