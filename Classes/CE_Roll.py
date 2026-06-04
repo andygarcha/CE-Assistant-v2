@@ -624,8 +624,8 @@ class CERoll:
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
                 + "You have both completed Destiny Alignment together."
-                + f"\n- <@{user.discord_id}> - {game0.game_name}"
-                + f"\n- <@{partner.discord_id}> - {game1.game_name}"
+                + f"\n- {user.mention()} - {game0.name_with_link}"
+                + f"\n- {partner.mention()} - {game1.name_with_link}"
             )
         # soul mates
         elif self.roll_name == "Soul Mates" and partner is not None:
@@ -637,10 +637,9 @@ class CERoll:
                 raise Exception("Could not find game with ID in database_name.")
 
             return (
-                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
+                f"Congratulations {user.mention()} and {partner.mention()}! "
                 + "You have both completed Soul Mates together."
-                + "\n- "
-                + game0.game_name
+                + f"\n- {game0.name_with_link}"
             )
         elif self.roll_name == "Teamwork Makes the Dream Work" and partner is not None:
             # get all completed games by both users
@@ -658,7 +657,7 @@ class CERoll:
 
             # and now make the actual string
             return_str = (
-                f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
+                f"Congratulations {user.mention()} and {partner.mention()}! "
                 + "You have both completed Teamwork Makes the Dream Work.\n"
             )
 
@@ -670,16 +669,17 @@ class CERoll:
                         "Could not find game with ID %s in database_name.", _game_id
                     )
                     raise Exception("Could not find game with ID in database_name.")
-                game_name = _game_object.game_name
-                return_str += "- " + game_name
+                
+                return_str += "- " + _game_object.name_with_link
+
                 if _game_id in user_wins and _game_id in partner_wins:
                     return_str += (
-                        f" - <@{user.discord_id}> and <@{partner.discord_id}>\n"
+                        f" - {user.mention()} and {partner.mention()}\n"
                     )
                 elif _game_id not in user_wins and _game_id in partner_wins:
-                    return_str += f" - <@{partner.discord_id}>\n"
+                    return_str += f" - {partner.mention()}\n"
                 elif _game_id in user_wins and _game_id not in partner_wins:
-                    return_str += f" - <@{user.discord_id}>\n"
+                    return_str += f" - {user.mention()}\n"
                 else:
                     return_str += "\n"
             return return_str
@@ -788,7 +788,7 @@ class CERoll:
             return return_str
 
         else:
-            s = f"Congratulations <@{user.discord_id}>! You have beaten {self.roll_name}."
+            s = f"Congratulations {user.mention()}! You have beaten {self.roll_name}."
             for game_id in self.games:
                 game_object = hm.get_item_from_list(game_id, database_name)
                 if game_object is None:
@@ -796,7 +796,7 @@ class CERoll:
                         "Could not find game with ID %s in database_name.", game_id
                     )
                     raise Exception("Could not find game with ID in database_name.")
-                s += f"\n- {game_object.game_name}"
+                s += f"\n- {game_object.name_with_link}"
             return s
 
     def get_fail_message(
@@ -849,7 +849,7 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.game_name}). "
+                f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.name_with_link}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         elif self.calculate_cooldown_date() is None:
