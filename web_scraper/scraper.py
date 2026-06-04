@@ -1551,9 +1551,7 @@ def check_newly_completed_games(
 
     # Step 3: Games that were already completed and are now newly overcompleted (message 2))
     newly_overcompleted: list[CEGame] = [
-        g
-        for g in overcompleted_games_new
-        if g.ce_id not in overcompleted_games_old_ids and g.ce_id
+        g for g in overcompleted_games_new if g.ce_id not in overcompleted_games_old_ids
     ]
 
     # Step 4: Generate messages

@@ -191,8 +191,11 @@ class CEGame:
 
     def so_percentage(self, include_uncleareds=False) -> int:
         "Returns the percentage of points in this game that are from Secondary Objectives."
-        _so_points = self.get_so_points(include_uncleareds)
         _total_points = self.get_total_points()
+        if _total_points == 0:
+            return 0
+
+        _so_points = self.get_so_points(include_uncleareds)
 
         return int((_so_points / _total_points) * 100)
 
@@ -218,7 +221,7 @@ class CEGame:
     def tier_num_include_so(self) -> int:
         "Returns this tier as an int, if we counted SOs."
         points = self.get_total_points()
-        for tier, threshold in TIER_THRESHOLDS:
+        for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
         return 0

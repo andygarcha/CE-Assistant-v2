@@ -154,7 +154,7 @@ class CEUserGame:
         if isinstance(database_name, list):
             for game in database_name:
                 if game.ce_id == self.ce_id:
-                    return self.__is_completed_helper(game)
+                    return self.__is_overcompleted_helper(game)
         return False
 
     def __is_completed_helper(self, game: CEGame, ignore_zero_pos: bool = False):
