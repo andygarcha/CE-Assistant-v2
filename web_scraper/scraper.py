@@ -1546,54 +1546,22 @@ def check_newly_completed_games(
     completed_games_old_ids: set[str] = {g.ce_id for g in completed_games_old}
     overcompleted_games_old_ids: set[str] = {g.ce_id for g in overcompleted_games_old}
 
-    # Step 1: Games that went from uncompleted --> both completed and overcompleted simultaneously (message 3)
-    newly_both: list[CEGame] = [g for g in overcompleted_games_new if g.ce_id not in completed_games_old_ids]
-    newly_both_ids: set[str] = {g.ce_id for g in newly_both}
-
     # Step 2: Games that are newly completed but NOT overcompleted (message 1).
     newly_completed: list[CEGame] = [
         g for g in completed_games_new
-        if g.ce_id not in completed_games_old_ids and g.ce_id not in newly_both_ids
+        if g.ce_id not in completed_games_old_ids
     ]
 
     # Step 3: Games that were already completed and are now newly overcompleted (message 2))
     newly_overcompleted: list[CEGame] = [
         g for g in overcompleted_games_new
-        if g.ce_id not in overcompleted_games_old_ids and g.ce_id not in newly_both_ids
+        if g.ce_id not in overcompleted_games_old_ids and g.ce_id
     ]
 
     # Step 4: Generate messages
     TIER_MINIMUM = 4
     SO_POINTS_MINIMUM = 80
     SO_PERCENTAGE_MINIMUM = 40
-
-    # --- completion + overcompletion in one ----------
-    # THIS GOT CANCELLED!
-    for game in newly_both:
-        if game.tier_num_include_so < TIER_MINIMUM:
-            continue
-
-        update = UpdateMessageForScraperProcess()
-        if user.on_mutelist():
-            update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
-        else:
-            update.location = "userlog"
-        
-        update.is_embed = False
-        update.text += (
-            ("Amazing {} ({})! In one fell swoop, you've both completed and *over*completed {}, a {} worth {} {}, "
-            "with an additional {} points worth of SOs!").format(
-                user.mention(),
-                user.display_name_with_link(),
-                game.name_with_link,
-                game.tier_emoji,
-                game.get_po_points(),
-                hm.get_emoji("Points"),
-                game.get_so_points()
-            )
-        )
-        updates.append(update)
     
     # --- completion only ----------
     for game in newly_completed:
