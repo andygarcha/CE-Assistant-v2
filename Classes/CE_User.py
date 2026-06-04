@@ -429,7 +429,7 @@ class CEUser:
             CERoll(
                 roll_name=event_name,
                 user_ce_id=self.ce_id,
-                games=["00000000-0000-0000-0000-000000000000"],
+                games=None,
                 status="pending",
                 init_time=hm.get_datetime("now"),
                 due_time=hm.get_datetime(minutes=10),
