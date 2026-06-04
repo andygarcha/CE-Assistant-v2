@@ -128,9 +128,9 @@ class CEUserGame:
         self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame
     ) -> bool:
         """
-        Returns true if htis game has been OVERcompleted, i.e.
+        Returns true if this game has been OVERcompleted, i.e.
         - There is at least one SO.
-        - All POs have been completed
+        - All POs have been completed (including if there are 0 POs!)
         - All SOs have been completed.
 
         Parameters
@@ -157,10 +157,18 @@ class CEUserGame:
                     return self.__is_completed_helper(game)
         return False
 
-    def __is_completed_helper(self, game: CEGame):
+    def __is_completed_helper(self, game: CEGame, ignore_zero_pos: bool = False):
         """Only Primary Objectives should count towards completion.
         We cannot simply count the number of POs, as some may be *partial*.
         We also simply cannot check the user points, since this would skip uncleareds.
+
+        Parameters
+        ---
+        game: `CEGame`
+            The information about the game we're checking
+        ignore_zero_pos: `bool` (default False)
+            Set this to true if you want a game with zero
+            POs to be counted as 'completed'.
         """
         user_pos = self.get_user_primary_objectives()
         game_pos = game.get_primary_objectives(include_uncleareds=True)
@@ -168,7 +176,7 @@ class CEUserGame:
         user_points = self.get_user_points_primary()
         game_points = game.get_po_points(include_uncleareds=True)
 
-        if len(user_pos) == 0:
+        if len(user_pos) == 0 and not ignore_zero_pos:
             return False
         if len(user_pos) != len(game_pos):
             return False
@@ -193,7 +201,7 @@ class CEUserGame:
             return False
         if user_points != game_points:
             return False
-        return self.__is_completed_helper(game)
+        return self.__is_completed_helper(game, ignore_zero_pos=True)
 
     def get_category_v2(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
         """Returns the category of this game."""

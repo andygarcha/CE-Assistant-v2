@@ -1614,6 +1614,7 @@ def check_newly_completed_games(
         # Case 3: 150 PO, 80 SO --> sends message
         # Case 4: 50 PO, 30 SO --> sends message
         # Case 5: 195 PO, 5 SO --> doesn't send message
+        # Case 6: 0 PO, 80 SO --> sends message
 
         update = UpdateMessageForScraperProcess()
 
