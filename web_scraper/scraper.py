@@ -1525,8 +1525,6 @@ def check_newly_completed_games(
     - "Wow <@12345> (andyisindecisive)! You've completed Hollow Knight, a T4 worth 150 points."
     - "Holy moly <@12345> (andyisindecisive)! You've now *over*completed Hollow Knight, a T4 worth 150
       points, with an additional 150 points worth of SOs."
-    - "Amazing <@12345> (andyisindecisive)! In one fell swoop, you've both completed and *over*completed
-      Hollow Knight, a T4 worth 150 points, with an additional 150 points worth of SOs!"
 
     Nits
     ---
