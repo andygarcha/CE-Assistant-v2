@@ -152,15 +152,13 @@ class CEGame:
 
     # ==== point totals ====
 
-    def get_total_points(self) -> int:
+    def get_total_points(self, include_uncleareds: bool = True) -> int:
         """Returns the total number of points this game has.\n
         NOTE: This does include uncleared points, as well as Primary and Secondary!"""
 
-        INCLUDE_UNCLEAREDS: bool = True
-
         total_points = 0
         for objective in self.all_objectives:
-            if objective.is_uncleared() and not INCLUDE_UNCLEAREDS:
+            if objective.is_uncleared() and not include_uncleareds:
                 continue
             total_points += objective.point_value
 
@@ -220,7 +218,9 @@ class CEGame:
     @property
     def tier_num_include_so(self) -> int:
         "Returns this tier as an int, if we counted SOs."
-        points = self.get_total_points()
+        points = self.get_total_points(
+            include_uncleareds=False
+        )
         for threshold, tier in TIER_THRESHOLDS:
             if points >= threshold:
                 return tier
