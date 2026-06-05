@@ -35,6 +35,7 @@ class RollRepresentation:
             "id": self.id,
             "event_name": self.event_name,
             "user1_ce_id": self.user_id,
+            "user2_ce_id": None if isinstance(self.partner_id, float) else self.partner_id,
             "time_created": None,
             "time_due": None,
             "time_completed": None,

@@ -1158,85 +1158,95 @@ def dump_sheet_rolls(
     batch_size: int = 100,
     pause_seconds: float = 0.05,
 ):
-    """Insert new rolls (and their games) sourced from a Google Sheet.
+    """Insert/update rolls (and their games) sourced from a Google Sheet.
 
-    Accepts pre-built dicts from RollRepresentation.to_supabase_dict() /
-    to_supabase_dict_games() so no circular import is needed.
-    Skips any roll whose ID already exists in the database.
+    - Existing rolls: batch-upserts sheet-sourced fields only (preserves system fields).
+    - Mangled rollGames (wrong count from a crashed run): deletes and reinserts.
+    - Orphaned rollGames (roll exists, zero games): inserts missing games.
+    - Null game_names: patches individually (one-time remediation).
+    - New rolls: inserts in full.
     """
+    _SHEET_FIELDS = {"event_name", "user1_ce_id", "user2_ce_id", "status", "rerolls_used", "from_sheet"}
 
     def _clean(d: dict) -> dict:
-        return {
-            k: (None if isinstance(v, float) and math.isnan(v) else v)
-            for k, v in d.items()
-        }
+        return {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in d.items()}
 
-    rolls_payload = [_clean(r) for r in rolls_payload]
+    rolls_payload     = [_clean(r) for r in rolls_payload]
     rollgames_payload = [_clean(g) for g in rollgames_payload]
 
     if not rolls_payload:
         return
 
-    all_ids = [r["id"] for r in rolls_payload]
-    existing = {
-        row["id"] for row in _fetch_in_chunks("rolls", "id", all_ids, chunk_size=200)
-    }
+    total = len(rolls_payload)
+    print(f"[dump_sheet_rolls] {total} rolls to process")
 
-    # Build a lookup of all rollgames by roll_id for quick access
+    # 1. Which rolls already exist?
+    all_ids = [r["id"] for r in rolls_payload]
+    existing = {row["id"] for row in _fetch_in_chunks("rolls", "id", all_ids, chunk_size=200)}
+    print(f"[dump_sheet_rolls] {len(existing)} existing  |  {total - len(existing)} new")
+
+    # 2. Build rollgames lookup
     rollgames_by_roll: dict[str, list[dict]] = {}
     for g in rollgames_payload:
         rollgames_by_roll.setdefault(g["roll_id"], []).append(g)
 
-    # Rolls that exist but are missing their games (partial insert from a previous crash)
-    existing_with_games = {
-        row["roll_id"]
-        for row in _fetch_in_chunks(
-            "rollGames", "roll_id", list(existing), chunk_size=200
-        )
-    }
-    orphaned_ids = existing - existing_with_games
-    if orphaned_ids:
-        orphaned_games = [
-            g for rid in orphaned_ids for g in rollgames_by_roll.get(rid, [])
+    # 3. Batch-upsert existing rolls (sheet fields only — preserves timestamps, chosen_tier, etc.)
+    if existing:
+        update_payload = [
+            {k: v for k, v in r.items() if k in _SHEET_FIELDS or k == "id"}
+            for r in rolls_payload if r["id"] in existing
         ]
-        if orphaned_games:
-            logger.info(
-                "Backfilling rollGames for %d orphaned rolls.", len(orphaned_ids)
-            )
+        for i in range(0, len(update_payload), batch_size):
+            batch = update_payload[i : i + batch_size]
+            supabase.table("rolls").upsert(batch).execute()
+            print(f"[dump_sheet_rolls] updated existing rolls {min(i + batch_size, len(update_payload))}/{len(update_payload)}")
+
+    # 4. Single fetch of all existing rollGames — reused for all repair checks
+    if existing:
+        existing_games = _fetch_in_chunks("rollGames", "roll_id", list(existing), chunk_size=200)
+        print(f"[dump_sheet_rolls] fetched {len(existing_games)} existing rollGames")
+
+        actual_counts: dict[str, int] = {}
+        for rg in existing_games:
+            actual_counts[rg["roll_id"]] = actual_counts.get(rg["roll_id"], 0) + 1
+
+        # Mangled: game count doesn't match expected (partial insert from a crash)
+        mangled_ids = [
+            rid for rid in existing
+            if rollgames_by_roll.get(rid) and actual_counts.get(rid, 0) != len(rollgames_by_roll[rid])
+        ]
+        if mangled_ids:
+            print(f"[dump_sheet_rolls] fixing {len(mangled_ids)} mangled rollGames...")
+            _delete_in_chunks("rollGames", "roll_id", mangled_ids, chunk_size=200)
+            mangled_games = [g for rid in mangled_ids for g in rollgames_by_roll[rid]]
+            supabase.table("rollGames").insert(mangled_games).execute()
+
+        # Orphaned: roll exists but has zero games at all
+        orphaned_ids = [rid for rid in existing if actual_counts.get(rid, 0) == 0 and rollgames_by_roll.get(rid)]
+        if orphaned_ids:
+            print(f"[dump_sheet_rolls] backfilling {len(orphaned_ids)} orphaned rollGames...")
+            orphaned_games = [g for rid in orphaned_ids for g in rollgames_by_roll[rid]]
             supabase.table("rollGames").insert(orphaned_games).execute()
 
-    # Fix existing rollGames that have a null game_name (e.g. trigger overwrote it before the guard was added)
-    if existing:
-        null_name_rows: list[dict] = []
-        for i in range(0, len(existing), 200):
-            chunk = list(existing)[i : i + 200]
-            null_name_rows.extend(
-                supabase.table("rollGames")
-                .select("roll_id, game_id, index")
-                .in_("roll_id", chunk)
-                .is_("game_name", "null")
-                .execute()
-                .data
-            )
+        # Null game_name: remediation for rows written before the trigger guard was added
+        fixed_ids = set(mangled_ids) | set(orphaned_ids)
+        null_name_rows = [rg for rg in existing_games if rg.get("game_name") is None and rg["roll_id"] not in fixed_ids]
         if null_name_rows:
-            payload_by_roll_index = {
-                (g["roll_id"], g["index"]): g["game_name"] for g in rollgames_payload
-            }
+            payload_by_roll_index = {(g["roll_id"], g["index"]): g["game_name"] for g in rollgames_payload}
+            patched = 0
             for row in null_name_rows:
                 name = payload_by_roll_index.get((row["roll_id"], row["index"]))
                 if name:
-                    supabase.table("rollGames").update({"game_name": name}).eq(
-                        "roll_id", row["roll_id"]
-                    ).eq("index", row["index"]).execute()
-            logger.info(
-                "Backfilled game_name for %d rollGames rows.", len(null_name_rows)
-            )
+                    supabase.table("rollGames").update({"game_name": name}).eq("roll_id", row["roll_id"]).eq("index", row["index"]).execute()
+                    patched += 1
+            print(f"[dump_sheet_rolls] patched game_name on {patched} rollGames rows")
 
+    # 5. Insert new rolls and their games
     new_rolls = [r for r in rolls_payload if r["id"] not in existing]
     if not new_rolls:
+        print("[dump_sheet_rolls] done — no new rolls to insert")
         return
 
-    # new_ids = {r["id"] for r in new_rolls}
     for i in range(0, len(new_rolls), batch_size):
         batch = new_rolls[i : i + batch_size]
         batch_ids = [r["id"] for r in batch]
@@ -1246,8 +1256,12 @@ def dump_sheet_rolls(
         if batch_games:
             supabase.table("rollGames").insert(batch_games).execute()
 
+        print(f"[dump_sheet_rolls] inserted new rolls {min(i + batch_size, len(new_rolls))}/{len(new_rolls)}")
+
         if pause_seconds and (i + batch_size) < len(new_rolls):
             time.sleep(pause_seconds)
+
+    print("[dump_sheet_rolls] done")
 
 
 def dump_loop(dt: datetime.datetime):
