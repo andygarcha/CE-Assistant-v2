@@ -1317,11 +1317,14 @@ def create_update_updated_game(
         # if objective is new
         if new_objective.ce_id not in old_objective_ce_ids:
             "Objective is new!"
-            update.description += f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
-            if new_objective.type == "Primary" or new_objective.type == "Secondary":
-                update.description += (
-                    f"\n  - {new_objective.point_value} {hm.get_emoji('Points')}"
-                )
+            if new_objective.is_uncleared():
+                update.description += f"\n- New Uncleared {new_objective.type_short} '**{new_objective.name}**' added:"
+            else:
+                update.description += f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
+                if new_objective.type == "Primary" or new_objective.type == "Secondary":
+                    update.description += (
+                        f"\n  - {new_objective.point_value} {hm.get_emoji('Points')}"
+                    )
             update.description += f"\n  - {new_objective.description}"
             continue
 
