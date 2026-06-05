@@ -559,40 +559,6 @@ class CEUser:
         raise NotImplementedError("There is no way to clear cooldowns anymore.")
 
     # ----------- other methods ------------
-
-    # -- rolls --
-
-    def get_ce_rolls(self) -> list[CERoll]:
-        "Returns a list of CERolls pulled from CE."
-
-        # get the game, and if it's None, return
-        ce_game = self.get_owned_game(hm.GAME_ID_CHALLENGE_ENTHUSIASTS)
-        if ce_game is None:
-            return []
-
-        # iterate through the objectives
-        rolls: list[CERoll] = []
-        for objective in ce_game.user_objectives:
-            # if the objective name is a roll name, add it to the list.
-            if objective.name in hm.ALL_ROLL_EVENT_NAMES_TUPLE:
-                rolls.append(
-                    CERoll(
-                        roll_name=cast(hm.ALL_ROLL_EVENT_NAMES, objective.name),
-                        user_ce_id=self.ce_id,
-                        games=[],
-                        partner_ce_id=None,
-                        init_time=None,
-                        due_time=None,
-                        completed_time=None,
-                        rerolls=None,
-                        status="won",
-                        _id=str(uuid.uuid4()),
-                    )
-                )
-
-        # return the list.
-        return rolls
-
     # -- game ownership and completion --
 
     def has_completed_game(self, game_id: str, database_name: list[CEGame]):

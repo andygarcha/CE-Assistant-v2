@@ -120,11 +120,6 @@ async def register(
     else:
         ce_user.discord_id = interaction.user.id
 
-    # grab the user's pre-existing rolls
-    rolls = ce_user.get_ce_rolls()
-    for roll in rolls:
-        ce_user.add_completed_roll(roll)
-
     # add the user to users and dump it
     SupabaseReader.bulk_dump_users([ce_user])
 
