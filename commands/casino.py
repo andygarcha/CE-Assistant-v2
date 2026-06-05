@@ -1211,15 +1211,15 @@ async def check_rolls(
     # generate the message
     message: str = ""
     if user is not None:
-        message += f"[Click here to see all of your rolls](https://ce-assistant-frontend.vercel.app/rolls/{user.ce_id})\n"
+        message += f"[Click here to see all of your rolls](https://cebot.me/rolls/{user.ce_id})\n"
     if friend is not None and _friend_local is not None:
         message += (
             f"[Click here to see all of {_friend_local.display_name}'s rolls]"
-            f"(https://ce-assistant-frontend.vercel.app/rolls/{_friend_local.ce_id})\n"
+            f"(https://cebot.me/rolls/{_friend_local.ce_id})\n"
         )
     elif friend is not None and _friend_local is None:
         message += f"Could not find {friend.name} in CE Assistant's database. Please have them run /register.\n"
-    message += "[Click here to see all rolls from the past month](https://ce-assistant-frontend.vercel.app/rolls/recent)\n"
+    message += "[Click here to see all rolls from the past month](https://cebot.me/rolls/recent)\n"
 
     return await interaction.followup.send(message)
 
