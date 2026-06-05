@@ -434,6 +434,8 @@ async def update_games(
                 games.append(_game)
             else:
                 notIsFinished.add(_game.ce_id)
+    hidden_ids = await CEAPIReader.get_api_hidden_game_ids()
+    notIsFinished.update(hidden_ids)
     logger.info("Pulling from CEDB complete.")
 
     # Step 2: Generate updates for those by comparing with Supabase games.
