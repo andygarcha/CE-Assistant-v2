@@ -100,8 +100,12 @@ def _fetch_in_chunks(
             except httpx.ReadTimeout:
                 if attempt == 2:
                     raise
-                logger.warning("ReadTimeout on %s (attempt %d/3), retrying...", table_name, attempt + 1)
-                time.sleep(2 ** attempt)
+                logger.warning(
+                    "ReadTimeout on %s (attempt %d/3), retrying...",
+                    table_name,
+                    attempt + 1,
+                )
+                time.sleep(2**attempt)
     return out
 
 
