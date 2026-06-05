@@ -171,8 +171,14 @@ async def get_api_hidden_game_ids() -> list[str]:
     ids: list[str] = []
     i = 1
     while True:
-        _params = {"limit": PULL_LIMIT, "offset": (i - 1) * PULL_LIMIT, "ishidden": "true"}
-        async with session.get("https://cedb.me/api/games/full", params=_params) as response:
+        _params = {
+            "limit": PULL_LIMIT,
+            "offset": (i - 1) * PULL_LIMIT,
+            "ishidden": "true",
+        }
+        async with session.get(
+            "https://cedb.me/api/games/full", params=_params
+        ) as response:
             _json = await response.json()
         if not _json:
             break

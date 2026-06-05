@@ -125,7 +125,7 @@ async def solo_roll(
                 return await interaction.followup.send(
                     f"You can reroll {event_name} after <t:{_current_roll.calculate_cooldown_timestamp()}>"
                 )
-            
+
             _game = SupabaseReader.get_game(_current_roll.games[0])
             if _game is not None:
                 _game_message = _game.name_with_link
@@ -339,6 +339,11 @@ async def co_op_roll(
 
     lucky = False
 
+    # retired events
+    RETIRED = ["Game Theory", "Winner Takes All"]
+    if event_name in RETIRED:
+        return await interaction.followup.send(f"{event_name} is retired.")
+
     # they tried to roll with themselves
     if interaction.user.id == partner_.id:
         return await interaction.followup.send(
@@ -407,7 +412,7 @@ async def co_op_roll(
             "Your partner just tried rolling this event. Please wait about 10 minutes before trying again."
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
-    
+
     SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
 
     # -- partner confirmation --
@@ -446,7 +451,6 @@ async def co_op_roll(
             f"Congratulations {user.mention()} and {partner.mention()}! You've won Jarvis's super secret reward. "
             "Please DM him for your prize :)",
         )
-
 
     # -- pull from supabase -----
     database_name = SupabaseReader.get_database_name()

@@ -902,45 +902,14 @@ class TestCoOpRoll:
 
     def test_retired_event_winner_takes_all_sends_error(self):
         interaction = _make_interaction_coop()
-        user = make_user(discord_id=123)
-        partner = make_user(discord_id=456)
-        with (
-            patch(
-                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
-            ),
-            _make_confirmed_view(),
-            patch("commands.casino.SupabaseReader.add_pending"),
-            patch("commands.casino.SupabaseReader.kill_pending"),
-            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
-            patch(
-                "commands.casino.SupabaseReader.get_database_tier",
-                return_value=EMPTY_DT,
-            ),
-        ):
-            _run_coop(interaction, _make_partner_member(), "Winner Takes All")
-        # Error goes to confirm_msg.edit, not followup.send.
-        msg = interaction.followup.send.return_value.edit.call_args.kwargs["content"]
+        _run_coop(interaction, _make_partner_member(), "Winner Takes All")
+        msg = interaction.followup.send.call_args[0][0]
         assert "retired" in msg.lower()
 
     def test_retired_event_game_theory_sends_error(self):
         interaction = _make_interaction_coop()
-        user = make_user(discord_id=123)
-        partner = make_user(discord_id=456)
-        with (
-            patch(
-                "commands.casino.SupabaseReader.get_user", side_effect=[user, partner]
-            ),
-            _make_confirmed_view(),
-            patch("commands.casino.SupabaseReader.add_pending"),
-            patch("commands.casino.SupabaseReader.kill_pending"),
-            patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
-            patch(
-                "commands.casino.SupabaseReader.get_database_tier",
-                return_value=EMPTY_DT,
-            ),
-        ):
-            _run_coop(interaction, _make_partner_member(), "Game Theory")
-        msg = interaction.followup.send.return_value.edit.call_args.kwargs["content"]
+        _run_coop(interaction, _make_partner_member(), "Game Theory")
+        msg = interaction.followup.send.call_args[0][0]
         assert "retired" in msg.lower()
 
 
