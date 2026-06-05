@@ -185,6 +185,7 @@ class CERoll:
         rerolls: int | None = None,
         is_current: bool = False,
         tier_num: int | None = None,
+        tier_num_partner: int | None = None,
         lucky: bool = False,
     ):
         """Initializer for the CE Roll class."""
@@ -198,6 +199,7 @@ class CERoll:
         self._partner_ce_id: str | None = partner_ce_id
         self._id: str = _id
         self._tier_num: int | None = tier_num
+        self._tier_num_partner: int | None = tier_num_partner
         self._lucky: bool = lucky
 
         # if the roll isn't being created right now
@@ -346,6 +348,10 @@ class CERoll:
     @property
     def tier_num(self) -> int | None:
         return self._tier_num
+
+    @property
+    def tier_num_partner(self) -> int | None:
+        return self._tier_num_partner
 
     @property
     def id(self) -> str:

@@ -541,9 +541,22 @@ def get_roll(roll_id: str) -> CERoll | None:
     return __supabase_to_roll(roll_json, rollGames_json)
 
 
-def get_all_rolls() -> list[CERoll]:
-    rolls_json = supabase.table("rolls").select().execute().data
-    rollGames_json = supabase.table("rollGames").select().execute().data
+def get_all_rolls(event_names: list[str] | None = None) -> list[CERoll]:
+    if event_names:
+        rolls_json = (
+            supabase.table("rolls")
+            .select()
+            .in_("event_name", event_names)
+            .execute()
+            .data
+        )
+        ids = [r["id"] for r in rolls_json]
+        rollGames_json = (
+            supabase.table("rollGames").select().in_("roll_id", ids).execute().data
+        )
+    else:
+        rolls_json = supabase.table("rolls").select().execute().data
+        rollGames_json = supabase.table("rollGames").select().execute().data
 
     _rolls = []
     for roll in rolls_json:
@@ -1037,7 +1050,8 @@ def bulk_dump_rolls(
                     "time_due": _iso_or_none(r.due_time),
                     "time_completed": _iso_or_none(r.completed_time),
                     "is_lucky": False,
-                    "chosen_tier": None,
+                    "chosen_tier": r._tier_num,
+                    "chosen_tier_partner": r._tier_num_partner,
                     "status": r.status,
                     "rerolls_remaining": r.rerolls,
                     "rerolls_used": 0,
@@ -1081,7 +1095,8 @@ def dump_roll(roll: CERoll):
         "time_due": _iso_or_none(roll.due_time),
         "time_completed": _iso_or_none(roll.completed_time),
         "is_lucky": roll.lucky,  # TODO: determine from roll data
-        "chosen_tier": roll._tier_num,  # TODO: populate if available
+        "chosen_tier": roll._tier_num,
+        "chosen_tier_partner": roll._tier_num_partner,
         "status": roll.status,
         "rerolls_remaining": roll.rerolls,
         "rerolls_used": 0,  # TODO: calculate or track
@@ -1486,6 +1501,7 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
         tier_num=roll.get("chosen_tier", None),
+        tier_num_partner=roll.get("chosen_tier_partner", None),
     )
 
 

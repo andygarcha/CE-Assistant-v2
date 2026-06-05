@@ -504,6 +504,7 @@ async def co_op_roll(
         )
 
     # -- create the roll object -----
+    tier_partner = None
     if tier is None:
         if event_name == "Destiny Alignment":
             _game = hm.get_item_from_list(result.games[0], database_name)
@@ -512,6 +513,17 @@ async def co_op_roll(
                 return await confirm_msg.edit(content="Error 7. Please contact andy.")
             tier = _game.tier_num
             if tier == 0:
+                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+                return await confirm_msg.edit(
+                    content="Oops! I accidentally rolled you a T0."
+                )
+        if event_name == "Soul Mates":
+            _game = hm.get_item_from_list(result.games[1], database_name)
+            if _game is None:
+                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+                return await confirm_msg.edit(content="Error 8. Please contact andy")
+            tier_partner = _game.tier_num
+            if tier_partner == 0:
                 SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
                 return await confirm_msg.edit(
                     content="Oops! I accidentally rolled you a T0."
@@ -527,6 +539,7 @@ async def co_op_roll(
         is_current=True,
         tier_num=tier,
         lucky=lucky,
+        tier_num_partner=tier_partner,
     )
 
     # -- get message -----
