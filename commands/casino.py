@@ -480,6 +480,7 @@ async def co_op_roll(
             )
         case "Teamwork Makes the Dream Work":
             tier = 3
+            tier_partner = 3
             result = roll_teamworkmakesthedreamwork(
                 database_name,
                 database_tier,
@@ -504,30 +505,33 @@ async def co_op_roll(
         )
 
     # -- create the roll object -----
-    tier_partner = None
-    if tier is None:
-        if event_name == "Destiny Alignment":
-            _game = hm.get_item_from_list(result.games[0], database_name)
-            if _game is None:
-                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await confirm_msg.edit(content="Error 7. Please contact andy.")
-            tier = _game.tier_num
-            if tier == 0:
-                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await confirm_msg.edit(
-                    content="Oops! I accidentally rolled you a T0."
-                )
-        if event_name == "Soul Mates":
-            _game = hm.get_item_from_list(result.games[1], database_name)
-            if _game is None:
-                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await confirm_msg.edit(content="Error 8. Please contact andy")
-            tier_partner = _game.tier_num
-            if tier_partner == 0:
-                SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
-                return await confirm_msg.edit(
-                    content="Oops! I accidentally rolled you a T0."
-                )
+    tier_partner = tier
+
+    # destiny alignment -- manually grab tier
+    # soul mates -- decided with a parameter
+    # teamwork -- always tier == 3
+    if event_name == "Destiny Alignment":
+        _game = hm.get_item_from_list(result.games[0], database_name)
+        if _game is None:
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            return await confirm_msg.edit(content="Error 7. Please contact andy.")
+        tier = _game.tier_num
+        if tier == 0:
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            return await confirm_msg.edit(
+                content="Oops! I accidentally rolled you a T0."
+            )
+        _game2 = hm.get_item_from_list(result.games[1], database_name)
+        if _game2 is None:
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            return await confirm_msg.edit(content="Error 7. Please contact andy.")
+        tier_partner = _game2.tier_num
+        if tier == 0:
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            return await confirm_msg.edit(
+                content="Oops! I accidentally rolled you a T0."
+            )
+
     assert tier is not None
     roll = CERoll(
         roll_name=event_name,
