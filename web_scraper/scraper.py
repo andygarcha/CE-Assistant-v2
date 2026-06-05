@@ -1489,7 +1489,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
+                    f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1501,7 +1501,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to {user.mention()} ({user.display_name_with_link()}! "
+                f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
