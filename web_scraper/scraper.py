@@ -1317,7 +1317,7 @@ def create_update_updated_game(
         # if objective is new
         if new_objective.ce_id not in old_objective_ce_ids:
             "Objective is new!"
-            if new_objective.is_uncleared():
+            if new_objective.is_uncleared() and new_objective.type != 'Community':
                 update.description += f"\n- New Uncleared {new_objective.type_short} '**{new_objective.name}**' added:"
             else:
                 update.description += f"\n- New {new_objective.type} Objective '**{new_objective.name}**' added:"
