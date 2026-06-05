@@ -185,24 +185,16 @@ async def process_loop(
     database_name_old = await asyncio.to_thread(
         lambda: SupabaseReader.get_games_bulk(SupabaseReader.get_list("name"))
     )
-    database_name_new: list[CEGame | CEAPIGame] = database_name_old.copy()
 
-    # propogate all removals
-    for entry in database_name_old:
-        if entry.ce_id in removed_games:
-            database_name_new.remove(entry)
-
-    # propogate all updates
+    _games_by_id: dict[str, CEGame | CEAPIGame] = {
+        g.ce_id: g for g in database_name_old
+    }
+    for _game_id in removed_games:
+        _games_by_id.pop(_game_id, None)
     for _game_new in games_new:
-        replaced = False
-        for i, entry in enumerate(database_name_new.copy()):  # necessary bc of removals
-            if entry.ce_id == _game_new.ce_id:
-                database_name_new[i] = _game_new
-                replaced = True
-                break
-        # propogate additions
-        if not replaced:
-            database_name_new.append(_game_new)
+        _games_by_id[_game_new.ce_id] = _game_new
+    database_name_new: list[CEGame | CEAPIGame] = list(_games_by_id.values())
+    del _games_by_id
 
     logger.debug("len(database_name_old)=%d", len(database_name_old))
     logger.debug("len(database_name_new)=%d", len(database_name_new))
@@ -211,6 +203,7 @@ async def process_loop(
     _updates, users_new, removed_users = await update_users(
         database_name_old, database_name_new, full_scrape, notIsFinished
     )
+    del database_name_old
     updates.extend(_updates)
     logger.info("UPDATE USERS: complete")
     logger.debug("len(_user_updates)=%d", len(_updates))
