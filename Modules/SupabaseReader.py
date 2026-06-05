@@ -31,7 +31,7 @@ with open("secret_info.json") as f:
 supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_KEY,
-    options=ClientOptions(httpx_client=httpx.Client(timeout=30, verify=True)),
+    options=ClientOptions(httpx_client=httpx.Client(timeout=120, verify=True)),
 )
 
 logger = logging.getLogger(__name__)
@@ -92,9 +92,16 @@ def _fetch_in_chunks(
     out: list[dict] = []
     for i in range(0, len(values), chunk_size):
         chunk = values[i : i + chunk_size]
-        resp = supabase.table(table_name).select().in_(column, chunk).execute()
-        # `.data` can be None on some errors, guard it
-        out.extend(resp.data or [])
+        for attempt in range(3):
+            try:
+                resp = supabase.table(table_name).select().in_(column, chunk).execute()
+                out.extend(resp.data or [])
+                break
+            except httpx.ReadTimeout:
+                if attempt == 2:
+                    raise
+                logger.warning("ReadTimeout on %s (attempt %d/3), retrying...", table_name, attempt + 1)
+                time.sleep(2 ** attempt)
     return out
 
 
