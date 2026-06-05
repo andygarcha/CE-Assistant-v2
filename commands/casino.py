@@ -526,7 +526,7 @@ async def co_op_roll(
             SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(content="Error 7. Please contact andy.")
         tier_partner = _game2.tier_num
-        if tier == 0:
+        if tier_partner == 0:
             SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(
                 content="Oops! I accidentally rolled you a T0."
