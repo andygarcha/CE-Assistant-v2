@@ -791,6 +791,13 @@ class CEAPIUser(CEUser):
     @property
     def api_tier_summary(self) -> list:
         return self.full_data["userTierSummaries"]
+    
+    def unfinished_games(self) -> list[str]:
+        unfinished = []
+        for game in self.full_data['userGames']:
+            if game['game']['isFinished'] == False:
+                unfinished.append(game['gameId'])
+        return unfinished
 
     def most_recent_objectives(self):
         "Returns a list of `CEObjective`s."
