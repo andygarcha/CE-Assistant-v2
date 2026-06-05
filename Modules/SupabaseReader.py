@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 import datetime
 import json
+import math
 import time
 import uuid
 from typing import Literal, cast
@@ -528,6 +529,21 @@ def get_roll(roll_id: str) -> CERoll | None:
     )
 
     return __supabase_to_roll(roll_json, rollGames_json)
+
+
+def get_sheet_rolls() -> list[dict]:
+    """Return all rolls where from_sheet=True, each with a 'game_ids' list attached."""
+    rolls_json = supabase.table("rolls").select().eq("from_sheet", True).execute().data
+    if not rolls_json:
+        return []
+    roll_ids = [r["id"] for r in rolls_json]
+    games_json = _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
+    games_by_roll: dict[str, list[str]] = {}
+    for g in sorted(games_json, key=lambda x: x["index"]):
+        games_by_roll.setdefault(g["roll_id"], []).append(g["game_id"])
+    for r in rolls_json:
+        r["game_ids"] = games_by_roll.get(r["id"], [])
+    return rolls_json
 
 
 def get_all_rolls() -> list[CERoll]:
@@ -1136,6 +1152,104 @@ def dump_database_tier(database_tier: dict):
             supabase.table("tier").upsert(payload).execute()
 
 
+def dump_sheet_rolls(
+    rolls_payload: list[dict],
+    rollgames_payload: list[dict],
+    batch_size: int = 100,
+    pause_seconds: float = 0.05,
+):
+    """Insert new rolls (and their games) sourced from a Google Sheet.
+
+    Accepts pre-built dicts from RollRepresentation.to_supabase_dict() /
+    to_supabase_dict_games() so no circular import is needed.
+    Skips any roll whose ID already exists in the database.
+    """
+
+    def _clean(d: dict) -> dict:
+        return {
+            k: (None if isinstance(v, float) and math.isnan(v) else v)
+            for k, v in d.items()
+        }
+
+    rolls_payload = [_clean(r) for r in rolls_payload]
+    rollgames_payload = [_clean(g) for g in rollgames_payload]
+
+    if not rolls_payload:
+        return
+
+    all_ids = [r["id"] for r in rolls_payload]
+    existing = {
+        row["id"] for row in _fetch_in_chunks("rolls", "id", all_ids, chunk_size=200)
+    }
+
+    # Build a lookup of all rollgames by roll_id for quick access
+    rollgames_by_roll: dict[str, list[dict]] = {}
+    for g in rollgames_payload:
+        rollgames_by_roll.setdefault(g["roll_id"], []).append(g)
+
+    # Rolls that exist but are missing their games (partial insert from a previous crash)
+    existing_with_games = {
+        row["roll_id"]
+        for row in _fetch_in_chunks(
+            "rollGames", "roll_id", list(existing), chunk_size=200
+        )
+    }
+    orphaned_ids = existing - existing_with_games
+    if orphaned_ids:
+        orphaned_games = [
+            g for rid in orphaned_ids for g in rollgames_by_roll.get(rid, [])
+        ]
+        if orphaned_games:
+            logger.info(
+                "Backfilling rollGames for %d orphaned rolls.", len(orphaned_ids)
+            )
+            supabase.table("rollGames").insert(orphaned_games).execute()
+
+    # Fix existing rollGames that have a null game_name (e.g. trigger overwrote it before the guard was added)
+    if existing:
+        null_name_rows: list[dict] = []
+        for i in range(0, len(existing), 200):
+            chunk = list(existing)[i : i + 200]
+            null_name_rows.extend(
+                supabase.table("rollGames")
+                .select("roll_id, game_id, index")
+                .in_("roll_id", chunk)
+                .is_("game_name", "null")
+                .execute()
+                .data
+            )
+        if null_name_rows:
+            payload_by_roll_index = {
+                (g["roll_id"], g["index"]): g["game_name"] for g in rollgames_payload
+            }
+            for row in null_name_rows:
+                name = payload_by_roll_index.get((row["roll_id"], row["index"]))
+                if name:
+                    supabase.table("rollGames").update({"game_name": name}).eq(
+                        "roll_id", row["roll_id"]
+                    ).eq("index", row["index"]).execute()
+            logger.info(
+                "Backfilled game_name for %d rollGames rows.", len(null_name_rows)
+            )
+
+    new_rolls = [r for r in rolls_payload if r["id"] not in existing]
+    if not new_rolls:
+        return
+
+    # new_ids = {r["id"] for r in new_rolls}
+    for i in range(0, len(new_rolls), batch_size):
+        batch = new_rolls[i : i + batch_size]
+        batch_ids = [r["id"] for r in batch]
+        batch_games = [g for rid in batch_ids for g in rollgames_by_roll.get(rid, [])]
+
+        supabase.table("rolls").insert(batch).execute()
+        if batch_games:
+            supabase.table("rollGames").insert(batch_games).execute()
+
+        if pause_seconds and (i + batch_size) < len(new_rolls):
+            time.sleep(pause_seconds)
+
+
 def dump_loop(dt: datetime.datetime):
     supabase.table("loopruns").insert({"ran_at": dt.isoformat()}).execute()
     return
@@ -1518,3 +1632,34 @@ def dump_objective(objective: CEObjective):
             "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         supabase.table("objectiveRequirements").upsert(req_data).execute()
+
+
+def id_to_name_mappings(flip: bool = False) -> dict[str, str]:
+    d = supabase.table("users").select("ce_id", "display_name").execute().data
+
+    mappings = {}
+    for item in d:
+        if flip:
+            mappings[item["display_name"].lower()] = item["ce_id"]
+        else:
+            mappings[item["ce_id"]] = item["display_name"]
+
+    print(mappings)
+    return mappings
+
+
+def game_to_id_mappings(flip: bool = False) -> dict[str, str]:
+    "Maps all game names in the database to their IDs."
+
+    d = supabase.table("games").select("ce_id", "name").execute().data
+
+    mappings = {}
+    for item in d:
+        if flip:
+            if item["name"].lower() in mappings:
+                print(f"fuck duplicate name {item['name']}")
+            mappings[item["name"].lower()] = item["ce_id"]
+        else:
+            mappings[item["ce_id"]] = item["name"]
+
+    return mappings
