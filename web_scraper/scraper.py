@@ -982,7 +982,11 @@ def update_one_user(
     games_new = user.owned_games.copy()
 
     # -- CHECK ROLES --
-    updates.extend(check_roles(games_original, games_new, database_name_new, user))
+    updates.extend(
+        check_roles(
+            games_original, games_new, database_name_old, database_name_new, user
+        )
+    )
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
     updates.extend(
@@ -1438,7 +1442,8 @@ def create_update_updated_game(
 def check_roles(
     games_old: list[CEUserGame],
     games_new: list[CEUserGame],
-    database_name: list[CEGame],
+    database_name_old: list[CEGame],
+    database_name_new: list[CEGame],
     user: CEUser,
 ) -> list[UpdateMessageForScraperProcess]:
     "Gets updates based on roles the user has achieved."
@@ -1452,29 +1457,33 @@ def check_roles(
 
     for game_old in games_old:
         points = game_old.get_user_points()
-        game_database = hm.get_item_from_list(game_old.ce_id, database_name)
+        game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
             continue
 
         # if the game is completed
-        if game_old.get_user_points() == game_database.get_total_points():
+        if game_old.is_completed(game_database):
             old_tiers[game_database.tier_num - 1] += points
-            for c_num in game_database.categories_num:
-                old_categories[c_num - 1] += points
+
+        # category roles don't care about completion
+        for c_num in game_database.categories_num:
+            old_categories[c_num - 1] += points
 
     for game_new in games_new:
         points = game_new.get_user_points()
-        game_database = hm.get_item_from_list(game_new.ce_id, database_name)
+        game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:
             continue
 
         # if the game is completed
-        if game_new.get_user_points() == game_database.get_total_points():
+        if game_new.is_completed(game_database):
             new_tiers[game_database.tier_num - 1] += points
-            for c_num in game_database.categories_num:
-                new_categories[c_num - 1] += points
+
+        # category roles don't care about completion
+        for c_num in game_database.categories_num:
+            new_categories[c_num - 1] += points
 
     # CATEGORIES
     CATEGORY_ROLE_NAMES = ["Expert", "Master", "Grandmaster"]
@@ -1504,6 +1513,39 @@ def check_roles(
             )
             update.location = "userlog"
             updates.append(update)
+
+    # conglomerates
+    """
+    Master of All	    500+ points in all categories simultaneously
+    Grandmaster of All  1000+ points in all categories simultaneously
+    Overpowered	        3,000 or more points in a single category
+    Omnipotent (Red)    Complete* a T4+ game in each category
+    Omnipotent (Black)  Complete* a T5 game in each category
+    """
+    for i in [500, 1000]:
+        if min(old_categories) < i and min(new_categories) >= i:
+            update = UpdateMessageForScraperProcess()
+            update.is_embed = False
+
+            update.text = (
+                f"Woah. {user.mention()} ({user.display_name_with_link()}) just unlocked "
+                f"{'Grandm' if i == 1000 else 'M'}aster of All ({i} points in every category). Congratulations!"
+            )
+            update.location = "userlog"
+            updates.append(update)
+
+    if max(old_categories) < 3000 and max(new_categories) >= 3000:
+        update = UpdateMessageForScraperProcess()
+        update.is_embed = False
+
+        update.text = (
+            f"Everyone listen up. {user.mention()} ({user.display_name_with_link()}) has just unlocked "
+            "Overpowered, by having 3000 points in a single category. Well done!"
+        )
+        update.location = "userlog"
+        updates.append(update)
+
+    # TODO: omnipotent roles
 
     return updates
 
