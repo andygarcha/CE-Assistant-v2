@@ -20,8 +20,10 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.OtherClasses import CEInput
 from Modules import hm
+
+# === private helpers ================================================================
+
 
 with open("secret_info.json") as f:
     x = json.load(f)
@@ -123,10 +125,212 @@ def _delete_in_chunks(
     return deleted
 
 
-# == GETTERS ==
+def _group_rollgames_by_id(rollgames: list[dict]) -> dict[str, list[dict]]:
+    """Group a flat list of rollGames rows by roll_id for O(1) per-roll lookup."""
+    grouped: dict[str, list[dict]] = {}
+    for rg in rollgames:
+        grouped.setdefault(rg["roll_id"], []).append(rg)
+    return grouped
 
 
-# GET LIST
+def _fetch_game_rows(
+    ce_ids: list[str],
+) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+    """Fetch all raw Supabase rows needed to build CEGame objects for the given ce_ids.
+
+    Returns (games_json, objectives_json, requirements_json, categories_json).
+    """
+    games_json = _fetch_in_chunks("games", "ce_id", ce_ids, chunk_size=100)
+    game_ce_ids = [g["ce_id"] for g in games_json]
+
+    objectives_json = _fetch_in_chunks(
+        "objectives", "game_ce_id", game_ce_ids, chunk_size=200
+    )
+    objective_ids = [o["ce_id"] for o in objectives_json]
+    requirements_json = (
+        _fetch_in_chunks(
+            "objectiveRequirements", "objective_ce_id", objective_ids, chunk_size=200
+        )
+        if objective_ids
+        else []
+    )
+    categories_json = _fetch_in_chunks("categories", "game_id", ce_ids, chunk_size=200)
+
+    return games_json, objectives_json, requirements_json, categories_json
+
+
+def _assemble_games(
+    ce_ids: list[str],
+    games_json: list[dict],
+    objectives_json: list[dict],
+    requirements_json: list[dict],
+    categories_json: list[dict],
+) -> list[CEGame]:
+    """Group raw rows by game and build CEGame objects, preserving the order of ce_ids."""
+    games_index = {g["ce_id"]: g for g in games_json}
+
+    categories_by_game: dict[str, list[dict]] = {}
+    for cat in categories_json:
+        categories_by_game.setdefault(cat["game_id"], []).append(cat)
+
+    objectives_by_game: dict[str, list[dict]] = {}
+    for obj in objectives_json:
+        objectives_by_game.setdefault(obj["game_ce_id"], []).append(obj)
+
+    requirements_by_objective: dict[str, list[dict]] = {}
+    for req in requirements_json:
+        requirements_by_objective.setdefault(req["objective_ce_id"], []).append(req)
+
+    out: list[CEGame] = []
+    for ce_id in ce_ids:
+        game_json = games_index.get(ce_id)
+        if not game_json:
+            continue
+
+        game_categories = categories_by_game.get(ce_id)
+        if not game_categories and ce_id not in [
+            hm.GAME_ID_CHALLENGE_ENTHUSIASTS,
+            hm.GAME_ID_CLOWN_TOWN,
+        ]:
+            logger.error("Game with ID %s has no categories.", ce_id)
+            continue
+
+        game_objectives = objectives_by_game.get(ce_id, [])
+        game_requirements = [
+            req
+            for obj in game_objectives
+            for req in requirements_by_objective.get(obj["ce_id"], [])
+        ]
+
+        out.append(
+            __supabase_to_game(
+                game_json, game_objectives, game_requirements, game_categories
+            )
+        )
+
+    return out
+
+
+def _fetch_user_rows(
+    ce_ids: list[str],
+    include_rolls: bool,
+) -> tuple[
+    list[dict], list[dict], list[dict], list[dict], list[dict], dict[str, list[dict]]
+]:
+    """Fetch all raw Supabase rows needed to build CEUser objects for the given ce_ids.
+
+    Returns (users_json, userGames_json, userObjectives_json, objectives_json,
+             rollGames_json, rolls_by_user).
+    rollGames_json and rolls_by_user are empty when include_rolls is False.
+    """
+    users_json = _fetch_in_chunks("users", "ce_id", ce_ids, chunk_size=100)
+    user_ce_ids = [u["ce_id"] for u in users_json]
+
+    userGames_json = _fetch_in_chunks(
+        "userGames", "user_ce_id", user_ce_ids, chunk_size=200
+    )
+    userObjectives_json = _fetch_in_chunks(
+        "userObjectives", "user_ce_id", user_ce_ids, chunk_size=200
+    )
+
+    objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
+    objectives_json = (
+        _fetch_in_chunks("objectives", "ce_id", objective_ids, chunk_size=200)
+        if objective_ids
+        else []
+    )
+
+    if not include_rolls:
+        return users_json, userGames_json, userObjectives_json, objectives_json, [], {}
+
+    rolls_user1 = _fetch_in_chunks("rolls", "user1_ce_id", user_ce_ids, chunk_size=200)
+    rolls_user2 = _fetch_in_chunks("rolls", "user2_ce_id", user_ce_ids, chunk_size=200)
+    rolls_map: dict[str, dict] = {}
+    for r in rolls_user1 + rolls_user2:
+        rolls_map[r["id"]] = r
+    rolls = list(rolls_map.values())
+
+    roll_ids = [r["id"] for r in rolls]
+    rollGames_json = (
+        _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
+        if roll_ids
+        else []
+    )
+
+    rolls_by_user: dict[str, list[dict]] = {}
+    for r in rolls:
+        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
+        if r["user2_ce_id"] is not None:
+            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
+
+    return (
+        users_json,
+        userGames_json,
+        userObjectives_json,
+        objectives_json,
+        rollGames_json,
+        rolls_by_user,
+    )
+
+
+def _assemble_users(
+    ce_ids: list[str],
+    users_json: list[dict],
+    userGames_json: list[dict],
+    userObjectives_json: list[dict],
+    objectives_json: list[dict],
+    rollGames_json: list[dict],
+    rolls_by_user: dict[str, list[dict]],
+    include_rolls: bool,
+) -> list[CEUser]:
+    """Group raw rows by user and build CEUser objects, preserving the order of ce_ids."""
+    users_index = {u["ce_id"]: u for u in users_json}
+
+    ugames_by_user: dict[str, list[dict]] = {}
+    for ug in userGames_json:
+        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
+
+    uobjs_by_user: dict[str, list[dict]] = {}
+    for uo in userObjectives_json:
+        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
+
+    rollgames_by_id = _group_rollgames_by_id(rollGames_json)
+
+    out: list[CEUser] = []
+    for ce_id in ce_ids:
+        user_json = users_index.get(ce_id)
+        if not user_json:
+            continue
+
+        ugames = ugames_by_user.get(ce_id, [])
+        uobjectives = uobjs_by_user.get(ce_id, [])
+
+        if include_rolls:
+            user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
+            user_rollgames = [
+                rg for roll in user_rolls for rg in rollgames_by_id.get(roll["id"], [])
+            ]
+        else:
+            user_rolls = []
+            user_rollgames = []
+
+        out.append(
+            __supabase_to_user(
+                user_json,
+                ugames,
+                uobjectives,
+                user_rolls,
+                user_rollgames,
+                objectives_json,
+            )
+        )
+
+    return out
+
+
+# === getters: games ================================================================
+
+
 def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[str]:
     """
     Returns a list of ce-ids in that database.
@@ -151,376 +355,68 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
     return [item["ce_id"] for item in out.data]
 
 
-# GET GAME
 def get_game(ce_id: str) -> CEGame | None:
-    """
-    Gets the data for a game signified by `ce_id` from Supabase.
-
-    Parameters
-    ---
-    ce_id: `str`
-        The CE ID of the game you are looking for.
-    """
-    games_json = supabase.table("games").select().eq("ce_id", ce_id).execute().data
-    if len(games_json) == 0:
-        return None
-
-    objectives_json = (
-        supabase.table("objectives").select().eq("game_ce_id", ce_id).execute().data
-    )
-    objective_ids = [item["ce_id"] for item in objectives_json]
-
-    requirements_json = (
-        supabase.table("objectiveRequirements")
-        .select()
-        .in_("objective_ce_id", objective_ids)
-        .execute()
-        .data
-    )
-
-    if objective_ids:
-        requirements_json = (
-            supabase.table("objectiveRequirements")
-            .select()
-            .in_("objective_ce_id", objective_ids)
-            .execute()
-            .data
-        )
-    else:
-        requirements_json = []
-
-    categories_json = (
-        supabase.table("categories")
-        .select()
-        .eq("game_id", ce_id)
-        .order(column="index", desc=False)
-        .execute()
-        .data
-    )
-
-    return __supabase_to_game(
-        games_json[0], objectives_json, requirements_json, categories_json
-    )
-
-
-# GET USER
-def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
-    # TODO: simplify this stuff with joins
-
-    # table: "users"
-    if not use_discord_id:
-        user_json = supabase.table("users").select().eq("ce_id", ce_id).execute().data
-    else:
-        user_json = (
-            supabase.table("users").select().eq("discord_id", ce_id).execute().data
-        )
-    if len(user_json) == 0:
-        return None
-    user_json = user_json[0]
-    if use_discord_id:
-        ce_id = user_json["ce_id"]
-
-    # table: "userGames"
-    userGames_json = (
-        supabase.table("userGames").select().eq("user_ce_id", ce_id).execute().data
-    )
-
-    # table: "userObjectives"
-    userObjectives_json = (
-        supabase.table("userObjectives").select().eq("user_ce_id", ce_id).execute().data
-    )
-    userobjectives_list = [o["objective_ce_id"] for o in userObjectives_json]
-
-    # table: "objectives"
-    objectives_json = _fetch_in_chunks(
-        "objectives", "ce_id", userobjectives_list, chunk_size=100
-    )
-
-    # table: "rolls"
-    rolls_json = (
-        supabase.table("rolls")
-        .select()
-        .or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}")
-        .execute()
-        .data
-    )
-    roll_ids = [item["id"] for item in rolls_json]
-
-    # table: "rollGames"
-    if roll_ids:
-        userRollGames_json = (
-            supabase.table("rollGames")
-            .select()
-            .in_("roll_id", roll_ids)
-            .order("index")
-            .execute()
-            .data
-        )
-    else:
-        userRollGames_json = []
-
-    # transform them
-    return __supabase_to_user(
-        user_json,
-        userGames_json,
-        userObjectives_json,
-        rolls_json,
-        userRollGames_json,
-        objectives_json,
-    )
-
-
-# DATABASE NAME
-def get_database_name() -> list[CEGame]:
-    response_games = supabase.table("games").select().execute().data
-    response_objectives = supabase.table("objectives").select().execute().data
-    response_requirements = (
-        supabase.table("objectiveRequirements").select().execute().data
-    )
-    response_categories = supabase.table("categories").select().execute().data
-
-    _games = []
-    for game in response_games:
-        objectives = [
-            o for o in response_objectives if o["game_ce_id"] == game["ce_id"]
-        ]
-        ids_objectives = [o["ce_id"] for o in objectives]
-        requirements = [
-            r for r in response_requirements if r["objective_ce_id"] in ids_objectives
-        ]
-        categories = [c for c in response_categories if c["game_id"] == game["ce_id"]]
-        _games.append(__supabase_to_game(game, objectives, requirements, categories))
-
-    return _games
+    results = get_games_bulk([ce_id])
+    return results[0] if results else None
 
 
 def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
-    """Fetch many games and their objectives/requirements in bulk using chunked requests.
-
-    Returns a list of `CEGame` objects in the same order as the provided `ce_ids` when possible.
-    Uses `_fetch_in_chunks` to avoid oversized `.in_()` requests.
-    """
     if not ce_ids:
         return []
-
-    games_json = _fetch_in_chunks("games", "ce_id", ce_ids, chunk_size=100)
-    if not games_json:
+    games_j, objs_j, reqs_j, cats_j = _fetch_game_rows(ce_ids)
+    if not games_j:
         return []
+    return _assemble_games(ce_ids, games_j, objs_j, reqs_j, cats_j)
 
-    game_ce_ids = [game["ce_id"] for game in games_json]
-    objectives_json = _fetch_in_chunks(
-        "objectives", "game_ce_id", game_ce_ids, chunk_size=200
-    )
-    objective_ids = [objective["ce_id"] for objective in objectives_json]
-    requirements_json = (
-        _fetch_in_chunks(
-            "objectiveRequirements", "objective_ce_id", objective_ids, chunk_size=200
+
+# === getters: users ================================================================
+
+
+def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
+    if use_discord_id:
+        row = (
+            supabase.table("users")
+            .select("ce_id")
+            .eq("discord_id", ce_id)
+            .execute()
+            .data
         )
-        if objective_ids
-        else []
-    )
-
-    categories_json = _fetch_in_chunks("categories", "game_id", ce_ids, chunk_size=200)
-    categories_by_game: dict[str, list[dict]] = {}
-    for _category in categories_json:
-        categories_by_game.setdefault(_category["game_id"], []).append(_category)
-
-    objectives_by_game: dict[str, list[dict]] = {}
-    for objective in objectives_json:
-        objectives_by_game.setdefault(objective["game_ce_id"], []).append(objective)
-
-    requirements_by_objective: dict[str, list[dict]] = {}
-    for requirement in requirements_json:
-        requirements_by_objective.setdefault(requirement["objective_ce_id"], []).append(
-            requirement
-        )
-
-    games_index = {game["ce_id"]: game for game in games_json}
-    out_games: list[CEGame] = []
-    for ce_id in ce_ids:
-        game_json = games_index.get(ce_id)
-        if not game_json:
-            continue
-
-        game_categories = categories_by_game.get(ce_id)
-        if not game_categories and ce_id not in [
-            hm.GAME_ID_CHALLENGE_ENTHUSIASTS,
-            hm.GAME_ID_CLOWN_TOWN,
-        ]:
-            logger.error("Game with ID %s has no categories.", ce_id)
-            continue
-        game_objectives = objectives_by_game.get(ce_id, [])
-        game_requirements: list[dict] = []
-        for objective in game_objectives:
-            game_requirements.extend(
-                requirements_by_objective.get(objective["ce_id"], [])
-            )
-
-        out_games.append(
-            __supabase_to_game(
-                game_json, game_objectives, game_requirements, game_categories
-            )
-        )
-
-    return out_games
+        if not row:
+            return None
+        ce_id = row[0]["ce_id"]
+    results = get_users_bulk([str(ce_id)])
+    return results[0] if results else None
 
 
-# DATABASE USER
+def get_database_name() -> list[CEGame]:
+    return get_games_bulk(get_list("name"))
+
+
 def get_database_user() -> list[CEUser]:
-    response_user = supabase.table("users").select().execute().data
-    response_ugames = supabase.table("userGames").select().execute().data
-    response_uobjectives = supabase.table("userObjectives").select().execute().data
-
-    response_rolls = supabase.table("rolls").select().execute().data
-    response_rgames = supabase.table("rollGames").select().execute().data
-
-    response_objectives = supabase.table("objectives").select().execute().data
-
-    _users = []
-    for user in response_user:
-        ugames = [g for g in response_ugames if g["user_ce_id"] == user["ce_id"]]
-        uobjectives = [
-            o for o in response_uobjectives if o["user_ce_id"] == user["ce_id"]
-        ]
-
-        rolls = [r for r in response_rolls if r["user1_ce_id"] == user["ce_id"]]
-        rgames = [
-            g for g in response_rgames if g["roll_id"] in [r["id"] for r in rolls]
-        ]
-
-        _users.append(
-            __supabase_to_user(
-                user,
-                ugames,
-                uobjectives,
-                rolls,
-                rgames,
-                [
-                    o
-                    for o in response_objectives
-                    if o["ce_id"] in [u["objective_ce_id"] for u in uobjectives]
-                ],  # works?
-            )
-        )
-
-    return _users
+    return get_users_bulk(get_list("user"))
 
 
-def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
-    """Fetch many users and their related data in bulk using chunked requests.
-
-    Returns a list of `CEUser` objects corresponding to the provided `ce_ids`.
-    Uses `_fetch_in_chunks` to avoid oversized `.in_()` requests.
-    """
-    # null check
+def get_users_bulk(ce_ids: list[str], include_rolls: bool = True) -> list[CEUser]:
     if not ce_ids:
         return []
-
-    # users
-    users_json = _fetch_in_chunks("users", "ce_id", ce_ids, chunk_size=100)
-    if not users_json:
+    users_j, ugames_j, uobjs_j, objs_j, rgames_j, rolls_by_user = _fetch_user_rows(
+        ce_ids, include_rolls
+    )
+    if not users_j:
         return []
-
-    user_ce_ids = [u["ce_id"] for u in users_json]
-
-    # userGames and userObjectives
-    userGames_json = _fetch_in_chunks(
-        "userGames", "user_ce_id", user_ce_ids, chunk_size=200
-    )
-    userObjectives_json = _fetch_in_chunks(
-        "userObjectives", "user_ce_id", user_ce_ids, chunk_size=200
-    )
-
-    # userId --> userGame and userId --> userObjective mapping
-    ugames_by_user: dict[str, list[dict]] = {}
-    for ug in userGames_json:
-        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
-    uobjs_by_user: dict[str, list[dict]] = {}
-    for uo in userObjectives_json:
-        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
-
-    # objectives
-    objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
-    objectives_json = (
-        _fetch_in_chunks("objectives", "ce_id", objective_ids, chunk_size=200)
-        if objective_ids
-        else []
+    return _assemble_users(
+        ce_ids,
+        users_j,
+        ugames_j,
+        uobjs_j,
+        objs_j,
+        rgames_j,
+        rolls_by_user,
+        include_rolls,
     )
 
-    # rolls (if include_rolls == True)
-    if include_rolls:
-        # pull rolls
-        rolls_user1 = _fetch_in_chunks(
-            "rolls", "user1_ce_id", user_ce_ids, chunk_size=200
-        )
-        rolls_user2 = _fetch_in_chunks(
-            "rolls", "user2_ce_id", user_ce_ids, chunk_size=200
-        )
-        # roll id --> roll mapping
-        rolls_map: dict[str, dict] = {}
-        for r in (rolls_user1 or []) + (rolls_user2 or []):
-            rolls_map[r["id"]] = r
-        rolls = list(rolls_map.values())
-        # pull rollGames
-        roll_ids = [r["id"] for r in rolls]
-        rollGames_json = (
-            _fetch_in_chunks("rollGames", "roll_id", roll_ids, chunk_size=200)
-            if roll_ids
-            else []
-        )
-        # userId --> roll mapping
-        rolls_by_user: dict[str, list[dict]] = {}
-        for r in rolls:
-            rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
-            if r["user2_ce_id"] is not None:
-                rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
-    else:
-        rolls_user1 = []
-        rolls_user2 = []
-        rolls_map = {}
-        rolls = []
-        roll_ids = []
-        rollGames_json = []
-        rolls_by_user = {}
 
-    # merge users
-    out_users: list[CEUser] = []
-    users_index = {u["ce_id"]: u for u in users_json}
-    for ce_id in ce_ids:
-        user_json = users_index.get(ce_id)
-        if not user_json:
-            continue
-
-        ugames = ugames_by_user.get(ce_id, [])
-        uobjectives = uobjs_by_user.get(ce_id, [])
-        if include_rolls:
-            user_rolls = [r for r in rolls_by_user.get(ce_id, []) if r is not None]
-
-            # rollGames relevant for this user's rolls
-            user_roll_ids = [r["id"] for r in user_rolls]
-            user_rollgames = [
-                rg for rg in rollGames_json if rg["roll_id"] in user_roll_ids
-            ]
-        else:
-            user_rolls = []
-            user_roll_ids = []
-            user_rollgames = []
-
-        # objectives subset already fetched above
-        user_objectives_list = objectives_json
-
-        out_users.append(
-            __supabase_to_user(
-                user_json,
-                ugames,
-                uobjectives,
-                user_rolls,
-                user_rollgames,
-                user_objectives_list,
-            )
-        )
-
-    return out_users
+# === getters: rolls ================================================================
 
 
 def get_roll(roll_id: str) -> CERoll | None:
@@ -551,22 +447,13 @@ def get_all_rolls(event_names: list[str] | None = None) -> list[CERoll]:
             .data
         )
         ids = [r["id"] for r in rolls_json]
-        rollGames_json = (
-            supabase.table("rollGames").select().in_("roll_id", ids).execute().data
-        )
+        rollGames_json = _fetch_in_chunks("rollGames", "roll_id", ids)
     else:
         rolls_json = supabase.table("rolls").select().execute().data
         rollGames_json = supabase.table("rollGames").select().execute().data
 
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(
-            __supabase_to_roll(
-                roll, [g for g in rollGames_json if g["roll_id"] == roll["id"]]
-            )
-        )
-
-    return _rolls
+    grouped = _group_rollgames_by_id(rollGames_json)
+    return [__supabase_to_roll(r, grouped.get(r["id"], [])) for r in rolls_json]
 
 
 def get_checkable_rolls() -> list[CERoll]:
@@ -585,19 +472,10 @@ def get_checkable_rolls() -> list[CERoll]:
         .data
     )
 
-    # pull rollgames
     ids = [r["id"] for r in rolls_json]
     roll_games_json = _fetch_in_chunks("rollGames", "roll_id", ids)
-
-    # convert and return
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(
-            __supabase_to_roll(
-                roll, [g for g in roll_games_json if g["roll_id"] == roll["id"]]
-            )
-        )
-    return _rolls
+    grouped = _group_rollgames_by_id(roll_games_json)
+    return [__supabase_to_roll(r, grouped.get(r["id"], [])) for r in rolls_json]
 
 
 def get_user_rolls(user_id: str) -> list[CERoll]:
@@ -613,24 +491,12 @@ def get_user_rolls(user_id: str) -> list[CERoll]:
         .data
     )
     roll_ids = [item["id"] for item in rolls_json]
-    rollGames_json = (
-        supabase.table("rollGames").select().in_("roll_id", roll_ids).execute().data
-    )
-
-    # convert and return
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(
-            __supabase_to_roll(
-                roll, [g for g in rollGames_json if g["roll_id"] == roll["id"]]
-            )
-        )
-    return _rolls
+    rollGames_json = _fetch_in_chunks("rollGames", "roll_id", roll_ids)
+    grouped = _group_rollgames_by_id(rollGames_json)
+    return [__supabase_to_roll(r, grouped.get(r["id"], [])) for r in rolls_json]
 
 
-def get_input(ce_id: str) -> CEInput:
-    # TODO: Implement after input schema is finalized
-    raise NotImplementedError
+# === getters: misc ================================================================
 
 
 def get_database_tier(database_name: list[CEGame]) -> dict:
@@ -683,11 +549,6 @@ def get_curator_ids() -> list[str]:
     return [item["curator_id"] for item in response]
 
 
-def get_curator_count() -> int:
-    # Not currently needed, but can be implemented if required
-    raise NotImplementedError
-
-
 def get_last_loop(offset=True) -> datetime.datetime:
     data = (
         supabase.table("loopruns")
@@ -705,9 +566,11 @@ def get_last_loop(offset=True) -> datetime.datetime:
     return dt
 
 
-# === DUMPERS ===
+# === dumpers: games ================================================================
+
+
 def dump_game(game: CEGame):
-    return bulk_dump_games([game])
+    bulk_dump_games([game])
 
 
 def bulk_dump_games(
@@ -963,60 +826,27 @@ def bulk_dump_users(
                         objective_id,
                     )
 
-        # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
-        for user in batch:
-            for roll in user.rolls:
-                dump_roll(roll)
+        batch_rolls = [roll for user in batch for roll in user.rolls]
+        bulk_dump_rolls(batch_rolls)
 
         # small pause to avoid overloading the server
         if pause_seconds and (i + batch_size) < len(users):
             time.sleep(pause_seconds)
 
 
+# === dumpers: users ================================================================
+
+
 def dump_user(user: CEUser):
-    user_data = {
-        "ce_id": user.ce_id,
-        "discord_id": user.discord_id,
-        "display_name": user.display_name,
-        "image_avatar": user.avatar,
-        "steam_id": user._steam_id,
-        "created_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "updated_at_CE": user.last_updated
-        if isinstance(user.last_updated, str)
-        else (
-            user.last_updated.isoformat()
-            if hasattr(user.last_updated, "isoformat")
-            else datetime.datetime.now(datetime.timezone.utc).isoformat()
-        ),
-    }
-    supabase.table("users").upsert(user_data).execute()
-
-    for game in user.owned_games:
-        game_data = {
-            "user_ce_id": user.ce_id,
-            "game_ce_id": game.ce_id,
-            "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
-        supabase.table("userGames").upsert(game_data).execute()
-
-        for objective in game.user_objectives:
-            obj_data = {
-                "user_ce_id": user.ce_id,
-                "objective_ce_id": objective.ce_id,
-                "user_points": objective.user_points,
-                "updated_at_CE": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
-            }
-            supabase.table("userObjectives").upsert(obj_data).execute()
-
-    # for roll in user.rolls:
-    #     dump_roll(roll)
+    bulk_dump_users([user])
 
 
-def __dump_JUST_user(d: dict):
-    "Just used for discord id updating. No games/objectives propogated."
+def _upsert_user_row(d: dict):
+    "Upserts only the users row. No games/objectives/rolls propagated."
     supabase.table("users").upsert(d).execute()
+
+
+# === dumpers: rolls ================================================================
 
 
 def bulk_dump_rolls(
@@ -1094,13 +924,13 @@ def dump_roll(roll: CERoll):
         "time_created": _iso_or_none(roll.init_time),
         "time_due": _iso_or_none(roll.due_time),
         "time_completed": _iso_or_none(roll.completed_time),
-        "is_lucky": roll.lucky,  # TODO: determine from roll data
+        "is_lucky": roll.lucky,
         "chosen_tier": roll._tier_num,
         "chosen_tier_partner": roll._tier_num_partner,
         "status": roll.status,
         "rerolls_remaining": roll.rerolls,
-        "rerolls_used": 0,  # TODO: calculate or track
-        "winner": None,  # TODO: determine on completion
+        "rerolls_used": 0,
+        "winner": None,
     }
     supabase.table("rolls").upsert(roll_data).execute()
 
@@ -1114,19 +944,51 @@ def dump_roll(roll: CERoll):
         supabase.table("rollGames").upsert(game_data).execute()
 
 
-def dump_input(input: CEInput):
-    # TODO: Implement after input schema is finalized
-    raise NotImplementedError
+def dump_objective(objective: CEObjective):
+    supabase.table("objectiveRequirements").delete().eq(
+        "objective_ce_id", objective.ce_id
+    ).eq("requirement_type", "custom").execute()
+
+    obj_data = {
+        "ce_id": objective.ce_id,
+        "game_ce_id": objective.game_ce_id,
+        "type": objective.type,
+        "name": objective.name,
+        "description": objective.description,
+        "points": objective.point_value,
+        "points_partial": objective.partial_points,
+        "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    supabase.table("objectives").upsert(obj_data).execute()
+
+    if objective.achievement_ce_ids:
+        for achievement_id in objective.achievement_ce_ids:
+            req_data = {
+                "objective_ce_id": objective.ce_id,
+                "requirement_type": "achievement",
+                "data": achievement_id,
+                "updated_at_CE": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat(),
+            }
+            supabase.table("objectiveRequirements").upsert(req_data).execute()
+
+    if objective.requirements:
+        req_data = {
+            "objective_ce_id": objective.ce_id,
+            "requirement_type": "custom",
+            "data": objective.requirements,
+            "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        supabase.table("objectiveRequirements").upsert(req_data).execute()
+
+
+# === dumpers: misc ================================================================
 
 
 def dump_curator_ids(ids: list[str]):
     for curator_id in ids:
         supabase.table("curator_ids").upsert({"curator_id": curator_id}).execute()
-
-
-def dump_curator_count(cc: int):
-    # Not currently needed
-    raise NotImplementedError
 
 
 def dump_database_tier(database_tier: dict):
@@ -1167,7 +1029,9 @@ def dump_loop(dt: datetime.datetime):
     return
 
 
-# === SUPABASE DELETERS ===
+# === deleters =====================================================================
+
+
 def delete_game(ce_id: str):
     # Delete objectives first (foreign key constraint)
     objectives = (
@@ -1208,6 +1072,9 @@ def delete_roll(roll_id: str):
 
     # Delete roll
     supabase.table("rolls").delete().eq("id", roll_id).execute()
+
+
+# === pending ======================================================================
 
 
 def add_pending(
@@ -1301,7 +1168,7 @@ def delete_objectives_many(objs: list[str]):
     ).execute()
 
 
-# === MAINTENANCE ===
+# === maintenance ==================================================================
 def clean_db():
     """Cleans out the database. Any user games and user objectives with no corresponding
     real game or objective  deleted."""
@@ -1345,7 +1212,7 @@ def clean_db():
     )
 
 
-# === SUPABASE CONVERTERS ===
+# === converters (private) =========================================================
 
 
 def __supabase_to_game(
@@ -1503,45 +1370,3 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         tier_num=roll.get("chosen_tier", None),
         tier_num_partner=roll.get("chosen_tier_partner", None),
     )
-
-
-def dump_objective(objective: CEObjective):
-    # Delete all previous custom requirements for this objective to prevent duplicates
-    supabase.table("objectiveRequirements").delete().eq(
-        "objective_ce_id", objective.ce_id
-    ).eq("requirement_type", "custom").execute()
-
-    obj_data = {
-        "ce_id": objective.ce_id,
-        "game_ce_id": objective.game_ce_id,
-        "type": objective.type,
-        "name": objective.name,
-        "description": objective.description,
-        "points": objective.point_value,
-        "points_partial": objective.partial_points,
-        "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
-    supabase.table("objectives").upsert(obj_data).execute()
-
-    # Dump achievement requirements
-    if objective.achievement_ce_ids:
-        for achievement_id in objective.achievement_ce_ids:
-            req_data = {
-                "objective_ce_id": objective.ce_id,
-                "requirement_type": "achievement",
-                "data": achievement_id,
-                "updated_at_CE": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
-            }
-            supabase.table("objectiveRequirements").upsert(req_data).execute()
-
-    # Dump custom requirement if it exists
-    if objective.requirements:
-        req_data = {
-            "objective_ce_id": objective.ce_id,
-            "requirement_type": "custom",
-            "data": objective.requirements,
-            "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
-        supabase.table("objectiveRequirements").upsert(req_data).execute()
