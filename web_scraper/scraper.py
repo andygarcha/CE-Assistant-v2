@@ -982,7 +982,11 @@ def update_one_user(
     games_new = user.owned_games.copy()
 
     # -- CHECK ROLES --
-    updates.extend(check_roles(games_original, games_new, database_name_new, user))
+    updates.extend(
+        check_roles(
+            games_original, games_new, database_name_old, database_name_new, user
+        )
+    )
 
     # -- CHECK FOR NEWLY COMPLETED GAMES --
     updates.extend(
@@ -1438,6 +1442,7 @@ def create_update_updated_game(
 def check_roles(
     games_old: list[CEUserGame],
     games_new: list[CEUserGame],
+    database_name_old: list[CEGame],
     database_name: list[CEGame],
     user: CEUser,
 ) -> list[UpdateMessageForScraperProcess]:
@@ -1452,7 +1457,7 @@ def check_roles(
 
     for game_old in games_old:
         points = game_old.get_user_points()
-        game_database = hm.get_item_from_list(game_old.ce_id, database_name)
+        game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
             continue
@@ -1524,7 +1529,7 @@ def check_roles(
 
             update.text = (
                 f"Woah. {user.mention()} ({user.display_name_with_link()}) just unlocked "
-                f"{'Grand' if i == 1000 else ''}Master of All ({i} points in every category). Congratulations!"
+                f"{'Grandm' if i == 1000 else 'M'}aster of All ({i} points in every category). Congratulations!"
             )
             update.location = "userlog"
             updates.append(update)
