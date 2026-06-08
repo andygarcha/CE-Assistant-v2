@@ -1509,6 +1509,39 @@ def check_roles(
             update.location = "userlog"
             updates.append(update)
 
+    # conglomerates
+    """
+    Master of All	    500+ points in all categories simultaneously
+    Grandmaster of All  1000+ points in all categories simultaneously
+    Overpowered	        3,000 or more points in a single category
+    Omnipotent (Red)    Complete* a T4+ game in each category
+    Omnipotent (Black)  Complete* a T5 game in each category
+    """
+    for i in [500, 1000]:
+        if min(old_categories) < i and min(new_categories) >= i:
+            update = UpdateMessageForScraperProcess()
+            update.is_embed = False
+
+            update.text = (
+                f"Woah. {user.mention()} ({user.display_name_with_link()}) just unlocked "
+                f"{'Grand' if i == 1000 else ''}Master of All ({i} points in every category). Congratulations!"
+            )
+            update.location = "userlog"
+            updates.append(update)
+
+    if max(old_categories) < 3000 and max(new_categories) >= 3000:
+        update = UpdateMessageForScraperProcess()
+        update.is_embed = False
+
+        update.text = (
+            f"Everyone listen up. {user.mention()} ({user.display_name_with_link()}) has just unlocked "
+            "Overpowered, by having 3000 points in a single category. Well done!"
+        )
+        update.location = "userlog"
+        updates.append(update)
+
+    # TODO: omnipotent roles
+
     return updates
 
 
