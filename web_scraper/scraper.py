@@ -1443,7 +1443,7 @@ def check_roles(
     games_old: list[CEUserGame],
     games_new: list[CEUserGame],
     database_name_old: list[CEGame],
-    database_name: list[CEGame],
+    database_name_new: list[CEGame],
     user: CEUser,
 ) -> list[UpdateMessageForScraperProcess]:
     "Gets updates based on roles the user has achieved."
@@ -1472,7 +1472,7 @@ def check_roles(
 
     for game_new in games_new:
         points = game_new.get_user_points()
-        game_database = hm.get_item_from_list(game_new.ce_id, database_name)
+        game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:
             continue
