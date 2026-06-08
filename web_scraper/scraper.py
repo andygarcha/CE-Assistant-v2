@@ -1458,7 +1458,7 @@ def check_roles(
             continue
 
         # if the game is completed
-        if game_old.get_user_points() == game_database.get_total_points():
+        if game_old.is_completed(game_database):
             old_tiers[game_database.tier_num - 1] += points
             for c_num in game_database.categories_num:
                 old_categories[c_num - 1] += points
@@ -1471,7 +1471,7 @@ def check_roles(
             continue
 
         # if the game is completed
-        if game_new.get_user_points() == game_database.get_total_points():
+        if game_new.is_completed(game_database):
             new_tiers[game_database.tier_num - 1] += points
             for c_num in game_database.categories_num:
                 new_categories[c_num - 1] += points
