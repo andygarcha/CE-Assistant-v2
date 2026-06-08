@@ -10,7 +10,6 @@ import logging
 import typing
 
 import httpx
-from postgrest import APIError
 from supabase import ClientOptions, create_client, Client
 
 # -- local --
@@ -844,6 +843,12 @@ def bulk_dump_users(
     if not users:
         return
 
+    # known-good ce_ids, fetched once: lets us drop rows that would
+    # violate a foreign key before sending the payload, instead of
+    # sending it, getting rejected, and resending without the offender
+    valid_game_ids = set(get_list("name"))
+    valid_objective_ids = set(get_list("objectives"))
+
     # process in batches
     for i in range(0, len(users), batch_size):
         batch = users[i : i + batch_size]
@@ -875,6 +880,14 @@ def bulk_dump_users(
             )
 
             for game in user.owned_games:
+                if game.ce_id not in valid_game_ids:
+                    logger.error(
+                        "Skipping userGame for user=%s: unknown game_ce_id=%s",
+                        user.ce_id,
+                        game.ce_id,
+                    )
+                    continue
+
                 user_games_payload.append(
                     {
                         "user_ce_id": user.ce_id,
@@ -884,6 +897,14 @@ def bulk_dump_users(
                 )
 
                 for objective in game.user_objectives:
+                    if objective.ce_id not in valid_objective_ids:
+                        logger.error(
+                            "Skipping userObjective for user=%s: unknown objective_ce_id=%s",
+                            user.ce_id,
+                            objective.ce_id,
+                        )
+                        continue
+
                     user_objectives_payload.append(
                         {
                             "user_ce_id": user.ce_id,
@@ -905,63 +926,11 @@ def bulk_dump_users(
 
         # Bulk upsert userGames
         if user_games_payload:
-            game_collision = True
-            while game_collision:
-                game_collision = False
-                try:
-                    supabase.table("userGames").upsert(user_games_payload).execute()
-                except APIError as e:
-                    if e.message is None:
-                        raise Exception("No message in APIError, userGames")
-                    if e.details is None:
-                        raise Exception("No details in APIError, userGames")
-
-                    if "violates foreign key constraint" not in e.message:
-                        raise e
-                    game_id = e.details.replace("Key (game_ce_id)=(", "").replace(
-                        ') is not present in table "games".', ""
-                    )
-                    user_games_payload = [
-                        row
-                        for row in user_games_payload
-                        if row["game_ce_id"] != game_id
-                    ]
-                    game_collision = True
-                    logger.error(
-                        "Found UserGame with foreign-key constraint on GameID=%s.",
-                        game_id,
-                    )
+            supabase.table("userGames").upsert(user_games_payload).execute()
 
         # Bulk upsert userObjectives
         if user_objectives_payload:
-            objective_collision = True
-            while objective_collision:
-                objective_collision = False
-                try:
-                    supabase.table("userObjectives").upsert(
-                        user_objectives_payload
-                    ).execute()
-                except APIError as e:
-                    if e.message is None:
-                        raise Exception("No message in APIError, userObjectives")
-                    if e.details is None:
-                        raise Exception("No details in APIError, userObjectives")
-
-                    if "violates foreign key constraint" not in e.message:
-                        raise e
-                    objective_id = e.details.replace(
-                        "Key (objective_ce_id)=(", ""
-                    ).replace(') is not present in table "objectives".', "")
-                    user_objectives_payload = [
-                        row
-                        for row in user_objectives_payload
-                        if row["objective_ce_id"] != objective_id
-                    ]
-                    objective_collision = True
-                    logger.error(
-                        "Found UserObjective with foreign-key constraint on ObjectiveID=%s.",
-                        objective_id,
-                    )
+            supabase.table("userObjectives").upsert(user_objectives_payload).execute()
 
         # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
         for user in batch:
