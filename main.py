@@ -148,7 +148,7 @@ INPUT_MESSAGES_ARE_EPHEMERAL: bool = True
 
 @tasks.loop(minutes=1)
 async def monitor_loop():
-    if not process_loop.is_running():
+    if not process_loop.is_running() and process_loop.next_iteration is None:
         logger.warning("Main task loop is not running. Restarting...")
         await process_loop.start(client)
 

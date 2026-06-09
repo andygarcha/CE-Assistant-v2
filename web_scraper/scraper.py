@@ -304,7 +304,13 @@ async def process_loop(
     )
 
     if SAVEDATA and not full_scrape:
-        await asyncio.to_thread(SupabaseReader.dump_loop, time_current)
+        try:
+            await asyncio.to_thread(SupabaseReader.dump_loop, time_current)
+        except Exception as e:
+            logger.error("dump_loop failed to save last run time: %s", e)
+            await hm.send_message(
+                client, "privatelog", f"⚠️ dump_loop failed to save last run time: {e}"
+            )
 
 
 """ MEDIUM LEVEL FUNCTIONS """
