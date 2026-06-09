@@ -18,6 +18,10 @@ def _so(points: int) -> CEObjective:
     return make_objective(point_value=points, obj_type="Secondary")
 
 
+def _co() -> CEObjective:
+    return make_objective(point_value=0, obj_type="Community")
+
+
 def _uncleared_po() -> CEObjective:
     """An uncleared primary objective (0 points)."""
     return make_objective(
@@ -129,6 +133,10 @@ class TestHasUncleared:
 
     def test_empty_objectives_no_uncleared(self):
         assert make_game(objectives=[]).has_uncleared is False
+
+    def test_no_uncleared_yes_co(self):
+        game = make_game(objectives=[_po(10), _co()])
+        assert game.has_uncleared is False
 
 
 # ── get_total_points ──────────────────────────────────────────────────────────
