@@ -544,7 +544,7 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
 
     return await interaction.followup.send(
         (
-            f"[ce link]({user_supa.display_name_with_link()})\n"
+            f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
             f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
             f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
         )
