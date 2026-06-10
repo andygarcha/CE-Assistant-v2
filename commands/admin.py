@@ -139,6 +139,13 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def shutdown_command(interaction: discord.Interaction):
         await shutdown(interaction)
 
+    @tree.command(
+        name="debug", description="Show information regarding this user", guild=guild
+    )
+    @app_commands.describe(user="The user.")
+    async def debug_command(interaction: discord.Interaction, user: discord.Member):
+        return await debug(interaction, user)
+
     pass
 
 
@@ -523,4 +530,22 @@ async def force_unlink(interaction: discord.Interaction, member: discord.Member)
 
     return await interaction.followup.send(
         "This does not currently work with the updated CE site. Please wait a while, or contact andy for manual unlinking!"
+    )
+
+
+async def debug(interaction: discord.Interaction, user: discord.Member):
+    await interaction.response.defer(ephemeral=True)
+
+    await hm.log_command(client, interaction, "debug", True, user=user.mention)
+
+    user_supa = SupabaseReader.get_user(user.id, use_discord_id=True)
+    if user_supa is None:
+        return await interaction.followup.send("This user isn't registered.")
+
+    return await interaction.followup.send(
+        (
+            f"[ce link]({user_supa.display_name_with_link()})\n"
+            f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
+            f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/)"
+        )
     )
