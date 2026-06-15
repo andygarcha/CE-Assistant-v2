@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 import datetime
 import json
@@ -1514,3 +1515,40 @@ def dump_objective(objective: CEObjective):
             "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         supabase.table("objectiveRequirements").upsert(req_data).execute()
+
+
+# ---------------------------------------------------------------------------
+# Async wrappers
+#
+# Every function above is a blocking call (supabase-py uses httpx
+# synchronously, with up to a 120s timeout per `.execute()`). Calling one of
+# these directly from an `async def` Discord command handler freezes the
+# entire event loop until it returns - including any in-flight scraper work.
+#
+# These `_async` wrappers run the underlying call in a worker thread via
+# `asyncio.to_thread`, so command handlers can `await` them without blocking
+# the loop.
+# ---------------------------------------------------------------------------
+
+
+def _to_thread(func):
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+    wrapper.__name__ = f"{func.__name__}_async"
+    return wrapper
+
+
+get_user_async = _to_thread(get_user)
+get_game_async = _to_thread(get_game)
+get_list_async = _to_thread(get_list)
+get_database_name_async = _to_thread(get_database_name)
+get_database_user_async = _to_thread(get_database_user)
+get_database_tier_async = _to_thread(get_database_tier)
+dump_user_async = _to_thread(dump_user)
+dump_game_async = _to_thread(dump_game)
+dump_roll_async = _to_thread(dump_roll)
+bulk_dump_rolls_async = _to_thread(bulk_dump_rolls)
+bulk_dump_users_async = _to_thread(bulk_dump_users)
+add_pending_async = _to_thread(add_pending)
+kill_pending_async = _to_thread(kill_pending)

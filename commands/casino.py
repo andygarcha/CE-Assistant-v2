@@ -99,10 +99,22 @@ async def solo_roll(
 ):
     await interaction.response.defer()
 
+    # log this interaction
+    await hm.log_command(
+        client,
+        interaction,
+        "solo-roll",
+        False,
+        event_name=event_name,
+        category=category,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+    )
+
     lucky = False
 
     # grab the user
-    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    user = await SupabaseReader.get_user_async(interaction.user.id, use_discord_id=True)
     if user is None:
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
@@ -126,14 +138,14 @@ async def solo_roll(
                     f"You can reroll {event_name} after <t:{_current_roll.calculate_cooldown_timestamp()}>"
                 )
 
-            _game = SupabaseReader.get_game(_current_roll.games[0])
+            _game = await SupabaseReader.get_game_async(_current_roll.games[0])
             if _game is not None:
                 _game_message = _game.name_with_link
             else:
                 _game_message = "Could not find game in database."
             # if we get here, we can cancel
             # MAKE SURE WE ADD THE PENDING SO THEY CAN'T DOUBLE DO THIS!!!
-            SupabaseReader.add_pending(event_name, user.ce_id)
+            await SupabaseReader.add_pending_async(event_name, user.ce_id)
 
             # and now send the views
             view = ConfirmCancelView(user.discord_id)
@@ -147,7 +159,7 @@ async def solo_roll(
             await view.wait()
 
             # they said no (or yes) — tear down the pending guard
-            SupabaseReader.kill_pending(event_name, user.ce_id)
+            await SupabaseReader.kill_pending_async(event_name, user.ce_id)
             if not view.confirmed:
                 return await interaction.edit_original_response(
                     content="Reroll cancelled.", view=None
@@ -155,7 +167,7 @@ async def solo_roll(
 
             # they said yes!
             _current_roll.set_status("failed")
-            SupabaseReader.dump_roll(_current_roll)
+            await SupabaseReader.dump_roll_async(_current_roll)
             await interaction.edit_original_response(
                 content="Previous roll failed. Rolling new game...", view=None
             )
@@ -193,8 +205,8 @@ async def solo_roll(
         )
 
     # fetch game database (only done once all checks have passed)
-    database_name = SupabaseReader.get_database_name()
-    database_tier = SupabaseReader.get_database_tier(database_name)
+    database_name = await SupabaseReader.get_database_name_async()
+    database_tier = await SupabaseReader.get_database_tier_async(database_name)
 
     # -- set up vars --
     result: RollResult
@@ -295,7 +307,7 @@ async def solo_roll(
             )
         message = _result
 
-    SupabaseReader.dump_roll(roll)
+    await SupabaseReader.dump_roll_async(roll)
     return await interaction.followup.send(message)
 
 
@@ -337,6 +349,19 @@ async def co_op_roll(
     """
     await interaction.response.defer()
 
+    # log this interaction
+    await hm.log_command(
+        client,
+        interaction,
+        "coop-roll",
+        False,
+        partner=partner_.mention,
+        event_name=event_name,
+        tier=tier,
+        price_restriction=price_restriction,
+        hours_restriction=hours_restriction,
+    )
+
     lucky = False
 
     # retired events
@@ -351,12 +376,14 @@ async def co_op_roll(
         )
 
     # grab the user and partner
-    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    user = await SupabaseReader.get_user_async(interaction.user.id, use_discord_id=True)
     if user is None:
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
-    partner: CEUser | None = SupabaseReader.get_user(partner_.id, use_discord_id=True)
+    partner: CEUser | None = await SupabaseReader.get_user_async(
+        partner_.id, use_discord_id=True
+    )
     if partner is None:
         return await interaction.followup.send(
             "Sorry, your partner is not registered in the CE Assistant database. Please have them "
@@ -413,7 +440,7 @@ async def co_op_roll(
             + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
 
-    SupabaseReader.add_pending(event_name, user.ce_id, partner.ce_id)
+    await SupabaseReader.add_pending_async(event_name, user.ce_id, partner.ce_id)
 
     # -- partner confirmation --
     confirm_view = CoOpConfirmView(partner.discord_id)
@@ -426,13 +453,13 @@ async def co_op_roll(
     await confirm_view.wait()
 
     if confirm_view.confirmed is None:
-        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+        await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
             content="This co-op request timed out. Re-run the command if you'd still like to roll together.",
             view=None,
         )
     if not confirm_view.confirmed:
-        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+        await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
             content=f"{partner.mention()} declined the roll. No worries!",
             view=None,
@@ -496,10 +523,10 @@ async def co_op_roll(
 
     # -- report error -----
     if result.error:
-        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+        await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(content=result.error)
     if result.games is None:
-        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+        await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
             content="Error: There were no returned games, but no internal error was reported."
         )
@@ -513,21 +540,21 @@ async def co_op_roll(
     if event_name == "Destiny Alignment":
         _game = hm.get_item_from_list(result.games[0], database_name)
         if _game is None:
-            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(content="Error 7. Please contact andy.")
         tier = _game.tier_num
         if tier == 0:
-            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(
                 content="Oops! I accidentally rolled you a T0."
             )
         _game2 = hm.get_item_from_list(result.games[1], database_name)
         if _game2 is None:
-            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(content="Error 7. Please contact andy.")
         tier_partner = _game2.tier_num
         if tier_partner == 0:
-            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+            await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(
                 content="Oops! I accidentally rolled you a T0."
             )
@@ -549,7 +576,7 @@ async def co_op_roll(
     # -- get message -----
     message = roll.get_initialization_message(database_name)
     if message is None:
-        SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
+        await SupabaseReader.kill_pending_async(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(content="Error pulling your rolled games.")
 
     # -- save and quit -----
