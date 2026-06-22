@@ -252,6 +252,7 @@ async def process_loop(
             SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
         await asyncio.to_thread(_save_all)
+        SupabaseReader.invalidate_database_name_cache()
 
     # Send updates!
     # TODO upload these to the database in a future update

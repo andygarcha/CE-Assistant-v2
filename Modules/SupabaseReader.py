@@ -36,6 +36,21 @@ supabase: Client = create_client(
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# In-memory cache for get_database_name()
+# ---------------------------------------------------------------------------
+_database_name_cache: list[CEGame] | None = None
+_database_name_cache_time: float = 0.0
+_DATABASE_NAME_TTL: float = 30 * 60  # 30 minutes
+
+
+def invalidate_database_name_cache() -> None:
+    """Clear the cached database_name so the next call re-fetches from Supabase."""
+    global _database_name_cache, _database_name_cache_time
+    _database_name_cache = None
+    _database_name_cache_time = 0.0
+    logger.debug("database_name cache invalidated")
+
 
 def _iso_or_none(value):
     """
@@ -272,6 +287,19 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
 
 # DATABASE NAME
 def get_database_name() -> list[CEGame]:
+    global _database_name_cache, _database_name_cache_time
+
+    if (
+        _database_name_cache is not None
+        and (time.time() - _database_name_cache_time) < _DATABASE_NAME_TTL
+    ):
+        logger.debug(
+            "database_name cache hit (age %.0fs)",
+            time.time() - _database_name_cache_time,
+        )
+        return _database_name_cache
+
+    logger.debug("database_name cache miss, fetching from Supabase")
     response_games = supabase.table("games").select().execute().data
     response_objectives = supabase.table("objectives").select().execute().data
     response_requirements = (
@@ -291,6 +319,8 @@ def get_database_name() -> list[CEGame]:
         categories = [c for c in response_categories if c["game_id"] == game["ce_id"]]
         _games.append(__supabase_to_game(game, objectives, requirements, categories))
 
+    _database_name_cache = _games
+    _database_name_cache_time = time.time()
     return _games
 
 
