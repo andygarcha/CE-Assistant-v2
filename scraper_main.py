@@ -37,11 +37,33 @@ async def main():
 
     try:
         while not _shutdown:
+            # Check loop lock
+            if SupabaseReader.is_loop_running():
+                logger.warning("Another loop is still running. Skipping this iteration.")
+                await asyncio.sleep(LOOP_INTERVAL_SECONDS)
+                continue
+
+            # Cleanup old data
+            SupabaseReader.cleanup_delivered_updates()
+            SupabaseReader.cleanup_completed_commands()
+
+            # Check for pending commands
+            commands = SupabaseReader.get_pending_commands()
+            full_scrape = False
+            for cmd in commands:
+                SupabaseReader.acknowledge_command(cmd["id"])
+                if cmd["command"] == "full_scrape":
+                    full_scrape = True
+                SupabaseReader.complete_command(cmd["id"])
+
+            # Acquire loop lock
+            run_id = SupabaseReader.start_loop_run()
             try:
-                SupabaseReader.cleanup_delivered_updates()
-                await process_loop()
+                await process_loop(full_scrape=full_scrape)
             except Exception:
                 logger.exception("process_loop failed")
+            finally:
+                SupabaseReader.finish_loop_run(run_id)
 
             if _shutdown:
                 break

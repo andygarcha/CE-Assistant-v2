@@ -222,9 +222,17 @@ async def loop(
         send_updates=send_updates,
     )
 
+    if SupabaseReader.is_loop_running():
+        await interaction.followup.send(
+            "A scrape is already in progress. Your request will be queued."
+        )
+
+    command = "full_scrape" if full_scrape else "initiate_loop"
+    SupabaseReader.write_scraper_command(command)
+
     return await interaction.followup.send(
-        "The scraper now runs as a separate process. "
-        "Use tmux to manage it, or wait for the next scheduled run."
+        f"{'Full scrape' if full_scrape else 'Loop'} requested. "
+        "The scraper will pick this up on its next cycle."
     )
 
 
@@ -233,7 +241,11 @@ async def shutdown(interaction: discord.Interaction):
 
     await hm.log_command(client, interaction, "shutdown", True)
 
-    await interaction.followup.send("Shutting down the bot...", ephemeral=True)
+    await interaction.followup.send(
+        "Shutting down the bot. The scraper runs independently — "
+        "use tmux to manage it.",
+        ephemeral=True,
+    )
     await http_session.close_session()
     await client.close()
 
