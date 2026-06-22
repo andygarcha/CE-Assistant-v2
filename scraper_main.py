@@ -36,35 +36,64 @@ async def main():
 
     try:
         while not _shutdown:
-            # Check loop lock
-            if SupabaseReader.is_loop_running():
+            # Check loop lock — if a previous loop crashed, run a
+            # recovery pass that heals the DB but suppresses notifications.
+            recovering = SupabaseReader.is_loop_running()
+            if recovering:
                 logger.warning(
-                    "Another loop is still running. Skipping this iteration."
+                    "Previous loop did not finish cleanly. "
+                    "Running recovery pass (updates will not be sent)."
                 )
-                await asyncio.sleep(LOOP_INTERVAL_SECONDS)
-                continue
 
             # Cleanup old data
             SupabaseReader.cleanup_delivered_updates()
             SupabaseReader.cleanup_completed_commands()
 
-            # Check for pending commands
-            commands = SupabaseReader.get_pending_commands()
+            # Check for pending commands (skip during recovery)
             full_scrape = False
-            for cmd in commands:
-                SupabaseReader.acknowledge_command(cmd["id"])
-                if cmd["command"] == "full_scrape":
-                    full_scrape = True
-                SupabaseReader.complete_command(cmd["id"])
+            if not recovering:
+                commands = SupabaseReader.get_pending_commands()
+                for cmd in commands:
+                    SupabaseReader.acknowledge_command(cmd["id"])
+                    if cmd["command"] == "full_scrape":
+                        full_scrape = True
+                    SupabaseReader.complete_command(cmd["id"])
 
             # Acquire loop lock
             run_id = SupabaseReader.start_loop_run()
             try:
-                await process_loop(full_scrape=full_scrape)
+                result = await process_loop(
+                    full_scrape=full_scrape,
+                    send_updates=not recovering,
+                )
             except Exception:
                 logger.exception("process_loop failed")
+                result = None
             finally:
                 SupabaseReader.finish_loop_run(run_id)
+
+            if recovering and result is not None:
+                summary = (
+                    f"Recovery scrape completed: "
+                    f"{result['games_updated']} games, "
+                    f"{result['users_updated']} users, "
+                    f"{result['rolls_updated']} rolls updated. "
+                    f"{result['updates_generated']} notifications suppressed "
+                    f"due to previous failed scrape."
+                )
+                logger.info(summary)
+                SupabaseReader.write_scraper_update({
+                    "is_embed": False,
+                    "channel": "privatelog",
+                    "text": summary,
+                    "title": "",
+                    "description": "",
+                    "image": "",
+                    "url": "",
+                    "color": 0,
+                    "status": "stable",
+                    "game_ce_id": None,
+                })
 
             if _shutdown:
                 break

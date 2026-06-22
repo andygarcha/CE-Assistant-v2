@@ -49,35 +49,93 @@ def _run_main():
 
 
 class TestLoopLocking:
-    def test_skips_everything_when_locked(self):
-        """When loop is running, the entire iteration is skipped — no cleanup, no commands, no process_loop."""
+    def test_recovery_pass_when_locked(self):
+        """When previous loop crashed (lock stuck), a recovery pass runs with send_updates=False."""
+        received = {}
+
+        async def _capture(**kw):
+            received.update(kw)
+            scraper_main._shutdown = True
+            return {"games_updated": 5, "users_updated": 3, "rolls_updated": 1, "updates_generated": 4}
+
         with (
             patch.object(
                 scraper_main.SupabaseReader, "is_loop_running", return_value=True
             ),
-            patch.object(
-                scraper_main.SupabaseReader, "cleanup_delivered_updates"
-            ) as mock_cleanup,
+            patch.object(scraper_main.SupabaseReader, "cleanup_delivered_updates"),
+            patch.object(scraper_main.SupabaseReader, "cleanup_completed_commands"),
             patch.object(
                 scraper_main.SupabaseReader, "get_pending_commands"
             ) as mock_cmds,
-            patch.object(scraper_main.SupabaseReader, "start_loop_run") as mock_start,
             patch.object(
-                scraper_main, "process_loop", new_callable=AsyncMock
-            ) as mock_loop,
-            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
-            patch(
-                "asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=lambda _: setattr(scraper_main, "_shutdown", True),
+                scraper_main.SupabaseReader, "start_loop_run", return_value="run-r"
             ),
+            patch.object(scraper_main.SupabaseReader, "finish_loop_run"),
+            patch.object(scraper_main.SupabaseReader, "write_scraper_update"),
+            patch.object(scraper_main, "process_loop", side_effect=_capture),
+            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
         ):
             _run_main()
 
-        mock_cleanup.assert_not_called()
+        assert received["send_updates"] is False
         mock_cmds.assert_not_called()
-        mock_start.assert_not_called()
-        mock_loop.assert_not_called()
+
+    def test_recovery_sends_summary_to_privatelog(self):
+        async def _return_counts(**kw):
+            scraper_main._shutdown = True
+            return {"games_updated": 10, "users_updated": 5, "rolls_updated": 2, "updates_generated": 7}
+
+        with (
+            patch.object(
+                scraper_main.SupabaseReader, "is_loop_running", return_value=True
+            ),
+            patch.object(scraper_main.SupabaseReader, "cleanup_delivered_updates"),
+            patch.object(scraper_main.SupabaseReader, "cleanup_completed_commands"),
+            patch.object(
+                scraper_main.SupabaseReader, "start_loop_run", return_value="run-r"
+            ),
+            patch.object(scraper_main.SupabaseReader, "finish_loop_run"),
+            patch.object(
+                scraper_main.SupabaseReader, "write_scraper_update"
+            ) as mock_write,
+            patch.object(scraper_main, "process_loop", side_effect=_return_counts),
+            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
+        ):
+            _run_main()
+
+        mock_write.assert_called_once()
+        row = mock_write.call_args[0][0]
+        assert row["channel"] == "privatelog"
+        assert row["status"] == "stable"
+        assert "10 games" in row["text"]
+        assert "5 users" in row["text"]
+        assert "2 rolls" in row["text"]
+        assert "7 notifications suppressed" in row["text"]
+
+    def test_recovery_no_summary_when_process_loop_fails(self):
+        def _raise(**kw):
+            scraper_main._shutdown = True
+            raise RuntimeError("crash during recovery")
+
+        with (
+            patch.object(
+                scraper_main.SupabaseReader, "is_loop_running", return_value=True
+            ),
+            patch.object(scraper_main.SupabaseReader, "cleanup_delivered_updates"),
+            patch.object(scraper_main.SupabaseReader, "cleanup_completed_commands"),
+            patch.object(
+                scraper_main.SupabaseReader, "start_loop_run", return_value="run-r"
+            ),
+            patch.object(scraper_main.SupabaseReader, "finish_loop_run"),
+            patch.object(
+                scraper_main.SupabaseReader, "write_scraper_update"
+            ) as mock_write,
+            patch.object(scraper_main, "process_loop", side_effect=_raise),
+            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
+        ):
+            _run_main()
+
+        mock_write.assert_not_called()
 
     def test_lock_acquired_before_process_loop(self):
         call_order = []
@@ -364,7 +422,14 @@ class TestCleanup:
         mocks["cleanup_updates"].assert_called_once()
         mocks["cleanup_commands"].assert_called_once()
 
-    def test_cleanup_not_called_when_locked(self):
+    def test_cleanup_still_called_during_recovery(self):
+        """Cleanup runs even during a recovery pass — old delivered updates
+        and completed commands should still be pruned."""
+
+        async def _shutdown(**kw):
+            scraper_main._shutdown = True
+            return {"games_updated": 0, "users_updated": 0, "rolls_updated": 0, "updates_generated": 0}
+
         with (
             patch.object(
                 scraper_main.SupabaseReader, "is_loop_running", return_value=True
@@ -375,18 +440,18 @@ class TestCleanup:
             patch.object(
                 scraper_main.SupabaseReader, "cleanup_completed_commands"
             ) as mock_cc,
-            patch.object(scraper_main, "process_loop", new_callable=AsyncMock),
-            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
-            patch(
-                "asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=lambda _: setattr(scraper_main, "_shutdown", True),
+            patch.object(
+                scraper_main.SupabaseReader, "start_loop_run", return_value="run-r"
             ),
+            patch.object(scraper_main.SupabaseReader, "finish_loop_run"),
+            patch.object(scraper_main.SupabaseReader, "write_scraper_update"),
+            patch.object(scraper_main, "process_loop", side_effect=_shutdown),
+            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
         ):
             _run_main()
 
-        mock_cu.assert_not_called()
-        mock_cc.assert_not_called()
+        mock_cu.assert_called_once()
+        mock_cc.assert_called_once()
 
 
 class TestSessionCleanup:

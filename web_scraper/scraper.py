@@ -261,6 +261,13 @@ async def process_loop(
         except Exception as e:
             logger.error("dump_loop failed to save last run time: %s", e)
 
+    return {
+        "games_updated": len(games_new),
+        "users_updated": len(users_new),
+        "rolls_updated": len(rolls_updated) + len(rolls_deleted),
+        "updates_generated": len(updates),
+    }
+
 
 """ MEDIUM LEVEL FUNCTIONS """
 
