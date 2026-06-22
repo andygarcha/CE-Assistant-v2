@@ -56,7 +56,12 @@ class TestLoopLocking:
         async def _capture(**kw):
             received.update(kw)
             scraper_main._shutdown = True
-            return {"games_updated": 5, "users_updated": 3, "rolls_updated": 1, "updates_generated": 4}
+            return {
+                "games_updated": 5,
+                "users_updated": 3,
+                "rolls_updated": 1,
+                "updates_generated": 4,
+            }
 
         with (
             patch.object(
@@ -83,7 +88,12 @@ class TestLoopLocking:
     def test_recovery_sends_summary_to_privatelog(self):
         async def _return_counts(**kw):
             scraper_main._shutdown = True
-            return {"games_updated": 10, "users_updated": 5, "rolls_updated": 2, "updates_generated": 7}
+            return {
+                "games_updated": 10,
+                "users_updated": 5,
+                "rolls_updated": 2,
+                "updates_generated": 7,
+            }
 
         with (
             patch.object(
@@ -428,7 +438,12 @@ class TestCleanup:
 
         async def _shutdown(**kw):
             scraper_main._shutdown = True
-            return {"games_updated": 0, "users_updated": 0, "rolls_updated": 0, "updates_generated": 0}
+            return {
+                "games_updated": 0,
+                "users_updated": 0,
+                "rolls_updated": 0,
+                "updates_generated": 0,
+            }
 
         with (
             patch.object(

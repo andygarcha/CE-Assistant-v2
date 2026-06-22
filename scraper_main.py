@@ -82,18 +82,20 @@ async def main():
                     f"due to previous failed scrape."
                 )
                 logger.info(summary)
-                SupabaseReader.write_scraper_update({
-                    "is_embed": False,
-                    "channel": "privatelog",
-                    "text": summary,
-                    "title": "",
-                    "description": "",
-                    "image": "",
-                    "url": "",
-                    "color": 0,
-                    "status": "stable",
-                    "game_ce_id": None,
-                })
+                SupabaseReader.write_scraper_update(
+                    {
+                        "is_embed": False,
+                        "channel": "privatelog",
+                        "text": summary,
+                        "title": "",
+                        "description": "",
+                        "image": "",
+                        "url": "",
+                        "color": 0,
+                        "status": "stable",
+                        "game_ce_id": None,
+                    }
+                )
 
             if _shutdown:
                 break
