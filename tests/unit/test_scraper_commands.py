@@ -46,7 +46,7 @@ class TestIsLoopRunning:
             mock_table.order.return_value = mock_table
             mock_table.limit.return_value = mock_table
             mock_table.execute.return_value = MagicMock(data=[
-                {"status": "started"},
+                {"start": True},
             ])
 
             assert SupabaseReader.is_loop_running() is True
@@ -59,7 +59,7 @@ class TestIsLoopRunning:
             mock_table.order.return_value = mock_table
             mock_table.limit.return_value = mock_table
             mock_table.execute.return_value = MagicMock(data=[
-                {"status": "finished"},
+                {"start": False},
             ])
 
             assert SupabaseReader.is_loop_running() is False

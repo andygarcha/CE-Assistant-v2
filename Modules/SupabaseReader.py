@@ -1165,7 +1165,7 @@ def dump_database_tier(database_tier: dict):
 def dump_loop(dt: datetime.datetime):
     supabase.table("loopruns").insert({
         "ran_at": dt.isoformat(),
-        "status": "finished",
+        "start": False,
     }).execute()
 
 
@@ -1300,21 +1300,21 @@ def cleanup_completed_commands(older_than_hours: int = 24) -> int:
 def start_loop_run() -> str:
     result = supabase.table("loopruns").insert({
         "ran_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "status": "started",
+        "start": True,
     }).execute()
     return result.data[0]["id"]
 
 
 def finish_loop_run(run_id: str) -> None:
     supabase.table("loopruns").update({
-        "status": "finished",
+        "start": False,
     }).eq("id", run_id).execute()
 
 
 def is_loop_running() -> bool:
     data = (
         supabase.table("loopruns")
-        .select("status")
+        .select("start")
         .order("ran_at", desc=True)
         .limit(1)
         .execute()
@@ -1322,7 +1322,7 @@ def is_loop_running() -> bool:
     )
     if not data:
         return False
-    return data[0]["status"] == "started"
+    return data[0]["start"] is True
 
 
 # === SUPABASE DELETERS ===
