@@ -1211,6 +1211,38 @@ def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
     return len(result.data) if result.data else 0
 
 
+def get_pending_game_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "pending")
+        .not_.is_("game_ce_id", "null")
+        .execute()
+        .data
+    )
+
+
+def promote_pending_to_stable(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "stable"}).in_("id", ids).execute()
+
+
+def upsert_pending_update(update: dict) -> None:
+    existing = (
+        supabase.table("scraper_updates")
+        .select("id")
+        .eq("status", "pending")
+        .eq("game_ce_id", update["game_ce_id"])
+        .execute()
+        .data
+    )
+    if existing:
+        supabase.table("scraper_updates").update(update).eq("id", existing[0]["id"]).execute()
+    else:
+        supabase.table("scraper_updates").insert(update).execute()
+
+
 # === SUPABASE DELETERS ===
 def delete_game(ce_id: str):
     # Delete objectives first (foreign key constraint)

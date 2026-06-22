@@ -44,6 +44,8 @@ class UpdateMessageForScraperProcess:
     url: str = ""
     color: int = 0x000000
 
+    game_ce_id: str | None = None
+
     def print(self, full=False, info=False):
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
@@ -65,12 +67,13 @@ class UpdateMessageForScraperProcess:
 
 
 def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
-    rows = []
+    immediate_rows = []
     for update in updates:
         if update.location is None:
             logger.warning("Update with location=None skipped: %s", update.text or update.title)
             continue
-        rows.append({
+
+        row = {
             "is_embed": update.is_embed,
             "channel": update.location,
             "text": update.text,
@@ -79,12 +82,34 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
             "image": update.image,
             "url": update.url,
             "color": update.color,
-            "status": "stable",
-            "game_ce_id": None,
-        })
-    if rows:
-        SupabaseReader.write_scraper_updates_bulk(rows)
-        logger.info("Flushed %d updates to scraper_updates table.", len(rows))
+            "game_ce_id": update.game_ce_id,
+        }
+
+        if row["game_ce_id"] is not None:
+            row["status"] = "pending"
+            SupabaseReader.upsert_pending_update(row)
+        else:
+            row["status"] = "stable"
+            immediate_rows.append(row)
+
+    if immediate_rows:
+        SupabaseReader.write_scraper_updates_bulk(immediate_rows)
+        logger.info("Flushed %d immediate updates.", len(immediate_rows))
+
+
+def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+    pending = SupabaseReader.get_pending_game_updates()
+    if not pending:
+        return
+
+    to_promote = [
+        row["id"] for row in pending
+        if row["game_ce_id"] not in changed_game_ids
+    ]
+
+    if to_promote:
+        SupabaseReader.promote_pending_to_stable(to_promote)
+        logger.info("Promoted %d pending updates to stable.", len(to_promote))
 
 
 """ TOP LEVEL FUNCTION """
@@ -130,6 +155,10 @@ async def process_loop(
     ) = await update_games(full_scrape)
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
+
+    # Promote pending game updates that had no further changes since last loop
+    changed_game_ids = {g.ce_id for g in games_new} | removed_games
+    await asyncio.to_thread(stabilize_pending_updates, changed_game_ids)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
@@ -1106,6 +1135,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.description = f"\n- {game_new.emojis}"
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
+    update.game_ce_id = game_new.ce_id
 
     # primary
     num_pos = len(game_new.get_primary_objectives())
@@ -1160,6 +1190,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.color = 0xCE4E2C
     update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
+    update.game_ce_id = game_old.ce_id
 
     return update
 
@@ -1209,6 +1240,7 @@ def create_update_updated_game(
     update.description = ""
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
+    update.game_ce_id = game_new.ce_id
     update.image = game_new.header
 
     # POINT/TIER CHANGE
