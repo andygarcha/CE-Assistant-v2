@@ -13,13 +13,13 @@ async def deliver_updates(client: discord.Client) -> int:
     if not updates:
         return 0
 
-    delivered_ids: list[str] = []
+    delivered = 0
 
     for update in updates:
         channel = update["channel"]
 
         if not update["is_embed"]:
-            await hm.send_message(client, channel, update["text"], False)
+            sent = await hm.send_message(client, channel, update["text"], False)
         else:
             embed = discord.Embed()
             embed.title = update["title"]
@@ -33,10 +33,14 @@ async def deliver_updates(client: discord.Client) -> int:
             embed.timestamp = datetime.datetime.now()
             embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
             embed.set_footer(text="CE Assistant", icon_url=hm.FINAL_CE_ICON)
-            await hm.send_message(client, channel, embed=embed)
+            sent = await hm.send_message(client, channel, embed=embed)
 
-        delivered_ids.append(update["id"])
+        if sent:
+            SupabaseReader.mark_updates_delivered([update["id"]])
+            delivered += 1
+        else:
+            logger.warning("Failed to send update %s to %s, will retry next cycle.", update["id"], channel)
 
-    SupabaseReader.mark_updates_delivered(delivered_ids)
-    logger.info("Delivered %d updates.", len(delivered_ids))
-    return len(delivered_ids)
+    if delivered:
+        logger.info("Delivered %d updates.", delivered)
+    return delivered

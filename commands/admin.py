@@ -222,17 +222,13 @@ async def loop(
         send_updates=send_updates,
     )
 
-    if SupabaseReader.is_loop_running():
-        await interaction.followup.send(
-            "A scrape is already in progress. Your request will be queued."
-        )
-
     command = "full_scrape" if full_scrape else "initiate_loop"
     SupabaseReader.write_scraper_command(command)
 
+    running_note = " A scrape is already in progress — your request will be queued." if SupabaseReader.is_loop_running() else ""
     return await interaction.followup.send(
         f"{'Full scrape' if full_scrape else 'Loop'} requested. "
-        "The scraper will pick this up on its next cycle."
+        f"The scraper will pick this up on its next cycle.{running_note}"
     )
 
 

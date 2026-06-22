@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import signal
-import sys
 
 logging.basicConfig(
     level=logging.INFO,
