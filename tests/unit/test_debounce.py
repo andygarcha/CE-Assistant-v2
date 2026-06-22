@@ -10,9 +10,11 @@ class TestGetPendingGameUpdates:
             mock_table.select.return_value = mock_table
             mock_table.eq.return_value = mock_table
             mock_table.not_.is_.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(data=[
-                {"id": "p1", "game_ce_id": "game-001", "status": "pending"},
-            ])
+            mock_table.execute.return_value = MagicMock(
+                data=[
+                    {"id": "p1", "game_ce_id": "game-001", "status": "pending"},
+                ]
+            )
 
             result = SupabaseReader.get_pending_game_updates()
             assert len(result) == 1
@@ -63,7 +65,11 @@ class TestUpsertPendingUpdate:
             mock_table.execute.return_value = MagicMock(data=[{"id": "existing-1"}])
             mock_table.update.return_value = mock_table
 
-            update = {"game_ce_id": "game-001", "title": "Updated!", "status": "pending"}
+            update = {
+                "game_ce_id": "game-001",
+                "title": "Updated!",
+                "status": "pending",
+            }
             SupabaseReader.upsert_pending_update(update)
 
             mock_table.update.assert_called_once_with(update)

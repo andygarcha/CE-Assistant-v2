@@ -38,7 +38,9 @@ async def main():
         while not _shutdown:
             # Check loop lock
             if SupabaseReader.is_loop_running():
-                logger.warning("Another loop is still running. Skipping this iteration.")
+                logger.warning(
+                    "Another loop is still running. Skipping this iteration."
+                )
                 await asyncio.sleep(LOOP_INTERVAL_SECONDS)
                 continue
 
