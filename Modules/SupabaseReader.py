@@ -1167,6 +1167,50 @@ def dump_loop(dt: datetime.datetime):
     return
 
 
+# === SCRAPER UPDATES ===
+
+def write_scraper_update(update: dict) -> None:
+    supabase.table("scraper_updates").insert(update).execute()
+
+
+def write_scraper_updates_bulk(updates: list[dict]) -> None:
+    if not updates:
+        return
+    supabase.table("scraper_updates").insert(updates).execute()
+
+
+def get_stable_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "stable")
+        .order("created_at", desc=False)
+        .execute()
+        .data
+    )
+
+
+def mark_updates_delivered(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "delivered"}).in_("id", ids).execute()
+
+
+def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
+    cutoff = (
+        datetime.datetime.now(datetime.timezone.utc)
+        - datetime.timedelta(hours=older_than_hours)
+    ).isoformat()
+    result = (
+        supabase.table("scraper_updates")
+        .delete()
+        .eq("status", "delivered")
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    return len(result.data) if result.data else 0
+
+
 # === SUPABASE DELETERS ===
 def delete_game(ce_id: str):
     # Delete objectives first (foreign key constraint)
