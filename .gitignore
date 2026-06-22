@@ -169,3 +169,4 @@ Assets/dbbackups/backup.sh
 .ruff_cache
 .DS_Store
 docs/
+.superpowers

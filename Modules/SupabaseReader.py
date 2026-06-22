@@ -1163,8 +1163,195 @@ def dump_database_tier(database_tier: dict):
 
 
 def dump_loop(dt: datetime.datetime):
-    supabase.table("loopruns").insert({"ran_at": dt.isoformat()}).execute()
-    return
+    supabase.table("loopruns").insert(
+        {
+            "ran_at": dt.isoformat(),
+            "start": False,
+        }
+    ).execute()
+
+
+# === SCRAPER UPDATES ===
+
+
+def write_scraper_update(update: dict) -> None:
+    supabase.table("scraper_updates").insert(update).execute()
+
+
+def write_scraper_updates_bulk(updates: list[dict]) -> None:
+    if not updates:
+        return
+    supabase.table("scraper_updates").insert(updates).execute()
+
+
+def get_stable_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "stable")
+        .order("created_at", desc=False)
+        .execute()
+        .data
+    )
+
+
+def mark_updates_delivered(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "delivered"}).in_(
+        "id", ids
+    ).execute()
+
+
+def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
+    cutoff = (
+        datetime.datetime.now(datetime.timezone.utc)
+        - datetime.timedelta(hours=older_than_hours)
+    ).isoformat()
+    result = (
+        supabase.table("scraper_updates")
+        .delete()
+        .eq("status", "delivered")
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    return len(result.data) if result.data else 0
+
+
+def get_pending_game_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "pending")
+        .not_.is_("game_ce_id", "null")
+        .execute()
+        .data
+    )
+
+
+def promote_pending_to_stable(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "stable"}).in_(
+        "id", ids
+    ).execute()
+
+
+def upsert_pending_update(update: dict) -> None:
+    existing = (
+        supabase.table("scraper_updates")
+        .select("id")
+        .eq("status", "pending")
+        .eq("game_ce_id", update["game_ce_id"])
+        .execute()
+        .data
+    )
+    if existing:
+        supabase.table("scraper_updates").update(update).eq(
+            "id", existing[0]["id"]
+        ).execute()
+    else:
+        supabase.table("scraper_updates").insert(update).execute()
+
+
+# === SCRAPER COMMANDS ===
+
+
+def write_scraper_command(command: str) -> str:
+    result = (
+        supabase.table("scraper_commands")
+        .insert(
+            {
+                "command": command,
+                "status": "pending",
+            }
+        )
+        .execute()
+    )
+    return result.data[0]["id"]
+
+
+def get_pending_commands() -> list[dict]:
+    return (
+        supabase.table("scraper_commands")
+        .select()
+        .eq("status", "pending")
+        .order("created_at", desc=False)
+        .execute()
+        .data
+    )
+
+
+def acknowledge_command(command_id: str) -> None:
+    supabase.table("scraper_commands").update(
+        {
+            "status": "acknowledged",
+            "acknowledged_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+    ).eq("id", command_id).execute()
+
+
+def complete_command(command_id: str) -> None:
+    supabase.table("scraper_commands").update(
+        {
+            "status": "completed",
+            "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+    ).eq("id", command_id).execute()
+
+
+def cleanup_completed_commands(older_than_hours: int = 24) -> int:
+    cutoff = (
+        datetime.datetime.now(datetime.timezone.utc)
+        - datetime.timedelta(hours=older_than_hours)
+    ).isoformat()
+    result = (
+        supabase.table("scraper_commands")
+        .delete()
+        .eq("status", "completed")
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    return len(result.data) if result.data else 0
+
+
+# === LOOP LOCKING ===
+
+
+def start_loop_run() -> str:
+    result = (
+        supabase.table("loopruns")
+        .insert(
+            {
+                "ran_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "start": True,
+            }
+        )
+        .execute()
+    )
+    return result.data[0]["id"]
+
+
+def finish_loop_run(run_id: str) -> None:
+    supabase.table("loopruns").update(
+        {
+            "start": False,
+        }
+    ).eq("id", run_id).execute()
+
+
+def is_loop_running() -> bool:
+    data = (
+        supabase.table("loopruns")
+        .select("start")
+        .order("ran_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not data:
+        return False
+    return data[0]["start"] is True
 
 
 # === SUPABASE DELETERS ===

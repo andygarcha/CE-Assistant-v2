@@ -10,12 +10,10 @@ import os
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from discord.ext import tasks
 import asyncio
 import datetime
 import json
 import typing
-import discord
 import requests
 from Classes.CE_Game import CEGame, CEAPIGame
 from Classes.CE_Roll import CERoll
@@ -36,7 +34,7 @@ SKIPUPDATES = False  # doesn't skip roll updates
 @dataclass
 class UpdateMessageForScraperProcess:
     is_embed: bool = False
-    location: hm.CHANNEL_NAMES | None = None
+    location: str | None = None
 
     text: str = ""
 
@@ -45,6 +43,8 @@ class UpdateMessageForScraperProcess:
     image: str = ""
     url: str = ""
     color: int = 0x000000
+
+    game_ce_id: str | None = None
 
     def print(self, full=False, info=False):
         string: str = ""
@@ -66,70 +66,60 @@ class UpdateMessageForScraperProcess:
             logger.debug(string[0:100])
 
 
+def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
+    immediate_rows = []
+    for update in updates:
+        if update.location is None:
+            logger.warning(
+                "Update with location=None skipped: %s", update.text or update.title
+            )
+            continue
+
+        row = {
+            "is_embed": update.is_embed,
+            "channel": update.location,
+            "text": update.text,
+            "title": update.title,
+            "description": update.description,
+            "image": update.image,
+            "url": update.url,
+            "color": update.color,
+            "game_ce_id": update.game_ce_id,
+        }
+
+        if row["game_ce_id"] is not None:
+            row["status"] = "pending"
+            SupabaseReader.upsert_pending_update(row)
+        else:
+            row["status"] = "stable"
+            immediate_rows.append(row)
+
+    if immediate_rows:
+        SupabaseReader.write_scraper_updates_bulk(immediate_rows)
+        logger.info("Flushed %d immediate updates.", len(immediate_rows))
+
+
+def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+    pending = SupabaseReader.get_pending_game_updates()
+    if not pending:
+        return
+
+    to_promote = [
+        row["id"] for row in pending if row["game_ce_id"] not in changed_game_ids
+    ]
+
+    if to_promote:
+        SupabaseReader.promote_pending_to_stable(to_promote)
+        logger.info("Promoted %d pending updates to stable.", len(to_promote))
+
+
 """ TOP LEVEL FUNCTION """
 
-utc = datetime.timezone.utc
-times = [
-    datetime.time(hour=0, minute=0, tzinfo=utc),
-    datetime.time(hour=0, minute=30, tzinfo=utc),
-    datetime.time(hour=1, minute=0, tzinfo=utc),
-    datetime.time(hour=1, minute=30, tzinfo=utc),
-    datetime.time(hour=2, minute=0, tzinfo=utc),
-    datetime.time(hour=2, minute=30, tzinfo=utc),
-    datetime.time(hour=3, minute=0, tzinfo=utc),
-    datetime.time(hour=3, minute=30, tzinfo=utc),
-    datetime.time(hour=4, minute=0, tzinfo=utc),
-    datetime.time(hour=4, minute=30, tzinfo=utc),
-    datetime.time(hour=5, minute=0, tzinfo=utc),
-    datetime.time(hour=5, minute=30, tzinfo=utc),
-    datetime.time(hour=6, minute=0, tzinfo=utc),
-    datetime.time(hour=6, minute=30, tzinfo=utc),
-    datetime.time(hour=7, minute=0, tzinfo=utc),
-    datetime.time(hour=7, minute=30, tzinfo=utc),
-    datetime.time(hour=8, minute=0, tzinfo=utc),
-    datetime.time(hour=8, minute=30, tzinfo=utc),
-    datetime.time(hour=9, minute=0, tzinfo=utc),
-    datetime.time(hour=9, minute=30, tzinfo=utc),
-    datetime.time(hour=10, minute=0, tzinfo=utc),
-    datetime.time(hour=10, minute=30, tzinfo=utc),
-    datetime.time(hour=11, minute=0, tzinfo=utc),
-    datetime.time(hour=11, minute=30, tzinfo=utc),
-    datetime.time(hour=12, minute=0, tzinfo=utc),
-    datetime.time(hour=12, minute=30, tzinfo=utc),
-    datetime.time(hour=13, minute=0, tzinfo=utc),
-    datetime.time(hour=13, minute=30, tzinfo=utc),
-    datetime.time(hour=14, minute=0, tzinfo=utc),
-    datetime.time(hour=14, minute=30, tzinfo=utc),
-    datetime.time(hour=15, minute=0, tzinfo=utc),
-    datetime.time(hour=15, minute=30, tzinfo=utc),
-    datetime.time(hour=16, minute=0, tzinfo=utc),
-    datetime.time(hour=16, minute=30, tzinfo=utc),
-    datetime.time(hour=17, minute=0, tzinfo=utc),
-    datetime.time(hour=17, minute=30, tzinfo=utc),
-    datetime.time(hour=18, minute=0, tzinfo=utc),
-    datetime.time(hour=18, minute=30, tzinfo=utc),
-    datetime.time(hour=19, minute=0, tzinfo=utc),
-    datetime.time(hour=19, minute=30, tzinfo=utc),
-    datetime.time(hour=20, minute=0, tzinfo=utc),
-    datetime.time(hour=20, minute=30, tzinfo=utc),
-    datetime.time(hour=21, minute=0, tzinfo=utc),
-    datetime.time(hour=21, minute=30, tzinfo=utc),
-    datetime.time(hour=22, minute=0, tzinfo=utc),
-    datetime.time(hour=22, minute=30, tzinfo=utc),
-    datetime.time(hour=23, minute=0, tzinfo=utc),
-    datetime.time(hour=23, minute=30, tzinfo=utc),
-]
 
-
-@tasks.loop(time=times)
 async def process_loop(
-    client: discord.Client | None = None,
     full_scrape: bool = False,
     send_updates: bool = True,
 ):
-    logger.info("")
-    if client is None:
-        logger.warning("HEY NO CLIENT WAS GIVEN TO PROCESS_LOOP()!!")
     logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
 
     full_scrape = (
@@ -142,14 +132,11 @@ async def process_loop(
 
     logger.info("full_scrape=%s (second try)", full_scrape)
 
-    _sent = await hm.send_message(
-        client,
-        "privatelog",
-        f"🔄 Scraper loop started at {hm.get_datetime('now')}{', FULL SCRAPE' if full_scrape else ''}",
+    logger.info(
+        "Scraper loop started at %s%s",
+        hm.get_datetime("now"),
+        ", FULL SCRAPE" if full_scrape else "",
     )
-
-    if not _sent:
-        logger.error("Could not send message.")
 
     logger.debug(
         "FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES
@@ -169,6 +156,10 @@ async def process_loop(
     ) = await update_games(full_scrape)
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
+
+    # Promote pending game updates that had no further changes since last loop
+    changed_game_ids = {g.ce_id for g in games_new} | removed_games
+    await asyncio.to_thread(stabilize_pending_updates, changed_game_ids)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
@@ -254,64 +245,28 @@ async def process_loop(
         await asyncio.to_thread(_save_all)
         SupabaseReader.invalidate_database_name_cache()
 
-    # Send updates!
-    # TODO upload these to the database in a future update
-    logger.info("Sending %d updates.", len(updates))
-    for update in updates:
-        if not isinstance(update, UpdateMessageForScraperProcess):
-            logger.error(
-                "Value in `updates` that is not of correct type. Type=%s, String Repr=%s",
-                str(type(update)),
-                str(update),
-            )
-            continue
-
-        if update.location is None:
-            logger.warning("Update.location returned None! Printing", update.print())
-            continue
-
-        if not update.is_embed:
-            if send_updates:
-                await hm.send_message(client, update.location, update.text, False)
-            else:
-                update.print(full=True)
-            continue
-
-        embed = discord.Embed()
-        embed.colour = update.color
-        embed.title = update.title
-        embed.description = update.description
-        if update.image is not None and update.image != "":
-            embed.set_image(url=update.image)
-        else:
-            embed.set_image(url=hm.SCREENSHOT_FAILED_IMAGE)
-        embed.url = update.url
-
-        # regular stuff
-        embed.color = 0x000000
-        embed.timestamp = datetime.datetime.now()
-        embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
-        embed.set_footer(text="CE Assistant", icon_url=hm.FINAL_CE_ICON)
-
-        if send_updates:
-            await hm.send_message(client, update.location, embed=embed)
-        else:
+    # Flush updates to Supabase for the bot to deliver
+    logger.info("Flushing %d updates.", len(updates))
+    if send_updates:
+        await asyncio.to_thread(flush_updates, updates)
+    else:
+        for update in updates:
             update.print(full=True)
 
     logger.info("process_loop() complete at time=%s", hm.get_datetime("now"))
-
-    await hm.send_message(
-        client, "privatelog", f"✅ Scraper loop finished at {hm.get_datetime('now')}"
-    )
 
     if SAVEDATA and not full_scrape:
         try:
             await asyncio.to_thread(SupabaseReader.dump_loop, time_current)
         except Exception as e:
             logger.error("dump_loop failed to save last run time: %s", e)
-            await hm.send_message(
-                client, "privatelog", f"⚠️ dump_loop failed to save last run time: {e}"
-            )
+
+    return {
+        "games_updated": len(games_new),
+        "users_updated": len(users_new),
+        "rolls_updated": len(rolls_updated) + len(rolls_deleted),
+        "updates_generated": len(updates),
+    }
 
 
 """ MEDIUM LEVEL FUNCTIONS """
@@ -1188,6 +1143,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.description = f"\n- {game_new.emojis}"
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
+    update.game_ce_id = game_new.ce_id
 
     # primary
     num_pos = len(game_new.get_primary_objectives())
@@ -1242,6 +1198,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.color = 0xCE4E2C
     update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
+    update.game_ce_id = game_old.ce_id
 
     return update
 
@@ -1291,6 +1248,7 @@ def create_update_updated_game(
     update.description = ""
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
+    update.game_ce_id = game_new.ce_id
     update.image = game_new.header
 
     # POINT/TIER CHANGE
