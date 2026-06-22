@@ -21,7 +21,7 @@ from typing import Literal  # noqa: E402
 # --------- local class imports --------
 
 # from Modules.WebInteractor import master_loop
-from web_scraper.scraper import process_loop  # noqa: E402
+from update_delivery import deliver_updates  # noqa: E402
 from Modules import SupabaseReader  # noqa: E402
 from commands import load_commands  # noqa: E402
 from commands.games import get_game_auto  # noqa: E402
@@ -146,11 +146,14 @@ async def get_game_data(interaction: discord.Interaction, ce_id: str):
 INPUT_MESSAGES_ARE_EPHEMERAL: bool = True
 
 
-@tasks.loop(minutes=1)
-async def monitor_loop():
-    if not process_loop.is_running() and process_loop.next_iteration is None:
-        logger.warning("Main task loop is not running. Restarting...")
-        await process_loop.start(client)
+@tasks.loop(seconds=60)
+async def delivery_loop():
+    try:
+        count = await deliver_updates(client)
+        if count > 0:
+            logger.info("Delivered %d scraper updates.", count)
+    except Exception:
+        logger.exception("delivery_loop failed")
 
 
 #   ____    _   _     _____    ______              _____   __     __
@@ -188,12 +191,10 @@ async def on_ready():
 
     # asyncio.create_task(start_webhook_server())
 
-    # master loop
+    # delivery loop — polls scraper_updates table for messages to send
     if hm.IN_CE:
-        if not process_loop.is_running():
-            await process_loop.start(client)
-        if not monitor_loop.is_running():
-            await monitor_loop.start()
+        if not delivery_loop.is_running():
+            delivery_loop.start()
 
 
 # @client.event
