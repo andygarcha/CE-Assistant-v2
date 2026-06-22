@@ -170,3 +170,4 @@ Assets/dbbackups/backup.sh
 .DS_Store
 docs/
 .superpowers
+.superpowers/sdd/review-final.diff
