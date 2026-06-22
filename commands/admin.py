@@ -9,7 +9,6 @@ from Classes.CE_Roll import CERoll
 from commands.user import register
 from Modules import CEAPIReader, hm, SupabaseReader
 
-from web_scraper.scraper import process_loop
 from Modules import http_session
 
 logger = logging.getLogger(__name__)
@@ -214,7 +213,6 @@ async def loop(
 ):
     await interaction.response.defer(ephemeral=True)
 
-    # log this interaction
     await hm.log_command(
         client,
         interaction,
@@ -224,45 +222,18 @@ async def loop(
         send_updates=send_updates,
     )
 
-    if hm.IN_CE:
-        if (
-            datetime.datetime.now().minute < 30
-            and datetime.datetime.now().minute >= 25
-            and full_scrape
-        ):
-            return await interaction.followup.send(
-                "this loop will run in less than five minutes. please wait!"
-            )
-        if (
-            datetime.datetime.now().minute >= 30
-            and datetime.datetime.now().minute < 35
-            and full_scrape
-        ):
-            return await interaction.followup.send(
-                "this loop is probably running now! please wait..."
-            )
-
-    await interaction.followup.send("looping...")
-
-    await process_loop(client, full_scrape, send_updates)
-
-    return await interaction.followup.send("loop complete.", ephemeral=True)
+    return await interaction.followup.send(
+        "The scraper now runs as a separate process. "
+        "Use tmux to manage it, or wait for the next scheduled run."
+    )
 
 
 async def shutdown(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
 
-    # log this interaction
     await hm.log_command(client, interaction, "shutdown", True)
 
     await interaction.followup.send("Shutting down the bot...", ephemeral=True)
-
-    if process_loop.is_running():
-        process_loop.stop()
-        task = process_loop.get_task()
-        if task is not None:
-            await task
-
     await http_session.close_session()
     await client.close()
 
