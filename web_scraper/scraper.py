@@ -70,7 +70,9 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
     immediate_rows = []
     for update in updates:
         if update.location is None:
-            logger.warning("Update with location=None skipped: %s", update.text or update.title)
+            logger.warning(
+                "Update with location=None skipped: %s", update.text or update.title
+            )
             continue
 
         row = {
@@ -103,8 +105,7 @@ def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
         return
 
     to_promote = [
-        row["id"] for row in pending
-        if row["game_ce_id"] not in changed_game_ids
+        row["id"] for row in pending if row["game_ce_id"] not in changed_game_ids
     ]
 
     if to_promote:

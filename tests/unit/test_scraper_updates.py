@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from Modules import SupabaseReader
 
 
@@ -10,12 +10,14 @@ class TestWriteScraperUpdate:
             mock_table.insert.return_value = mock_table
             mock_table.execute.return_value = MagicMock(data=[])
 
-            SupabaseReader.write_scraper_update({
-                "is_embed": False,
-                "channel": "casino",
-                "text": "You won!",
-                "status": "stable",
-            })
+            SupabaseReader.write_scraper_update(
+                {
+                    "is_embed": False,
+                    "channel": "casino",
+                    "text": "You won!",
+                    "status": "stable",
+                }
+            )
 
             mock_sb.table.assert_called_once_with("scraper_updates")
             inserted = mock_table.insert.call_args[0][0]
@@ -31,8 +33,18 @@ class TestWriteScraperUpdate:
             mock_table.execute.return_value = MagicMock(data=[])
 
             updates = [
-                {"is_embed": False, "channel": "casino", "text": "msg1", "status": "stable"},
-                {"is_embed": True, "channel": "gameadditions", "title": "New!", "status": "stable"},
+                {
+                    "is_embed": False,
+                    "channel": "casino",
+                    "text": "msg1",
+                    "status": "stable",
+                },
+                {
+                    "is_embed": True,
+                    "channel": "gameadditions",
+                    "title": "New!",
+                    "status": "stable",
+                },
             ]
             SupabaseReader.write_scraper_updates_bulk(updates)
 
@@ -54,9 +66,11 @@ class TestGetStableUpdates:
             mock_table.select.return_value = mock_table
             mock_table.eq.return_value = mock_table
             mock_table.order.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(data=[
-                {"id": "abc", "channel": "casino", "text": "hello"},
-            ])
+            mock_table.execute.return_value = MagicMock(
+                data=[
+                    {"id": "abc", "channel": "casino", "text": "hello"},
+                ]
+            )
 
             result = SupabaseReader.get_stable_updates()
 

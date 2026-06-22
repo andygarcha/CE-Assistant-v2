@@ -39,7 +39,11 @@ async def deliver_updates(client: discord.Client) -> int:
             SupabaseReader.mark_updates_delivered([update["id"]])
             delivered += 1
         else:
-            logger.warning("Failed to send update %s to %s, will retry next cycle.", update["id"], channel)
+            logger.warning(
+                "Failed to send update %s to %s, will retry next cycle.",
+                update["id"],
+                channel,
+            )
 
     if delivered:
         logger.info("Delivered %d updates.", delivered)

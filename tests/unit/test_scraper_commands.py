@@ -26,9 +26,11 @@ class TestGetPendingCommands:
             mock_table.select.return_value = mock_table
             mock_table.eq.return_value = mock_table
             mock_table.order.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(data=[
-                {"id": "cmd-1", "command": "full_scrape"},
-            ])
+            mock_table.execute.return_value = MagicMock(
+                data=[
+                    {"id": "cmd-1", "command": "full_scrape"},
+                ]
+            )
 
             result = SupabaseReader.get_pending_commands()
 
@@ -45,9 +47,11 @@ class TestIsLoopRunning:
             mock_table.select.return_value = mock_table
             mock_table.order.return_value = mock_table
             mock_table.limit.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(data=[
-                {"start": True},
-            ])
+            mock_table.execute.return_value = MagicMock(
+                data=[
+                    {"start": True},
+                ]
+            )
 
             assert SupabaseReader.is_loop_running() is True
 
@@ -58,9 +62,11 @@ class TestIsLoopRunning:
             mock_table.select.return_value = mock_table
             mock_table.order.return_value = mock_table
             mock_table.limit.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(data=[
-                {"start": False},
-            ])
+            mock_table.execute.return_value = MagicMock(
+                data=[
+                    {"start": False},
+                ]
+            )
 
             assert SupabaseReader.is_loop_running() is False
 
