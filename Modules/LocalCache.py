@@ -1,10 +1,12 @@
 import logging
 import os
 import sqlite3
+import threading
 
 logger = logging.getLogger(__name__)
 
 _conn: sqlite3.Connection | None = None
+_lock = threading.Lock()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS games (
@@ -141,6 +143,20 @@ def get_connection() -> sqlite3.Connection:
     return _conn
 
 
+def get_lock() -> threading.Lock:
+    return _lock
+
+
+def _with_lock(func):
+    """Decorator that serializes write operations with the module lock."""
+    def wrapper(*args, **kwargs):
+        with _lock:
+            return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
+
+
 def _row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row)
 
@@ -159,6 +175,7 @@ def _normalize_roll(row: dict) -> dict:
 
 # === GAMES ===
 
+@_with_lock
 def upsert_game(row: dict) -> None:
     conn = get_connection()
     conn.execute(
@@ -176,6 +193,7 @@ def upsert_game(row: dict) -> None:
     conn.commit()
 
 
+@_with_lock
 def upsert_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -224,12 +242,14 @@ def get_game_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM games").fetchall()]
 
 
+@_with_lock
 def delete_game(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM games WHERE ce_id = ?", (ce_id,))
     conn.commit()
 
 
+@_with_lock
 def delete_game_cascade(ce_id: str) -> None:
     conn = get_connection()
     obj_ids = [r[0] for r in conn.execute(
@@ -246,6 +266,7 @@ def delete_game_cascade(ce_id: str) -> None:
 
 # === OBJECTIVES ===
 
+@_with_lock
 def upsert_objectives_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -292,6 +313,7 @@ def get_objective_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM objectives").fetchall()]
 
 
+@_with_lock
 def delete_objectives_by_ids(ce_ids: list[str]) -> None:
     if not ce_ids:
         return
@@ -303,6 +325,7 @@ def delete_objectives_by_ids(ce_ids: list[str]) -> None:
 
 # === OBJECTIVE REQUIREMENTS ===
 
+@_with_lock
 def upsert_requirements_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -316,6 +339,7 @@ def upsert_requirements_bulk(rows: list[dict]) -> None:
     conn.commit()
 
 
+@_with_lock
 def delete_requirements_by_objectives(objective_ce_ids: list[str]) -> None:
     if not objective_ce_ids:
         return
@@ -344,6 +368,7 @@ def get_requirements_by_objectives(objective_ce_ids: list[str]) -> list[dict]:
 
 # === CATEGORIES ===
 
+@_with_lock
 def upsert_categories_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -356,12 +381,14 @@ def upsert_categories_bulk(rows: list[dict]) -> None:
     conn.commit()
 
 
+@_with_lock
 def delete_categories_by_game(game_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM categories WHERE game_id = ?", (game_id,))
     conn.commit()
 
 
+@_with_lock
 def delete_categories_by_games(game_ids: list[str]) -> None:
     if not game_ids:
         return
@@ -384,6 +411,7 @@ def get_categories_by_game(game_id: str) -> list[dict]:
 
 # === USERS ===
 
+@_with_lock
 def upsert_user(row: dict) -> None:
     conn = get_connection()
     conn.execute(
@@ -400,6 +428,7 @@ def upsert_user(row: dict) -> None:
     conn.commit()
 
 
+@_with_lock
 def upsert_users_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -455,12 +484,14 @@ def get_user_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM users").fetchall()]
 
 
+@_with_lock
 def delete_user(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM users WHERE ce_id = ?", (ce_id,))
     conn.commit()
 
 
+@_with_lock
 def delete_user_cascade(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_games WHERE user_ce_id = ?", (ce_id,))
@@ -471,6 +502,7 @@ def delete_user_cascade(ce_id: str) -> None:
 
 # === USER GAMES ===
 
+@_with_lock
 def upsert_user_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -495,6 +527,7 @@ def get_user_games(user_ce_id: str) -> list[dict]:
     ]
 
 
+@_with_lock
 def delete_user_games(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_games WHERE user_ce_id = ?", (user_ce_id,))
@@ -503,6 +536,7 @@ def delete_user_games(user_ce_id: str) -> None:
 
 # === USER OBJECTIVES ===
 
+@_with_lock
 def upsert_user_objectives_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -527,6 +561,7 @@ def get_user_objectives(user_ce_id: str) -> list[dict]:
     ]
 
 
+@_with_lock
 def delete_user_objectives(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_objectives WHERE user_ce_id = ?", (user_ce_id,))
@@ -535,6 +570,7 @@ def delete_user_objectives(user_ce_id: str) -> None:
 
 # === ROLLS ===
 
+@_with_lock
 def upsert_roll(row: dict) -> None:
     row = _normalize_roll(row)
     conn = get_connection()
@@ -558,6 +594,7 @@ def upsert_roll(row: dict) -> None:
     conn.commit()
 
 
+@_with_lock
 def upsert_rolls_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -634,6 +671,7 @@ def get_roll_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT id FROM rolls").fetchall()]
 
 
+@_with_lock
 def delete_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
@@ -641,6 +679,7 @@ def delete_roll(roll_id: str) -> None:
     conn.commit()
 
 
+@_with_lock
 def delete_rolls_by_ids(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
@@ -653,6 +692,7 @@ def delete_rolls_by_ids(roll_ids: list[str]) -> None:
 
 # === ROLL GAMES ===
 
+@_with_lock
 def upsert_roll_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -690,12 +730,14 @@ def get_roll_games_by_ids(roll_ids: list[str]) -> list[dict]:
     ]
 
 
+@_with_lock
 def delete_roll_games_by_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
     conn.commit()
 
 
+@_with_lock
 def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
@@ -707,6 +749,7 @@ def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
 
 # === TIER ===
 
+@_with_lock
 def upsert_tier_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -728,6 +771,29 @@ def get_tier_all() -> list[dict]:
 
 # === REBUILD ===
 
+_SUPABASE_PAGE_SIZE = 1000
+
+
+def _fetch_all_rows(sb_client, table_name: str) -> list[dict]:
+    """Fetch all rows from a Supabase table with pagination to avoid the 1000-row default limit."""
+    all_rows: list[dict] = []
+    offset = 0
+    while True:
+        data = (
+            sb_client.table(table_name)
+            .select()
+            .range(offset, offset + _SUPABASE_PAGE_SIZE - 1)
+            .execute()
+            .data
+        ) or []
+        all_rows.extend(data)
+        if len(data) < _SUPABASE_PAGE_SIZE:
+            break
+        offset += _SUPABASE_PAGE_SIZE
+    return all_rows
+
+
+@_with_lock
 def rebuild_from_supabase() -> dict:
     from Modules.SupabaseReader import supabase as sb
 
@@ -750,7 +816,7 @@ def rebuild_from_supabase() -> dict:
     conn = get_connection()
 
     for sb_table, local_table in table_map:
-        data = sb.table(sb_table).select().execute().data or []
+        data = _fetch_all_rows(sb, sb_table)
         counts[local_table] = len(data)
         if not data:
             continue
@@ -777,6 +843,7 @@ def rebuild_from_supabase() -> dict:
 
 # === INTEGRITY CHECK ===
 
+@_with_lock
 def run_integrity_check() -> dict:
     from Modules.SupabaseReader import supabase as sb
 
@@ -792,10 +859,21 @@ def run_integrity_check() -> dict:
     conn = get_connection()
 
     for sb_table, local_table, id_col in checks:
-        sb_ids = {
-            row[id_col]
-            for row in sb.table(sb_table).select(id_col).execute().data or []
-        }
+        all_id_rows: list[dict] = []
+        offset = 0
+        while True:
+            page = (
+                sb.table(sb_table)
+                .select(id_col)
+                .range(offset, offset + _SUPABASE_PAGE_SIZE - 1)
+                .execute()
+                .data
+            ) or []
+            all_id_rows.extend(page)
+            if len(page) < _SUPABASE_PAGE_SIZE:
+                break
+            offset += _SUPABASE_PAGE_SIZE
+        sb_ids = {row[id_col] for row in all_id_rows}
         local_ids = {
             row[0]
             for row in conn.execute(

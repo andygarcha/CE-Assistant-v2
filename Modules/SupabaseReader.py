@@ -217,12 +217,23 @@ def get_database_name() -> list[CEGame]:
     requirements_json = [dict(r) for r in conn.execute("SELECT * FROM objective_requirements").fetchall()]
     categories_json = [dict(r) for r in conn.execute("SELECT * FROM categories").fetchall()]
 
+    objectives_by_game: dict[str, list[dict]] = {}
+    for o in objectives_json:
+        objectives_by_game.setdefault(o["game_ce_id"], []).append(o)
+    requirements_by_objective: dict[str, list[dict]] = {}
+    for r in requirements_json:
+        requirements_by_objective.setdefault(r["objective_ce_id"], []).append(r)
+    categories_by_game: dict[str, list[dict]] = {}
+    for c in categories_json:
+        categories_by_game.setdefault(c["game_id"], []).append(c)
+
     _games = []
     for game in games_json:
-        objs = [o for o in objectives_json if o["game_ce_id"] == game["ce_id"]]
-        obj_ids = [o["ce_id"] for o in objs]
-        reqs = [r for r in requirements_json if r["objective_ce_id"] in obj_ids]
-        cats = [c for c in categories_json if c["game_id"] == game["ce_id"]]
+        objs = objectives_by_game.get(game["ce_id"], [])
+        reqs: list[dict] = []
+        for o in objs:
+            reqs.extend(requirements_by_objective.get(o["ce_id"], []))
+        cats = categories_by_game.get(game["ce_id"], [])
         _games.append(__supabase_to_game(game, objs, reqs, cats))
     return _games
 
@@ -320,6 +331,8 @@ def get_database_user() -> list[CEUser]:
     rolls_by_user: dict[str, list[dict]] = {}
     for r in response_rolls:
         rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
+        if r["user2_ce_id"] is not None:
+            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
     rgames_by_roll: dict[str, list[dict]] = {}
     for rg in response_rgames:
         rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)

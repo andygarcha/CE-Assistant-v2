@@ -1052,6 +1052,7 @@ class TestRunIntegrityCheck:
             table_data = data_by_table.get(name, [])
 
             mock_table.select.return_value = mock_table
+            mock_table.range.return_value = mock_table
             mock_table.in_.return_value = mock_table
             mock_table.execute.return_value = MagicMock(data=table_data)
             return mock_table
@@ -1181,20 +1182,15 @@ class TestRunIntegrityCheck:
 
             def _table_with_full_data(name):
                 mock_table = MagicMock()
+                mock_table.select.return_value = mock_table
+                mock_table.range.return_value = mock_table
+                mock_table.in_.return_value = mock_table
                 if name == "games":
-                    mock_table.select.return_value = mock_table
-                    mock_table.in_.return_value = mock_table
-
-                    def _execute_for_games():
-                        return MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}])
-
                     mock_table.execute.side_effect = [
                         MagicMock(data=[{"ce_id": "g-new"}]),
                         MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}]),
                     ]
                 else:
-                    mock_table.select.return_value = mock_table
-                    mock_table.in_.return_value = mock_table
                     mock_table.execute.return_value = MagicMock(data=[])
                 return mock_table
 
