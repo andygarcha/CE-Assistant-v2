@@ -1067,6 +1067,9 @@ class CERoll:
     def casino_increase(self) -> int:
         "Returns the number of casino points the user would gain if the roll is won."
 
+        if self.roll_name not in CASINO_POINTS:
+            return 0
+
         # relative points
         tup = CASINO_POINTS[self.roll_name]
         if tup is None:
