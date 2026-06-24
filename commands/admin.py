@@ -365,7 +365,7 @@ async def clear_roll(
     )
 
     # get database user and the user
-    user = await SupabaseReader.get_user_async(member.id, use_discord_id=True)
+    user = SupabaseReader.get_user(member.id, use_discord_id=True)
     if user is None:
         await interaction.followup.send("Could not find user!")
         raise Exception(f"Could not find user with discord {member.id} in Supabase.")
@@ -377,7 +377,7 @@ async def clear_roll(
     if pending:
         user.remove_pending(roll_name)
 
-    await SupabaseReader.bulk_dump_rolls_async(user.rolls)
+    SupabaseReader.bulk_dump_rolls(user.rolls)
     return await interaction.followup.send("Done!")
 
 
@@ -398,7 +398,7 @@ async def clear_roll_portion(
         roll_name=roll_name,
     )
 
-    user = await SupabaseReader.get_user_async(member.id, use_discord_id=True)
+    user = SupabaseReader.get_user(member.id, use_discord_id=True)
     if user is None:
         await interaction.followup.send(
             f"Could not find user with discord id {member.id} in Supabase."
@@ -412,7 +412,7 @@ async def clear_roll_portion(
         )
 
     game_removed = roll.remove_game_last()
-    game_removed = await SupabaseReader.get_game_async(game_removed)
+    game_removed = SupabaseReader.get_game(game_removed)
     if game_removed is None:
         game_removed = "<error, removed game was 'null'>"
     else:
@@ -426,7 +426,7 @@ async def clear_roll_portion(
     for roll in user.rolls:
         logger.debug("%s", roll.to_dict())
 
-    await SupabaseReader.dump_user_async(user)
+    SupabaseReader.dump_user(user)
     return await interaction.followup.send(
         f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. "
         + "Status set to 'waiting'."
@@ -451,7 +451,7 @@ async def force_add(
     )
 
     # get database user and the user
-    user = await SupabaseReader.get_user_async(member.id, use_discord_id=True)
+    user = SupabaseReader.get_user(member.id, use_discord_id=True)
     if user is None:
         await interaction.followup.send(
             f"Could not find user with discord id {member.id} in supabase."
@@ -469,7 +469,7 @@ async def force_add(
         )
     )
 
-    await SupabaseReader.dump_user_async(user)
+    SupabaseReader.dump_user(user)
     return await interaction.followup.send("Done!")
 
 
@@ -482,14 +482,14 @@ class UnlinkView(discord.ui.View):
     async def yes_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
-        user = await SupabaseReader.get_user_async(self._member_id, use_discord_id=True)
+        user = SupabaseReader.get_user(self._member_id, use_discord_id=True)
         if user is None:
             raise Exception(
                 f"Could not find user with discord id {self._member_id} in Supabase."
             )
 
         # user._discord_id = None
-        await SupabaseReader.dump_user_async(user)
+        SupabaseReader.dump_user(user)
 
         self.clear_items()
         await interaction.response.edit_message(
@@ -524,7 +524,7 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
 
     await hm.log_command(client, interaction, "debug", True, user=user.mention)
 
-    user_supa = await SupabaseReader.get_user_async(user.id, use_discord_id=True)
+    user_supa = SupabaseReader.get_user(user.id, use_discord_id=True)
     if user_supa is None:
         return await interaction.followup.send("This user isn't registered.")
 

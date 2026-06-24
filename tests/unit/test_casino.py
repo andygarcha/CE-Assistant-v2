@@ -78,8 +78,7 @@ class TestSoloRoll:
             patch.object(_casino_mod, "client", create=True, new=MagicMock()),
             patch("commands.casino.hm.log_command", new_callable=AsyncMock),
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 return_value=user,
             ),
         ):
@@ -614,8 +613,7 @@ class TestCoOpRoll:
     def test_unregistered_user_sends_error(self):
         interaction = _make_interaction_coop()
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             return_value=None,
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -627,8 +625,7 @@ class TestCoOpRoll:
         interaction = _make_interaction_coop()
         user = make_user(discord_id=123)
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, None],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -647,8 +644,7 @@ class TestCoOpRoll:
             patch.object(user, "has_cooldown", return_value=True),
             patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
         ):
@@ -665,8 +661,7 @@ class TestCoOpRoll:
             patch.object(user, "has_cooldown", return_value=True),
             patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
         ):
@@ -682,8 +677,7 @@ class TestCoOpRoll:
             patch.object(partner, "has_cooldown", return_value=True),
             patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
         ):
@@ -701,8 +695,7 @@ class TestCoOpRoll:
             patch.object(partner, "has_cooldown", return_value=True),
             patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
         ):
@@ -724,8 +717,7 @@ class TestCoOpRoll:
             )
         )
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -747,8 +739,7 @@ class TestCoOpRoll:
                 )
             )
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -771,18 +762,15 @@ class TestCoOpRoll:
             )
         with (
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
-                "commands.casino.SupabaseReader.add_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.add_pending",
             ),
             patch(
-                "commands.casino.SupabaseReader.kill_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.kill_pending",
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
@@ -816,8 +804,7 @@ class TestCoOpRoll:
                 )
             )
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -837,8 +824,7 @@ class TestCoOpRoll:
             make_roll(roll_name="Soul Mates", status="current", tier_num=1)
         )
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -854,8 +840,7 @@ class TestCoOpRoll:
             make_roll(roll_name="Soul Mates", status="current", tier_num=1)
         )
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -874,18 +859,15 @@ class TestCoOpRoll:
         )
         with (
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
-                "commands.casino.SupabaseReader.add_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.add_pending",
             ),
             patch(
-                "commands.casino.SupabaseReader.kill_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.kill_pending",
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
@@ -912,8 +894,7 @@ class TestCoOpRoll:
         partner = make_user(discord_id=456)
         user.add_pending("Soul Mates")
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -925,8 +906,7 @@ class TestCoOpRoll:
         partner = make_user(discord_id=456)
         partner.add_pending("Soul Mates")
         with patch(
-            "commands.casino.SupabaseReader.get_user_async",
-            new_callable=AsyncMock,
+            "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -941,18 +921,15 @@ class TestCoOpRoll:
         partner = make_user(discord_id=456, ce_id="user-002-0000-0000-000000000000")
         with (
             patch(
-                "commands.casino.SupabaseReader.get_user_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.get_user",
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
-                "commands.casino.SupabaseReader.add_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.add_pending",
             ) as mock_add_pending,
             patch(
-                "commands.casino.SupabaseReader.kill_pending_async",
-                new_callable=AsyncMock,
+                "commands.casino.SupabaseReader.kill_pending",
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
@@ -964,7 +941,7 @@ class TestCoOpRoll:
             ),
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
-        mock_add_pending.assert_awaited_once_with(
+        mock_add_pending.assert_called_once_with(
             "Soul Mates", user.ce_id, partner.ce_id
         )
 

@@ -94,7 +94,7 @@ async def register(
         )
 
     # get database_user
-    users = await SupabaseReader.get_database_user_async()
+    users = SupabaseReader.get_database_user()
 
     # make sure they're not already registered
     for user in users:
@@ -121,7 +121,7 @@ async def register(
         ce_user.discord_id = interaction.user.id
 
     # add the user to users and dump it
-    await SupabaseReader.bulk_dump_users_async([ce_user])
+    SupabaseReader.bulk_dump_users([ce_user])
 
     # get the role and attach it
     if interaction.guild is None:
@@ -180,7 +180,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     )
 
     # pull databases
-    database_name = await SupabaseReader.get_database_name_async()
+    database_name = SupabaseReader.get_database_name()
 
     # check to see if they asked for info on another person.
     if user is None:
@@ -191,7 +191,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
         asked_for_friend = True
 
     # make sure they're registered
-    ce_user = await SupabaseReader.get_user_async(_user.id, use_discord_id=True)
+    ce_user = SupabaseReader.get_user(_user.id, use_discord_id=True)
     if ce_user is None:
         if asked_for_friend:
             return await interaction.followup.send(
@@ -224,9 +224,7 @@ async def set_color(interaction: discord.Interaction):
         raise Exception("guild was None in set-color")
 
     # grab the user data
-    user_ce = await SupabaseReader.get_user_async(
-        interaction.user.id, use_discord_id=True
-    )
+    user_ce = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user_ce is None:
         return await interaction.followup.send(
             "Please run /register before you do any additional commands!"
@@ -348,7 +346,7 @@ async def show_summary(
     else:
         _user_local = user
 
-    user_ce = await SupabaseReader.get_user_async(_user_local.id, use_discord_id=True)
+    user_ce = SupabaseReader.get_user(_user_local.id, use_discord_id=True)
     if user_ce is None:
         return await interaction.followup.send(
             "The user you requested is not registered with the bot."
