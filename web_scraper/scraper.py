@@ -19,7 +19,7 @@ from Classes.CE_Game import CEGame, CEAPIGame
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
-from Modules import CEAPIReader, SupabaseReader, http_session, hm
+from Modules import CEAPIReader, LocalCache, SupabaseReader, http_session, hm
 import logging
 
 logger = logging.getLogger(__name__)
@@ -253,6 +253,19 @@ async def process_loop(
             update.print(full=True)
 
     logger.info("process_loop() complete at time=%s", hm.get_datetime("now"))
+
+    if full_scrape:
+        try:
+            integrity_report = await asyncio.to_thread(LocalCache.run_integrity_check)
+            synced = ", ".join(integrity_report.get("synced", []))
+            removed = ", ".join(integrity_report.get("removed", []))
+            if synced or removed:
+                summary = f"Integrity check: synced [{synced}], removed [{removed}]"
+            else:
+                summary = "Integrity check passed — local cache in sync with Supabase"
+            logger.info(summary)
+        except Exception as e:
+            logger.error("Integrity check failed: %s", e)
 
     if SAVEDATA and not full_scrape:
         try:
