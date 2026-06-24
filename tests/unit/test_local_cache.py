@@ -1038,3 +1038,173 @@ class TestInitEdgeCases:
     def test_close_when_not_initialized_is_noop(self):
         LocalCache.close()
         LocalCache.close()
+
+
+# === INTEGRITY CHECK ===
+
+
+class TestRunIntegrityCheck:
+    def _make_mock_supabase(self, data_by_table: dict[str, list[dict]]) -> MagicMock:
+        mock_sb = MagicMock()
+
+        def _table(name):
+            mock_table = MagicMock()
+            table_data = data_by_table.get(name, [])
+
+            mock_table.select.return_value = mock_table
+            mock_table.in_.return_value = mock_table
+            mock_table.execute.return_value = MagicMock(data=table_data)
+            return mock_table
+
+        mock_sb.table.side_effect = _table
+        return mock_sb
+
+    def test_no_discrepancies(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_game(GAME_ROW)
+            LocalCache.upsert_user(USER_ROW)
+
+            mock_sb = self._make_mock_supabase({
+                "games": [{"ce_id": "g1"}],
+                "users": [{"ce_id": "u1"}],
+                "objectives": [],
+                "rolls": [],
+            })
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+                report = run_integrity_check()
+
+            assert report["synced"] == []
+            assert report["removed"] == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_removes_stale_game_and_cascades(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_game(GAME_ROW)
+            LocalCache.upsert_objectives_bulk([
+                {"ce_id": "o1", "game_ce_id": "g1", "type": "primary", "name": "X",
+                 "description": "", "points": 10, "points_partial": None, "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_requirements_bulk([
+                {"objective_ce_id": "o1", "requirement_type": "achievement",
+                 "data": "ach-1", "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_categories_bulk([
+                {"game_id": "g1", "category": "Action", "index": 0},
+            ])
+
+            mock_sb = self._make_mock_supabase({
+                "games": [],
+                "users": [],
+                "objectives": [],
+                "rolls": [],
+            })
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+                report = run_integrity_check()
+
+            assert any("games" in s for s in report["removed"])
+            assert LocalCache.get_game("g1") is None
+            assert LocalCache.get_objectives_by_game("g1") == []
+            assert LocalCache.get_requirements_by_objectives(["o1"]) == []
+            assert LocalCache.get_categories_by_game("g1") == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_removes_stale_user_and_cascades(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user(USER_ROW)
+            LocalCache.upsert_user_games_bulk([
+                {"user_ce_id": "u1", "game_ce_id": "g1", "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "u1", "objective_ce_id": "o1",
+                 "user_points": 10, "updated_at_CE": ""},
+            ])
+
+            mock_sb = self._make_mock_supabase({
+                "games": [],
+                "users": [],
+                "objectives": [],
+                "rolls": [],
+            })
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+                report = run_integrity_check()
+
+            assert LocalCache.get_user("u1") is None
+            assert LocalCache.get_user_games("u1") == []
+            assert LocalCache.get_user_objectives("u1") == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_removes_stale_roll_and_cascades(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll(ROLL_ROW)
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "r1", "game_id": "g1", "index": 0, "rolled_at": ""},
+            ])
+
+            mock_sb = self._make_mock_supabase({
+                "games": [],
+                "users": [],
+                "objectives": [],
+                "rolls": [],
+            })
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+                report = run_integrity_check()
+
+            assert LocalCache.get_roll("r1") is None
+            assert LocalCache.get_roll_games("r1") == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_syncs_missing_game(self):
+        tmpdir = _setup()
+        try:
+            mock_sb = self._make_mock_supabase({
+                "games": [{"ce_id": "g-new"}],
+                "users": [],
+                "objectives": [],
+                "rolls": [],
+            })
+
+            def _table_with_full_data(name):
+                mock_table = MagicMock()
+                if name == "games":
+                    mock_table.select.return_value = mock_table
+                    mock_table.in_.return_value = mock_table
+
+                    def _execute_for_games():
+                        return MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}])
+
+                    mock_table.execute.side_effect = [
+                        MagicMock(data=[{"ce_id": "g-new"}]),
+                        MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}]),
+                    ]
+                else:
+                    mock_table.select.return_value = mock_table
+                    mock_table.in_.return_value = mock_table
+                    mock_table.execute.return_value = MagicMock(data=[])
+                return mock_table
+
+            mock_sb.table.side_effect = _table_with_full_data
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+                report = run_integrity_check()
+
+            assert any("games" in s for s in report["synced"])
+            assert LocalCache.get_game("g-new") is not None
+        finally:
+            _teardown(tmpdir)

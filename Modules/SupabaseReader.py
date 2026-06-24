@@ -46,7 +46,12 @@ if not LocalCache.is_initialized():
         try:
             LocalCache.rebuild_from_supabase()
         except Exception:
-            logger.exception("Failed to rebuild cache from Supabase on first startup. Cache will be empty until next scrape.")
+            logger.exception("Failed to rebuild cache from Supabase on first startup.")
+            LocalCache.close()
+            try:
+                _os.remove(_cache_path)
+            except OSError:
+                pass
     else:
         LocalCache.init(_cache_path)
 
@@ -817,6 +822,10 @@ def dump_user(user: CEUser):
     }
     supabase.table("users").upsert(user_data).execute()
     LocalCache.upsert_user(user_data)
+
+    # Clear stale cache entries before re-upserting
+    LocalCache.delete_user_games(user.ce_id)
+    LocalCache.delete_user_objectives(user.ce_id)
 
     user_games_payload = []
     user_objectives_payload = []
