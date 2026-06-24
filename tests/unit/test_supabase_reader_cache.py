@@ -516,7 +516,17 @@ class TestGetDatabaseTierFromCache:
 
 
 class TestDumpGameDualWrite:
-    def test_writes_to_both_supabase_and_cache(self):
+    def _mock_supabase(self):
+        mock_sb = MagicMock()
+        mock_table = MagicMock()
+        mock_sb.table.return_value = mock_table
+        mock_table.upsert.return_value = mock_table
+        mock_table.delete.return_value = mock_table
+        mock_table.in_.return_value = mock_table
+        mock_table.execute.return_value = MagicMock(data=[])
+        return mock_sb
+
+    def test_writes_all_four_tables_to_cache(self):
         tmpdir = _init_cache()
         try:
             from tests.conftest import make_game, make_objective
@@ -524,39 +534,102 @@ class TestDumpGameDualWrite:
             game = make_game(
                 ce_id="game-new",
                 game_name="New Game",
-                categories=["Action"],
-                objectives=[make_objective(ce_id="obj-new", game_ce_id="game-new")],
+                categories=["Action", "Platformer"],
+                objectives=[
+                    make_objective(
+                        ce_id="obj-new",
+                        game_ce_id="game-new",
+                        achievement_ce_ids=["ach-1", "ach-2"],
+                        requirements="Beat all levels",
+                    ),
+                ],
             )
 
-            with patch.object(SupabaseReader, "supabase") as mock_sb:
-                mock_table = MagicMock()
-                mock_sb.table.return_value = mock_table
-                mock_table.upsert.return_value = mock_table
-                mock_table.delete.return_value = mock_table
-                mock_table.in_.return_value = mock_table
-                mock_table.execute.return_value = MagicMock(data=[])
-
+            with patch.object(SupabaseReader, "supabase", self._mock_supabase()):
                 SupabaseReader.bulk_dump_games([game])
 
-            mock_sb.table.assert_called()
-
+            # games table
             cached = LocalCache.get_game("game-new")
             assert cached is not None
             assert cached["name"] == "New Game"
 
+            # objectives table
             cached_objs = LocalCache.get_objectives_by_game("game-new")
             assert len(cached_objs) == 1
             assert cached_objs[0]["ce_id"] == "obj-new"
 
+            # objectiveRequirements table
+            cached_reqs = LocalCache.get_requirements_by_objectives(["obj-new"])
+            achievement_reqs = [r for r in cached_reqs if r["requirement_type"] == "achievement"]
+            custom_reqs = [r for r in cached_reqs if r["requirement_type"] == "custom"]
+            assert len(achievement_reqs) == 2
+            assert {r["data"] for r in achievement_reqs} == {"ach-1", "ach-2"}
+            assert len(custom_reqs) == 1
+            assert custom_reqs[0]["data"] == "Beat all levels"
+
+            # categories table
             cached_cats = LocalCache.get_categories_by_game("game-new")
-            assert len(cached_cats) == 1
-            assert cached_cats[0]["category"] == "Action"
+            assert len(cached_cats) == 2
+            assert [c["category"] for c in cached_cats] == ["Action", "Platformer"]
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_replaces_old_categories_and_requirements(self):
+        """When a game is re-dumped, old categories and requirements should be
+        replaced, not accumulated."""
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_game, make_objective
+
+            # First dump: 2 categories, 1 achievement
+            game_v1 = make_game(
+                ce_id="game-x",
+                game_name="V1",
+                categories=["Action", "Arcade"],
+                objectives=[
+                    make_objective(
+                        ce_id="obj-x",
+                        game_ce_id="game-x",
+                        achievement_ce_ids=["ach-old"],
+                    ),
+                ],
+            )
+            with patch.object(SupabaseReader, "supabase", self._mock_supabase()):
+                SupabaseReader.bulk_dump_games([game_v1])
+
+            assert len(LocalCache.get_categories_by_game("game-x")) == 2
+            assert len(LocalCache.get_requirements_by_objectives(["obj-x"])) == 1
+
+            # Second dump: 1 category, 2 achievements
+            game_v2 = make_game(
+                ce_id="game-x",
+                game_name="V2",
+                categories=["Platformer"],
+                objectives=[
+                    make_objective(
+                        ce_id="obj-x",
+                        game_ce_id="game-x",
+                        achievement_ce_ids=["ach-new-1", "ach-new-2"],
+                    ),
+                ],
+            )
+            with patch.object(SupabaseReader, "supabase", self._mock_supabase()):
+                SupabaseReader.bulk_dump_games([game_v2])
+
+            # Should be replaced, not accumulated
+            cats = LocalCache.get_categories_by_game("game-x")
+            assert len(cats) == 1
+            assert cats[0]["category"] == "Platformer"
+
+            reqs = LocalCache.get_requirements_by_objectives(["obj-x"])
+            assert len(reqs) == 2
+            assert {r["data"] for r in reqs} == {"ach-new-1", "ach-new-2"}
         finally:
             _teardown_cache(tmpdir)
 
 
 class TestDumpRollDualWrite:
-    def test_writes_to_both_supabase_and_cache(self):
+    def test_writes_roll_and_roll_games_to_cache(self):
         tmpdir = _init_cache()
         try:
             from tests.conftest import make_roll
@@ -571,8 +644,6 @@ class TestDumpRollDualWrite:
 
                 SupabaseReader.dump_roll(roll)
 
-            mock_sb.table.assert_called()
-
             cached = LocalCache.get_roll(roll._id)
             assert cached is not None
             assert cached["event_name"] == "One Hell of a Day"
@@ -583,12 +654,57 @@ class TestDumpRollDualWrite:
         finally:
             _teardown_cache(tmpdir)
 
+    def test_replaces_old_roll_games(self):
+        """When a roll is re-dumped with different games, old roll_games
+        should be replaced."""
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_roll
+            import uuid
+
+            roll_id = str(uuid.uuid4())
+
+            # First dump: 1 game
+            roll_v1 = make_roll(roll_name="E", games=["game-old"])
+            roll_v1._id = roll_id
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+                SupabaseReader.dump_roll(roll_v1)
+
+            assert len(LocalCache.get_roll_games(roll_id)) == 1
+
+            # Second dump: 2 different games
+            roll_v2 = make_roll(roll_name="E", games=["game-new-1", "game-new-2"])
+            roll_v2._id = roll_id
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+                SupabaseReader.dump_roll(roll_v2)
+
+            cached_games = LocalCache.get_roll_games(roll_id)
+            assert len(cached_games) == 2
+            assert {g["game_id"] for g in cached_games} == {"game-new-1", "game-new-2"}
+        finally:
+            _teardown_cache(tmpdir)
+
 
 class TestDeleteGameDualWrite:
-    def test_deletes_from_both_supabase_and_cache(self):
+    def test_deletes_all_related_tables_from_cache(self):
         tmpdir = _init_cache()
         try:
             _seed_game()
+            # Verify data exists before delete
+            assert LocalCache.get_game("game-001") is not None
+            assert len(LocalCache.get_objectives_by_game("game-001")) == 1
+            assert len(LocalCache.get_requirements_by_objectives(["obj-001"])) == 1
+            assert len(LocalCache.get_categories_by_game("game-001")) == 2
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 mock_table = MagicMock()
@@ -601,7 +717,10 @@ class TestDeleteGameDualWrite:
 
                 SupabaseReader.delete_game("game-001")
 
+            # All four tables should be cleaned
             assert LocalCache.get_game("game-001") is None
+            assert LocalCache.get_objectives_by_game("game-001") == []
+            assert LocalCache.get_requirements_by_objectives(["obj-001"]) == []
             assert LocalCache.get_categories_by_game("game-001") == []
         finally:
             _teardown_cache(tmpdir)
@@ -672,7 +791,25 @@ class TestDeleteObjectivesManyDualWrite:
 
 
 class TestAddPendingDualWrite:
-    def test_writes_to_both_supabase_and_cache(self):
+    def test_writes_single_user_pending_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.insert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.add_pending("Soul Mates", "user-001")
+
+            rolls = LocalCache.get_rolls_by_user("user-001")
+            pending = [r for r in rolls if r["status"] == "pending"]
+            assert len(pending) == 1
+            assert pending[0]["event_name"] == "Soul Mates"
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_writes_two_user_pendings_to_cache(self):
         tmpdir = _init_cache()
         try:
             with patch.object(SupabaseReader, "supabase") as mock_sb:
@@ -683,16 +820,16 @@ class TestAddPendingDualWrite:
 
                 SupabaseReader.add_pending("Soul Mates", "user-001", "user-002")
 
-            rolls = LocalCache.get_rolls_by_user("user-001")
-            assert len(rolls) >= 1
-            pending = [r for r in rolls if r["status"] == "pending"]
-            assert len(pending) >= 1
+            rolls_u1 = [r for r in LocalCache.get_rolls_by_user("user-001") if r["status"] == "pending"]
+            rolls_u2 = [r for r in LocalCache.get_rolls_by_user("user-002") if r["status"] == "pending"]
+            assert len(rolls_u1) == 1
+            assert len(rolls_u2) == 1
         finally:
             _teardown_cache(tmpdir)
 
 
 class TestKillPendingDualWrite:
-    def test_deletes_from_both_supabase_and_cache(self):
+    def test_deletes_roll_and_roll_games_from_cache(self):
         tmpdir = _init_cache()
         try:
             LocalCache.upsert_roll({
@@ -702,6 +839,9 @@ class TestKillPendingDualWrite:
                 "user1_ce_id": "user-001",
                 "status": "pending",
             })
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "pending-001", "game_id": "game-001", "index": 0, "rolled_at": ""},
+            ])
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 mock_table = MagicMock()
@@ -718,6 +858,7 @@ class TestKillPendingDualWrite:
                 SupabaseReader.kill_pending("Soul Mates", "user-001")
 
             assert LocalCache.get_roll("pending-001") is None
+            assert LocalCache.get_roll_games("pending-001") == []
         finally:
             _teardown_cache(tmpdir)
 
@@ -991,16 +1132,25 @@ class TestGetDatabaseTierStructure:
 
 
 class TestBulkDumpUsersDualWrite:
-    def test_writes_users_to_cache(self):
+    def test_writes_users_games_and_objectives_to_cache(self):
         tmpdir = _init_cache()
         try:
             _seed_game()
-            from tests.conftest import make_user, make_user_game
+            from tests.conftest import make_user, make_user_game, make_user_objective
 
             user = make_user(
                 ce_id="user-new",
                 discord_id=999,
-                owned_games=[make_user_game(ce_id="game-001")],
+                owned_games=[
+                    make_user_game(
+                        ce_id="game-001",
+                        user_objectives=[
+                            make_user_objective(
+                                ce_id="obj-001", game_ce_id="game-001", user_points=25
+                            ),
+                        ],
+                    ),
+                ],
             )
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
@@ -1012,16 +1162,74 @@ class TestBulkDumpUsersDualWrite:
                 mock_table.in_.return_value = mock_table
                 mock_table.execute.return_value = MagicMock(data=[])
 
-                # get_list("name") and get_list("objectives") are called for FK validation
-                # After the switch, these read from LocalCache, so we need the game in cache
                 SupabaseReader.bulk_dump_users([user])
 
+            # users table
             cached = LocalCache.get_user("user-new")
             assert cached is not None
             assert cached["display_name"] == "TestUser"
 
+            # userGames table
             cached_games = LocalCache.get_user_games("user-new")
             assert len(cached_games) == 1
+            assert cached_games[0]["game_ce_id"] == "game-001"
+
+            # userObjectives table
+            cached_objs = LocalCache.get_user_objectives("user-new")
+            assert len(cached_objs) == 1
+            assert cached_objs[0]["objective_ce_id"] == "obj-001"
+            assert cached_objs[0]["user_points"] == 25
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_replaces_old_user_objectives(self):
+        """When a user is re-dumped, old userObjectives should be replaced."""
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            from tests.conftest import make_user, make_user_game, make_user_objective
+
+            # First dump: obj-001
+            user_v1 = make_user(
+                ce_id="user-x",
+                owned_games=[
+                    make_user_game(
+                        ce_id="game-001",
+                        user_objectives=[
+                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=10),
+                        ],
+                    ),
+                ],
+            )
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.select.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+                SupabaseReader.bulk_dump_users([user_v1])
+
+            assert len(LocalCache.get_user_objectives("user-x")) == 1
+
+            # Second dump: no objectives (user lost progress somehow)
+            user_v2 = make_user(
+                ce_id="user-x",
+                owned_games=[make_user_game(ce_id="game-001")],
+            )
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.select.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+                SupabaseReader.bulk_dump_users([user_v2])
+
+            # Old objectives should be gone
+            assert LocalCache.get_user_objectives("user-x") == []
         finally:
             _teardown_cache(tmpdir)
 
