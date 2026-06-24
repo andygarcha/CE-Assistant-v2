@@ -10,7 +10,6 @@ import os
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import asyncio
 import datetime
 import json
 import typing
@@ -269,18 +268,20 @@ async def process_loop(
             else:
                 summary = "Integrity check passed — local cache in sync with Supabase"
             logger.info(summary)
-            SupabaseReader.write_scraper_update({
-                "is_embed": False,
-                "channel": "privatelog",
-                "text": summary,
-                "title": "",
-                "description": "",
-                "image": "",
-                "url": "",
-                "color": 0,
-                "status": "stable",
-                "game_ce_id": None,
-            })
+            SupabaseReader.write_scraper_update(
+                {
+                    "is_embed": False,
+                    "channel": "privatelog",
+                    "text": summary,
+                    "title": "",
+                    "description": "",
+                    "image": "",
+                    "url": "",
+                    "color": 0,
+                    "status": "stable",
+                    "game_ce_id": None,
+                }
+            )
         except Exception as e:
             logger.error("Integrity check failed: %s", e)
 

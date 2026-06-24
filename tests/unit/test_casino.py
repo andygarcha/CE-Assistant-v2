@@ -79,7 +79,6 @@ class TestSoloRoll:
             patch("commands.casino.hm.log_command", new_callable=AsyncMock),
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 return_value=user,
             ),
         ):
@@ -615,7 +614,6 @@ class TestCoOpRoll:
         interaction = _make_interaction_coop()
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             return_value=None,
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -628,7 +626,6 @@ class TestCoOpRoll:
         user = make_user(discord_id=123)
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, None],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -648,7 +645,6 @@ class TestCoOpRoll:
             patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
         ):
@@ -666,7 +662,6 @@ class TestCoOpRoll:
             patch.object(user, "get_cooldown_timestamp", return_value=9999999999),
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
         ):
@@ -683,7 +678,6 @@ class TestCoOpRoll:
             patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
         ):
@@ -702,7 +696,6 @@ class TestCoOpRoll:
             patch.object(partner, "get_cooldown_timestamp", return_value=9999999999),
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
         ):
@@ -725,7 +718,6 @@ class TestCoOpRoll:
         )
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -748,7 +740,6 @@ class TestCoOpRoll:
             )
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -772,17 +763,14 @@ class TestCoOpRoll:
         with (
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
                 "commands.casino.SupabaseReader.add_pending",
-
             ),
             patch(
                 "commands.casino.SupabaseReader.kill_pending",
-
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
@@ -817,7 +805,6 @@ class TestCoOpRoll:
             )
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Destiny Alignment")
@@ -838,7 +825,6 @@ class TestCoOpRoll:
         )
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -855,7 +841,6 @@ class TestCoOpRoll:
         )
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -875,17 +860,14 @@ class TestCoOpRoll:
         with (
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
                 "commands.casino.SupabaseReader.add_pending",
-
             ),
             patch(
                 "commands.casino.SupabaseReader.kill_pending",
-
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(
@@ -913,7 +895,6 @@ class TestCoOpRoll:
         user.add_pending("Soul Mates")
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -926,7 +907,6 @@ class TestCoOpRoll:
         partner.add_pending("Soul Mates")
         with patch(
             "commands.casino.SupabaseReader.get_user",
-
             side_effect=[user, partner],
         ):
             _run_coop(interaction, _make_partner_member(), "Soul Mates")
@@ -942,17 +922,14 @@ class TestCoOpRoll:
         with (
             patch(
                 "commands.casino.SupabaseReader.get_user",
-
                 side_effect=[user, partner],
             ),
             _make_confirmed_view(),
             patch(
                 "commands.casino.SupabaseReader.add_pending",
-
             ) as mock_add_pending,
             patch(
                 "commands.casino.SupabaseReader.kill_pending",
-
             ),
             patch("commands.casino.SupabaseReader.get_database_name", return_value=[]),
             patch(

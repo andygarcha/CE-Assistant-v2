@@ -224,9 +224,7 @@ async def set_color(interaction: discord.Interaction):
         raise Exception("guild was None in set-color")
 
     # grab the user data
-    user_ce = SupabaseReader.get_user(
-        interaction.user.id, use_discord_id=True
-    )
+    user_ce = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user_ce is None:
         return await interaction.followup.send(
             "Please run /register before you do any additional commands!"

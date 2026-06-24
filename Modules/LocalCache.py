@@ -146,10 +146,20 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
 
 
 _ROLL_DEFAULTS = {
-    "id": None, "event_name": "", "user1_ce_id": "", "user2_ce_id": None,
-    "time_created": None, "time_due": None, "time_completed": None,
-    "is_lucky": 0, "chosen_tier": None, "chosen_tier_partner": None,
-    "status": "", "rerolls_remaining": None, "rerolls_used": 0, "winner": None,
+    "id": None,
+    "event_name": "",
+    "user1_ce_id": "",
+    "user2_ce_id": None,
+    "time_created": None,
+    "time_due": None,
+    "time_completed": None,
+    "is_lucky": 0,
+    "chosen_tier": None,
+    "chosen_tier_partner": None,
+    "status": "",
+    "rerolls_remaining": None,
+    "rerolls_used": 0,
+    "winner": None,
 }
 
 
@@ -175,7 +185,6 @@ def upsert_game(row: dict) -> None:
         row,
     )
     conn.commit()
-
 
 
 def upsert_games_bulk(rows: list[dict]) -> None:
@@ -226,22 +235,26 @@ def get_game_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM games").fetchall()]
 
 
-
 def delete_game(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM games WHERE ce_id = ?", (ce_id,))
     conn.commit()
 
 
-
 def delete_game_cascade(ce_id: str) -> None:
     conn = get_connection()
-    obj_ids = [r[0] for r in conn.execute(
-        "SELECT ce_id FROM objectives WHERE game_ce_id = ?", (ce_id,)
-    ).fetchall()]
+    obj_ids = [
+        r[0]
+        for r in conn.execute(
+            "SELECT ce_id FROM objectives WHERE game_ce_id = ?", (ce_id,)
+        ).fetchall()
+    ]
     if obj_ids:
         ph = ",".join("?" * len(obj_ids))
-        conn.execute(f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({ph})", obj_ids)
+        conn.execute(
+            f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({ph})",
+            obj_ids,
+        )
     conn.execute("DELETE FROM objectives WHERE game_ce_id = ?", (ce_id,))
     conn.execute("DELETE FROM categories WHERE game_id = ?", (ce_id,))
     conn.execute("DELETE FROM games WHERE ce_id = ?", (ce_id,))
@@ -297,7 +310,6 @@ def get_objective_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM objectives").fetchall()]
 
 
-
 def delete_objectives_by_ids(ce_ids: list[str]) -> None:
     if not ce_ids:
         return
@@ -321,7 +333,6 @@ def upsert_requirements_bulk(rows: list[dict]) -> None:
         rows,
     )
     conn.commit()
-
 
 
 def delete_requirements_by_objectives(objective_ce_ids: list[str]) -> None:
@@ -365,12 +376,10 @@ def upsert_categories_bulk(rows: list[dict]) -> None:
     conn.commit()
 
 
-
 def delete_categories_by_game(game_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM categories WHERE game_id = ?", (game_id,))
     conn.commit()
-
 
 
 def delete_categories_by_games(game_ids: list[str]) -> None:
@@ -410,7 +419,6 @@ def upsert_user(row: dict) -> None:
         row,
     )
     conn.commit()
-
 
 
 def upsert_users_bulk(rows: list[dict]) -> None:
@@ -468,12 +476,10 @@ def get_user_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM users").fetchall()]
 
 
-
 def delete_user(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM users WHERE ce_id = ?", (ce_id,))
     conn.commit()
-
 
 
 def delete_user_cascade(ce_id: str) -> None:
@@ -511,12 +517,10 @@ def get_user_games(user_ce_id: str) -> list[dict]:
     ]
 
 
-
 def delete_user_games(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_games WHERE user_ce_id = ?", (user_ce_id,))
     conn.commit()
-
 
 
 def delete_user_games_by_game_ids(game_ids: list[str]) -> None:
@@ -524,7 +528,9 @@ def delete_user_games_by_game_ids(game_ids: list[str]) -> None:
         return
     conn = get_connection()
     placeholders = ",".join("?" * len(game_ids))
-    conn.execute(f"DELETE FROM user_games WHERE game_ce_id IN ({placeholders})", game_ids)
+    conn.execute(
+        f"DELETE FROM user_games WHERE game_ce_id IN ({placeholders})", game_ids
+    )
     conn.commit()
 
 
@@ -555,12 +561,10 @@ def get_user_objectives(user_ce_id: str) -> list[dict]:
     ]
 
 
-
 def delete_user_objectives(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_objectives WHERE user_ce_id = ?", (user_ce_id,))
     conn.commit()
-
 
 
 def delete_user_objectives_by_objective_ids(objective_ids: list[str]) -> None:
@@ -568,7 +572,10 @@ def delete_user_objectives_by_objective_ids(objective_ids: list[str]) -> None:
         return
     conn = get_connection()
     placeholders = ",".join("?" * len(objective_ids))
-    conn.execute(f"DELETE FROM user_objectives WHERE objective_ce_id IN ({placeholders})", objective_ids)
+    conn.execute(
+        f"DELETE FROM user_objectives WHERE objective_ce_id IN ({placeholders})",
+        objective_ids,
+    )
     conn.commit()
 
 
@@ -596,7 +603,6 @@ def upsert_roll(row: dict) -> None:
         row,
     )
     conn.commit()
-
 
 
 def upsert_rolls_bulk(rows: list[dict]) -> None:
@@ -675,13 +681,11 @@ def get_roll_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT id FROM rolls").fetchall()]
 
 
-
 def delete_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
     conn.execute("DELETE FROM rolls WHERE id = ?", (roll_id,))
     conn.commit()
-
 
 
 def delete_rolls_by_ids(roll_ids: list[str]) -> None:
@@ -734,12 +738,10 @@ def get_roll_games_by_ids(roll_ids: list[str]) -> list[dict]:
     ]
 
 
-
 def delete_roll_games_by_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
     conn.commit()
-
 
 
 def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
@@ -795,7 +797,6 @@ def _fetch_all_rows(sb_client, table_name: str) -> list[dict]:
             break
         offset += _SUPABASE_PAGE_SIZE
     return all_rows
-
 
 
 def rebuild_from_supabase() -> dict:
@@ -892,11 +893,15 @@ def run_integrity_check() -> dict:
             missing_list = list(missing_locally)
             for i in range(0, len(missing_list), 100):
                 chunk = missing_list[i : i + 100]
-                data = sb.table(sb_table).select().in_(id_col, chunk).execute().data or []
+                data = (
+                    sb.table(sb_table).select().in_(id_col, chunk).execute().data or []
+                )
                 if data:
                     local_cols = {
                         row[1]
-                        for row in conn.execute(f'PRAGMA table_info("{local_table}")').fetchall()
+                        for row in conn.execute(
+                            f'PRAGMA table_info("{local_table}")'
+                        ).fetchall()
                     }
                     cols = [c for c in data[0].keys() if c in local_cols]
                     col_names = ",".join(f'"{c}"' for c in cols)
@@ -918,7 +923,8 @@ def run_integrity_check() -> dict:
             # Cascade to child tables
             if local_table == "games":
                 obj_ids = [
-                    r[0] for r in conn.execute(
+                    r[0]
+                    for r in conn.execute(
                         f"SELECT ce_id FROM objectives WHERE game_ce_id IN ({placeholders})",
                         stale_list,
                     ).fetchall()
@@ -978,31 +984,42 @@ def _validate_schema(conn: sqlite3.Connection) -> list[str]:
         if not statement.startswith("CREATE TABLE"):
             continue
 
-        match = re.search(r'CREATE TABLE IF NOT EXISTS (\w+)', statement)
+        match = re.search(r"CREATE TABLE IF NOT EXISTS (\w+)", statement)
         if not match:
             continue
         table_name = match.group(1)
 
         existing_cols = {
-            row[1] for row in conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+            row[1]
+            for row in conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
         }
 
         col_defs = re.findall(r'^\s+"?(\w+)"?\s+\w+', statement, re.MULTILINE)
         if not col_defs:
-            col_defs = re.findall(r'^\s+(\w+)\s+\w+', statement, re.MULTILINE)
+            col_defs = re.findall(r"^\s+(\w+)\s+\w+", statement, re.MULTILINE)
 
         for col in col_defs:
             if col.upper() in ("PRIMARY", "CREATE", "TABLE", "IF", "NOT", "EXISTS"):
                 continue
             if col not in existing_cols:
-                col_line = re.search(rf'^\s+"?{col}"?\s+(.+?)(?:,\s*$|\s*$|\s*\))', statement, re.MULTILINE)
+                col_line = re.search(
+                    rf'^\s+"?{col}"?\s+(.+?)(?:,\s*$|\s*$|\s*\))',
+                    statement,
+                    re.MULTILINE,
+                )
                 if col_line:
                     col_type = col_line.group(1).rstrip(",").strip()
                     try:
-                        conn.execute(f'ALTER TABLE "{table_name}" ADD COLUMN "{col}" {col_type}')
+                        conn.execute(
+                            f'ALTER TABLE "{table_name}" ADD COLUMN "{col}" {col_type}'
+                        )
                         fixes.append(f"added {col} to {table_name}")
-                        logger.info("Schema fix: added column %s to %s", col, table_name)
+                        logger.info(
+                            "Schema fix: added column %s to %s", col, table_name
+                        )
                     except Exception as e:
-                        logger.error("Failed to add column %s to %s: %s", col, table_name, e)
+                        logger.error(
+                            "Failed to add column %s to %s: %s", col, table_name, e
+                        )
 
     return fixes

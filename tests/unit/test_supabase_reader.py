@@ -150,18 +150,38 @@ class TestEntryShape:
 class TestTierPlacement:
     @pytest.mark.parametrize(
         "po_points, expected_tier",
-        [(10, "1"), (25, "2"), (50, "3"), (100, "4"), (200, "5"), (400, "6"), (800, "7")],
+        [
+            (10, "1"),
+            (25, "2"),
+            (50, "3"),
+            (100, "4"),
+            (200, "5"),
+            (400, "6"),
+            (800, "7"),
+        ],
     )
-    def test_game_placed_in_correct_tier(self, po_points: int, expected_tier: str) -> None:
+    def test_game_placed_in_correct_tier(
+        self, po_points: int, expected_tier: str
+    ) -> None:
         game = _steam_game(GAME_A, po_points=po_points, categories=["Action"])
         result = _run([_tier_row(GAME_A)], [game])
         assert len(result[expected_tier]["Action"]) == 1
 
     @pytest.mark.parametrize(
         "po_points, expected_tier",
-        [(10, "1"), (25, "2"), (50, "3"), (100, "4"), (200, "5"), (400, "6"), (800, "7")],
+        [
+            (10, "1"),
+            (25, "2"),
+            (50, "3"),
+            (100, "4"),
+            (200, "5"),
+            (400, "6"),
+            (800, "7"),
+        ],
     )
-    def test_game_absent_from_other_tiers(self, po_points: int, expected_tier: str) -> None:
+    def test_game_absent_from_other_tiers(
+        self, po_points: int, expected_tier: str
+    ) -> None:
         game = _steam_game(GAME_A, po_points=po_points, categories=["Action"])
         result = _run([_tier_row(GAME_A)], [game])
         for tier in ALL_TIERS:
@@ -198,7 +218,9 @@ class TestExclusions:
 
     def test_non_steam_game_excluded(self) -> None:
         obj = make_objective(ce_id="obj-001", game_ce_id=GAME_A, point_value=10)
-        game = make_game(ce_id=GAME_A, categories=["Action"], objectives=[obj], platform="other")
+        game = make_game(
+            ce_id=GAME_A, categories=["Action"], objectives=[obj], platform="other"
+        )
         result = _run([_tier_row(GAME_A)], [game])
         for tier in ALL_TIERS:
             assert result[tier]["Action"] == []

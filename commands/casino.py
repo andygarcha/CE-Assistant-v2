@@ -381,9 +381,7 @@ async def co_op_roll(
         return await interaction.followup.send(
             "Sorry, you're not registered in the CE Assistant database. Please run `/register` first!"
         )
-    partner: CEUser | None = SupabaseReader.get_user(
-        partner_.id, use_discord_id=True
-    )
+    partner: CEUser | None = SupabaseReader.get_user(partner_.id, use_discord_id=True)
     if partner is None:
         return await interaction.followup.send(
             "Sorry, your partner is not registered in the CE Assistant database. Please have them "
@@ -540,29 +538,21 @@ async def co_op_roll(
     if event_name == "Destiny Alignment":
         _game = hm.get_item_from_list(result.games[0], database_name)
         if _game is None:
-            SupabaseReader.kill_pending(
-                event_name, user.ce_id, partner.ce_id
-            )
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(content="Error 7. Please contact andy.")
         tier = _game.tier_num
         if tier == 0:
-            SupabaseReader.kill_pending(
-                event_name, user.ce_id, partner.ce_id
-            )
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(
                 content="Oops! I accidentally rolled you a T0."
             )
         _game2 = hm.get_item_from_list(result.games[1], database_name)
         if _game2 is None:
-            SupabaseReader.kill_pending(
-                event_name, user.ce_id, partner.ce_id
-            )
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(content="Error 7. Please contact andy.")
         tier_partner = _game2.tier_num
         if tier_partner == 0:
-            SupabaseReader.kill_pending(
-                event_name, user.ce_id, partner.ce_id
-            )
+            SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
             return await confirm_msg.edit(
                 content="Oops! I accidentally rolled you a T0."
             )

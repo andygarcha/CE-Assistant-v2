@@ -110,13 +110,21 @@ def _seed_game():
 
 def _seed_user():
     LocalCache.upsert_user(USER_DB_ROW)
-    LocalCache.upsert_user_games_bulk([
-        {"user_ce_id": "user-001", "game_ce_id": "game-001", "updated_at_CE": ""},
-    ])
-    LocalCache.upsert_user_objectives_bulk([
-        {"user_ce_id": "user-001", "objective_ce_id": "obj-001",
-         "user_points": 25, "updated_at_CE": ""},
-    ])
+    LocalCache.upsert_user_games_bulk(
+        [
+            {"user_ce_id": "user-001", "game_ce_id": "game-001", "updated_at_CE": ""},
+        ]
+    )
+    LocalCache.upsert_user_objectives_bulk(
+        [
+            {
+                "user_ce_id": "user-001",
+                "objective_ce_id": "obj-001",
+                "user_points": 25,
+                "updated_at_CE": "",
+            },
+        ]
+    )
 
 
 def _seed_roll():
@@ -234,7 +242,7 @@ class TestGetListFromCache:
         try:
             with patch.object(SupabaseReader, "supabase"):
                 with pytest.raises(Exception):
-                    SupabaseReader.get_list("invalid")
+                    SupabaseReader.get_list("invalid")  # type: ignore[arg-type]
         finally:
             _teardown_cache(tmpdir)
 
@@ -275,10 +283,14 @@ class TestGetDatabaseNameFromCache:
         tmpdir = _init_cache()
         try:
             _seed_game()
-            LocalCache.upsert_game({**GAME_DB_ROW, "ce_id": "game-002", "name": "Hollow Knight"})
-            LocalCache.upsert_categories_bulk([
-                {"game_id": "game-002", "category": "Action", "index": 0},
-            ])
+            LocalCache.upsert_game(
+                {**GAME_DB_ROW, "ce_id": "game-002", "name": "Hollow Knight"}
+            )
+            LocalCache.upsert_categories_bulk(
+                [
+                    {"game_id": "game-002", "category": "Action", "index": 0},
+                ]
+            )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_database_name()
             assert len(result) == 2
@@ -379,9 +391,11 @@ class TestGetGamesBulkFromCache:
         try:
             _seed_game()
             LocalCache.upsert_game({**GAME_DB_ROW, "ce_id": "game-002", "name": "HK"})
-            LocalCache.upsert_categories_bulk([
-                {"game_id": "game-002", "category": "Action", "index": 0},
-            ])
+            LocalCache.upsert_categories_bulk(
+                [
+                    {"game_id": "game-002", "category": "Action", "index": 0},
+                ]
+            )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_games_bulk(["game-001", "game-002"])
             assert len(result) == 2
@@ -437,10 +451,19 @@ class TestGetCheckableRollsFromCache:
         tmpdir = _init_cache()
         try:
             for status in ["current", "pending", "won", "removed"]:
-                LocalCache.upsert_roll({**ROLL_DB_ROW, "id": f"r-{status}", "status": status})
-                LocalCache.upsert_roll_games_bulk([
-                    {"roll_id": f"r-{status}", "game_id": "game-001", "index": 0, "rolled_at": ""},
-                ])
+                LocalCache.upsert_roll(
+                    {**ROLL_DB_ROW, "id": f"r-{status}", "status": status}
+                )
+                LocalCache.upsert_roll_games_bulk(
+                    [
+                        {
+                            "roll_id": f"r-{status}",
+                            "game_id": "game-001",
+                            "index": 0,
+                            "rolled_at": "",
+                        },
+                    ]
+                )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_checkable_rolls()
             assert len(result) == 2
@@ -456,9 +479,16 @@ class TestGetAllRollsFromCache:
         try:
             for i in range(3):
                 LocalCache.upsert_roll({**ROLL_DB_ROW, "id": f"r{i}"})
-                LocalCache.upsert_roll_games_bulk([
-                    {"roll_id": f"r{i}", "game_id": "game-001", "index": 0, "rolled_at": ""},
-                ])
+                LocalCache.upsert_roll_games_bulk(
+                    [
+                        {
+                            "roll_id": f"r{i}",
+                            "game_id": "game-001",
+                            "index": 0,
+                            "rolled_at": "",
+                        },
+                    ]
+                )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_all_rolls()
             assert len(result) == 3
@@ -473,7 +503,9 @@ class TestGetAllRollsFromCache:
                 rid = f"r-{name.replace(' ', '')}"
                 LocalCache.upsert_roll({**ROLL_DB_ROW, "id": rid, "event_name": name})
             with patch.object(SupabaseReader, "supabase"):
-                result = SupabaseReader.get_all_rolls(event_names=["Soul Mates", "Triple Threat"])
+                result = SupabaseReader.get_all_rolls(
+                    event_names=["Soul Mates", "Triple Threat"]
+                )
             assert len(result) == 2
             names = {r.roll_name for r in result}
             assert names == {"Soul Mates", "Triple Threat"}
@@ -486,7 +518,9 @@ class TestGetUserRollsFromCache:
         tmpdir = _init_cache()
         try:
             _seed_roll()
-            LocalCache.upsert_roll({**ROLL_DB_ROW, "id": "roll-other", "user1_ce_id": "user-999"})
+            LocalCache.upsert_roll(
+                {**ROLL_DB_ROW, "id": "roll-other", "user1_ce_id": "user-999"}
+            )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_user_rolls("user-001")
             assert len(result) == 1
@@ -500,9 +534,11 @@ class TestGetDatabaseTierFromCache:
         tmpdir = _init_cache()
         try:
             _seed_game()
-            LocalCache.upsert_tier_bulk([
-                {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
-            ])
+            LocalCache.upsert_tier_bulk(
+                [
+                    {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
+                ]
+            )
             with patch.object(SupabaseReader, "supabase"):
                 database_name = SupabaseReader.get_database_name()
                 result = SupabaseReader.get_database_tier(database_name)
@@ -560,7 +596,9 @@ class TestDumpGameDualWrite:
 
             # objectiveRequirements table
             cached_reqs = LocalCache.get_requirements_by_objectives(["obj-new"])
-            achievement_reqs = [r for r in cached_reqs if r["requirement_type"] == "achievement"]
+            achievement_reqs = [
+                r for r in cached_reqs if r["requirement_type"] == "achievement"
+            ]
             custom_reqs = [r for r in cached_reqs if r["requirement_type"] == "custom"]
             assert len(achievement_reqs) == 2
             assert {r["data"] for r in achievement_reqs} == {"ach-1", "ach-2"}
@@ -820,8 +858,16 @@ class TestAddPendingDualWrite:
 
                 SupabaseReader.add_pending("Soul Mates", "user-001", "user-002")
 
-            rolls_u1 = [r for r in LocalCache.get_rolls_by_user("user-001") if r["status"] == "pending"]
-            rolls_u2 = [r for r in LocalCache.get_rolls_by_user("user-002") if r["status"] == "pending"]
+            rolls_u1 = [
+                r
+                for r in LocalCache.get_rolls_by_user("user-001")
+                if r["status"] == "pending"
+            ]
+            rolls_u2 = [
+                r
+                for r in LocalCache.get_rolls_by_user("user-002")
+                if r["status"] == "pending"
+            ]
             assert len(rolls_u1) == 1
             assert len(rolls_u2) == 1
         finally:
@@ -832,16 +878,25 @@ class TestKillPendingDualWrite:
     def test_deletes_roll_and_roll_games_from_cache(self):
         tmpdir = _init_cache()
         try:
-            LocalCache.upsert_roll({
-                **ROLL_DB_ROW,
-                "id": "pending-001",
-                "event_name": "Soul Mates",
-                "user1_ce_id": "user-001",
-                "status": "pending",
-            })
-            LocalCache.upsert_roll_games_bulk([
-                {"roll_id": "pending-001", "game_id": "game-001", "index": 0, "rolled_at": ""},
-            ])
+            LocalCache.upsert_roll(
+                {
+                    **ROLL_DB_ROW,
+                    "id": "pending-001",
+                    "event_name": "Soul Mates",
+                    "user1_ce_id": "user-001",
+                    "status": "pending",
+                }
+            )
+            LocalCache.upsert_roll_games_bulk(
+                [
+                    {
+                        "roll_id": "pending-001",
+                        "game_id": "game-001",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 mock_table = MagicMock()
@@ -874,9 +929,15 @@ class TestGetUsersBulkFromCache:
             for i in range(3):
                 uid = f"user-{i:03d}"
                 LocalCache.upsert_user({**USER_DB_ROW, "ce_id": uid, "discord_id": i})
-                LocalCache.upsert_user_games_bulk([
-                    {"user_ce_id": uid, "game_ce_id": "game-001", "updated_at_CE": ""},
-                ])
+                LocalCache.upsert_user_games_bulk(
+                    [
+                        {
+                            "user_ce_id": uid,
+                            "game_ce_id": "game-001",
+                            "updated_at_CE": "",
+                        },
+                    ]
+                )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_users_bulk(
                     ["user-000", "user-001", "user-002"]
@@ -1013,9 +1074,7 @@ class TestGetGamesBulkObjectives:
         try:
             _seed_game()
             with patch.object(SupabaseReader, "supabase"):
-                result = SupabaseReader.get_games_bulk(
-                    ["game-001", "nonexistent"]
-                )
+                result = SupabaseReader.get_games_bulk(["game-001", "nonexistent"])
             assert len(result) == 1
         finally:
             _teardown_cache(tmpdir)
@@ -1027,10 +1086,16 @@ class TestGetGameCustomRequirements:
         try:
             LocalCache.upsert_game(GAME_DB_ROW)
             LocalCache.upsert_objectives_bulk([OBJECTIVE_DB_ROW])
-            LocalCache.upsert_requirements_bulk([
-                {"objective_ce_id": "obj-001", "requirement_type": "custom",
-                 "data": "Beat all chapters without dying", "updated_at_CE": "2026-01-01"},
-            ])
+            LocalCache.upsert_requirements_bulk(
+                [
+                    {
+                        "objective_ce_id": "obj-001",
+                        "requirement_type": "custom",
+                        "data": "Beat all chapters without dying",
+                        "updated_at_CE": "2026-01-01",
+                    },
+                ]
+            )
             LocalCache.upsert_categories_bulk(CATEGORY_DB_ROWS)
 
             with patch.object(SupabaseReader, "supabase"):
@@ -1046,21 +1111,35 @@ class TestGetGameCustomRequirements:
         try:
             LocalCache.upsert_game(GAME_DB_ROW)
             LocalCache.upsert_objectives_bulk([OBJECTIVE_DB_ROW])
-            LocalCache.upsert_requirements_bulk([
-                {"objective_ce_id": "obj-001", "requirement_type": "achievement",
-                 "data": "ach-1", "updated_at_CE": ""},
-                {"objective_ce_id": "obj-001", "requirement_type": "achievement",
-                 "data": "ach-2", "updated_at_CE": ""},
-                {"objective_ce_id": "obj-001", "requirement_type": "custom",
-                 "data": "Custom requirement text", "updated_at_CE": ""},
-            ])
+            LocalCache.upsert_requirements_bulk(
+                [
+                    {
+                        "objective_ce_id": "obj-001",
+                        "requirement_type": "achievement",
+                        "data": "ach-1",
+                        "updated_at_CE": "",
+                    },
+                    {
+                        "objective_ce_id": "obj-001",
+                        "requirement_type": "achievement",
+                        "data": "ach-2",
+                        "updated_at_CE": "",
+                    },
+                    {
+                        "objective_ce_id": "obj-001",
+                        "requirement_type": "custom",
+                        "data": "Custom requirement text",
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
             LocalCache.upsert_categories_bulk(CATEGORY_DB_ROWS)
 
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_game("game-001")
             assert result is not None
             obj = result.all_objectives[0]
-            assert set(obj.achievement_ce_ids) == {"ach-1", "ach-2"}
+            assert set(obj.achievement_ce_ids or []) == {"ach-1", "ach-2"}
             assert obj.requirements == "Custom requirement text"
         finally:
             _teardown_cache(tmpdir)
@@ -1071,10 +1150,22 @@ class TestGetAllRollsGamesAttached:
         tmpdir = _init_cache()
         try:
             LocalCache.upsert_roll(ROLL_DB_ROW)
-            LocalCache.upsert_roll_games_bulk([
-                {"roll_id": "roll-001", "game_id": "game-001", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-001", "game_id": "game-002", "index": 1, "rolled_at": ""},
-            ])
+            LocalCache.upsert_roll_games_bulk(
+                [
+                    {
+                        "roll_id": "roll-001",
+                        "game_id": "game-001",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-001",
+                        "game_id": "game-002",
+                        "index": 1,
+                        "rolled_at": "",
+                    },
+                ]
+            )
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_all_rolls()
             assert len(result) == 1
@@ -1101,9 +1192,11 @@ class TestGetDatabaseTierStructure:
         tmpdir = _init_cache()
         try:
             _seed_game()
-            LocalCache.upsert_tier_bulk([
-                {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
-            ])
+            LocalCache.upsert_tier_bulk(
+                [
+                    {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
+                ]
+            )
             with patch.object(SupabaseReader, "supabase"):
                 database_name = SupabaseReader.get_database_name()
                 result = SupabaseReader.get_database_tier(database_name)
@@ -1117,9 +1210,11 @@ class TestGetDatabaseTierStructure:
         tmpdir = _init_cache()
         try:
             _seed_game()
-            LocalCache.upsert_tier_bulk([
-                {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
-            ])
+            LocalCache.upsert_tier_bulk(
+                [
+                    {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
+                ]
+            )
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 database_name = SupabaseReader.get_database_name()
                 SupabaseReader.get_database_tier(database_name)
@@ -1196,7 +1291,9 @@ class TestBulkDumpUsersDualWrite:
                     make_user_game(
                         ce_id="game-001",
                         user_objectives=[
-                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=10),
+                            make_user_objective(
+                                ce_id="obj-001", game_ce_id="game-001", user_points=10
+                            ),
                         ],
                     ),
                 ],
@@ -1261,7 +1358,11 @@ class TestBulkDumpRollsDualWrite:
 
             cached_games = LocalCache.get_roll_games(roll._id)
             assert len(cached_games) == 3
-            assert [g["game_id"] for g in cached_games] == ["game-a", "game-b", "game-c"]
+            assert [g["game_id"] for g in cached_games] == [
+                "game-a",
+                "game-b",
+                "game-c",
+            ]
         finally:
             _teardown_cache(tmpdir)
 
@@ -1306,11 +1407,19 @@ class TestAsyncWrappersRemoved:
 
     def test_no_async_wrappers_on_module(self):
         async_names = [
-            "get_user_async", "get_game_async", "get_list_async",
-            "get_database_name_async", "get_database_user_async",
-            "get_database_tier_async", "dump_user_async", "dump_game_async",
-            "dump_roll_async", "bulk_dump_rolls_async", "bulk_dump_users_async",
-            "add_pending_async", "kill_pending_async",
+            "get_user_async",
+            "get_game_async",
+            "get_list_async",
+            "get_database_name_async",
+            "get_database_user_async",
+            "get_database_tier_async",
+            "dump_user_async",
+            "dump_game_async",
+            "dump_roll_async",
+            "bulk_dump_rolls_async",
+            "bulk_dump_users_async",
+            "add_pending_async",
+            "kill_pending_async",
         ]
         for name in async_names:
             assert not hasattr(SupabaseReader, name), (
@@ -1324,10 +1433,9 @@ class TestAsyncWrappersRemoved:
 
     def test_asyncio_not_imported(self):
         import inspect
+
         source = inspect.getsource(SupabaseReader)
-        assert "asyncio" not in source, (
-            "SupabaseReader should not import asyncio"
-        )
+        assert "asyncio" not in source, "SupabaseReader should not import asyncio"
 
 
 class TestThreadingRemovedFromLocalCache:
@@ -1345,20 +1453,18 @@ class TestThreadingRemovedFromLocalCache:
         )
 
     def test_no_get_lock_function(self):
-        assert not hasattr(LocalCache, "get_lock"), (
-            "get_lock() should be removed"
-        )
+        assert not hasattr(LocalCache, "get_lock"), "get_lock() should be removed"
 
     def test_threading_not_imported(self):
         import inspect
+
         source = inspect.getsource(LocalCache)
-        assert "threading" not in source, (
-            "LocalCache should not import threading"
-        )
+        assert "threading" not in source, "LocalCache should not import threading"
 
     def test_sqlite_uses_default_same_thread(self):
         """Without threading, check_same_thread should be True (the default)."""
         import inspect
+
         source = inspect.getsource(LocalCache)
         assert "check_same_thread" not in source, (
             "check_same_thread=False should be removed — single-thread access only"
@@ -1381,7 +1487,9 @@ class TestDumpUserDualWrite:
                     make_user_game(
                         ce_id="game-001",
                         user_objectives=[
-                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=15),
+                            make_user_objective(
+                                ce_id="obj-001", game_ce_id="game-001", user_points=15
+                            ),
                         ],
                     ),
                 ],
@@ -1462,7 +1570,9 @@ class TestGetUsersBulkNoRolls:
             _seed_user()
             _seed_roll()
             with patch.object(SupabaseReader, "supabase"):
-                result = SupabaseReader.get_users_bulk(["user-001"], include_rolls=False)
+                result = SupabaseReader.get_users_bulk(
+                    ["user-001"], include_rolls=False
+                )
             assert len(result) == 1
             assert result[0].rolls == []
         finally:
@@ -1474,7 +1584,9 @@ class TestGetUsersBulkNoRolls:
             _seed_game()
             _seed_user()
             with patch.object(SupabaseReader, "supabase"):
-                result = SupabaseReader.get_users_bulk(["user-001"], include_rolls=False)
+                result = SupabaseReader.get_users_bulk(
+                    ["user-001"], include_rolls=False
+                )
             assert len(result) == 1
             assert len(result[0].owned_games) == 1
         finally:
@@ -1490,24 +1602,57 @@ class TestGetUserMultipleGames:
         try:
             # Seed two games with objectives
             _seed_game()
-            LocalCache.upsert_game({**GAME_DB_ROW, "ce_id": "game-002", "name": "Hollow Knight"})
-            LocalCache.upsert_objectives_bulk([
-                {**OBJECTIVE_DB_ROW, "ce_id": "obj-002", "game_ce_id": "game-002", "name": "Steel Soul"},
-            ])
-            LocalCache.upsert_categories_bulk([
-                {"game_id": "game-002", "category": "Action", "index": 0},
-            ])
+            LocalCache.upsert_game(
+                {**GAME_DB_ROW, "ce_id": "game-002", "name": "Hollow Knight"}
+            )
+            LocalCache.upsert_objectives_bulk(
+                [
+                    {
+                        **OBJECTIVE_DB_ROW,
+                        "ce_id": "obj-002",
+                        "game_ce_id": "game-002",
+                        "name": "Steel Soul",
+                    },
+                ]
+            )
+            LocalCache.upsert_categories_bulk(
+                [
+                    {"game_id": "game-002", "category": "Action", "index": 0},
+                ]
+            )
 
             # Seed user with both games
             LocalCache.upsert_user(USER_DB_ROW)
-            LocalCache.upsert_user_games_bulk([
-                {"user_ce_id": "user-001", "game_ce_id": "game-001", "updated_at_CE": ""},
-                {"user_ce_id": "user-001", "game_ce_id": "game-002", "updated_at_CE": ""},
-            ])
-            LocalCache.upsert_user_objectives_bulk([
-                {"user_ce_id": "user-001", "objective_ce_id": "obj-001", "user_points": 25, "updated_at_CE": ""},
-                {"user_ce_id": "user-001", "objective_ce_id": "obj-002", "user_points": 100, "updated_at_CE": ""},
-            ])
+            LocalCache.upsert_user_games_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "game_ce_id": "game-001",
+                        "updated_at_CE": "",
+                    },
+                    {
+                        "user_ce_id": "user-001",
+                        "game_ce_id": "game-002",
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
+            LocalCache.upsert_user_objectives_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "obj-001",
+                        "user_points": 25,
+                        "updated_at_CE": "",
+                    },
+                    {
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "obj-002",
+                        "user_points": 100,
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_user("user-001")
@@ -1594,13 +1739,27 @@ class TestBulkDumpUsersDeletesViaLocalCache:
             from tests.conftest import make_user, make_user_game, make_user_objective
 
             # Pre-seed an objective that should be cleared
-            LocalCache.upsert_user({"ce_id": "user-lock", "discord_id": 111,
-                "display_name": "LockTest", "image_avatar": None,
-                "steam_id": None, "created_at_CE": "", "updated_at_CE": ""})
-            LocalCache.upsert_user_objectives_bulk([{
-                "user_ce_id": "user-lock", "objective_ce_id": "obj-stale",
-                "user_points": 5, "updated_at_CE": "",
-            }])
+            LocalCache.upsert_user(
+                {
+                    "ce_id": "user-lock",
+                    "discord_id": 111,
+                    "display_name": "LockTest",
+                    "image_avatar": None,
+                    "steam_id": None,
+                    "created_at_CE": "",
+                    "updated_at_CE": "",
+                }
+            )
+            LocalCache.upsert_user_objectives_bulk(
+                [
+                    {
+                        "user_ce_id": "user-lock",
+                        "objective_ce_id": "obj-stale",
+                        "user_points": 5,
+                        "updated_at_CE": "",
+                    }
+                ]
+            )
 
             user = make_user(
                 ce_id="user-lock",
@@ -1609,7 +1768,9 @@ class TestBulkDumpUsersDeletesViaLocalCache:
                     make_user_game(
                         ce_id="game-001",
                         user_objectives=[
-                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=25),
+                            make_user_objective(
+                                ce_id="obj-001", game_ce_id="game-001", user_points=25
+                            ),
                         ],
                     ),
                 ],
@@ -1640,13 +1801,25 @@ class TestCleanDbUsesLocalCacheDeleteFunctions:
         try:
             # Create orphan user_game and user_objective
             LocalCache.upsert_user(USER_DB_ROW)
-            LocalCache.upsert_user_games_bulk([
-                {"user_ce_id": "user-001", "game_ce_id": "orphan-game", "updated_at_CE": ""},
-            ])
-            LocalCache.upsert_user_objectives_bulk([
-                {"user_ce_id": "user-001", "objective_ce_id": "orphan-obj",
-                 "user_points": 5, "updated_at_CE": ""},
-            ])
+            LocalCache.upsert_user_games_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "game_ce_id": "orphan-game",
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
+            LocalCache.upsert_user_objectives_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "orphan-obj",
+                        "user_points": 5,
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 mock_table = MagicMock()
@@ -1655,8 +1828,14 @@ class TestCleanDbUsesLocalCacheDeleteFunctions:
                 mock_table.in_.return_value = mock_table
                 mock_table.execute.return_value = MagicMock(data=[])
 
-                with patch.object(LocalCache, "delete_user_games_by_game_ids") as mock_ug, \
-                     patch.object(LocalCache, "delete_user_objectives_by_objective_ids") as mock_uo:
+                with (
+                    patch.object(
+                        LocalCache, "delete_user_games_by_game_ids"
+                    ) as mock_ug,
+                    patch.object(
+                        LocalCache, "delete_user_objectives_by_objective_ids"
+                    ) as mock_uo,
+                ):
                     SupabaseReader.clean_db()
 
                     mock_ug.assert_called_once()
@@ -1671,15 +1850,34 @@ class TestGetAllRollsUsesIndexing:
         even with multiple rolls — verifies dict-based indexing works."""
         tmpdir = _init_cache()
         try:
-            LocalCache.upsert_rolls_bulk([
-                {**ROLL_DB_ROW, "id": "roll-A", "event_name": "One Hell of a Day"},
-                {**ROLL_DB_ROW, "id": "roll-B", "event_name": "One Hell of a Week"},
-            ])
-            LocalCache.upsert_roll_games_bulk([
-                {"roll_id": "roll-A", "game_id": "game-aaa", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-B", "game_id": "game-bbb", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-B", "game_id": "game-ccc", "index": 1, "rolled_at": ""},
-            ])
+            LocalCache.upsert_rolls_bulk(
+                [
+                    {**ROLL_DB_ROW, "id": "roll-A", "event_name": "One Hell of a Day"},
+                    {**ROLL_DB_ROW, "id": "roll-B", "event_name": "One Hell of a Week"},
+                ]
+            )
+            LocalCache.upsert_roll_games_bulk(
+                [
+                    {
+                        "roll_id": "roll-A",
+                        "game_id": "game-aaa",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-B",
+                        "game_id": "game-bbb",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-B",
+                        "game_id": "game-ccc",
+                        "index": 1,
+                        "rolled_at": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase"):
                 rolls = SupabaseReader.get_all_rolls()
@@ -1694,14 +1892,28 @@ class TestGetAllRollsUsesIndexing:
         """get_checkable_rolls should correctly match roll_games."""
         tmpdir = _init_cache()
         try:
-            LocalCache.upsert_rolls_bulk([
-                {**ROLL_DB_ROW, "id": "roll-X", "status": "current"},
-                {**ROLL_DB_ROW, "id": "roll-Y", "status": "pending"},
-            ])
-            LocalCache.upsert_roll_games_bulk([
-                {"roll_id": "roll-X", "game_id": "game-x1", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-Y", "game_id": "game-y1", "index": 0, "rolled_at": ""},
-            ])
+            LocalCache.upsert_rolls_bulk(
+                [
+                    {**ROLL_DB_ROW, "id": "roll-X", "status": "current"},
+                    {**ROLL_DB_ROW, "id": "roll-Y", "status": "pending"},
+                ]
+            )
+            LocalCache.upsert_roll_games_bulk(
+                [
+                    {
+                        "roll_id": "roll-X",
+                        "game_id": "game-x1",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-Y",
+                        "game_id": "game-y1",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase"):
                 rolls = SupabaseReader.get_checkable_rolls()
@@ -1716,15 +1928,34 @@ class TestGetAllRollsUsesIndexing:
         """get_user_rolls should correctly match roll_games."""
         tmpdir = _init_cache()
         try:
-            LocalCache.upsert_rolls_bulk([
-                {**ROLL_DB_ROW, "id": "roll-u1", "user1_ce_id": "user-001"},
-                {**ROLL_DB_ROW, "id": "roll-u2", "user1_ce_id": "user-001"},
-            ])
-            LocalCache.upsert_roll_games_bulk([
-                {"roll_id": "roll-u1", "game_id": "game-r1", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-u2", "game_id": "game-r2", "index": 0, "rolled_at": ""},
-                {"roll_id": "roll-u2", "game_id": "game-r3", "index": 1, "rolled_at": ""},
-            ])
+            LocalCache.upsert_rolls_bulk(
+                [
+                    {**ROLL_DB_ROW, "id": "roll-u1", "user1_ce_id": "user-001"},
+                    {**ROLL_DB_ROW, "id": "roll-u2", "user1_ce_id": "user-001"},
+                ]
+            )
+            LocalCache.upsert_roll_games_bulk(
+                [
+                    {
+                        "roll_id": "roll-u1",
+                        "game_id": "game-r1",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-u2",
+                        "game_id": "game-r2",
+                        "index": 0,
+                        "rolled_at": "",
+                    },
+                    {
+                        "roll_id": "roll-u2",
+                        "game_id": "game-r3",
+                        "index": 1,
+                        "rolled_at": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase"):
                 rolls = SupabaseReader.get_user_rolls("user-001")
@@ -1763,9 +1994,15 @@ class TestCleanDbFromCache:
         try:
             # Create a user_game pointing to a game that doesn't exist
             LocalCache.upsert_user(USER_DB_ROW)
-            LocalCache.upsert_user_games_bulk([
-                {"user_ce_id": "user-001", "game_ce_id": "nonexistent-game", "updated_at_CE": ""},
-            ])
+            LocalCache.upsert_user_games_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "game_ce_id": "nonexistent-game",
+                        "updated_at_CE": "",
+                    },
+                ]
+            )
 
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 mock_table = MagicMock()

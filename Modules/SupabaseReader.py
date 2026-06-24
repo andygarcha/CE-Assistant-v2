@@ -38,7 +38,9 @@ supabase: Client = create_client(
 
 logger = logging.getLogger(__name__)
 
-_cache_path = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "data", "cache.db")
+_cache_path = _os.path.join(
+    _os.path.dirname(_os.path.dirname(__file__)), "data", "cache.db"
+)
 if not LocalCache.is_initialized():
     if not _os.path.exists(_cache_path):
         LocalCache.init(_cache_path)
@@ -172,10 +174,16 @@ def get_game(ce_id: str) -> CEGame | None:
 
     objectives_json = LocalCache.get_objectives_by_game(ce_id)
     objective_ids = [o["ce_id"] for o in objectives_json]
-    requirements_json = LocalCache.get_requirements_by_objectives(objective_ids) if objective_ids else []
+    requirements_json = (
+        LocalCache.get_requirements_by_objectives(objective_ids)
+        if objective_ids
+        else []
+    )
     categories_json = LocalCache.get_categories_by_game(ce_id)
 
-    return __supabase_to_game(game_json, objectives_json, requirements_json, categories_json)
+    return __supabase_to_game(
+        game_json, objectives_json, requirements_json, categories_json
+    )
 
 
 # GET USER
@@ -212,9 +220,15 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
 def get_database_name() -> list[CEGame]:
     conn = LocalCache.get_connection()
     games_json = [dict(r) for r in conn.execute("SELECT * FROM games").fetchall()]
-    objectives_json = [dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()]
-    requirements_json = [dict(r) for r in conn.execute("SELECT * FROM objective_requirements").fetchall()]
-    categories_json = [dict(r) for r in conn.execute("SELECT * FROM categories").fetchall()]
+    objectives_json = [
+        dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()
+    ]
+    requirements_json = [
+        dict(r) for r in conn.execute("SELECT * FROM objective_requirements").fetchall()
+    ]
+    categories_json = [
+        dict(r) for r in conn.execute("SELECT * FROM categories").fetchall()
+    ]
 
     objectives_by_game: dict[str, list[dict]] = {}
     for o in objectives_json:
@@ -250,22 +264,32 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
 
     # Bulk-fetch related data
     gid_ph = ",".join("?" * len(game_ce_ids))
-    objectives_json = [dict(r) for r in conn.execute(
-        f"SELECT * FROM objectives WHERE game_ce_id IN ({gid_ph})", game_ce_ids
-    ).fetchall()]
+    objectives_json = [
+        dict(r)
+        for r in conn.execute(
+            f"SELECT * FROM objectives WHERE game_ce_id IN ({gid_ph})", game_ce_ids
+        ).fetchall()
+    ]
 
     objective_ids = [o["ce_id"] for o in objectives_json]
     if objective_ids:
         oid_ph = ",".join("?" * len(objective_ids))
-        requirements_json = [dict(r) for r in conn.execute(
-            f"SELECT * FROM objective_requirements WHERE objective_ce_id IN ({oid_ph})", objective_ids
-        ).fetchall()]
+        requirements_json = [
+            dict(r)
+            for r in conn.execute(
+                f"SELECT * FROM objective_requirements WHERE objective_ce_id IN ({oid_ph})",
+                objective_ids,
+            ).fetchall()
+        ]
     else:
         requirements_json = []
 
-    categories_json = [dict(r) for r in conn.execute(
-        f"SELECT * FROM categories WHERE game_id IN ({gid_ph})", game_ce_ids
-    ).fetchall()]
+    categories_json = [
+        dict(r)
+        for r in conn.execute(
+            f"SELECT * FROM categories WHERE game_id IN ({gid_ph})", game_ce_ids
+        ).fetchall()
+    ]
 
     # Index by game/objective
     categories_by_game: dict[str, list[dict]] = {}
@@ -314,11 +338,19 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
 def get_database_user() -> list[CEUser]:
     conn = LocalCache.get_connection()
     response_user = [dict(r) for r in conn.execute("SELECT * FROM users").fetchall()]
-    response_ugames = [dict(r) for r in conn.execute("SELECT * FROM user_games").fetchall()]
-    response_uobjectives = [dict(r) for r in conn.execute("SELECT * FROM user_objectives").fetchall()]
+    response_ugames = [
+        dict(r) for r in conn.execute("SELECT * FROM user_games").fetchall()
+    ]
+    response_uobjectives = [
+        dict(r) for r in conn.execute("SELECT * FROM user_objectives").fetchall()
+    ]
     response_rolls = [dict(r) for r in conn.execute("SELECT * FROM rolls").fetchall()]
-    response_rgames = [dict(r) for r in conn.execute("SELECT * FROM roll_games").fetchall()]
-    response_objectives = [dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()]
+    response_rgames = [
+        dict(r) for r in conn.execute("SELECT * FROM roll_games").fetchall()
+    ]
+    response_objectives = [
+        dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()
+    ]
 
     # Index by user for O(1) lookups
     ugames_by_user: dict[str, list[dict]] = {}
@@ -346,10 +378,14 @@ def get_database_user() -> list[CEUser]:
         roll_ids = {r["id"] for r in rolls}
         rgames = [rg for rid in roll_ids for rg in rgames_by_roll.get(rid, [])]
         obj_ids = {uo["objective_ce_id"] for uo in uobjectives}
-        user_objectives = [objectives_index[oid] for oid in obj_ids if oid in objectives_index]
+        user_objectives = [
+            objectives_index[oid] for oid in obj_ids if oid in objectives_index
+        ]
 
         _users.append(
-            __supabase_to_user(user, ugames, uobjectives, rolls, rgames, user_objectives)
+            __supabase_to_user(
+                user, ugames, uobjectives, rolls, rgames, user_objectives
+            )
         )
 
     return _users
@@ -368,12 +404,18 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
 
     # Bulk-fetch related data
     uid_ph = ",".join("?" * len(user_ce_ids))
-    userGames_json = [dict(r) for r in conn.execute(
-        f"SELECT * FROM user_games WHERE user_ce_id IN ({uid_ph})", user_ce_ids
-    ).fetchall()]
-    userObjectives_json = [dict(r) for r in conn.execute(
-        f"SELECT * FROM user_objectives WHERE user_ce_id IN ({uid_ph})", user_ce_ids
-    ).fetchall()]
+    userGames_json = [
+        dict(r)
+        for r in conn.execute(
+            f"SELECT * FROM user_games WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+        ).fetchall()
+    ]
+    userObjectives_json = [
+        dict(r)
+        for r in conn.execute(
+            f"SELECT * FROM user_objectives WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+        ).fetchall()
+    ]
 
     ugames_by_user: dict[str, list[dict]] = {}
     for ug in userGames_json:
@@ -383,7 +425,9 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
         uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
 
     objective_ids = list({o["objective_ce_id"] for o in userObjectives_json})
-    objectives_json = LocalCache.get_objectives_by_ids(objective_ids) if objective_ids else []
+    objectives_json = (
+        LocalCache.get_objectives_by_ids(objective_ids) if objective_ids else []
+    )
 
     if include_rolls:
         all_rolls = []
@@ -424,7 +468,12 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
 
         out_users.append(
             __supabase_to_user(
-                user_json, ugames, uobjectives, user_rolls, user_rollgames, objectives_json,
+                user_json,
+                ugames,
+                uobjectives,
+                user_rolls,
+                user_rollgames,
+                objectives_json,
             )
         )
 
@@ -1355,14 +1404,20 @@ def clean_db():
 
     conn = LocalCache.get_connection()
     user_games = [
-        dict(r) for r in conn.execute("SELECT user_ce_id, game_ce_id FROM user_games").fetchall()
+        dict(r)
+        for r in conn.execute(
+            "SELECT user_ce_id, game_ce_id FROM user_games"
+        ).fetchall()
     ]
     orphan_user_game_ids = [
         row["game_ce_id"] for row in user_games if row.get("game_ce_id") not in game_ids
     ]
 
     user_objectives = [
-        dict(r) for r in conn.execute("SELECT user_ce_id, objective_ce_id FROM user_objectives").fetchall()
+        dict(r)
+        for r in conn.execute(
+            "SELECT user_ce_id, objective_ce_id FROM user_objectives"
+        ).fetchall()
     ]
     orphan_user_objective_ids = [
         row["objective_ce_id"]
@@ -1594,5 +1649,3 @@ def dump_objective(objective: CEObjective):
         reqs_payload.append(req_data)
 
     LocalCache.upsert_requirements_bulk(reqs_payload)
-
-
