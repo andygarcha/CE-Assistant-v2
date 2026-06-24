@@ -831,6 +831,15 @@ def rebuild_from_supabase() -> dict:
             row[1]
             for row in conn.execute(f'PRAGMA table_info("{local_table}")').fetchall()
         }
+        supabase_cols = set(data[0].keys())
+        dropped = supabase_cols - local_cols
+        if dropped:
+            logger.warning(
+                "Supabase table '%s' has columns not in local schema: %s. "
+                "If your code uses these, add them to _SCHEMA in LocalCache.py.",
+                sb_table,
+                ", ".join(sorted(dropped)),
+            )
         cols = [c for c in data[0].keys() if c in local_cols]
         col_names = ",".join(f'"{c}"' for c in cols)
         params = ",".join(f":{c}" for c in cols)
@@ -903,6 +912,14 @@ def run_integrity_check() -> dict:
                             f'PRAGMA table_info("{local_table}")'
                         ).fetchall()
                     }
+                    dropped = set(data[0].keys()) - local_cols
+                    if dropped:
+                        logger.warning(
+                            "Supabase table '%s' has columns not in local schema: %s. "
+                            "If your code uses these, add them to _SCHEMA in LocalCache.py.",
+                            sb_table,
+                            ", ".join(sorted(dropped)),
+                        )
                     cols = [c for c in data[0].keys() if c in local_cols]
                     col_names = ",".join(f'"{c}"' for c in cols)
                     params = ",".join(f":{c}" for c in cols)
