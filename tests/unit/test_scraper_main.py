@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 from contextlib import contextmanager
 
+import pytest
 import scraper_main
 
 
@@ -499,11 +500,12 @@ class TestSignalHandler:
         scraper_main._handle_signal(2, None)
         assert scraper_main._shutdown is True
 
-    def test_signal_handler_idempotent(self):
+    def test_second_signal_forces_exit(self):
         scraper_main._shutdown = False
         scraper_main._handle_signal(2, None)
-        scraper_main._handle_signal(15, None)
         assert scraper_main._shutdown is True
+        with pytest.raises(SystemExit):
+            scraper_main._handle_signal(2, None)
 
 
 class TestLifecycleOrdering:

@@ -19,12 +19,18 @@ from web_scraper.scraper import process_loop  # noqa: E402
 LOOP_INTERVAL_SECONDS = 1800  # 30 minutes
 
 _shutdown = False
+_sleep_task: asyncio.Task | None = None
 
 
 def _handle_signal(sig, frame):
     global _shutdown
+    if _shutdown:
+        logger.info("Received signal %s again, forcing exit.", sig)
+        raise SystemExit(1)
     logger.info("Received signal %s, shutting down after current loop...", sig)
     _shutdown = True
+    if _sleep_task is not None and not _sleep_task.done():
+        _sleep_task.cancel()
 
 
 signal.signal(signal.SIGINT, _handle_signal)
@@ -32,6 +38,7 @@ signal.signal(signal.SIGTERM, _handle_signal)
 
 
 async def main():
+    global _sleep_task
     logger.info("Scraper starting. Loop interval: %ds", LOOP_INTERVAL_SECONDS)
 
     try:
@@ -101,7 +108,12 @@ async def main():
                 break
 
             logger.info("Sleeping %ds until next loop...", LOOP_INTERVAL_SECONDS)
-            await asyncio.sleep(LOOP_INTERVAL_SECONDS)
+            _sleep_task = asyncio.ensure_future(asyncio.sleep(LOOP_INTERVAL_SECONDS))
+            try:
+                await _sleep_task
+            except asyncio.CancelledError:
+                logger.info("Sleep interrupted by shutdown signal.")
+            _sleep_task = None
     finally:
         await http_session.close_session()
         logger.info("Scraper shut down.")

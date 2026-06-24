@@ -339,6 +339,8 @@ async def update_games(
         session = await http_session.get_session()
         params = {"sortBy": "updatedAt", "sortOrder": "DESC"}
         async with session.get("https://cedb.me/api/games") as _r:
+            if _r.status != 200:
+                raise RuntimeError(f"/api/games returned HTTP {_r.status}")
             response = await _r.json()
 
         logger.debug("/api/games responded with %d games.", len(response))
@@ -359,6 +361,8 @@ async def update_games(
             async with session.get(
                 "https://cedb.me/api/objectives", params=params
             ) as _r:
+                if _r.status != 200:
+                    raise RuntimeError(f"/api/objectives returned HTTP {_r.status}")
                 _response_local = await _r.json()
                 # all objectives are new
                 if (
@@ -531,6 +535,10 @@ async def update_users(
         logger.debug("Pulling /api/userGames/lastUpdatedAt")
         session = await http_session.get_session()
         async with session.get("http://cedb.me/api/userGames/lastUpdatedAt") as _r:
+            if _r.status != 200:
+                raise RuntimeError(
+                    f"/api/userGames/lastUpdatedAt returned HTTP {_r.status}"
+                )
             response = await _r.json()
 
         for user in response:
