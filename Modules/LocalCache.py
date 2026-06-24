@@ -714,7 +714,12 @@ def rebuild_from_supabase() -> dict:
         if not data:
             continue
 
-        cols = list(data[0].keys())
+        # Only insert columns that exist in the local schema
+        local_cols = {
+            row[1]
+            for row in conn.execute(f'PRAGMA table_info("{local_table}")').fetchall()
+        }
+        cols = [c for c in data[0].keys() if c in local_cols]
         col_names = ",".join(f'"{c}"' for c in cols)
         params = ",".join(f":{c}" for c in cols)
 
@@ -766,7 +771,11 @@ def run_integrity_check() -> dict:
                 chunk = missing_list[i : i + 100]
                 data = sb.table(sb_table).select().in_(id_col, chunk).execute().data or []
                 if data:
-                    cols = list(data[0].keys())
+                    local_cols = {
+                        row[1]
+                        for row in conn.execute(f'PRAGMA table_info("{local_table}")').fetchall()
+                    }
+                    cols = [c for c in data[0].keys() if c in local_cols]
                     col_names = ",".join(f'"{c}"' for c in cols)
                     params = ",".join(f":{c}" for c in cols)
                     conn.executemany(
