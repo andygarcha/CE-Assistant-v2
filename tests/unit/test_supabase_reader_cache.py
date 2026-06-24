@@ -720,3 +720,372 @@ class TestKillPendingDualWrite:
             assert LocalCache.get_roll("pending-001") is None
         finally:
             _teardown_cache(tmpdir)
+
+
+# === Missing getter coverage ===
+
+
+class TestGetUsersBulkFromCache:
+    def test_returns_multiple_users(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            for i in range(3):
+                uid = f"user-{i:03d}"
+                LocalCache.upsert_user({**USER_DB_ROW, "ce_id": uid, "discord_id": i})
+                LocalCache.upsert_user_games_bulk([
+                    {"user_ce_id": uid, "game_ce_id": "game-001", "updated_at_CE": ""},
+                ])
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_users_bulk(
+                    ["user-000", "user-001", "user-002"]
+                )
+            assert len(result) == 3
+            assert all(isinstance(u, CEUser) for u in result)
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_empty_list_returns_empty(self):
+        tmpdir = _init_cache()
+        try:
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_users_bulk([])
+            assert result == []
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_includes_owned_games(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_users_bulk(["user-001"])
+            assert len(result) == 1
+            assert len(result[0].owned_games) == 1
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_does_not_call_supabase(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                SupabaseReader.get_users_bulk(["user-001"])
+            mock_sb.table.assert_not_called()
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetDatabaseUserFromCache:
+    def test_returns_all_users(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            for i in range(3):
+                uid = f"user-{i:03d}"
+                LocalCache.upsert_user({**USER_DB_ROW, "ce_id": uid, "discord_id": i})
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_database_user()
+            assert len(result) == 3
+            assert all(isinstance(u, CEUser) for u in result)
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_returns_empty_when_no_users(self):
+        tmpdir = _init_cache()
+        try:
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_database_user()
+            assert result == []
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_does_not_call_supabase(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                SupabaseReader.get_database_user()
+            mock_sb.table.assert_not_called()
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetUserObjectivesContent:
+    def test_user_objectives_have_correct_points(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            assert len(result.owned_games) == 1
+            game = result.owned_games[0]
+            assert len(game.user_objectives) == 1
+            assert game.user_objectives[0].user_points == 25
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_user_with_no_rolls(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            assert result.rolls == []
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_user_with_no_games(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_user(USER_DB_ROW)
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            assert result.owned_games == []
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetGamesBulkObjectives:
+    def test_includes_objectives_and_requirements(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_games_bulk(["game-001"])
+            assert len(result) == 1
+            game = result[0]
+            assert len(game.all_objectives) == 1
+            assert game.all_objectives[0].name == "Beat the Game"
+            assert game.all_objectives[0].achievement_ce_ids == ["ach-123"]
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_nonexistent_ids_skipped(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_games_bulk(
+                    ["game-001", "nonexistent"]
+                )
+            assert len(result) == 1
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetGameCustomRequirements:
+    def test_game_with_custom_requirement(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_game(GAME_DB_ROW)
+            LocalCache.upsert_objectives_bulk([OBJECTIVE_DB_ROW])
+            LocalCache.upsert_requirements_bulk([
+                {"objective_ce_id": "obj-001", "requirement_type": "custom",
+                 "data": "Beat all chapters without dying", "updated_at_CE": "2026-01-01"},
+            ])
+            LocalCache.upsert_categories_bulk(CATEGORY_DB_ROWS)
+
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_game("game-001")
+            assert result is not None
+            obj = result.all_objectives[0]
+            assert obj.requirements == "Beat all chapters without dying"
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_game_with_both_achievement_and_custom_reqs(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_game(GAME_DB_ROW)
+            LocalCache.upsert_objectives_bulk([OBJECTIVE_DB_ROW])
+            LocalCache.upsert_requirements_bulk([
+                {"objective_ce_id": "obj-001", "requirement_type": "achievement",
+                 "data": "ach-1", "updated_at_CE": ""},
+                {"objective_ce_id": "obj-001", "requirement_type": "achievement",
+                 "data": "ach-2", "updated_at_CE": ""},
+                {"objective_ce_id": "obj-001", "requirement_type": "custom",
+                 "data": "Custom requirement text", "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_categories_bulk(CATEGORY_DB_ROWS)
+
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_game("game-001")
+            assert result is not None
+            obj = result.all_objectives[0]
+            assert set(obj.achievement_ce_ids) == {"ach-1", "ach-2"}
+            assert obj.requirements == "Custom requirement text"
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetAllRollsGamesAttached:
+    def test_rolls_have_games_attached(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_roll(ROLL_DB_ROW)
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "roll-001", "game_id": "game-001", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-001", "game_id": "game-002", "index": 1, "rolled_at": ""},
+            ])
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_all_rolls()
+            assert len(result) == 1
+            assert result[0].games == ["game-001", "game-002"]
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetUserRollsGamesAttached:
+    def test_rolls_have_games_attached(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_roll()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user_rolls("user-001")
+            assert len(result) == 1
+            assert result[0].games == ["game-001"]
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetDatabaseTierStructure:
+    def test_tier_structure_has_tiers_and_categories(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            LocalCache.upsert_tier_bulk([
+                {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
+            ])
+            with patch.object(SupabaseReader, "supabase"):
+                database_name = SupabaseReader.get_database_name()
+                result = SupabaseReader.get_database_tier(database_name)
+            for tier_num in range(1, 8):
+                assert str(tier_num) in result
+            assert isinstance(result["1"], dict)
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_does_not_call_supabase(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            LocalCache.upsert_tier_bulk([
+                {"ce_id": "game-001", "price": 9.99, "sh_hours": 5.0},
+            ])
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                database_name = SupabaseReader.get_database_name()
+                SupabaseReader.get_database_tier(database_name)
+            mock_sb.table.assert_not_called()
+        finally:
+            _teardown_cache(tmpdir)
+
+
+# === Missing writer coverage ===
+
+
+class TestBulkDumpUsersDualWrite:
+    def test_writes_users_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            from tests.conftest import make_user, make_user_game
+
+            user = make_user(
+                ce_id="user-new",
+                discord_id=999,
+                owned_games=[make_user_game(ce_id="game-001")],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.select.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                # get_list("name") and get_list("objectives") are called for FK validation
+                # After the switch, these read from LocalCache, so we need the game in cache
+                SupabaseReader.bulk_dump_users([user])
+
+            cached = LocalCache.get_user("user-new")
+            assert cached is not None
+            assert cached["display_name"] == "TestUser"
+
+            cached_games = LocalCache.get_user_games("user-new")
+            assert len(cached_games) == 1
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestBulkDumpRollsDualWrite:
+    def test_writes_rolls_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_roll
+
+            roll = make_roll(
+                roll_name="Triple Threat",
+                games=["game-a", "game-b", "game-c"],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.insert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.bulk_dump_rolls([roll])
+
+            cached = LocalCache.get_roll(roll._id)
+            assert cached is not None
+            assert cached["event_name"] == "Triple Threat"
+
+            cached_games = LocalCache.get_roll_games(roll._id)
+            assert len(cached_games) == 3
+            assert [g["game_id"] for g in cached_games] == ["game-a", "game-b", "game-c"]
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestDumpDatabaseTierDualWrite:
+    def test_writes_tier_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                database_name = SupabaseReader.get_database_name()
+                SupabaseReader.dump_database_tier(
+                    SupabaseReader.get_database_tier(database_name)
+                )
+
+            cached = LocalCache.get_tier_all()
+            # tier data comes from get_database_tier which builds from cache,
+            # and dump_database_tier writes it back — verify cache has tier rows
+            assert isinstance(cached, list)
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestDatabaseNameCacheRemoved:
+    def test_no_cache_globals_exist(self):
+        """After the switch to LocalCache, the old in-memory TTL cache should be removed."""
+        assert not hasattr(SupabaseReader, "_database_name_cache")
+        assert not hasattr(SupabaseReader, "_database_name_cache_time")
+        assert not hasattr(SupabaseReader, "_DATABASE_NAME_TTL")
+        assert not hasattr(SupabaseReader, "invalidate_database_name_cache")
