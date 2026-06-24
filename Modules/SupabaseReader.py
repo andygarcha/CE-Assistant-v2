@@ -47,6 +47,16 @@ if not LocalCache.is_initialized():
         LocalCache.rebuild_from_supabase()
     else:
         LocalCache.init(_cache_path)
+        logger.info("Existing cache found, running integrity check...")
+        _integrity_report = LocalCache.run_integrity_check()
+        _parts = []
+        for _key in ("synced", "removed", "schema"):
+            if _integrity_report.get(_key):
+                _parts.append(f"{_key}: {_integrity_report[_key]}")
+        if _parts:
+            logger.info("Integrity check: %s", ", ".join(_parts))
+        else:
+            logger.info("Integrity check passed — cache in sync with Supabase")
 
 
 def _iso_or_none(value):
