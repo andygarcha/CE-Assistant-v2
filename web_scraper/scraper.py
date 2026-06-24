@@ -159,7 +159,7 @@ async def process_loop(
 
     # Promote pending game updates that had no further changes since last loop
     changed_game_ids = {g.ce_id for g in games_new} | removed_games
-    await asyncio.to_thread(stabilize_pending_updates, changed_game_ids)
+    stabilize_pending_updates(changed_game_ids)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
@@ -173,9 +173,7 @@ async def process_loop(
     # fix this is mad inefficient
 
     # step 2a) generate name_old and name_new
-    database_name_old = await asyncio.to_thread(
-        lambda: SupabaseReader.get_games_bulk(SupabaseReader.get_list("name"))
-    )
+    database_name_old = SupabaseReader.get_games_bulk(SupabaseReader.get_list("name"))
 
     _games_by_id: dict[str, CEGame | CEAPIGame] = {
         g.ce_id: g for g in database_name_old
@@ -204,8 +202,7 @@ async def process_loop(
 
     # Step 3.5: Check rolls
     # TODO: send back all users
-    _updates, rolls_updated, rolls_deleted = await asyncio.to_thread(
-        update_rolls,
+    _updates, rolls_updated, rolls_deleted = update_rolls(
         database_name=database_name_new,
         database_user=users_new,
     )
@@ -242,12 +239,12 @@ async def process_loop(
                 r.set_status("removed")
             SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
-        await asyncio.to_thread(_save_all)
+        _save_all()
 
     # Flush updates to Supabase for the bot to deliver
     logger.info("Flushing %d updates.", len(updates))
     if send_updates:
-        await asyncio.to_thread(flush_updates, updates)
+        flush_updates(updates)
     else:
         for update in updates:
             update.print(full=True)
@@ -256,7 +253,7 @@ async def process_loop(
 
     if full_scrape:
         try:
-            integrity_report = await asyncio.to_thread(LocalCache.run_integrity_check)
+            integrity_report = LocalCache.run_integrity_check()
             synced = ", ".join(integrity_report.get("synced", []))
             removed = ", ".join(integrity_report.get("removed", []))
             schema = ", ".join(integrity_report.get("schema", []))
@@ -289,7 +286,7 @@ async def process_loop(
 
     if SAVEDATA and not full_scrape:
         try:
-            await asyncio.to_thread(SupabaseReader.dump_loop, time_current)
+            SupabaseReader.dump_loop(time_current)
         except Exception as e:
             logger.error("dump_loop failed to save last run time: %s", e)
 
@@ -430,7 +427,7 @@ async def update_games(
         logger.info("Skipping updates.")
     else:
         _ids = [g.ce_id for g in games]
-        games_old = await asyncio.to_thread(SupabaseReader.get_games_bulk, _ids)
+        games_old = SupabaseReader.get_games_bulk(_ids)
 
         logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
@@ -448,7 +445,7 @@ async def update_games(
 
     # Step 3: Find all removed games.
     logger.debug("Pulling list of Game IDs from Supabase.")
-    game_list_old = set(await asyncio.to_thread(SupabaseReader.get_list, "name"))
+    game_list_old = set(SupabaseReader.get_list("name"))
     logger.debug("Pulling /api/games.")
     game_list_new = set(await CEAPIReader.get_api_games())
     logger.debug("Requests complete.")
@@ -590,8 +587,7 @@ async def update_users(
                 bstart,
                 bstart + batch_size,
             )
-            batch_users = await asyncio.to_thread(
-                SupabaseReader.get_users_bulk,
+            batch_users = SupabaseReader.get_users_bulk(
                 batch_ids,
                 False,  # DONT PULL ROLLS!
             )

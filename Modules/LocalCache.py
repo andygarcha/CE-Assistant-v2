@@ -1,12 +1,10 @@
 import logging
 import os
 import sqlite3
-import threading
 
 logger = logging.getLogger(__name__)
 
 _conn: sqlite3.Connection | None = None
-_lock = threading.Lock()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS games (
@@ -117,7 +115,7 @@ def init(db_path: str = "data/cache.db") -> None:
         return
 
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-    _conn = sqlite3.connect(db_path, check_same_thread=False)
+    _conn = sqlite3.connect(db_path)
     _conn.row_factory = sqlite3.Row
     _conn.execute("PRAGMA journal_mode=WAL")
     _conn.execute("PRAGMA busy_timeout=5000")
@@ -143,20 +141,6 @@ def get_connection() -> sqlite3.Connection:
     return _conn
 
 
-def get_lock() -> threading.Lock:
-    return _lock
-
-
-def _with_lock(func):
-    """Decorator that serializes write operations with the module lock."""
-    def wrapper(*args, **kwargs):
-        with _lock:
-            return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__
-    wrapper.__doc__ = func.__doc__
-    return wrapper
-
-
 def _row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row)
 
@@ -175,7 +159,7 @@ def _normalize_roll(row: dict) -> dict:
 
 # === GAMES ===
 
-@_with_lock
+
 def upsert_game(row: dict) -> None:
     conn = get_connection()
     conn.execute(
@@ -193,7 +177,7 @@ def upsert_game(row: dict) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def upsert_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -242,14 +226,14 @@ def get_game_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM games").fetchall()]
 
 
-@_with_lock
+
 def delete_game(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM games WHERE ce_id = ?", (ce_id,))
     conn.commit()
 
 
-@_with_lock
+
 def delete_game_cascade(ce_id: str) -> None:
     conn = get_connection()
     obj_ids = [r[0] for r in conn.execute(
@@ -266,7 +250,7 @@ def delete_game_cascade(ce_id: str) -> None:
 
 # === OBJECTIVES ===
 
-@_with_lock
+
 def upsert_objectives_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -313,7 +297,7 @@ def get_objective_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM objectives").fetchall()]
 
 
-@_with_lock
+
 def delete_objectives_by_ids(ce_ids: list[str]) -> None:
     if not ce_ids:
         return
@@ -325,7 +309,7 @@ def delete_objectives_by_ids(ce_ids: list[str]) -> None:
 
 # === OBJECTIVE REQUIREMENTS ===
 
-@_with_lock
+
 def upsert_requirements_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -339,7 +323,7 @@ def upsert_requirements_bulk(rows: list[dict]) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def delete_requirements_by_objectives(objective_ce_ids: list[str]) -> None:
     if not objective_ce_ids:
         return
@@ -368,7 +352,7 @@ def get_requirements_by_objectives(objective_ce_ids: list[str]) -> list[dict]:
 
 # === CATEGORIES ===
 
-@_with_lock
+
 def upsert_categories_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -381,14 +365,14 @@ def upsert_categories_bulk(rows: list[dict]) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def delete_categories_by_game(game_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM categories WHERE game_id = ?", (game_id,))
     conn.commit()
 
 
-@_with_lock
+
 def delete_categories_by_games(game_ids: list[str]) -> None:
     if not game_ids:
         return
@@ -411,7 +395,7 @@ def get_categories_by_game(game_id: str) -> list[dict]:
 
 # === USERS ===
 
-@_with_lock
+
 def upsert_user(row: dict) -> None:
     conn = get_connection()
     conn.execute(
@@ -428,7 +412,7 @@ def upsert_user(row: dict) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def upsert_users_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -484,14 +468,14 @@ def get_user_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM users").fetchall()]
 
 
-@_with_lock
+
 def delete_user(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM users WHERE ce_id = ?", (ce_id,))
     conn.commit()
 
 
-@_with_lock
+
 def delete_user_cascade(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_games WHERE user_ce_id = ?", (ce_id,))
@@ -502,7 +486,7 @@ def delete_user_cascade(ce_id: str) -> None:
 
 # === USER GAMES ===
 
-@_with_lock
+
 def upsert_user_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -527,16 +511,26 @@ def get_user_games(user_ce_id: str) -> list[dict]:
     ]
 
 
-@_with_lock
+
 def delete_user_games(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_games WHERE user_ce_id = ?", (user_ce_id,))
     conn.commit()
 
 
+
+def delete_user_games_by_game_ids(game_ids: list[str]) -> None:
+    if not game_ids:
+        return
+    conn = get_connection()
+    placeholders = ",".join("?" * len(game_ids))
+    conn.execute(f"DELETE FROM user_games WHERE game_ce_id IN ({placeholders})", game_ids)
+    conn.commit()
+
+
 # === USER OBJECTIVES ===
 
-@_with_lock
+
 def upsert_user_objectives_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -561,16 +555,26 @@ def get_user_objectives(user_ce_id: str) -> list[dict]:
     ]
 
 
-@_with_lock
+
 def delete_user_objectives(user_ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM user_objectives WHERE user_ce_id = ?", (user_ce_id,))
     conn.commit()
 
 
+
+def delete_user_objectives_by_objective_ids(objective_ids: list[str]) -> None:
+    if not objective_ids:
+        return
+    conn = get_connection()
+    placeholders = ",".join("?" * len(objective_ids))
+    conn.execute(f"DELETE FROM user_objectives WHERE objective_ce_id IN ({placeholders})", objective_ids)
+    conn.commit()
+
+
 # === ROLLS ===
 
-@_with_lock
+
 def upsert_roll(row: dict) -> None:
     row = _normalize_roll(row)
     conn = get_connection()
@@ -594,7 +598,7 @@ def upsert_roll(row: dict) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def upsert_rolls_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -671,7 +675,7 @@ def get_roll_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT id FROM rolls").fetchall()]
 
 
-@_with_lock
+
 def delete_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
@@ -679,7 +683,7 @@ def delete_roll(roll_id: str) -> None:
     conn.commit()
 
 
-@_with_lock
+
 def delete_rolls_by_ids(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
@@ -692,7 +696,7 @@ def delete_rolls_by_ids(roll_ids: list[str]) -> None:
 
 # === ROLL GAMES ===
 
-@_with_lock
+
 def upsert_roll_games_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -730,14 +734,14 @@ def get_roll_games_by_ids(roll_ids: list[str]) -> list[dict]:
     ]
 
 
-@_with_lock
+
 def delete_roll_games_by_roll(roll_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM roll_games WHERE roll_id = ?", (roll_id,))
     conn.commit()
 
 
-@_with_lock
+
 def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
@@ -749,7 +753,7 @@ def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
 
 # === TIER ===
 
-@_with_lock
+
 def upsert_tier_bulk(rows: list[dict]) -> None:
     if not rows:
         return
@@ -793,7 +797,7 @@ def _fetch_all_rows(sb_client, table_name: str) -> list[dict]:
     return all_rows
 
 
-@_with_lock
+
 def rebuild_from_supabase() -> dict:
     from Modules.SupabaseReader import supabase as sb
 
@@ -843,7 +847,7 @@ def rebuild_from_supabase() -> dict:
 
 # === INTEGRITY CHECK ===
 
-@_with_lock
+
 def run_integrity_check() -> dict:
     from Modules.SupabaseReader import supabase as sb
 

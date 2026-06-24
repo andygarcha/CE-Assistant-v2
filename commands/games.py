@@ -39,7 +39,7 @@ async def get_game_auto(
     # log this interaction
     await hm.log_command(client, interaction, "get_game_auto", True)
 
-    database_name = await SupabaseReader.get_database_name_async()
+    database_name = SupabaseReader.get_database_name()
     choices: list = []
 
     for game in database_name:
@@ -58,14 +58,14 @@ async def get_game(interaction: discord.Interaction, game: str):
     # log this interaction
     await hm.log_command(client, interaction, "get-game", False, game=game)
 
-    chosen_game = await SupabaseReader.get_game_async(game)
+    chosen_game = SupabaseReader.get_game(game)
     if chosen_game is None:
         return await interaction.followup.send(
             "Sorry, I encountered a strange error. Try again later!"
         )
 
     # pull the game embed
-    database_name = await SupabaseReader.get_database_name_async()
+    database_name = SupabaseReader.get_database_name()
     game_embed = await Discord_Helper.get_game_embed(chosen_game.ce_id, database_name)
 
     # and return

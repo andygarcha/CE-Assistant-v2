@@ -1299,6 +1299,72 @@ class TestDatabaseNameCacheRemoved:
         assert not hasattr(SupabaseReader, "invalidate_database_name_cache")
 
 
+class TestAsyncWrappersRemoved:
+    """With the scraper decoupled into its own process and low bot traffic,
+    asyncio.to_thread wrappers are unnecessary. All SupabaseReader functions
+    should be called synchronously from bot command handlers."""
+
+    def test_no_async_wrappers_on_module(self):
+        async_names = [
+            "get_user_async", "get_game_async", "get_list_async",
+            "get_database_name_async", "get_database_user_async",
+            "get_database_tier_async", "dump_user_async", "dump_game_async",
+            "dump_roll_async", "bulk_dump_rolls_async", "bulk_dump_users_async",
+            "add_pending_async", "kill_pending_async",
+        ]
+        for name in async_names:
+            assert not hasattr(SupabaseReader, name), (
+                f"SupabaseReader.{name} should be removed — call the sync version directly"
+            )
+
+    def test_no_to_thread_helper(self):
+        assert not hasattr(SupabaseReader, "_to_thread"), (
+            "_to_thread helper should be removed"
+        )
+
+    def test_asyncio_not_imported(self):
+        import inspect
+        source = inspect.getsource(SupabaseReader)
+        assert "asyncio" not in source, (
+            "SupabaseReader should not import asyncio"
+        )
+
+
+class TestThreadingRemovedFromLocalCache:
+    """With async wrappers gone, SQLite is only accessed from a single thread.
+    Threading infrastructure should be removed from LocalCache."""
+
+    def test_no_lock_on_module(self):
+        assert not hasattr(LocalCache, "_lock"), (
+            "LocalCache._lock should be removed — no concurrent thread access"
+        )
+
+    def test_no_with_lock_decorator(self):
+        assert not hasattr(LocalCache, "_with_lock"), (
+            "_with_lock decorator should be removed"
+        )
+
+    def test_no_get_lock_function(self):
+        assert not hasattr(LocalCache, "get_lock"), (
+            "get_lock() should be removed"
+        )
+
+    def test_threading_not_imported(self):
+        import inspect
+        source = inspect.getsource(LocalCache)
+        assert "threading" not in source, (
+            "LocalCache should not import threading"
+        )
+
+    def test_sqlite_uses_default_same_thread(self):
+        """Without threading, check_same_thread should be True (the default)."""
+        import inspect
+        source = inspect.getsource(LocalCache)
+        assert "check_same_thread" not in source, (
+            "check_same_thread=False should be removed — single-thread access only"
+        )
+
+
 # === dump_user (standalone, not bulk) ===
 
 
@@ -1458,6 +1524,216 @@ class TestGetUserMultipleGames:
 
 
 # === clean_db reads from cache ===
+
+
+class TestDeleteGameDeletesCategoriesFromSupabase:
+    def test_calls_supabase_categories_delete(self):
+        """delete_game must delete categories from Supabase, not just LocalCache."""
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.select.return_value = mock_table
+                mock_table.eq.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.delete_game("game-001")
+
+            # Collect all table names passed to supabase.table()
+            table_calls = [c.args[0] for c in mock_sb.table.call_args_list]
+            assert "categories" in table_calls, (
+                "delete_game should delete categories from Supabase"
+            )
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestDumpRollDeletesOldRollGamesFromSupabase:
+    def test_calls_supabase_rollgames_delete_before_upsert(self):
+        """dump_roll must delete old rollGames from Supabase before inserting new ones."""
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_roll
+
+            roll = make_roll(roll_name="One Hell of a Day", games=["game-001"])
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.eq.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.dump_roll(roll)
+
+            # Collect table names that had .delete() called
+            table_calls = [c.args[0] for c in mock_sb.table.call_args_list]
+            assert "rollGames" in table_calls, (
+                "dump_roll should call supabase.table('rollGames')"
+            )
+            assert mock_table.delete.called, (
+                "dump_roll should delete old rollGames from Supabase before re-inserting"
+            )
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestBulkDumpUsersDeletesViaLocalCache:
+    def test_user_objectives_delete_uses_localcache_function(self):
+        """bulk_dump_users should use LocalCache.delete_user_objectives,
+        not raw conn.execute()."""
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            from tests.conftest import make_user, make_user_game, make_user_objective
+
+            # Pre-seed an objective that should be cleared
+            LocalCache.upsert_user({"ce_id": "user-lock", "discord_id": 111,
+                "display_name": "LockTest", "image_avatar": None,
+                "steam_id": None, "created_at_CE": "", "updated_at_CE": ""})
+            LocalCache.upsert_user_objectives_bulk([{
+                "user_ce_id": "user-lock", "objective_ce_id": "obj-stale",
+                "user_points": 5, "updated_at_CE": "",
+            }])
+
+            user = make_user(
+                ce_id="user-lock",
+                discord_id=111,
+                owned_games=[
+                    make_user_game(
+                        ce_id="game-001",
+                        user_objectives=[
+                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=25),
+                        ],
+                    ),
+                ],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.select.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                with patch.object(LocalCache, "delete_user_objectives") as mock_delete:
+                    SupabaseReader.bulk_dump_users([user])
+
+                    mock_delete.assert_called_once_with("user-lock")
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestCleanDbUsesLocalCacheDeleteFunctions:
+    def test_orphan_cleanup_uses_localcache_delete_functions(self):
+        """clean_db should use LocalCache's dedicated delete functions
+        instead of raw conn.execute() for SQLite writes."""
+        tmpdir = _init_cache()
+        try:
+            # Create orphan user_game and user_objective
+            LocalCache.upsert_user(USER_DB_ROW)
+            LocalCache.upsert_user_games_bulk([
+                {"user_ce_id": "user-001", "game_ce_id": "orphan-game", "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "user-001", "objective_ce_id": "orphan-obj",
+                 "user_points": 5, "updated_at_CE": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                with patch.object(LocalCache, "delete_user_games_by_game_ids") as mock_ug, \
+                     patch.object(LocalCache, "delete_user_objectives_by_objective_ids") as mock_uo:
+                    SupabaseReader.clean_db()
+
+                    mock_ug.assert_called_once()
+                    mock_uo.assert_called_once()
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetAllRollsUsesIndexing:
+    def test_multiple_rolls_get_correct_games(self):
+        """get_all_rolls should correctly match roll_games to their rolls,
+        even with multiple rolls — verifies dict-based indexing works."""
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_rolls_bulk([
+                {**ROLL_DB_ROW, "id": "roll-A", "event_name": "One Hell of a Day"},
+                {**ROLL_DB_ROW, "id": "roll-B", "event_name": "One Hell of a Week"},
+            ])
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "roll-A", "game_id": "game-aaa", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-B", "game_id": "game-bbb", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-B", "game_id": "game-ccc", "index": 1, "rolled_at": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase"):
+                rolls = SupabaseReader.get_all_rolls()
+
+            rolls_by_id = {r._id: r for r in rolls}
+            assert set(rolls_by_id["roll-A"].games) == {"game-aaa"}
+            assert set(rolls_by_id["roll-B"].games) == {"game-bbb", "game-ccc"}
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_get_checkable_rolls_correct_games(self):
+        """get_checkable_rolls should correctly match roll_games."""
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_rolls_bulk([
+                {**ROLL_DB_ROW, "id": "roll-X", "status": "current"},
+                {**ROLL_DB_ROW, "id": "roll-Y", "status": "pending"},
+            ])
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "roll-X", "game_id": "game-x1", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-Y", "game_id": "game-y1", "index": 0, "rolled_at": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase"):
+                rolls = SupabaseReader.get_checkable_rolls()
+
+            rolls_by_id = {r._id: r for r in rolls}
+            assert rolls_by_id["roll-X"].games == ["game-x1"]
+            assert rolls_by_id["roll-Y"].games == ["game-y1"]
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_get_user_rolls_correct_games(self):
+        """get_user_rolls should correctly match roll_games."""
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_rolls_bulk([
+                {**ROLL_DB_ROW, "id": "roll-u1", "user1_ce_id": "user-001"},
+                {**ROLL_DB_ROW, "id": "roll-u2", "user1_ce_id": "user-001"},
+            ])
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "roll-u1", "game_id": "game-r1", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-u2", "game_id": "game-r2", "index": 0, "rolled_at": ""},
+                {"roll_id": "roll-u2", "game_id": "game-r3", "index": 1, "rolled_at": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase"):
+                rolls = SupabaseReader.get_user_rolls("user-001")
+
+            rolls_by_id = {r._id: r for r in rolls}
+            assert rolls_by_id["roll-u1"].games == ["game-r1"]
+            assert set(rolls_by_id["roll-u2"].games) == {"game-r2", "game-r3"}
+        finally:
+            _teardown_cache(tmpdir)
 
 
 class TestCleanDbFromCache:
