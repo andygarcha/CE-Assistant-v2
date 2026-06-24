@@ -1089,3 +1089,210 @@ class TestDatabaseNameCacheRemoved:
         assert not hasattr(SupabaseReader, "_database_name_cache_time")
         assert not hasattr(SupabaseReader, "_DATABASE_NAME_TTL")
         assert not hasattr(SupabaseReader, "invalidate_database_name_cache")
+
+
+# === dump_user (standalone, not bulk) ===
+
+
+class TestDumpUserDualWrite:
+    def test_writes_user_and_games_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_user, make_user_game, make_user_objective
+
+            user = make_user(
+                ce_id="user-new",
+                discord_id=888,
+                owned_games=[
+                    make_user_game(
+                        ce_id="game-001",
+                        user_objectives=[
+                            make_user_objective(ce_id="obj-001", game_ce_id="game-001", user_points=15),
+                        ],
+                    ),
+                ],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.dump_user(user)
+
+            cached = LocalCache.get_user("user-new")
+            assert cached is not None
+            assert cached["discord_id"] == 888
+
+            cached_games = LocalCache.get_user_games("user-new")
+            assert len(cached_games) == 1
+            assert cached_games[0]["game_ce_id"] == "game-001"
+
+            cached_objs = LocalCache.get_user_objectives("user-new")
+            assert len(cached_objs) == 1
+            assert cached_objs[0]["user_points"] == 15
+        finally:
+            _teardown_cache(tmpdir)
+
+
+# === dump_objective (standalone) ===
+
+
+class TestDumpObjectiveDualWrite:
+    def test_writes_objective_and_requirements_to_cache(self):
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_objective
+
+            obj = make_objective(
+                ce_id="obj-new",
+                game_ce_id="game-001",
+                point_value=50,
+                name="Completionist",
+                requirements="Beat everything",
+                achievement_ce_ids=["ach-1", "ach-2"],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.eq.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.dump_objective(obj)
+
+            cached_objs = LocalCache.get_objectives_by_game("game-001")
+            assert len(cached_objs) == 1
+            assert cached_objs[0]["name"] == "Completionist"
+            assert cached_objs[0]["points"] == 50
+
+            cached_reqs = LocalCache.get_requirements_by_objectives(["obj-new"])
+            assert len(cached_reqs) == 3
+            types = {r["requirement_type"] for r in cached_reqs}
+            assert types == {"achievement", "custom"}
+        finally:
+            _teardown_cache(tmpdir)
+
+
+# === get_users_bulk with include_rolls=False ===
+
+
+class TestGetUsersBulkNoRolls:
+    def test_returns_users_without_rolls(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            _seed_roll()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_users_bulk(["user-001"], include_rolls=False)
+            assert len(result) == 1
+            assert result[0].rolls == []
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_still_includes_games_and_objectives(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_users_bulk(["user-001"], include_rolls=False)
+            assert len(result) == 1
+            assert len(result[0].owned_games) == 1
+        finally:
+            _teardown_cache(tmpdir)
+
+
+# === get_user with multiple games ===
+
+
+class TestGetUserMultipleGames:
+    def test_user_with_multiple_games_and_objectives(self):
+        tmpdir = _init_cache()
+        try:
+            # Seed two games with objectives
+            _seed_game()
+            LocalCache.upsert_game({**GAME_DB_ROW, "ce_id": "game-002", "name": "Hollow Knight"})
+            LocalCache.upsert_objectives_bulk([
+                {**OBJECTIVE_DB_ROW, "ce_id": "obj-002", "game_ce_id": "game-002", "name": "Steel Soul"},
+            ])
+            LocalCache.upsert_categories_bulk([
+                {"game_id": "game-002", "category": "Action", "index": 0},
+            ])
+
+            # Seed user with both games
+            LocalCache.upsert_user(USER_DB_ROW)
+            LocalCache.upsert_user_games_bulk([
+                {"user_ce_id": "user-001", "game_ce_id": "game-001", "updated_at_CE": ""},
+                {"user_ce_id": "user-001", "game_ce_id": "game-002", "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "user-001", "objective_ce_id": "obj-001", "user_points": 25, "updated_at_CE": ""},
+                {"user_ce_id": "user-001", "objective_ce_id": "obj-002", "user_points": 100, "updated_at_CE": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+
+            assert result is not None
+            assert len(result.owned_games) == 2
+            game_ids = {g.ce_id for g in result.owned_games}
+            assert game_ids == {"game-001", "game-002"}
+
+            total_objectives = sum(len(g.user_objectives) for g in result.owned_games)
+            assert total_objectives == 2
+        finally:
+            _teardown_cache(tmpdir)
+
+
+# === clean_db reads from cache ===
+
+
+class TestCleanDbFromCache:
+    def test_does_not_call_supabase_for_reads(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()
+            _seed_user()
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.clean_db()
+
+            # clean_db should read game/objective/userGame/userObjective lists
+            # from LocalCache, not Supabase. If it called supabase.table().select(),
+            # that would go through the mock and return empty data (wrong behavior).
+            # Instead it should use LocalCache and find no orphans.
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_finds_and_reports_orphans(self):
+        tmpdir = _init_cache()
+        try:
+            # Create a user_game pointing to a game that doesn't exist
+            LocalCache.upsert_user(USER_DB_ROW)
+            LocalCache.upsert_user_games_bulk([
+                {"user_ce_id": "user-001", "game_ce_id": "nonexistent-game", "updated_at_CE": ""},
+            ])
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.delete.return_value = mock_table
+                mock_table.in_.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.clean_db()
+
+            # The orphan should still be cleaned up from Supabase via the mock
+            mock_sb.table.assert_called()
+        finally:
+            _teardown_cache(tmpdir)

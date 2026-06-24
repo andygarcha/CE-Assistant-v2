@@ -1,6 +1,9 @@
 import os
 import shutil
 import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from Modules import LocalCache
 
@@ -379,6 +382,25 @@ class TestRolls:
         finally:
             _teardown(tmpdir)
 
+    def test_get_by_event_names(self):
+        tmpdir = _setup()
+        try:
+            for name in ["Soul Mates", "Triple Threat", "One Hell of a Day"]:
+                LocalCache.upsert_roll({**ROLL_ROW, "id": f"r-{name}", "event_name": name})
+            result = LocalCache.get_rolls_by_event_names(["Soul Mates", "Triple Threat"])
+            assert len(result) == 2
+            assert {r["event_name"] for r in result} == {"Soul Mates", "Triple Threat"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_by_event_names_empty_list(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll(ROLL_ROW)
+            assert LocalCache.get_rolls_by_event_names([]) == []
+        finally:
+            _teardown(tmpdir)
+
 
 class TestRollGames:
     def test_upsert_and_get_ordered(self):
@@ -420,3 +442,599 @@ class TestTier:
             assert len(result) == 2
         finally:
             _teardown(tmpdir)
+
+    def test_upsert_overwrites_price(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_tier_bulk([{"ce_id": "g1", "price": 9.99, "sh_hours": 5.0}])
+            LocalCache.upsert_tier_bulk([{"ce_id": "g1", "price": 4.99, "sh_hours": 5.0}])
+            result = LocalCache.get_tier_all()
+            assert len(result) == 1
+            assert result[0]["price"] == 4.99
+        finally:
+            _teardown(tmpdir)
+
+
+# === EMPTY LIST / EDGE CASE TESTS ===
+
+
+class TestEmptyInputs:
+    def test_bulk_upsert_games_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_games_bulk([])
+            assert LocalCache.get_games_all() == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_objectives_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_objectives_bulk([])
+            assert LocalCache.get_objective_ids() == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_users_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_users_bulk([])
+            assert LocalCache.get_users_all() == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_rolls_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_rolls_bulk([])
+            assert LocalCache.get_rolls_all() == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_roll_games_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll_games_bulk([])
+            assert LocalCache.get_roll_games_by_ids([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_requirements_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_requirements_bulk([])
+            assert LocalCache.get_requirements_by_objectives([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_categories_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_categories_bulk([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_user_games_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_games_bulk([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_user_objectives_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_objectives_bulk([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_upsert_tier_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_tier_bulk([])
+            assert LocalCache.get_tier_all() == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_games_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_games_by_ids([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_objectives_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_objectives_by_ids([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_requirements_by_objectives_empty(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_requirements_by_objectives([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_users_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_users_by_ids([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_roll_games_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_roll_games_by_ids([]) == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_objectives_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_objectives_by_ids([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_requirements_by_objectives_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_requirements_by_objectives([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_categories_by_games_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_categories_by_games([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_rolls_by_ids_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_rolls_by_ids([])
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_roll_games_by_rolls_empty(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_roll_games_by_rolls([])
+        finally:
+            _teardown(tmpdir)
+
+
+# === UNTESTED GETTERS ===
+
+
+class TestGettersNotPreviouslyCovered:
+    def test_get_users_all(self):
+        tmpdir = _setup()
+        try:
+            for i in range(3):
+                LocalCache.upsert_user({**USER_ROW, "ce_id": f"u{i}", "discord_id": i})
+            assert len(LocalCache.get_users_all()) == 3
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_user_ids(self):
+        tmpdir = _setup()
+        try:
+            for i in range(3):
+                LocalCache.upsert_user({**USER_ROW, "ce_id": f"u{i}", "discord_id": i})
+            assert set(LocalCache.get_user_ids()) == {"u0", "u1", "u2"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_users_by_ids(self):
+        tmpdir = _setup()
+        try:
+            for i in range(5):
+                LocalCache.upsert_user({**USER_ROW, "ce_id": f"u{i}", "discord_id": i})
+            result = LocalCache.get_users_by_ids(["u1", "u3"])
+            assert len(result) == 2
+            assert {r["ce_id"] for r in result} == {"u1", "u3"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_objectives_by_ids(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_objectives_bulk([
+                {"ce_id": f"o{i}", "game_ce_id": "g1", "type": "primary",
+                 "name": f"Obj {i}", "description": "", "points": i * 10,
+                 "points_partial": None, "updated_at_CE": ""}
+                for i in range(4)
+            ])
+            result = LocalCache.get_objectives_by_ids(["o0", "o2"])
+            assert len(result) == 2
+            assert {r["ce_id"] for r in result} == {"o0", "o2"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_objective_ids(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_objectives_bulk([
+                {"ce_id": f"o{i}", "game_ce_id": "g1", "type": "primary",
+                 "name": "", "description": "", "points": 0,
+                 "points_partial": None, "updated_at_CE": ""}
+                for i in range(3)
+            ])
+            assert set(LocalCache.get_objective_ids()) == {"o0", "o1", "o2"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_rolls_all(self):
+        tmpdir = _setup()
+        try:
+            for i in range(3):
+                LocalCache.upsert_roll({**ROLL_ROW, "id": f"r{i}"})
+            assert len(LocalCache.get_rolls_all()) == 3
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_roll_ids(self):
+        tmpdir = _setup()
+        try:
+            for i in range(3):
+                LocalCache.upsert_roll({**ROLL_ROW, "id": f"r{i}"})
+            assert set(LocalCache.get_roll_ids()) == {"r0", "r1", "r2"}
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_roll_not_found(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_roll("nonexistent") is None
+        finally:
+            _teardown(tmpdir)
+
+    def test_get_user_not_found(self):
+        tmpdir = _setup()
+        try:
+            assert LocalCache.get_user("nonexistent") is None
+        finally:
+            _teardown(tmpdir)
+
+
+# === USER OBJECTIVES ===
+
+
+class TestUserObjectives:
+    def test_upsert_and_get(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {"user_ce_id": "u1", "objective_ce_id": "o1", "user_points": 10, "updated_at_CE": ""},
+                {"user_ce_id": "u1", "objective_ce_id": "o2", "user_points": 50, "updated_at_CE": ""},
+            ]
+            LocalCache.upsert_user_objectives_bulk(rows)
+            result = LocalCache.get_user_objectives("u1")
+            assert len(result) == 2
+            points = {r["objective_ce_id"]: r["user_points"] for r in result}
+            assert points["o1"] == 10
+            assert points["o2"] == 50
+        finally:
+            _teardown(tmpdir)
+
+    def test_upsert_overwrites_points(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "u1", "objective_ce_id": "o1", "user_points": 10, "updated_at_CE": ""},
+            ])
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "u1", "objective_ce_id": "o1", "user_points": 25, "updated_at_CE": ""},
+            ])
+            result = LocalCache.get_user_objectives("u1")
+            assert len(result) == 1
+            assert result[0]["user_points"] == 25
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "u1", "objective_ce_id": "o1", "user_points": 10, "updated_at_CE": ""},
+                {"user_ce_id": "u1", "objective_ce_id": "o2", "user_points": 20, "updated_at_CE": ""},
+            ])
+            LocalCache.delete_user_objectives("u1")
+            assert LocalCache.get_user_objectives("u1") == []
+        finally:
+            _teardown(tmpdir)
+
+    def test_different_users_isolated(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_objectives_bulk([
+                {"user_ce_id": "u1", "objective_ce_id": "o1", "user_points": 10, "updated_at_CE": ""},
+                {"user_ce_id": "u2", "objective_ce_id": "o1", "user_points": 30, "updated_at_CE": ""},
+            ])
+            assert len(LocalCache.get_user_objectives("u1")) == 1
+            assert len(LocalCache.get_user_objectives("u2")) == 1
+            LocalCache.delete_user_objectives("u1")
+            assert LocalCache.get_user_objectives("u1") == []
+            assert len(LocalCache.get_user_objectives("u2")) == 1
+        finally:
+            _teardown(tmpdir)
+
+
+# === BULK UPSERT EDGE CASES ===
+
+
+class TestBulkUpsertEdgeCases:
+    def test_bulk_games_with_duplicates_last_wins(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {**GAME_ROW, "ce_id": "g1", "name": "First"},
+                {**GAME_ROW, "ce_id": "g1", "name": "Second"},
+            ]
+            LocalCache.upsert_games_bulk(rows)
+            result = LocalCache.get_game("g1")
+            assert result is not None
+            assert result["name"] == "Second"
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_users_with_duplicates_last_wins(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {**USER_ROW, "ce_id": "u1", "display_name": "First"},
+                {**USER_ROW, "ce_id": "u1", "display_name": "Second"},
+            ]
+            LocalCache.upsert_users_bulk(rows)
+            result = LocalCache.get_user("u1")
+            assert result is not None
+            assert result["display_name"] == "Second"
+        finally:
+            _teardown(tmpdir)
+
+    def test_bulk_rolls_with_duplicates_last_wins(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {**ROLL_ROW, "id": "r1", "event_name": "First"},
+                {**ROLL_ROW, "id": "r1", "event_name": "Second"},
+            ]
+            LocalCache.upsert_rolls_bulk(rows)
+            result = LocalCache.get_roll("r1")
+            assert result is not None
+            assert result["event_name"] == "Second"
+        finally:
+            _teardown(tmpdir)
+
+    def test_large_batch_games(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {**GAME_ROW, "ce_id": f"g{i}", "name": f"Game {i}"}
+                for i in range(200)
+            ]
+            LocalCache.upsert_games_bulk(rows)
+            assert len(LocalCache.get_games_all()) == 200
+            assert len(LocalCache.get_game_ids()) == 200
+        finally:
+            _teardown(tmpdir)
+
+    def test_large_batch_get_by_ids(self):
+        tmpdir = _setup()
+        try:
+            rows = [
+                {**GAME_ROW, "ce_id": f"g{i}", "name": f"Game {i}"}
+                for i in range(200)
+            ]
+            LocalCache.upsert_games_bulk(rows)
+            ids = [f"g{i}" for i in range(0, 200, 2)]
+            result = LocalCache.get_games_by_ids(ids)
+            assert len(result) == 100
+        finally:
+            _teardown(tmpdir)
+
+
+# === DELETE EDGE CASES ===
+
+
+class TestDeleteEdgeCases:
+    def test_delete_nonexistent_game_is_noop(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_game("nonexistent")
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_nonexistent_user_is_noop(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_user("nonexistent")
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_nonexistent_roll_is_noop(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.delete_roll("nonexistent")
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_rolls_by_ids_partial_match(self):
+        tmpdir = _setup()
+        try:
+            for i in range(3):
+                LocalCache.upsert_roll({**ROLL_ROW, "id": f"r{i}"})
+            LocalCache.delete_rolls_by_ids(["r0", "r2", "nonexistent"])
+            assert LocalCache.get_roll("r0") is None
+            assert LocalCache.get_roll("r1") is not None
+            assert LocalCache.get_roll("r2") is None
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_user_games_does_not_affect_other_users(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_games_bulk([
+                {"user_ce_id": "u1", "game_ce_id": "g1", "updated_at_CE": ""},
+                {"user_ce_id": "u2", "game_ce_id": "g1", "updated_at_CE": ""},
+            ])
+            LocalCache.delete_user_games("u1")
+            assert LocalCache.get_user_games("u1") == []
+            assert len(LocalCache.get_user_games("u2")) == 1
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_roll_games_by_roll(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "r1", "game_id": "g1", "index": 0, "rolled_at": ""},
+                {"roll_id": "r1", "game_id": "g2", "index": 1, "rolled_at": ""},
+                {"roll_id": "r2", "game_id": "g3", "index": 0, "rolled_at": ""},
+            ])
+            LocalCache.delete_roll_games_by_roll("r1")
+            assert LocalCache.get_roll_games("r1") == []
+            assert len(LocalCache.get_roll_games("r2")) == 1
+        finally:
+            _teardown(tmpdir)
+
+    def test_delete_roll_games_by_rolls_bulk(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll_games_bulk([
+                {"roll_id": "r1", "game_id": "g1", "index": 0, "rolled_at": ""},
+                {"roll_id": "r2", "game_id": "g2", "index": 0, "rolled_at": ""},
+                {"roll_id": "r3", "game_id": "g3", "index": 0, "rolled_at": ""},
+            ])
+            LocalCache.delete_roll_games_by_rolls(["r1", "r2"])
+            assert LocalCache.get_roll_games("r1") == []
+            assert LocalCache.get_roll_games("r2") == []
+            assert len(LocalCache.get_roll_games("r3")) == 1
+        finally:
+            _teardown(tmpdir)
+
+
+# === DATA INTEGRITY ===
+
+
+class TestDataIntegrity:
+    def test_game_preserves_all_fields(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_game(GAME_ROW)
+            result = LocalCache.get_game("g1")
+            assert result is not None
+            for key in GAME_ROW:
+                assert result[key] == GAME_ROW[key], f"Mismatch on {key}"
+        finally:
+            _teardown(tmpdir)
+
+    def test_user_preserves_all_fields(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user(USER_ROW)
+            result = LocalCache.get_user("u1")
+            assert result is not None
+            for key in USER_ROW:
+                assert result[key] == USER_ROW[key], f"Mismatch on {key}"
+        finally:
+            _teardown(tmpdir)
+
+    def test_roll_preserves_all_fields(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll(ROLL_ROW)
+            result = LocalCache.get_roll("r1")
+            assert result is not None
+            for key in ROLL_ROW:
+                assert result[key] == ROLL_ROW[key], f"Mismatch on {key}"
+        finally:
+            _teardown(tmpdir)
+
+    def test_objective_preserves_points_partial_none(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_objectives_bulk([
+                {"ce_id": "o1", "game_ce_id": "g1", "type": "primary", "name": "X",
+                 "description": "", "points": 10, "points_partial": None, "updated_at_CE": ""},
+            ])
+            result = LocalCache.get_objectives_by_game("g1")
+            assert result[0]["points_partial"] is None
+        finally:
+            _teardown(tmpdir)
+
+    def test_objective_preserves_points_partial_value(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_objectives_bulk([
+                {"ce_id": "o1", "game_ce_id": "g1", "type": "primary", "name": "X",
+                 "description": "", "points": 10, "points_partial": 5, "updated_at_CE": ""},
+            ])
+            result = LocalCache.get_objectives_by_game("g1")
+            assert result[0]["points_partial"] == 5
+        finally:
+            _teardown(tmpdir)
+
+    def test_requirement_data_with_special_characters(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_requirements_bulk([
+                {"objective_ce_id": "o1", "requirement_type": "custom",
+                 "data": "Beat the game 100% (including DLC's \"extra\" levels)",
+                 "updated_at_CE": ""},
+            ])
+            result = LocalCache.get_requirements_by_objectives(["o1"])
+            assert "DLC's" in result[0]["data"]
+            assert '"extra"' in result[0]["data"]
+        finally:
+            _teardown(tmpdir)
+
+    def test_categories_returned_in_index_order(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_categories_bulk([
+                {"game_id": "g1", "category": "C", "index": 2},
+                {"game_id": "g1", "category": "A", "index": 0},
+                {"game_id": "g1", "category": "B", "index": 1},
+            ])
+            result = LocalCache.get_categories_by_game("g1")
+            assert [r["category"] for r in result] == ["A", "B", "C"]
+        finally:
+            _teardown(tmpdir)
+
+    def test_rolls_by_user_finds_as_user2(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll({**ROLL_ROW, "id": "r1", "user1_ce_id": "u1", "user2_ce_id": "u2"})
+            result = LocalCache.get_rolls_by_user("u2")
+            assert len(result) == 1
+            assert result[0]["id"] == "r1"
+        finally:
+            _teardown(tmpdir)
+
+    def test_rolls_by_user_no_duplicates_when_both_fields_match(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_roll({**ROLL_ROW, "id": "r1", "user1_ce_id": "u1", "user2_ce_id": "u1"})
+            result = LocalCache.get_rolls_by_user("u1")
+            assert len(result) == 1
+        finally:
+            _teardown(tmpdir)
+
+
+# === INIT EDGE CASES ===
+
+
+class TestInitEdgeCases:
+    def test_get_connection_before_init_raises(self):
+        LocalCache.close()
+        with pytest.raises(RuntimeError, match="not initialized"):
+            LocalCache.get_connection()
+
+    def test_close_when_not_initialized_is_noop(self):
+        LocalCache.close()
+        LocalCache.close()

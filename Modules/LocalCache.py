@@ -565,6 +565,20 @@ def get_rolls_by_user(user_ce_id: str) -> list[dict]:
     ]
 
 
+def get_rolls_by_event_names(event_names: list[str]) -> list[dict]:
+    if not event_names:
+        return []
+    conn = get_connection()
+    placeholders = ",".join("?" * len(event_names))
+    return [
+        _row_to_dict(r)
+        for r in conn.execute(
+            f"SELECT * FROM rolls WHERE event_name IN ({placeholders})",
+            event_names,
+        ).fetchall()
+    ]
+
+
 def get_checkable_rolls() -> list[dict]:
     conn = get_connection()
     return [
