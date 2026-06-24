@@ -141,6 +141,18 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row)
 
 
+_ROLL_DEFAULTS = {
+    "id": None, "event_name": "", "user1_ce_id": "", "user2_ce_id": None,
+    "time_created": None, "time_due": None, "time_completed": None,
+    "is_lucky": 0, "chosen_tier": None, "chosen_tier_partner": None,
+    "status": "", "rerolls_remaining": None, "rerolls_used": 0, "winner": None,
+}
+
+
+def _normalize_roll(row: dict) -> dict:
+    return {**_ROLL_DEFAULTS, **row}
+
+
 # === GAMES ===
 
 def upsert_game(row: dict) -> None:
@@ -498,6 +510,7 @@ def delete_user_objectives(user_ce_id: str) -> None:
 # === ROLLS ===
 
 def upsert_roll(row: dict) -> None:
+    row = _normalize_roll(row)
     conn = get_connection()
     conn.execute(
         """INSERT INTO rolls (id, event_name, user1_ce_id, user2_ce_id,
@@ -522,6 +535,7 @@ def upsert_roll(row: dict) -> None:
 def upsert_rolls_bulk(rows: list[dict]) -> None:
     if not rows:
         return
+    rows = [_normalize_roll(r) for r in rows]
     conn = get_connection()
     conn.executemany(
         """INSERT INTO rolls (id, event_name, user1_ce_id, user2_ce_id,

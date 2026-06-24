@@ -637,30 +637,37 @@ def bulk_dump_games(
             supabase.table("objectiveRequirements").delete().in_(
                 "objective_ce_id", objective_ids
             ).execute()
+            LocalCache.delete_requirements_by_objectives(objective_ids)
 
         # Bulk upsert games
         if games_payload:
             supabase.table("games").upsert(games_payload).execute()
+            LocalCache.upsert_games_bulk(games_payload)
 
         if categories_payload:
             _delete_in_chunks("categories", "game_id", game_ids, chunk_size=200)
+            LocalCache.delete_categories_by_games(game_ids)
             supabase.table("categories").upsert(categories_payload).execute()
+            LocalCache.upsert_categories_bulk(categories_payload)
 
         # Bulk upsert objectives
         if objectives_payload:
             supabase.table("objectives").upsert(objectives_payload).execute()
+            LocalCache.upsert_objectives_bulk(objectives_payload)
 
         # Bulk upsert achievement requirements
         if achievement_reqs_payload:
             supabase.table("objectiveRequirements").upsert(
                 achievement_reqs_payload
             ).execute()
+            LocalCache.upsert_requirements_bulk(achievement_reqs_payload)
 
         # Bulk upsert custom requirements
         if custom_reqs_payload:
             supabase.table("objectiveRequirements").upsert(
                 custom_reqs_payload
             ).execute()
+            LocalCache.upsert_requirements_bulk(custom_reqs_payload)
 
         # small pause to avoid overloading the server
         if pause_seconds and (i + batch_size) < len(games):
@@ -755,20 +762,23 @@ def bulk_dump_users(
         # Bulk upsert users
         if users_payload:
             supabase.table("users").upsert(users_payload).execute()
+            LocalCache.upsert_users_bulk(users_payload)
 
-        # TODO inefficient
         # Bulk remove userObjectives
         if user_ids:
-            # (do we need this?)  _delete_in_chunks('userGames', 'user_ce_id', user_ids, chunk_size=200)
             _delete_in_chunks("userObjectives", "user_ce_id", user_ids, chunk_size=200)
+            for uid in user_ids:
+                LocalCache.delete_user_objectives(uid)
 
         # Bulk upsert userGames
         if user_games_payload:
             supabase.table("userGames").upsert(user_games_payload).execute()
+            LocalCache.upsert_user_games_bulk(user_games_payload)
 
         # Bulk upsert userObjectives
         if user_objectives_payload:
             supabase.table("userObjectives").upsert(user_objectives_payload).execute()
+            LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
 
         # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
         for user in batch:
@@ -797,7 +807,10 @@ def dump_user(user: CEUser):
         ),
     }
     supabase.table("users").upsert(user_data).execute()
+    LocalCache.upsert_user(user_data)
 
+    user_games_payload = []
+    user_objectives_payload = []
     for game in user.owned_games:
         game_data = {
             "user_ce_id": user.ce_id,
@@ -805,6 +818,7 @@ def dump_user(user: CEUser):
             "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         supabase.table("userGames").upsert(game_data).execute()
+        user_games_payload.append(game_data)
 
         for objective in game.user_objectives:
             obj_data = {
@@ -816,9 +830,10 @@ def dump_user(user: CEUser):
                 ).isoformat(),
             }
             supabase.table("userObjectives").upsert(obj_data).execute()
+            user_objectives_payload.append(obj_data)
 
-    # for roll in user.rolls:
-    #     dump_roll(roll)
+    LocalCache.upsert_user_games_bulk(user_games_payload)
+    LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
 
 
 def __dump_JUST_user(d: dict):
@@ -880,13 +895,17 @@ def bulk_dump_rolls(
         if roll_ids:
             supabase.table("rollGames").delete().in_("roll_id", roll_ids).execute()
             supabase.table("rolls").delete().in_("id", roll_ids).execute()
+            LocalCache.delete_roll_games_by_rolls(roll_ids)
+            LocalCache.delete_rolls_by_ids(roll_ids)
 
         # Bulk insert rolls and rollGames
         if rolls_payload:
             supabase.table("rolls").insert(rolls_payload).execute()
+            LocalCache.upsert_rolls_bulk(rolls_payload)
 
         if rollgames_payload:
             supabase.table("rollGames").insert(rollgames_payload).execute()
+            LocalCache.upsert_roll_games_bulk(rollgames_payload)
 
         if pause_seconds and (i + batch_size) < len(rolls):
             time.sleep(pause_seconds)
@@ -910,7 +929,10 @@ def dump_roll(roll: CERoll):
         "winner": None,  # TODO: determine on completion
     }
     supabase.table("rolls").upsert(roll_data).execute()
+    LocalCache.upsert_roll(roll_data)
 
+    LocalCache.delete_roll_games_by_roll(roll._id)
+    rollgames_payload = []
     for idx, game_id in enumerate(roll.games):
         game_data = {
             "roll_id": roll._id,
@@ -919,6 +941,8 @@ def dump_roll(roll: CERoll):
             "rolled_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         supabase.table("rollGames").upsert(game_data).execute()
+        rollgames_payload.append(game_data)
+    LocalCache.upsert_roll_games_bulk(rollgames_payload)
 
 
 def dump_input(input: CEInput):
@@ -967,6 +991,7 @@ def dump_database_tier(database_tier: dict):
 
         if payload:
             supabase.table("tier").upsert(payload).execute()
+            LocalCache.upsert_tier_bulk(payload)
 
 
 def dump_loop(dt: datetime.datetime):
@@ -1164,6 +1189,8 @@ def is_loop_running() -> bool:
 # === SUPABASE DELETERS ===
 def delete_game(ce_id: str):
     # Delete objectives first (foreign key constraint)
+    objective_ids = [o["ce_id"] for o in LocalCache.get_objectives_by_game(ce_id)]
+
     objectives = (
         supabase.table("objectives")
         .select("ce_id")
@@ -1176,32 +1203,30 @@ def delete_game(ce_id: str):
             "objective_ce_id", obj["ce_id"]
         ).execute()
     supabase.table("objectives").delete().eq("game_ce_id", ce_id).execute()
-
-    # Delete game
     supabase.table("games").delete().eq("ce_id", ce_id).execute()
+
+    # Delete from local cache
+    LocalCache.delete_requirements_by_objectives(objective_ids)
+    LocalCache.delete_objectives_by_ids(objective_ids)
+    LocalCache.delete_categories_by_game(ce_id)
+    LocalCache.delete_game(ce_id)
 
 
 def delete_user(ce_id: str):
-    # Delete user games and objectives
     supabase.table("userGames").delete().eq("user_ce_id", ce_id).execute()
     supabase.table("userObjectives").delete().eq("user_ce_id", ce_id).execute()
-
-    # Delete rolls and associated roll games
-    # rolls = supabase.table('rolls').select('id').or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute().data
-    # for roll in rolls:
-    #     supabase.table('rollGames').delete().eq('roll_id', roll['id']).execute()
-    # supabase.table('rolls').delete().or_(f"user1_ce_id.eq.{ce_id},user2_ce_id.eq.{ce_id}").execute()
-
-    # Delete user
     supabase.table("users").delete().eq("ce_id", ce_id).execute()
+
+    LocalCache.delete_user_games(ce_id)
+    LocalCache.delete_user_objectives(ce_id)
+    LocalCache.delete_user(ce_id)
 
 
 def delete_roll(roll_id: str):
-    # Delete roll games first
     supabase.table("rollGames").delete().eq("roll_id", roll_id).execute()
-
-    # Delete roll
     supabase.table("rolls").delete().eq("id", roll_id).execute()
+
+    LocalCache.delete_roll(roll_id)
 
 
 def add_pending(
@@ -1246,6 +1271,7 @@ def add_pending(
         for user_ce_id in user_ids
     ]
     supabase.table("rolls").insert(payload).execute()
+    LocalCache.upsert_rolls_bulk(payload)
 
 
 def kill_pending(
@@ -1285,6 +1311,8 @@ def kill_pending(
         return
     supabase.table("rollGames").delete().in_("roll_id", ids).execute()
     supabase.table("rolls").delete().in_("id", ids).execute()
+    LocalCache.delete_roll_games_by_rolls(ids)
+    LocalCache.delete_rolls_by_ids(ids)
 
 
 def delete_objectives_many(objs: list[str]):
@@ -1293,6 +1321,8 @@ def delete_objectives_many(objs: list[str]):
     supabase.table("objectiveRequirements").delete().in_(
         "objective_ce_id", objs
     ).execute()
+    LocalCache.delete_requirements_by_objectives(objs)
+    LocalCache.delete_objectives_by_ids(objs)
 
 
 # === MAINTENANCE ===
@@ -1500,6 +1530,8 @@ def dump_objective(objective: CEObjective):
         "objective_ce_id", objective.ce_id
     ).eq("requirement_type", "custom").execute()
 
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
     obj_data = {
         "ce_id": objective.ce_id,
         "game_ce_id": objective.game_ce_id,
@@ -1508,32 +1540,37 @@ def dump_objective(objective: CEObjective):
         "description": objective.description,
         "points": objective.point_value,
         "points_partial": objective.partial_points,
-        "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "updated_at_CE": now_iso,
     }
     supabase.table("objectives").upsert(obj_data).execute()
+    LocalCache.upsert_objectives_bulk([obj_data])
 
-    # Dump achievement requirements
+    # Clear old requirements from cache and rebuild
+    LocalCache.delete_requirements_by_objectives([objective.ce_id])
+    reqs_payload = []
+
     if objective.achievement_ce_ids:
         for achievement_id in objective.achievement_ce_ids:
             req_data = {
                 "objective_ce_id": objective.ce_id,
                 "requirement_type": "achievement",
                 "data": achievement_id,
-                "updated_at_CE": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
+                "updated_at_CE": now_iso,
             }
             supabase.table("objectiveRequirements").upsert(req_data).execute()
+            reqs_payload.append(req_data)
 
-    # Dump custom requirement if it exists
     if objective.requirements:
         req_data = {
             "objective_ce_id": objective.ce_id,
             "requirement_type": "custom",
             "data": objective.requirements,
-            "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "updated_at_CE": now_iso,
         }
         supabase.table("objectiveRequirements").upsert(req_data).execute()
+        reqs_payload.append(req_data)
+
+    LocalCache.upsert_requirements_bulk(reqs_payload)
 
 
 # ---------------------------------------------------------------------------

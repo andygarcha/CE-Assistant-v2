@@ -243,7 +243,6 @@ async def process_loop(
             SupabaseReader.bulk_dump_rolls(rolls_deleted)
 
         await asyncio.to_thread(_save_all)
-        SupabaseReader.invalidate_database_name_cache()
 
     # Flush updates to Supabase for the bot to deliver
     logger.info("Flushing %d updates.", len(updates))
