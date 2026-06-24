@@ -40,10 +40,13 @@ supabase: Client = create_client(
 logger = logging.getLogger(__name__)
 
 _cache_path = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "data", "cache.db")
-if LocalCache._conn is None:
+if not LocalCache.is_initialized():
     if not _os.path.exists(_cache_path):
         LocalCache.init(_cache_path)
-        LocalCache.rebuild_from_supabase()
+        try:
+            LocalCache.rebuild_from_supabase()
+        except Exception:
+            logger.exception("Failed to rebuild cache from Supabase on first startup. Cache will be empty until next scrape.")
     else:
         LocalCache.init(_cache_path)
 
@@ -302,31 +305,34 @@ def get_database_user() -> list[CEUser]:
     response_rgames = [dict(r) for r in conn.execute("SELECT * FROM roll_games").fetchall()]
     response_objectives = [dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()]
 
+    # Index by user for O(1) lookups
+    ugames_by_user: dict[str, list[dict]] = {}
+    for ug in response_ugames:
+        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
+    uobjs_by_user: dict[str, list[dict]] = {}
+    for uo in response_uobjectives:
+        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
+    rolls_by_user: dict[str, list[dict]] = {}
+    for r in response_rolls:
+        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
+    rgames_by_roll: dict[str, list[dict]] = {}
+    for rg in response_rgames:
+        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
+    objectives_index = {o["ce_id"]: o for o in response_objectives}
+
     _users = []
     for user in response_user:
-        ugames = [g for g in response_ugames if g["user_ce_id"] == user["ce_id"]]
-        uobjectives = [
-            o for o in response_uobjectives if o["user_ce_id"] == user["ce_id"]
-        ]
-
-        rolls = [r for r in response_rolls if r["user1_ce_id"] == user["ce_id"]]
-        rgames = [
-            g for g in response_rgames if g["roll_id"] in [r["id"] for r in rolls]
-        ]
+        uid = user["ce_id"]
+        ugames = ugames_by_user.get(uid, [])
+        uobjectives = uobjs_by_user.get(uid, [])
+        rolls = rolls_by_user.get(uid, [])
+        roll_ids = {r["id"] for r in rolls}
+        rgames = [rg for rid in roll_ids for rg in rgames_by_roll.get(rid, [])]
+        obj_ids = {uo["objective_ce_id"] for uo in uobjectives}
+        user_objectives = [objectives_index[oid] for oid in obj_ids if oid in objectives_index]
 
         _users.append(
-            __supabase_to_user(
-                user,
-                ugames,
-                uobjectives,
-                rolls,
-                rgames,
-                [
-                    o
-                    for o in response_objectives
-                    if o["ce_id"] in [u["objective_ce_id"] for u in uobjectives]
-                ],
-            )
+            __supabase_to_user(user, ugames, uobjectives, rolls, rgames, user_objectives)
         )
 
     return _users
@@ -767,8 +773,11 @@ def bulk_dump_users(
         # Bulk remove userObjectives
         if user_ids:
             _delete_in_chunks("userObjectives", "user_ce_id", user_ids, chunk_size=200)
-            for uid in user_ids:
-                LocalCache.delete_user_objectives(uid)
+            ph = ",".join("?" * len(user_ids))
+            LocalCache.get_connection().execute(
+                f"DELETE FROM user_objectives WHERE user_ce_id IN ({ph})", user_ids
+            )
+            LocalCache.get_connection().commit()
 
         # Bulk upsert userGames
         if user_games_payload:
@@ -1205,11 +1214,7 @@ def delete_game(ce_id: str):
     supabase.table("objectives").delete().eq("game_ce_id", ce_id).execute()
     supabase.table("games").delete().eq("ce_id", ce_id).execute()
 
-    # Delete from local cache
-    LocalCache.delete_requirements_by_objectives(objective_ids)
-    LocalCache.delete_objectives_by_ids(objective_ids)
-    LocalCache.delete_categories_by_game(ce_id)
-    LocalCache.delete_game(ce_id)
+    LocalCache.delete_game_cascade(ce_id)
 
 
 def delete_user(ce_id: str):
@@ -1217,9 +1222,7 @@ def delete_user(ce_id: str):
     supabase.table("userObjectives").delete().eq("user_ce_id", ce_id).execute()
     supabase.table("users").delete().eq("ce_id", ce_id).execute()
 
-    LocalCache.delete_user_games(ce_id)
-    LocalCache.delete_user_objectives(ce_id)
-    LocalCache.delete_user(ce_id)
+    LocalCache.delete_user_cascade(ce_id)
 
 
 def delete_roll(roll_id: str):
@@ -1356,6 +1359,15 @@ def clean_db():
     deleted_user_objectives = _delete_in_chunks(
         "userObjectives", "objective_ce_id", orphan_user_objective_ids
     )
+
+    # Also clean from local cache
+    if orphan_user_game_ids:
+        ph = ",".join("?" * len(orphan_user_game_ids))
+        conn.execute(f"DELETE FROM user_games WHERE game_ce_id IN ({ph})", orphan_user_game_ids)
+    if orphan_user_objective_ids:
+        ph = ",".join("?" * len(orphan_user_objective_ids))
+        conn.execute(f"DELETE FROM user_objectives WHERE objective_ce_id IN ({ph})", orphan_user_objective_ids)
+    conn.commit()
 
     logger.info(
         "clean_db removed %d orphan userGames and %d orphan userObjectives",

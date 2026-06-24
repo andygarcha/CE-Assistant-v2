@@ -259,11 +259,31 @@ async def process_loop(
             integrity_report = await asyncio.to_thread(LocalCache.run_integrity_check)
             synced = ", ".join(integrity_report.get("synced", []))
             removed = ", ".join(integrity_report.get("removed", []))
-            if synced or removed:
-                summary = f"Integrity check: synced [{synced}], removed [{removed}]"
+            schema = ", ".join(integrity_report.get("schema", []))
+            parts = []
+            if synced:
+                parts.append(f"synced [{synced}]")
+            if removed:
+                parts.append(f"removed [{removed}]")
+            if schema:
+                parts.append(f"schema [{schema}]")
+            if parts:
+                summary = "Integrity check: " + ", ".join(parts)
             else:
                 summary = "Integrity check passed — local cache in sync with Supabase"
             logger.info(summary)
+            SupabaseReader.write_scraper_update({
+                "is_embed": False,
+                "channel": "privatelog",
+                "text": summary,
+                "title": "",
+                "description": "",
+                "image": "",
+                "url": "",
+                "color": 0,
+                "status": "stable",
+                "game_ce_id": None,
+            })
         except Exception as e:
             logger.error("Integrity check failed: %s", e)
 
