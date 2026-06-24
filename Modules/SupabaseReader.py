@@ -44,15 +44,7 @@ _cache_path = _os.path.join(
 if not LocalCache.is_initialized():
     if not _os.path.exists(_cache_path):
         LocalCache.init(_cache_path)
-        try:
-            LocalCache.rebuild_from_supabase()
-        except Exception:
-            logger.exception("Failed to rebuild cache from Supabase on first startup.")
-            LocalCache.close()
-            try:
-                _os.remove(_cache_path)
-            except OSError:
-                pass
+        LocalCache.rebuild_from_supabase()
     else:
         LocalCache.init(_cache_path)
 

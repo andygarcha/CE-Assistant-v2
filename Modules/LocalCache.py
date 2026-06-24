@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS rolls (
     chosen_tier_partner INTEGER,
     status TEXT NOT NULL DEFAULT '',
     rerolls_remaining INTEGER,
-    rerolls_used INTEGER NOT NULL DEFAULT 0,
+    rerolls_used INTEGER DEFAULT 0,
     winner TEXT
 );
 
