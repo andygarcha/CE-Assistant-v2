@@ -162,7 +162,7 @@ class Screenshot:
                     logger.debug("with open")
                     ss_file.write(ss)
                     logger.debug("Svreenshot saved")
-                # print('directory: ' + str(os.listdir('/home/andrewgarcha/CE-Assistant')))
+                # print('directory: ' + str(os.listdir('/home/user/CE-Assistant')))
                 logger.debug("17")
                 screenshot = Image.open(path)
                 logger.debug("18")
