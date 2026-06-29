@@ -259,7 +259,7 @@ async def set_color(interaction: discord.Interaction):
         # log the color change
         await hm.send_message(
             client,
-            "userlog",
+            "privatelog",
             f":art: <@{interaction.user.id}> ({user_ce.get_rank()}) changed their color to **{role.name}**.",
             allowed_mentions=False,
         )
