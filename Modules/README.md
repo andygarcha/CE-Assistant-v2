@@ -14,7 +14,7 @@ This module is the bot's util module. I know having one util module is bad, and 
 This module handles all interaction with MongoDB. MongoDB is where the bot keeps all of its information on games and users, so update messages and casino rolls can be possible. It fetches and dumps.
 
 ## Reformatter
-This module is built to move over data from [CE-Assistant-v1](https://github.com/andykasen13/CE-Assistant-v1) to the data style of this bot. This is only run once.
+This module is built to move over data from [CE-Assistant-v1](https://github..com/andydotmp3/CE-Assistant-v1) to the data style of this bot. This is only run once.
 
 ## scraping
 This module handles all web interaction. I probably should come up with a better name for this. This currently handles user updates.

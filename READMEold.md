@@ -1,5 +1,5 @@
 # CE-Assistant-v2
-Object-based version of andykasen13/CE-Assistant
+Object-based version of andydotmp3/CE-Assistant
 
 ## little notes
 - consider having `CEGame` hold an array of just `CEObjectives` instead of two different ones for `Primary` and `Community`. Keep the `get_primary_objectives()` and `get_community_objectives()` and it'll sort it within the class (wait im so smart!)

@@ -7,7 +7,7 @@ Use [this link](https://console.cloud.google.com/flows/enableapi?apiid=sheets.go
 
 Also make sure you've set up a separate project just for this. I called mine CE-Sheets, but you're welcome to whatever naming convention you'd like. Ensure that the project that's pulled up is the one you've created, then select enable.
 
-![cesheets-0-gif](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/ac347904-9cbe-489e-aa2a-ee030545c3fe)
+![cesheets-0-gif](https://github..com/andydotmp3/CE-Assistant-v2/assets/89205919/ac347904-9cbe-489e-aa2a-ee030545c3fe)
 
 ## Step 2: Set up your OAuth 2.0 Screen
 Now you need to make your OAuth Screen. Unfortunately, the video I took was too long, but you can find it [here](https://youtu.be/tyl_PCsl3kU). NOTE: In this video, I start with [this link](https://console.cloud.google.com/apis/credentials), but the link below will get you to the same screen.
@@ -28,7 +28,7 @@ We need to get credentials for our script to actually use. Go to [this page](htt
 2. For Application Type, select 'Web application'. Leave the name as whatever it says, and scroll down to select 'Create'. (side note: you may be able to skip step 5 by adding `http://localhost:3000/` to 'Authorized redirect URLs', but I cannot confirm this.)
 3. **Wait!** Don't click away yet. Click the 'Download JSON' button, and save it to your Downloads folder.
 
-![gif2-setcredentials](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/3cc353f8-d8f6-4d52-9f6d-5ade5076321e)
+![gif2-setcredentials](https://github..com/andydotmp3/CE-Assistant-v2/assets/89205919/3cc353f8-d8f6-4d52-9f6d-5ade5076321e)
 
 ## Step 4: Add credentials to project.
 We need to add the credentials to the local folder for your Python script. Move the file you just downloaded to same folder as your current Python code. Rename this credentials file `credentials.json`. 
@@ -91,7 +91,7 @@ Go back to the [credentials page](https://console.cloud.google.com/apis/credenti
 
 Scroll down to 'Authorized redirect URLs', and click 'Add url'. Type in `http://localhost:3000/`, and hit enter. This should send you back to the main credentials page.
 
-![gif4-authorizeurl](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/aefb162b-61aa-43de-b6e2-705a9d2ce80b)
+![gif4-authorizeurl](https://github..com/andydotmp3/CE-Assistant-v2/assets/89205919/aefb162b-61aa-43de-b6e2-705a9d2ce80b)
 
 ## Step 6: Get your token file.
 Now you'll be getting your token for accessing the Google Sheets API. Run the code you just set up. 
@@ -100,7 +100,7 @@ This will take you to your web browser, where you'll choose an account. **Click 
 
 It will take you to another page, where it asks whether or not you trust the app. Click 'Continue'. If it works, you should see a "The authentication flow has completed. You may close this window." Close the window.
 
-![ezgif-4-96100f0e43](https://github.com/andykasen13/CE-Assistant-v2/assets/89205919/cabf86c4-1e67-4fbd-9dac-688ad77a3cf6)
+![ezgif-4-96100f0e43](https://github..com/andydotmp3/CE-Assistant-v2/assets/89205919/cabf86c4-1e67-4fbd-9dac-688ad77a3cf6)
 
 ## Final Check
 Just to be sure it worked, check the directory your Python script and `credentials.json` exist in. If `token.json` is there, you're all set!!
