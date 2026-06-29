@@ -150,7 +150,7 @@ async def register(
     await hm.send_message(
         client,
         "privatelog",
-        f":arrow_up: new user registered: <@{interaction.user.id}>: https://cedb.me/user/{ce_id}",
+        f":bust_in_silhouette: new user registered: <@{interaction.user.id}>: <https://cedb.me/user/{ce_id}>",
         True,
     )
 
@@ -255,6 +255,14 @@ async def set_color(interaction: discord.Interaction):
 
         # add correct color
         await interaction.user.add_roles(role)
+
+        # log the color change
+        await hm.send_message(
+            client,
+            "userlog",
+            f":art: <@{interaction.user.id}> ({user_ce.get_rank()}) changed their color to **{role.name}**.",
+            allowed_mentions=False,
+        )
 
         # update embed
         return await interaction.response.edit_message(

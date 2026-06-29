@@ -1235,6 +1235,15 @@ async def check_rolls(
     # defer the message
     await interaction.response.defer()
 
+    # log this interaction
+    await hm.log_command(
+        client,
+        interaction,
+        "check-rolls",
+        False,
+        friend=(None if friend is None else friend.mention),
+    )
+
     # pull from supabase
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     _friend_local = None

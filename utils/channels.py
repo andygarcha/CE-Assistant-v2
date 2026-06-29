@@ -124,6 +124,7 @@ async def log_command(
     interaction: discord.Interaction,
     command_name: str,
     dev_command: bool,
+    include_ce_link: bool = True,
     **kwargs,
 ) -> None:
     """Logs a command to the private log channel.
@@ -134,27 +135,33 @@ async def log_command(
         The bot client.
     interaction : discord.Interaction
         The interaction that triggered the command.
+    command_name : str
+        The name of the command being run.
     dev_command : bool
         Whether this is a dev command.
-    allowed_mentions : bool
-        Whether to allow mentions.
+    include_ce_link : bool
+        Whether to look up the user's CE profile for a linked display name.
     **kwargs
         The parameters of the command, passed as keyword arguments.
     """
-
     prefix: str = (
         ":white_large_square: dev command" if dev_command else ":blue_square: command"
     )
 
-    params = ", ".join(f"{k}={v}" for k, v in kwargs.items())
+    display: str
+    if include_ce_link:
+        from Modules import SupabaseReader
+        ce_user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+        display = ce_user.display_name_with_link() if ce_user is not None else interaction.user.name
+    else:
+        display = interaction.user.name
 
-    __command_name = interaction.command.name if interaction.command else "unknown"
-    message = (
-        f"{prefix} run by <@{interaction.user.id}> ({interaction.user.name}): /{command_name}, "
-        f" interaction.command.name={__command_name}"
-    )
-    if params:
-        message += f", params: {params}"
+    lines = [
+        f"{prefix} run by <@{interaction.user.id}> ({display})",
+        f"- `/{command_name}`",
+    ]
+    for k, v in kwargs.items():
+        lines.append(f"- {k}={v}")
 
-    await send_message(client, "privatelog", message, allowed_mentions=False)
+    await send_message(client, "privatelog", "\n".join(lines), allowed_mentions=False)
     return
