@@ -82,7 +82,7 @@ async def register(
         interaction,
         "register",
         False,
-        ce_link=ce_link,
+        ce_link=f"<{ce_link}>",
         discord_user=(None if discord_user is None else discord_user.mention),
     )
 
