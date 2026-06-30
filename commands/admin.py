@@ -305,27 +305,20 @@ async def add_notes(
     # grab the embed
     embed = message.embeds[0]
 
-    # try and see if the embed already has a reason field
-    try:
-        if embed.fields[-1].name == "Note":
-            # if clear has been set, set the value to only the new notes
-            if clear:
-                embed.set_field_at(
-                    index=len(embed.fields) - 1, name="Note", value=notes
-                )
-
-            # else, add the new notes to the end and keep the old notes
-            else:
-                old_notes = embed.fields[-1].value
-                embed.set_field_at(
-                    index=len(embed.fields) - 1,
-                    name="Note",
-                    value=f"{old_notes}\n{notes}",
-                )
-
-    # if it errors, then just add a reason field
-    except Exception as e:
-        logger.exception(e)
+    # update existing Note field if present, otherwise add one
+    if embed.fields and embed.fields[-1].name == "Note":
+        if clear:
+            embed.set_field_at(
+                index=len(embed.fields) - 1, name="Note", value=notes
+            )
+        else:
+            old_notes = embed.fields[-1].value
+            embed.set_field_at(
+                index=len(embed.fields) - 1,
+                name="Note",
+                value=f"{old_notes}\n{notes}",
+            )
+    else:
         embed.add_field(name="Note", value=notes, inline=False)
 
     # edit the message
