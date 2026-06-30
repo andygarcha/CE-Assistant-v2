@@ -779,6 +779,20 @@ def get_tier_all() -> list[dict]:
 
 _SUPABASE_PAGE_SIZE = 1000
 
+# Child tables to sync when new parent rows are inserted by the integrity check.
+# Format: parent_local_table -> [(supabase_child_table, fk_col, local_child_table), ...]
+_CHILD_SYNCS: dict[str, list[tuple[str, str, str]]] = {
+    "games": [("categories", "game_id", "categories")],
+    "objectives": [
+        ("objectiveRequirements", "objective_ce_id", "objective_requirements")
+    ],
+    "rolls": [("rollGames", "roll_id", "roll_games")],
+    "users": [
+        ("userGames", "user_ce_id", "user_games"),
+        ("userObjectives", "user_ce_id", "user_objectives"),
+    ],
+}
+
 
 def _fetch_all_rows(sb_client, table_name: str) -> list[dict]:
     """Fetch all rows from a Supabase table with pagination to avoid the 1000-row default limit."""
@@ -927,6 +941,59 @@ def run_integrity_check() -> dict:
                         f'INSERT OR REPLACE INTO "{local_table}" ({col_names}) VALUES ({params})',
                         data,
                     )
+            # Sync child tables whose rows were not included in the parent select above.
+            for sb_child, fk_col, child_local in _CHILD_SYNCS.get(local_table, []):
+                child_rows: list[dict] = []
+                for j in range(0, len(missing_list), 100):
+                    parent_chunk = missing_list[j : j + 100]
+                    offset = 0
+                    while True:
+                        page = (
+                            sb.table(sb_child)
+                            .select()
+                            .in_(fk_col, parent_chunk)
+                            .range(offset, offset + _SUPABASE_PAGE_SIZE - 1)
+                            .execute()
+                            .data
+                        ) or []
+                        child_rows.extend(page)
+                        if len(page) < _SUPABASE_PAGE_SIZE:
+                            break
+                        offset += _SUPABASE_PAGE_SIZE
+
+                if not child_rows:
+                    continue
+
+                child_local_cols = {
+                    row[1]
+                    for row in conn.execute(
+                        f'PRAGMA table_info("{child_local}")'
+                    ).fetchall()
+                }
+                dropped = set(child_rows[0].keys()) - child_local_cols
+                if dropped:
+                    logger.warning(
+                        "Supabase table '%s' has columns not in local schema: %s.",
+                        sb_child,
+                        ", ".join(sorted(dropped)),
+                    )
+                child_cols = [c for c in child_rows[0].keys() if c in child_local_cols]
+                child_col_names = ",".join(f'"{c}"' for c in child_cols)
+                child_params = ",".join(f":{c}" for c in child_cols)
+                # Clear any orphaned rows before inserting
+                for j in range(0, len(missing_list), 100):
+                    parent_chunk = missing_list[j : j + 100]
+                    ph = ",".join("?" * len(parent_chunk))
+                    conn.execute(
+                        f'DELETE FROM "{child_local}" WHERE "{fk_col}" IN ({ph})',
+                        parent_chunk,
+                    )
+                conn.executemany(
+                    f'INSERT INTO "{child_local}" ({child_col_names}) VALUES ({child_params})',
+                    child_rows,
+                )
+                report["synced"].append(f"{len(child_rows)} {child_local}")
+
             report["synced"].append(f"{len(missing_locally)} {local_table}")
 
         if stale_locally:
@@ -981,6 +1048,27 @@ def run_integrity_check() -> dict:
                 )
 
             report["removed"].append(f"{len(stale_locally)} {local_table}")
+
+    # Rebuild categories if empty while games are present (categories may have been
+    # added to Supabase after the initial cache build, and they have no primary key
+    # so they can't be tracked by the id-based checks above).
+    game_count = conn.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+    cat_count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+    if game_count > 0 and cat_count == 0:
+        data = _fetch_all_rows(sb, "categories")
+        if data:
+            local_cols = {
+                row[1]
+                for row in conn.execute('PRAGMA table_info("categories")').fetchall()
+            }
+            cols = [c for c in data[0].keys() if c in local_cols]
+            col_names = ",".join(f'"{c}"' for c in cols)
+            params = ",".join(f":{c}" for c in cols)
+            conn.execute("DELETE FROM categories")
+            conn.executemany(
+                f'INSERT INTO "categories" ({col_names}) VALUES ({params})', data
+            )
+            report["synced"].append(f"{len(data)} categories (rebuilt)")
 
     # Schema validation
     report["schema"] = _validate_schema(conn)

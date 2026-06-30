@@ -1433,3 +1433,133 @@ class TestRunIntegrityCheck:
             assert LocalCache.get_game("g-new") is not None
         finally:
             _teardown(tmpdir)
+
+    def test_syncs_categories_for_new_game(self):
+        tmpdir = _setup()
+        try:
+            mock_sb = self._make_mock_supabase(
+                {
+                    "games": [{**GAME_ROW, "ce_id": "g-new"}],
+                    "categories": [
+                        {"game_id": "g-new", "category": "Action", "index": 0}
+                    ],
+                    "users": [],
+                    "objectives": [],
+                    "rolls": [],
+                }
+            )
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+
+                run_integrity_check()
+
+            cats = LocalCache.get_categories_by_game("g-new")
+            assert len(cats) == 1
+            assert cats[0]["category"] == "Action"
+        finally:
+            _teardown(tmpdir)
+
+    def test_syncs_requirements_for_new_objective(self):
+        tmpdir = _setup()
+        try:
+            obj_row = {
+                "ce_id": "o-new",
+                "game_ce_id": "g1",
+                "type": "primary",
+                "name": "Obj",
+                "description": "",
+                "points": 10,
+                "points_partial": None,
+                "updated_at_CE": "",
+            }
+            req_row = {
+                "objective_ce_id": "o-new",
+                "requirement_type": "achievement",
+                "data": "ach-1",
+                "updated_at_CE": "",
+            }
+            mock_sb = self._make_mock_supabase(
+                {
+                    "games": [],
+                    "users": [],
+                    "objectives": [obj_row],
+                    "objectiveRequirements": [req_row],
+                    "rolls": [],
+                }
+            )
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+
+                run_integrity_check()
+
+            reqs = LocalCache.get_requirements_by_objectives(["o-new"])
+            assert len(reqs) == 1
+            assert reqs[0]["objective_ce_id"] == "o-new"
+            assert reqs[0]["data"] == "ach-1"
+        finally:
+            _teardown(tmpdir)
+
+    def test_syncs_roll_games_for_new_roll(self):
+        tmpdir = _setup()
+        try:
+            roll_game_row = {
+                "roll_id": "r-new",
+                "game_id": "g1",
+                "index": 0,
+                "rolled_at": "",
+            }
+            mock_sb = self._make_mock_supabase(
+                {
+                    "games": [],
+                    "users": [],
+                    "objectives": [],
+                    "rolls": [{**ROLL_ROW, "id": "r-new"}],
+                    "rollGames": [roll_game_row],
+                }
+            )
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+
+                run_integrity_check()
+
+            roll_games = LocalCache.get_roll_games("r-new")
+            assert len(roll_games) == 1
+            assert roll_games[0]["game_id"] == "g1"
+        finally:
+            _teardown(tmpdir)
+
+    def test_syncs_user_games_and_objectives_for_new_user(self):
+        tmpdir = _setup()
+        try:
+            ug_row = {"user_ce_id": "u-new", "game_ce_id": "g1", "updated_at_CE": ""}
+            uo_row = {
+                "user_ce_id": "u-new",
+                "objective_ce_id": "o1",
+                "user_points": 10,
+                "updated_at_CE": "",
+            }
+            mock_sb = self._make_mock_supabase(
+                {
+                    "games": [],
+                    "users": [{**USER_ROW, "ce_id": "u-new"}],
+                    "objectives": [],
+                    "rolls": [],
+                    "userGames": [ug_row],
+                    "userObjectives": [uo_row],
+                }
+            )
+
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                from Modules.LocalCache import run_integrity_check
+
+                run_integrity_check()
+
+            assert len(LocalCache.get_user_games("u-new")) == 1
+            assert LocalCache.get_user_games("u-new")[0]["game_ce_id"] == "g1"
+            assert len(LocalCache.get_user_objectives("u-new")) == 1
+            assert LocalCache.get_user_objectives("u-new")[0]["user_points"] == 10
+        finally:
+            _teardown(tmpdir)
