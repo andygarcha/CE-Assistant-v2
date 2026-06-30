@@ -187,7 +187,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "bad-id", False))
+                asyncio.run(fail_roll(interaction, "bad-id", False))  # type: ignore[arg-type]
         mock_dump.assert_not_called()
 
     # ── non-current roll, flag not set ────────────────────────────────────────
@@ -220,7 +220,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "roll-001", False))
+                asyncio.run(fail_roll(interaction, "roll-001", False))  # type: ignore[arg-type]
         mock_dump.assert_not_called()
 
     # ── current roll succeeds ─────────────────────────────────────────────────
@@ -245,7 +245,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "roll-001", False))
+                asyncio.run(fail_roll(interaction, "roll-001", False))  # type: ignore[arg-type]
         mock_dump.assert_called_once_with(roll)
 
     def test_current_roll_sends_success_message(self):
@@ -296,7 +296,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "roll-001", False))
+                asyncio.run(fail_roll(interaction, "roll-001", False))  # type: ignore[arg-type]
         mock_get_user.assert_called_once_with(roll.user_ce_id)
 
     def test_co_op_roll_looks_up_both_users(self):
@@ -315,7 +315,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "roll-001", False))
+                asyncio.run(fail_roll(interaction, "roll-001", False))  # type: ignore[arg-type]
         called_ids = {c[0][0] for c in mock_get_user.call_args_list}
         assert roll.user_ce_id in called_ids
         assert "partner-001" in called_ids
@@ -336,7 +336,7 @@ class TestFailRoll:
             import commands.admin as admin_mod
 
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
-                asyncio.run(fail_roll(interaction, "roll-001", False))
+                asyncio.run(fail_roll(interaction, "roll-001", False))  # type: ignore[arg-type]
         _, channel, msg = mock_send.call_args[0]
         assert channel == "casino"
         assert "not found" in msg.lower()
