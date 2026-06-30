@@ -52,6 +52,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Run the loop on ALL games in the CE database.",
         guild=guild,
     )
+    @app_commands.describe(send_updates="Set this to false to silently scrape.")
     async def full_scrape_command(
         interaction: discord.Interaction, send_updates: bool = True
     ):
@@ -90,6 +91,9 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Clear any user's current/completed rolls, cooldowns, or pendings.",
         guild=guild,
     )
+    @app_commands.describe(
+        roll_id="The ID of the roll whose status you're setting to 'removed'."
+    )
     async def clear_roll_command(interaction: discord.Interaction, roll_id: str):
         await clear_roll(interaction, roll_id)
 
@@ -99,6 +103,8 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Clear the most recently rolled game in a multi-stage roll",
         guild=guild,
     )
+    @app_commands.describe(member="The user whose roll you're adjusting.")
+    @app_commands.describe(roll_name="The event you're adjusting.")
     async def clear_roll_portion_command(
         interaction: discord.Interaction,
         member: discord.Member,
@@ -128,6 +134,8 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Force add a roll to a user's completed rolls section.",
         guild=guild,
     )
+    @app_commands.describe(member="The user who will have the roll added.")
+    @app_commands.describe(roll_name="The event that will be added.")
     async def force_add_command(
         interaction: discord.Interaction,
         member: discord.Member,
@@ -138,6 +146,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @tree.command(
         name="force-unlink", description="Unlink someone from the bot.", guild=guild
     )
+    @app_commands.describe(member="The user who will be unlinked.")
     async def force_unlink_command(
         interaction: discord.Interaction, member: discord.Member
     ):

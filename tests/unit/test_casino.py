@@ -594,6 +594,7 @@ def _run_coop(
     with (
         patch.object(_casino_mod, "client", create=True, new=MagicMock()),
         patch("commands.casino.hm.log_command", new_callable=AsyncMock),
+        patch("commands.casino.hm.send_message", new_callable=AsyncMock),
     ):
         asyncio.run(
             co_op_roll(

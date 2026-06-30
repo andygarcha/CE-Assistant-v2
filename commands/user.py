@@ -48,6 +48,9 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Show the CE Summary links for all available years of a user",
         guild=guild,
     )
+    @app_commands.describe(
+        user="The user you'd like to see the CE Summary for (leave blank to see yourself!)"
+    )
     async def show_summary_command(
         interaction: discord.Interaction, user: discord.User | None = None
     ):
