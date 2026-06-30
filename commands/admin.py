@@ -105,7 +105,14 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         roll_name: hm.ALL_ROLL_EVENT_NAMES,
     ):
         return await interaction.response.send_message("Not available.")
-        await clear_roll_portion(interaction, member, roll_name)
+
+    @tree.command(
+        name="fail-roll",
+        description="Given a roll ID, change the status from 'current' to 'failed'.",
+        guild=guild,
+    )
+    async def fail_roll_command(interaction: discord.Interaction, roll_id: str):
+        return await interaction.response.send_message("In progress!")
 
     # ---- force add command ----
     @tree.command(
