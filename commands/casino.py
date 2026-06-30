@@ -126,6 +126,13 @@ async def solo_roll(
             f"You are currently on cooldown for {event_name} until <t:{user.get_cooldown_timestamp(event_name)}>. "
         )
 
+    # user has pending
+    if user.has_pending(event_name):
+        return await interaction.followup.send(
+            "You just tried rolling this event. Please wait about 10 minutes before trying again."
+            + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
+        )
+
     # user currently rolled => is cancellable
     if event_name in ["Never Lucky", "Let Fate Decide"]:
         _current_roll = user.get_current_roll(event_name)
@@ -176,13 +183,6 @@ async def solo_roll(
     if user.has_current_roll(event_name):
         return await interaction.followup.send(
             f"You're currently attempting {event_name}! Please finish this instance before rerolling."
-        )
-
-    # user has pending
-    if user.has_pending(event_name):
-        return await interaction.followup.send(
-            "You just tried rolling this event. Please wait about 10 minutes before trying again."
-            + " (P.S. This is not a cooldown. Just has to do with how the bot backend works.)"
         )
 
     # roll requires category
