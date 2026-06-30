@@ -175,6 +175,16 @@ class TestIsCompleted:
         ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10)])
         assert ug.is_completed(game) is True
 
+    def test_completed_via_mapping(self):
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10)])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10)])
+        assert ug.is_completed({GAME_ID: game}) is True
+
+    def test_game_not_in_mapping_returns_false(self):
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10)])
+        ug = make_user_game(ce_id=GAME_ID, user_objectives=[_upo(10)])
+        assert ug.is_completed({"wrong-id-0000-0000-000000000000": game}) is False
+
 
 # ── is_overcompleted ─────────────────────────────────────────────────────────
 #
@@ -232,6 +242,13 @@ class TestIsOvercompleted:
             ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
         )
         assert ug.is_overcompleted({GAME_ID: game}) is True
+
+    def test_game_not_in_mapping_returns_false(self):
+        game = make_game(ce_id=GAME_ID, objectives=[_po(10, "po-a"), _so(20, "so-a")])
+        ug = make_user_game(
+            ce_id=GAME_ID, user_objectives=[_upo(10, "po-a"), _uso(20, "so-a")]
+        )
+        assert ug.is_overcompleted({"wrong-id-0000-0000-000000000000": game}) is False
 
     # ── user-supplied starter cases ───────────────────────────────────────────
 

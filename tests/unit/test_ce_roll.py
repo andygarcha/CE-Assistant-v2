@@ -95,6 +95,43 @@ class TestIsExpired:
         roll._due_time = FUTURE
         assert roll.is_expired is False
 
+    def test_past_iso_string_is_expired(self):
+        roll = make_roll()
+        roll._due_time = "2000-01-01T00:00:00+00:00"  # type: ignore[assignment]
+        assert roll.is_expired is True
+
+    def test_future_iso_string_not_expired(self):
+        roll = make_roll()
+        roll._due_time = "2099-01-01T00:00:00+00:00"  # type: ignore[assignment]
+        assert roll.is_expired is False
+
+    def test_ce_timestamp_string_is_expired(self):
+        # ".000Z" suffix: fromisoformat may accept it but the ce-format fallback
+        # also handles it — either way the string branch is exercised.
+        roll = make_roll()
+        roll._due_time = "2000-01-01T00:00:00.000Z"  # type: ignore[assignment]
+        assert roll.is_expired is True
+
+    def test_unparseable_string_returns_false(self):
+        roll = make_roll()
+        roll._due_time = "not-a-timestamp"  # type: ignore[assignment]
+        assert roll.is_expired is False
+
+    def test_unsupported_type_returns_false(self):
+        roll = make_roll()
+        roll._due_time = [1, 2, 3]  # type: ignore[assignment]
+        assert roll.is_expired is False
+
+    def test_naive_past_datetime_is_expired(self):
+        roll = make_roll()
+        roll._due_time = datetime.datetime(2000, 1, 1)  # no tzinfo
+        assert roll.is_expired is True
+
+    def test_naive_future_datetime_not_expired(self):
+        roll = make_roll()
+        roll._due_time = datetime.datetime(2099, 1, 1)  # no tzinfo
+        assert roll.is_expired is False
+
 
 # ── is_completed ──────────────────────────────────────────────────────────────
 
@@ -196,6 +233,20 @@ class TestInFinalStage:
 
     def test_fourward_thinking_not_final_at_2_games(self):
         roll = make_roll(roll_name="Fourward Thinking", games=["g1", "g2"])
+        assert roll.in_final_stage is False
+
+    def test_two_two_week_streak_final_stage_at_4_games(self):
+        roll = make_roll(
+            roll_name='Two "Two Week T2 Streak" Streak',
+            games=["g1", "g2", "g3", "g4"],
+        )
+        assert roll.in_final_stage is True
+
+    def test_two_two_week_streak_not_final_at_2_games(self):
+        roll = make_roll(
+            roll_name='Two "Two Week T2 Streak" Streak',
+            games=["g1", "g2"],
+        )
         assert roll.in_final_stage is False
 
 

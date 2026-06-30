@@ -104,6 +104,13 @@ class TestFormatCELink:
         # dashes at wrong positions
         assert format_ce_link("a1b2c3d4e5f67890abcdef1234567890") is None
 
+    def test_empty_string_returns_none(self):
+        assert format_ce_link("") is None
+
+    def test_short_string_returns_none(self):
+        # Slice indexing on a short string returns "" which != "-"
+        assert format_ce_link("short") is None
+
 
 # ── is_within_percentage ──────────────────────────────────────────────────────
 

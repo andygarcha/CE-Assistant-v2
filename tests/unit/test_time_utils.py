@@ -1,5 +1,6 @@
 import datetime
 
+import pytest
 
 from utils.time_utils import (
     cetimestamp_to_datetime,
@@ -31,6 +32,10 @@ class TestMonthsToDays:
     def test_result_is_int(self):
         assert isinstance(months_to_days(3), int)
 
+    def test_negative_months_returns_negative_days(self):
+        # Negative input means a past date — result should be negative
+        assert months_to_days(-1) < 0
+
 
 # ── cetimestamp_to_datetime ───────────────────────────────────────────────────
 
@@ -52,6 +57,10 @@ class TestCETimestampToDatetime:
     def test_returns_datetime_object(self):
         result = cetimestamp_to_datetime("2024-03-20T18:45:00.000Z")
         assert isinstance(result, datetime.datetime)
+
+    def test_malformed_timestamp_raises(self):
+        with pytest.raises((ValueError, Exception)):
+            cetimestamp_to_datetime("not-a-timestamp")
 
 
 # ── get_datetime ──────────────────────────────────────────────────────────────
@@ -108,3 +117,42 @@ class TestGetDatetime:
         expected_approx = before + datetime.timedelta(minutes=60)
         delta = abs((result - expected_approx).total_seconds())
         assert delta < 2
+
+    def test_months_from_now(self):
+        before = datetime.datetime.now(datetime.timezone.utc)
+        result = get_datetime(months=1)
+        # one month ahead is between 28 and 31 days
+        assert (
+            before + datetime.timedelta(days=27)
+            < result
+            < before + datetime.timedelta(days=32)
+        )
+
+    def test_months_with_old_datetime(self):
+        result = get_datetime(months=2, old_datetime=FIXED_DT)
+        expected = FIXED_DT + datetime.timedelta(days=months_to_days(2))
+        assert result == expected
+
+    def test_naive_old_datetime_gets_utc_applied(self):
+        naive = datetime.datetime(2024, 6, 15, 12, 0, 0)  # no tzinfo
+        result = get_datetime(days=1, old_datetime=naive)
+        expected = datetime.datetime(
+            2024, 6, 16, 12, 0, 0, tzinfo=datetime.timezone.utc
+        )
+        assert result == expected
+
+    def test_string_days_with_old_datetime_raises(self):
+        with pytest.raises(Exception):
+            get_datetime(days="now", old_datetime=FIXED_DT)
+
+    def test_invalid_string_days_without_old_datetime_raises(self):
+        with pytest.raises(Exception):
+            get_datetime(days="tomorrow")
+
+    def test_cetimestamp_string_as_old_datetime(self):
+        # CE-format string falls back to cetimestamp_to_datetime (line 37-38)
+        result = get_datetime(days=0, old_datetime="2024-06-15T12:00:00.000Z")
+        expected = datetime.datetime(
+            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
+        )
+        assert result == expected
