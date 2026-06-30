@@ -151,11 +151,17 @@ class TestFailRoll:
         with (
             patch.object(admin_mod, "client", create=True, new=MagicMock()),
             patch("commands.admin.hm.log_command", new_callable=AsyncMock),
-            patch("commands.admin.hm.send_message", new_callable=AsyncMock) as mock_send,
-            patch("commands.admin.SupabaseReader.get_roll", return_value=get_roll_return),
+            patch(
+                "commands.admin.hm.send_message", new_callable=AsyncMock
+            ) as mock_send,
+            patch(
+                "commands.admin.SupabaseReader.get_roll", return_value=get_roll_return
+            ),
             patch("commands.admin.SupabaseReader.dump_roll"),
             patch("commands.admin.SupabaseReader.get_database_name", return_value=[]),
-            patch("commands.admin.SupabaseReader.get_user", side_effect=get_user_return),
+            patch(
+                "commands.admin.SupabaseReader.get_user", side_effect=get_user_return
+            ),
         ):
             asyncio.run(fail_roll(interaction, roll_id, is_not_current))
             return mock_send
@@ -179,6 +185,7 @@ class TestFailRoll:
             patch("commands.admin.SupabaseReader.get_user", return_value=MagicMock()),
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "bad-id", False))
         mock_dump.assert_not_called()
@@ -211,6 +218,7 @@ class TestFailRoll:
             patch("commands.admin.SupabaseReader.get_user", return_value=MagicMock()),
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "roll-001", False))
         mock_dump.assert_not_called()
@@ -235,6 +243,7 @@ class TestFailRoll:
             patch("commands.admin.SupabaseReader.get_user", return_value=MagicMock()),
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "roll-001", False))
         mock_dump.assert_called_once_with(roll)
@@ -280,9 +289,12 @@ class TestFailRoll:
             patch("commands.admin.hm.log_command", new_callable=AsyncMock),
             patch("commands.admin.hm.send_message", new_callable=AsyncMock),
             patch("commands.admin.SupabaseReader.get_database_name", return_value=[]),
-            patch("commands.admin.SupabaseReader.get_user", return_value=MagicMock()) as mock_get_user,
+            patch(
+                "commands.admin.SupabaseReader.get_user", return_value=MagicMock()
+            ) as mock_get_user,
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "roll-001", False))
         mock_get_user.assert_called_once_with(roll.user_ce_id)
@@ -296,9 +308,12 @@ class TestFailRoll:
             patch("commands.admin.hm.log_command", new_callable=AsyncMock),
             patch("commands.admin.hm.send_message", new_callable=AsyncMock),
             patch("commands.admin.SupabaseReader.get_database_name", return_value=[]),
-            patch("commands.admin.SupabaseReader.get_user", return_value=MagicMock()) as mock_get_user,
+            patch(
+                "commands.admin.SupabaseReader.get_user", return_value=MagicMock()
+            ) as mock_get_user,
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "roll-001", False))
         called_ids = {c[0][0] for c in mock_get_user.call_args_list}
@@ -312,11 +327,14 @@ class TestFailRoll:
             patch("commands.admin.SupabaseReader.get_roll", return_value=roll),
             patch("commands.admin.SupabaseReader.dump_roll"),
             patch("commands.admin.hm.log_command", new_callable=AsyncMock),
-            patch("commands.admin.hm.send_message", new_callable=AsyncMock) as mock_send,
+            patch(
+                "commands.admin.hm.send_message", new_callable=AsyncMock
+            ) as mock_send,
             patch("commands.admin.SupabaseReader.get_database_name", return_value=[]),
             patch("commands.admin.SupabaseReader.get_user", return_value=None),
         ):
             import commands.admin as admin_mod
+
             with patch.object(admin_mod, "client", create=True, new=MagicMock()):
                 asyncio.run(fail_roll(interaction, "roll-001", False))
         _, channel, msg = mock_send.call_args[0]
