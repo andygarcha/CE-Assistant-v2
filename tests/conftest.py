@@ -4,13 +4,9 @@ Each factory exposes only the parameters that individual tests care about;
 everything else gets a safe default.
 """
 
-# Prevent SupabaseReader from making network calls at import time.
-# This must run before any test module imports SupabaseReader (directly or transitively).
-from unittest.mock import patch as _patch
-_patch("Modules.LocalCache.rebuild_from_supabase", return_value=None).start()
-
 import datetime
 from typing import cast
+from unittest.mock import patch as _patch
 import uuid
 
 from Classes.CE_Objective import CEObjective
@@ -20,6 +16,10 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Modules import hm
+
+# Prevent SupabaseReader from making network calls at import time.
+# Must run before any test module imports SupabaseReader (directly or transitively).
+_patch("Modules.LocalCache.rebuild_from_supabase", return_value=None).start()
 
 
 def make_objective(
