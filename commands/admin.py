@@ -84,22 +84,16 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         await add_notes(interaction, embed_id, notes, clear)
 
-    # ---- clear roll command ----
+    # -- clear roll command ----------------
     @tree.command(
         name="clear-roll",
         description="Clear any user's current/completed rolls, cooldowns, or pendings.",
         guild=guild,
     )
-    async def clear_roll_command(
-        interaction: discord.Interaction,
-        member: discord.Member,
-        roll_name: hm.ALL_ROLL_EVENT_NAMES,
-        current: bool = False,
-        completed: bool = False,
-        pending: bool = False,
-    ):
-        await clear_roll(interaction, member, roll_name, current, completed, pending)
+    async def clear_roll_command(interaction: discord.Interaction, roll_id: str):
+        await clear_roll(interaction, roll_id)
 
+    # -- clear roll portion ----------------
     @tree.command(
         name="clear-roll-portion",
         description="Clear the most recently rolled game in a multi-stage roll",
@@ -110,6 +104,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         member: discord.Member,
         roll_name: hm.ALL_ROLL_EVENT_NAMES,
     ):
+        return await interaction.response.send_message("Not available.")
         await clear_roll_portion(interaction, member, roll_name)
 
     # ---- force add command ----
@@ -341,44 +336,28 @@ async def add_notes(
 #  \_____| |______| |______| /_/    \_\ |_|  \_\
 
 
-async def clear_roll(
-    interaction: discord.Interaction,
-    member: discord.Member,
-    roll_name: hm.ALL_ROLL_EVENT_NAMES,
-    current: bool = False,
-    completed: bool = False,
-    pending: bool = False,
-):
+async def clear_roll(interaction: discord.Interaction, roll_id: str):
+    """
+    Takes in a roll ID and changes its status from whatever it currently is to 'removed'.
+    """
     await interaction.response.defer()
 
     # log this interaction
-    await hm.log_command(
-        client,
-        interaction,
-        "clear_roll",
-        True,
-        member=member.mention,
-        roll_name=roll_name,
-        current=current,
-        completed=completed,
-        pending=pending,
+    await hm.log_command(client, interaction, "clear_roll", True, roll_id=roll_id)
+
+    roll = SupabaseReader.get_roll(roll_id)
+    if roll is None:
+        return await interaction.followup.send(
+            f"Could not find a roll with id {roll_id}."
+        )
+
+    roll.set_status("removed")
+
+    SupabaseReader.dump_roll(roll)
+
+    return await interaction.followup.send(
+        f"'{roll.roll_name}' roll with user={roll.user_ce_id} set to removed."
     )
-
-    # get database user and the user
-    user = SupabaseReader.get_user(member.id, use_discord_id=True)
-    if user is None:
-        await interaction.followup.send("Could not find user!")
-        raise Exception(f"Could not find user with discord {member.id} in Supabase.")
-
-    if current:
-        user.remove_current_roll(roll_name)
-    if completed:
-        user.remove_completed_rolls(roll_name)
-    if pending:
-        user.remove_pending(roll_name)
-
-    SupabaseReader.bulk_dump_rolls(user.rolls)
-    return await interaction.followup.send("Done!")
 
 
 async def clear_roll_portion(
