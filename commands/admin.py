@@ -111,8 +111,16 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Given a roll ID, change the status from 'current' to 'failed'.",
         guild=guild,
     )
-    async def fail_roll_command(interaction: discord.Interaction, roll_id: str):
-        return await interaction.response.send_message("In progress!")
+    @app_commands.describe(
+        roll_id="The ID of the roll you're updating. See https://cebot.me to find it."
+    )
+    @app_commands.describe(
+        is_not_current="Set this to true if you'd like to ignore the current status."
+    )
+    async def fail_roll_command(
+        interaction: discord.Interaction, roll_id: str, is_not_current: bool = False
+    ):
+        return await fail_roll(interaction, roll_id, is_not_current)
 
     # ---- force add command ----
     @tree.command(
@@ -308,9 +316,7 @@ async def add_notes(
     # update existing Note field if present, otherwise add one
     if embed.fields and embed.fields[-1].name == "Note":
         if clear:
-            embed.set_field_at(
-                index=len(embed.fields) - 1, name="Note", value=notes
-            )
+            embed.set_field_at(index=len(embed.fields) - 1, name="Note", value=notes)
         else:
             old_notes = embed.fields[-1].value
             embed.set_field_at(
@@ -409,6 +415,77 @@ async def clear_roll_portion(
     return await interaction.followup.send(
         f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. "
         + "Status set to 'waiting'."
+    )
+
+
+async def fail_roll(
+    interaction: discord.Interaction, roll_id: str, is_not_current: bool = False
+):
+    """
+    Takes in an `interaction: discord.Interaction` and a `roll_id: str`
+    and changes the status from 'current' to 'failed'.
+
+    If the status is not 'current', this will exit,
+    unless the `is_not_current: bool` is set to `True`.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The interaction we're responding to.
+    roll_id: `str`
+        The ID of the roll we're changing the
+        status of.
+    is_not_current: `bool = False`
+        Optional boolean flag. When set to true,
+        we force the status to be set to 'failed'
+        regardless of what the current status is.
+    """
+
+    await interaction.response.defer(ephemeral=True)
+
+    await hm.log_command(
+        client,
+        interaction,
+        "fail_roll",
+        True,
+        roll_id=roll_id,
+        is_not_current=is_not_current,
+    )
+
+    roll = SupabaseReader.get_roll(roll_id)
+    if roll is None:
+        return await interaction.followup.send(f"No roll with ID {roll_id} was found.")
+
+    if roll.status != "current" and not is_not_current:
+        return await interaction.followup.send(
+            f"The status of this roll is {roll.status}. This command (by default) only fails rolls that have "
+            "a status of 'current'. If you would still like to set the status of this roll to 'failed', please "
+            "rerun this command with the parameter `is_not_current` set to true."
+        )
+
+    roll.set_status("failed")
+    SupabaseReader.dump_roll(roll)
+
+    await interaction.followup.send(
+        f"Roll with ID {roll_id}'s status has now been set to 'failed'."
+    )
+
+    # report failure to #casino
+    database_name = SupabaseReader.get_database_name()
+    user = SupabaseReader.get_user(roll.user_ce_id)
+    if user is None:
+        return await hm.send_message(
+            client, "casino", f"Roll with ID {roll.id} failed. User not found."
+        )
+    if roll.partner_ce_id is None:
+        partner = None
+    else:
+        partner = SupabaseReader.get_user(roll.partner_ce_id)
+    return await hm.send_message(
+        client,
+        "casino",
+        roll.get_fail_message(database_name, user, partner),
+        allowed_mentions=True,
     )
 
 
