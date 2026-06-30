@@ -1,0 +1,13 @@
+[Unit]
+Description=CE-Assistant Pi screenshot service
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/CE-Assistant-v2
+ExecStart=/home/pi/CE-Assistant-v2/.venv/bin/python -m pi_screenshot_service.server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
