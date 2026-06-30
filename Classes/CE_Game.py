@@ -295,7 +295,7 @@ class CEGame:
     @property
     def name_with_link(self) -> str:
         "Returns the name with a link."
-        return f"[{self.game_name}](https://cedb.me/game/{self.ce_id})"
+        return f"[{self.game_name}](<https://cedb.me/game/{self.ce_id}>)"
 
     @property
     def categories_num(self) -> list[int]:

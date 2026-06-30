@@ -57,7 +57,7 @@ class CEUser:
         return self._display_name
 
     def display_name_with_link(self):
-        return f"[{self.display_name}](https://cedb.me/user/{self.ce_id})"
+        return f"[{self.display_name}](<https://cedb.me/user/{self.ce_id}>)"
 
     def set_display_name(self, display_name: str):
         "Setter for display name."
