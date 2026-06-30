@@ -998,7 +998,7 @@ def dump_roll(roll: CERoll):
         "time_created": _iso_or_none(roll.init_time),
         "time_due": _iso_or_none(roll.due_time),
         "time_completed": _iso_or_none(roll.completed_time),
-        "is_lucky": roll.lucky,  # TODO: determine from roll data
+        "is_lucky": roll.lucky,
         "chosen_tier": roll._tier_num,
         "chosen_tier_partner": roll._tier_num_partner,
         "status": roll.status,
