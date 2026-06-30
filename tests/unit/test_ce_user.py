@@ -1,5 +1,6 @@
 import pytest
 
+import Classes.CE_User as ce_user_module
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CASINO_POINTS, relative
 from Classes.CE_User import MUTELIST_CEIDS
@@ -233,6 +234,16 @@ class TestCompletions:
         user = make_user(owned_games=[_completed_ug(GAME_ID_A), ug_incomplete])
         assert user.completions([game_a, game_b]) == 1
 
+    def test_uses_precomputed_lookup_not_linear_scan(self, monkeypatch):
+        game = _db_game(GAME_ID_A)
+        user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
+
+        def _fail(*_a, **_kw):
+            raise AssertionError("completions must not use a linear scan")
+
+        monkeypatch.setattr(ce_user_module.hm, "get_item_from_list", _fail)
+        assert user.completions([game]) == 1
+
 
 # ── get_completed_games_2 ─────────────────────────────────────────────────────
 
@@ -280,6 +291,16 @@ class TestGetCompletedGames2:
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
             user.get_completed_games_2([None])  # type: ignore
+
+    def test_uses_precomputed_lookup_not_linear_scan(self, monkeypatch):
+        game = _db_game(GAME_ID_A)
+        user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
+
+        def _fail(*_a, **_kw):
+            raise AssertionError("get_completed_games_2 must not use a linear scan")
+
+        monkeypatch.setattr(ce_user_module.hm, "get_item_from_list", _fail)
+        assert user.get_completed_games_2([game]) == [game]
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────

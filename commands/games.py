@@ -16,6 +16,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         guild=guild,
     )
     @app_commands.autocomplete(game=get_game_auto)
+    @app_commands.describe(game="The game you'd like information about.")
     async def get_game_command(interaction: discord.Interaction, game: str):
         return await get_game(interaction, game)
 
