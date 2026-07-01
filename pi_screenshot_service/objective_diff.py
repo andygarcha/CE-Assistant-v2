@@ -1,5 +1,6 @@
 import json
 import urllib.request
+from urllib.error import HTTPError
 
 API_TIMEOUT_SECONDS = 10
 
@@ -8,8 +9,11 @@ def fetch_game_json(game_id: str) -> dict:
     "Fetches a game's full JSON payload (including objectives) from cedb.me's API."
     url = f"https://cedb.me/api/game/{game_id}"
     req = urllib.request.Request(url, headers={"User-Agent": "CE-Assistant-pi-screenshot-service/1.0"})
-    with urllib.request.urlopen(req, timeout=API_TIMEOUT_SECONDS) as response:
-        return json.loads(response.read())
+    try:
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT_SECONDS) as response:
+            return json.loads(response.read())
+    except HTTPError as e:
+        raise ValueError(f"game {game_id} not found: {e}") from e
 
 
 def find_objective_name(game_json: dict, objective_id: str) -> str | None:
@@ -32,9 +36,16 @@ def xpath_literal(value: str) -> str:
 
 def build_diff_row_xpath(objective_name: str) -> str:
     "Builds an XPath expression matching the `<tr>` containing an objective's title."
-    return f"//tr[.//h3[contains(., {xpath_literal(objective_name)})]]"
+    return f"//tr[.//h3[text()[1] = {xpath_literal(objective_name)}]]"
 
 
+# LIMITATION: this does a first-match text-node search across
+# the whole row. Verified safe for title changes (unique, early
+# in the row). For points/short requirement values, a shorter
+# or more common new_text could match the wrong text node with
+# no error raised. Needs field-type-aware targeting before this
+# is wired into automatic (unattended) delivery -- see the
+# follow-up scraper-wiring plan.
 DIFF_HIGHLIGHT_JS = """
 function findTextNode(node, needle) {
     if (node.nodeType === 3 && node.textContent.includes(needle)) {

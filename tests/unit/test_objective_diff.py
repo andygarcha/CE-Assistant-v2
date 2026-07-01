@@ -1,5 +1,8 @@
 import json
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
+
+import pytest
 
 from pi_screenshot_service.objective_diff import (
     build_diff_row_xpath,
@@ -44,6 +47,18 @@ def test_fetch_game_json_sends_correct_user_agent_header():
     args, kwargs = mock_urlopen.call_args
     request_obj = args[0]
     assert request_obj.get_header("User-agent") == "CE-Assistant-pi-screenshot-service/1.0"
+
+
+def test_fetch_game_json_raises_value_error_when_game_not_found():
+    url = "https://cedb.me/api/game/does-not-exist"
+    http_error = HTTPError(url, 404, "Not Found", {}, None)
+
+    with patch(
+        "pi_screenshot_service.objective_diff.urllib.request.urlopen",
+        side_effect=http_error,
+    ):
+        with pytest.raises(ValueError, match="does-not-exist"):
+            fetch_game_json("does-not-exist")
 
 
 def test_find_objective_name_returns_matching_name():
@@ -96,7 +111,17 @@ def test_xpath_literal_uses_concat_when_value_has_both_quote_types():
 
 def test_build_diff_row_xpath_embeds_the_literal():
     result = build_diff_row_xpath("Mountain Climber")
-    assert result == "//tr[.//h3[contains(., 'Mountain Climber')]]"
+    assert result == "//tr[.//h3[text()[1] = 'Mountain Climber']]"
+
+
+def test_build_diff_row_xpath_uses_exact_equality_not_substring_containment():
+    # A short objective name (e.g. "Clear") must not ambiguously match a row
+    # for a longer objective name that has it as a text-prefix (e.g. "Clear
+    # the Level"). Exact equality against the h3's first text node avoids
+    # the ambiguity that `contains()` would introduce.
+    result = build_diff_row_xpath("Clear")
+    assert " = " in result
+    assert "contains(" not in result
 
 
 def test_inject_diff_highlight_calls_execute_script_with_correct_arguments():
