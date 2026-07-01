@@ -107,3 +107,23 @@ def parse_old_objectives_body(body: bytes) -> list[dict] | None:
         if not isinstance(entry, dict) or not _REQUIRED_OBJECTIVE_KEYS.issubset(entry.keys()):
             return None
     return parsed
+
+
+def build_game_diff_response(
+    game_id: str | None,
+    old_objectives: list[dict] | None,
+    capture: Callable[[str, list[dict]], tuple[bytes, dict[str, float]]],
+) -> tuple[int, str, bytes, dict[str, str]]:
+    "Maps a parsed game-diff POST request + the capture call's outcome to an HTTP status/content-type/body/headers."
+    if game_id is None or old_objectives is None:
+        return 400, "text/plain", b"missing game id or malformed old objectives body", {}
+
+    try:
+        image_bytes, timings = capture(game_id, old_objectives)
+        return 200, "image/png", image_bytes, _timing_headers(timings)
+    except TimeoutError as e:
+        return 504, "text/plain", str(e).encode(), {}
+    except ValueError as e:
+        return 404, "text/plain", str(e).encode(), {}
+    except Exception as e:
+        return 500, "text/plain", str(e).encode(), {}

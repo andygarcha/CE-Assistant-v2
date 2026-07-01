@@ -262,3 +262,69 @@ def test_parse_old_objectives_body_returns_none_when_entry_missing_a_key():
     body = json.dumps([{"id": "obj-1", "name": "Name"}]).encode()
 
     assert parse_old_objectives_body(body) is None
+
+
+# ── build_game_diff_response ────────────────────────────────────────────
+
+from pi_screenshot_service.routing import build_game_diff_response
+
+
+def test_build_game_diff_response_returns_400_when_game_id_missing():
+    status, content_type, body, headers = build_game_diff_response(
+        None, [], capture=lambda *a: (b"", {})
+    )
+    assert status == 400
+
+
+def test_build_game_diff_response_returns_400_when_old_objectives_missing():
+    status, content_type, body, headers = build_game_diff_response(
+        "game-1", None, capture=lambda *a: (b"", {})
+    )
+    assert status == 400
+
+
+def test_build_game_diff_response_returns_image_png_on_success():
+    status, content_type, body, headers = build_game_diff_response(
+        "game-1", [], capture=lambda *a: (b"\x89PNG...", {})
+    )
+    assert (status, content_type, body) == (200, "image/png", b"\x89PNG...")
+
+
+def test_build_game_diff_response_passes_game_id_and_old_objectives_to_capture():
+    received = []
+
+    def capture(game_id, old_objectives):
+        received.append((game_id, old_objectives))
+        return b"", {}
+
+    old_objectives = [{"id": "obj-1"}]
+    build_game_diff_response("game-1", old_objectives, capture=capture)
+
+    assert received == [("game-1", old_objectives)]
+
+
+def test_build_game_diff_response_returns_404_on_value_error():
+    def capture(*a):
+        raise ValueError("game not found")
+
+    status, content_type, body, headers = build_game_diff_response(
+        "game-1", [], capture=capture
+    )
+    assert status == 404
+
+
+def test_build_game_diff_response_returns_504_on_timeout():
+    def capture(*a):
+        raise TimeoutError("too slow")
+
+    status, content_type, body, headers = build_game_diff_response(
+        "game-1", [], capture=capture
+    )
+    assert status == 504
+
+
+def test_build_game_diff_response_includes_timing_headers_on_success():
+    status, content_type, body, headers = build_game_diff_response(
+        "game-1", [], capture=lambda *a: (b"\x89PNG...", {"warmup": 2.0, "diff": 0.1})
+    )
+    assert headers == {"X-Timing-Warmup": "2.00", "X-Timing-Diff": "0.10"}
