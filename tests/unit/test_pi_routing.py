@@ -91,3 +91,42 @@ def test_build_response_has_no_timing_headers_on_error():
     status, content_type, body, headers = build_response("abc-123", capture=capture)
 
     assert headers == {}
+
+
+from pi_screenshot_service.routing import _timing_headers, parse_diff_request
+
+
+def test_timing_headers_formats_known_phase_names():
+    result = _timing_headers({"warmup": 2.001, "page_load": 1.5})
+
+    assert result == {"X-Timing-Warmup": "2.00", "X-Timing-Page-Load": "1.50"}
+
+
+def test_timing_headers_formats_new_diff_phase_names():
+    result = _timing_headers({"api_lookup": 0.321, "highlight": 0.05})
+
+    assert result == {"X-Timing-Api-Lookup": "0.32", "X-Timing-Highlight": "0.05"}
+
+
+def test_parse_diff_request_extracts_all_fields():
+    path = "/screenshot-diff/game-1/obj-1?old=Win+the+game&new=Beat+the+game"
+
+    result = parse_diff_request(path)
+
+    assert result == ("game-1", "obj-1", "Win the game", "Beat the game")
+
+
+def test_parse_diff_request_returns_none_for_unrelated_path():
+    assert parse_diff_request("/screenshot/game-1") is None
+
+
+def test_parse_diff_request_returns_none_when_objective_id_missing():
+    assert parse_diff_request("/screenshot-diff/game-1/?old=a&new=b") is None
+
+
+def test_parse_diff_request_returns_none_when_old_param_missing():
+    assert parse_diff_request("/screenshot-diff/game-1/obj-1?new=b") is None
+
+
+def test_parse_diff_request_returns_none_when_new_param_missing():
+    assert parse_diff_request("/screenshot-diff/game-1/obj-1?old=a") is None
