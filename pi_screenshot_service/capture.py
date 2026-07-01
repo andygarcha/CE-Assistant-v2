@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 from Modules.Screenshot import Screenshot
+from pi_screenshot_service import objective_diff
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,80 @@ def capture_game_screenshot(
         raise RuntimeError(
             f"screenshot capture failed for game {game_id}: {image_bytes}"
         )
+
+    image = Image.open(io.BytesIO(image_bytes))
+    image = image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
+
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    timings["screenshot"] = time.monotonic() - phase_start
+
+    return output.getvalue(), timings
+
+
+def capture_objective_diff(
+    driver: webdriver.Chrome,
+    game_id: str,
+    objective_id: str,
+    old_text: str,
+    new_text: str,
+) -> tuple[bytes, dict[str, float]]:
+    "Navigates to the game page, highlights one changed objective field, and returns a cropped PNG of just that objective's row."
+    timings: dict[str, float] = {}
+
+    phase_start = time.monotonic()
+    _warm_up_browser(driver)
+    timings["warmup"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    game_json = objective_diff.fetch_game_json(game_id)
+    objective_name = objective_diff.find_objective_name(game_json, objective_id)
+    if objective_name is None:
+        raise ValueError(f"objective {objective_id} not found for game {game_id}")
+    timings["api_lookup"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    url = f"https://cedb.me/game/{game_id}/"
+    driver.get(url)
+
+    start_time = time.monotonic()
+    objective_list = []
+    while not objective_list or not objective_list[0].is_displayed():
+        if time.monotonic() - start_time > TIMEOUT_LIMIT_SECONDS:
+            raise TimeoutError(f"page for game {game_id} did not render in time")
+        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    timings["page_load"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    time.sleep(RENDER_SLEEP_SECONDS)
+
+    row_xpath = objective_diff.build_diff_row_xpath(objective_name)
+    row = driver.find_element(By.XPATH, row_xpath)
+
+    highlighted = objective_diff.inject_diff_highlight(driver, row, old_text, new_text)
+    if not highlighted:
+        raise ValueError(
+            f"could not locate text {new_text!r} in objective {objective_id!r} to highlight"
+        )
+    timings["highlight"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    location = row.location
+    size = row.size
+    top_left_x = max(location["x"] - BORDER_WIDTH, 0)
+    top_left_y = max(location["y"] - BORDER_WIDTH, 0)
+    bottom_right_x = location["x"] + size["width"] + BORDER_WIDTH
+    bottom_right_y = location["y"] + size["height"] + BORDER_WIDTH
+
+    screenshot = Screenshot(bottom_right_y)
+    image_bytes = screenshot.full_screenshot(
+        driver,
+        is_load_at_runtime=True,
+        load_wait_time=10,
+        hide_elements=["bp4-navbar", "tr-fadein", "css-1ugviwv"],
+    )
+    if isinstance(image_bytes, str):
+        raise RuntimeError(f"screenshot capture failed for game {game_id}: {image_bytes}")
 
     image = Image.open(io.BytesIO(image_bytes))
     image = image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
