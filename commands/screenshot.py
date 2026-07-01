@@ -22,6 +22,28 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def get_screenshot_command(interaction: discord.Interaction, game: str):
         return await get_screenshot(interaction, game)
 
+    @tree.command(
+        name="get-diff-screenshot",
+        description="[Admin] Test a diff-highlighted screenshot of one objective field change.",
+        guild=guild,
+    )
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.autocomplete(game=get_game_auto)
+    @app_commands.describe(
+        game="The game the objective belongs to.",
+        objective_id="The objective's UUID (from /api/game/<id>).",
+        old="The old value of the field that changed.",
+        new="The new value of the field that changed.",
+    )
+    async def get_diff_screenshot_command(
+        interaction: discord.Interaction,
+        game: str,
+        objective_id: str,
+        old: str,
+        new: str,
+    ):
+        return await get_diff_screenshot(interaction, game, objective_id, old, new)
+
     return
 
 
@@ -50,4 +72,40 @@ async def get_screenshot(interaction: discord.Interaction, game: str):
         )
 
     file = discord.File(io.BytesIO(image_bytes), filename=f"{game}.png")
+    return await interaction.followup.send(content=_format_timings(timings), file=file)
+
+
+async def get_diff_screenshot(
+    interaction: discord.Interaction,
+    game: str,
+    objective_id: str,
+    old: str,
+    new: str,
+):
+    # defer
+    await interaction.response.defer()
+
+    # log this interaction
+    await hm.log_command(
+        client,
+        interaction,
+        "get-diff-screenshot",
+        True,
+        game=game,
+        objective_id=objective_id,
+        old=old,
+        new=new,
+    )
+
+    session = await http_session.get_session()
+    try:
+        image_bytes, timings = await PiScreenshot.fetch_diff_screenshot(
+            session, game, objective_id, old, new
+        )
+    except PiScreenshot.ScreenshotError as e:
+        return await interaction.followup.send(
+            f"Sorry, I couldn't get a diff screenshot: {e}"
+        )
+
+    file = discord.File(io.BytesIO(image_bytes), filename=f"{objective_id}-diff.png")
     return await interaction.followup.send(content=_format_timings(timings), file=file)
