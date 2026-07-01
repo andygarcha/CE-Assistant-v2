@@ -155,3 +155,11 @@ def compute_objective_diffs(old_objectives: list[dict], game_json: dict) -> list
             )
 
     return diffs
+
+
+HIGHLIGHT_NEW_ROW_JS = "arguments[0].classList.add('bp4-intent-success');"
+
+
+def highlight_new_row(driver, root_element) -> None:
+    "Marks a new objective's row with the site's own 'success' (green) styling."
+    driver.execute_script(HIGHLIGHT_NEW_ROW_JS, root_element)
