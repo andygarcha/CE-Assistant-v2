@@ -118,6 +118,79 @@ def capture_game_screenshot(
     return output.getvalue(), timings
 
 
+def capture_game_diff(
+    driver: webdriver.Chrome,
+    game_id: str,
+    old_objectives: list[dict],
+) -> tuple[bytes, dict[str, float]]:
+    "Navigates to the game page, highlights every new/changed objective against the posted old snapshot, and returns a PNG of the whole objectives table."
+    timings: dict[str, float] = {}
+
+    phase_start = time.monotonic()
+    _warm_up_browser(driver)
+    timings["warmup"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    game_json = objective_diff.fetch_game_json(game_id)
+    diffs = objective_diff.compute_objective_diffs(old_objectives, game_json)
+    timings["diff"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    url = f"https://cedb.me/game/{game_id}/"
+    driver.get(url)
+
+    start_time = time.monotonic()
+    objective_list = []
+    while not objective_list or not objective_list[0].is_displayed():
+        if time.monotonic() - start_time > TIMEOUT_LIMIT_SECONDS:
+            raise TimeoutError(f"page for game {game_id} did not render in time")
+        objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    timings["page_load"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    time.sleep(RENDER_SLEEP_SECONDS)
+
+    for change in diffs:
+        objective_name = objective_diff.find_objective_name(
+            game_json, change["objective_id"]
+        )
+        row_xpath = objective_diff.build_diff_row_xpath(objective_name)
+        row = driver.find_element(By.XPATH, row_xpath)
+
+        if change["is_new"]:
+            objective_diff.highlight_new_row(driver, row)
+        else:
+            for field_change in change["field_changes"]:
+                objective_diff.inject_diff_highlight(
+                    driver, row, field_change["old"], field_change["new"]
+                )
+
+    top_left_x, top_left_y, bottom_right_x, bottom_right_y = _compute_table_crop_bounds(
+        driver
+    )
+    timings["highlight"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
+    screenshot = Screenshot(bottom_right_y)
+    image_bytes = screenshot.full_screenshot(
+        driver,
+        is_load_at_runtime=True,
+        load_wait_time=10,
+        hide_elements=["bp4-navbar", "tr-fadein", "css-1ugviwv"],
+    )
+    if isinstance(image_bytes, str):
+        raise RuntimeError(f"screenshot capture failed for game {game_id}: {image_bytes}")
+
+    image = Image.open(io.BytesIO(image_bytes))
+    image = image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
+
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    timings["screenshot"] = time.monotonic() - phase_start
+
+    return output.getvalue(), timings
+
+
 def capture_objective_diff(
     driver: webdriver.Chrome,
     game_id: str,
