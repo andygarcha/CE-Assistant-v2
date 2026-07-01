@@ -2,8 +2,17 @@ import logging
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pi_screenshot_service.capture import build_driver, capture_game_screenshot
-from pi_screenshot_service.routing import build_response, parse_game_id
+from pi_screenshot_service.capture import (
+    build_driver,
+    capture_game_screenshot,
+    capture_objective_diff,
+)
+from pi_screenshot_service.routing import (
+    build_diff_response,
+    build_response,
+    parse_diff_request,
+    parse_game_id,
+)
 from pi_screenshot_service.timeout_runner import run_with_timeout
 
 logger = logging.getLogger(__name__)
@@ -27,10 +36,32 @@ def _capture(game_id: str) -> tuple[bytes, dict[str, float]]:
         )
 
 
+def _capture_diff(
+    game_id: str, objective_id: str, old_text: str, new_text: str
+) -> tuple[bytes, dict[str, float]]:
+    with _capture_lock:
+        driver = build_driver()
+        return run_with_timeout(
+            lambda: capture_objective_diff(
+                driver, game_id, objective_id, old_text, new_text
+            ),
+            timeout_seconds=CAPTURE_TIMEOUT_SECONDS,
+            cleanup=driver.quit,
+        )
+
+
 class ScreenshotHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        game_id = parse_game_id(self.path)
-        status, content_type, body, headers = build_response(game_id, capture=_capture)
+        diff_request = parse_diff_request(self.path)
+        if diff_request is not None:
+            status, content_type, body, headers = build_diff_response(
+                diff_request, capture=_capture_diff
+            )
+        else:
+            game_id = parse_game_id(self.path)
+            status, content_type, body, headers = build_response(
+                game_id, capture=_capture
+            )
 
         if status != 200:
             logger.warning("request for %s failed: %s", self.path, body)
