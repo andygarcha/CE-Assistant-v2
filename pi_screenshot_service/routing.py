@@ -1,3 +1,4 @@
+import json
 from typing import Callable
 from urllib.parse import parse_qs, urlsplit
 
@@ -79,3 +80,30 @@ def build_diff_response(
         return 404, "text/plain", str(e).encode(), {}
     except Exception as e:
         return 500, "text/plain", str(e).encode(), {}
+
+
+_REQUIRED_OBJECTIVE_KEYS = {"id", "name", "description", "points", "requirements", "type"}
+
+
+def parse_game_diff_path(path: str) -> str | None:
+    "Extracts the game id from a `/screenshot-diff/<game_id>` POST path, or None if malformed."
+    if not path.startswith(_DIFF_PREFIX):
+        return None
+    game_id = path[len(_DIFF_PREFIX) :]
+    if not game_id or "/" in game_id:
+        return None
+    return game_id
+
+
+def parse_old_objectives_body(body: bytes) -> list[dict] | None:
+    "Parses and validates the POST body as a list of old-objective snapshots, or None if malformed."
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, list):
+        return None
+    for entry in parsed:
+        if not isinstance(entry, dict) or not _REQUIRED_OBJECTIVE_KEYS.issubset(entry.keys()):
+            return None
+    return parsed

@@ -191,3 +191,74 @@ def test_build_diff_response_includes_timing_headers_on_success():
         capture=lambda *a: (b"\x89PNG...", {"warmup": 2.0, "highlight": 0.1}),
     )
     assert headers == {"X-Timing-Warmup": "2.00", "X-Timing-Highlight": "0.10"}
+
+
+# ── parse_game_diff_path ────────────────────────────────────────────────
+
+import json
+
+from pi_screenshot_service.routing import parse_game_diff_path, parse_old_objectives_body
+
+
+def test_parse_game_diff_path_extracts_game_id():
+    assert parse_game_diff_path("/screenshot-diff/game-1") == "game-1"
+
+
+def test_parse_game_diff_path_returns_none_for_unrelated_path():
+    assert parse_game_diff_path("/screenshot/game-1") is None
+
+
+def test_parse_game_diff_path_returns_none_when_game_id_missing():
+    assert parse_game_diff_path("/screenshot-diff/") is None
+
+
+def test_parse_game_diff_path_returns_none_when_extra_segment_present():
+    assert parse_game_diff_path("/screenshot-diff/game-1/extra") is None
+
+
+# ── parse_old_objectives_body ───────────────────────────────────────────
+
+def test_parse_old_objectives_body_accepts_valid_list():
+    body = json.dumps(
+        [
+            {
+                "id": "obj-1",
+                "name": "Name",
+                "description": "Desc",
+                "points": 10,
+                "requirements": "Req",
+                "type": "primary",
+            }
+        ]
+    ).encode()
+
+    result = parse_old_objectives_body(body)
+
+    assert result == [
+        {
+            "id": "obj-1",
+            "name": "Name",
+            "description": "Desc",
+            "points": 10,
+            "requirements": "Req",
+            "type": "primary",
+        }
+    ]
+
+
+def test_parse_old_objectives_body_accepts_empty_list():
+    assert parse_old_objectives_body(b"[]") == []
+
+
+def test_parse_old_objectives_body_returns_none_for_invalid_json():
+    assert parse_old_objectives_body(b"not json") is None
+
+
+def test_parse_old_objectives_body_returns_none_when_not_a_list():
+    assert parse_old_objectives_body(b'{"id": "obj-1"}') is None
+
+
+def test_parse_old_objectives_body_returns_none_when_entry_missing_a_key():
+    body = json.dumps([{"id": "obj-1", "name": "Name"}]).encode()
+
+    assert parse_old_objectives_body(body) is None
