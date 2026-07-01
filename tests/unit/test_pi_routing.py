@@ -1,4 +1,9 @@
-from pi_screenshot_service.routing import build_response, parse_game_id
+from pi_screenshot_service.routing import (
+    _timing_headers,
+    build_response,
+    parse_diff_request,
+    parse_game_id,
+)
 
 
 # ── parse_game_id ───────────────────────────────────────────────────────
@@ -91,9 +96,6 @@ def test_build_response_has_no_timing_headers_on_error():
     status, content_type, body, headers = build_response("abc-123", capture=capture)
 
     assert headers == {}
-
-
-from pi_screenshot_service.routing import _timing_headers, parse_diff_request
 
 
 def test_timing_headers_formats_known_phase_names():
