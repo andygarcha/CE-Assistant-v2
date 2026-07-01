@@ -1,5 +1,5 @@
+import io
 import os
-from pathlib import Path
 import time
 
 from PIL import Image
@@ -96,21 +96,15 @@ class Screenshot:
             return image_name
 
         else:
-            logger.debug("8")
             total_width = driver.execute_script("return document.body.offsetWidth")
-            logger.debug("9")
             total_height = driver.execute_script(
                 "return document.body.parentNode.scrollHeight"
             )
-            logger.debug("10")
             viewport_width = driver.execute_script("return document.body.clientWidth")
-            logger.debug("11")
             viewport_height = driver.execute_script("return window.innerHeight")
-            logger.debug("12")
+            # Already at scroll position 0 from the page load the caller already
+            # waited on, so there's nothing new to settle here.
             driver.execute_script("window.scrollTo(0, 0)")
-            logger.debug("13")
-            time.sleep(3)
-            logger.debug("14")
             rectangles = []
 
             i = 0
@@ -133,65 +127,32 @@ class Screenshot:
             part = 0
 
             for rectangle in rectangles:
-                logger.debug("for")
                 if previous is not None:
-                    logger.debug("prev not none")
                     driver.execute_script(
                         "window.scrollTo({0}, {1})".format(rectangle[0], rectangle[1])
                     )
-                    time.sleep(10)
-                logger.debug("broke if 1")
+                    time.sleep(2)
 
                 if hide_elements is not None:
                     self.hide_elements(driver, hide_elements)
-                    logger.debug("15")
 
-                file_name = "part{0}.png".format(part)
-                path = Path("/CE-Assistant/part{0}.png".format(part))
-                logger.debug("16")
-                logger.debug("file_name=%s", file_name)
-                logger.debug("path=%s", str(path))
-
-                ss = driver.get_screenshot_as_png()
-                logger.debug("gotcha >:)")
-                return ss
-                logger.debug("ss")
-                path.parent.mkdir(parents=True, exist_ok=True)
-                logger.debug("makedirs")
-                with open(path, "wb") as ss_file:
-                    logger.debug("with open")
-                    ss_file.write(ss)
-                    logger.debug("Svreenshot saved")
-                # print('directory: ' + str(os.listdir('/home/user/CE-Assistant')))
-                logger.debug("17")
-                screenshot = Image.open(path)
-                logger.debug("18")
+                tile_bytes = driver.get_screenshot_as_png()
+                tile = Image.open(io.BytesIO(tile_bytes))
 
                 if rectangle[1] + viewport_height > total_height:
-                    logger.debug("if2")
                     offset = (rectangle[0], total_height - viewport_height)
                 else:
-                    logger.debug("else2")
                     offset = (rectangle[0], rectangle[1])
-                logger.debug("broke if 2")
 
-                stitched_image.paste(screenshot, offset)
-                logger.debug("19")
-                del screenshot
-                logger.debug("20")
-                os.remove(path)
-                logger.debug("21")
+                stitched_image.paste(tile, offset)
+                del tile
                 part = part + 1
-                logger.debug("22")
                 previous = rectangle
-                logger.debug("23")
-            logger.debug("for loop broken")
-            save_path = str(Path("/CE-Assistant/Pictures/" + image_name))
-            logger.debug("24")
-            logger.debug("save_path=%s", save_path)
-            stitched_image.save(save_path)
-            logger.debug("25")
-            return save_path
+            logger.debug("finished capturing %d tiles", part)
+
+            output = io.BytesIO()
+            stitched_image.save(output, format="PNG")
+            return output.getvalue()
 
     def get_element(
         self,
@@ -232,13 +193,12 @@ class Screenshot:
         width = x + w
         height = y + h
 
-        image_object = Image.open(image)
+        image_object = Image.open(io.BytesIO(image))
         image_object = image_object.crop((int(x), int(y), int(width), int(height)))
         img_url = os.path.abspath(os.path.join(save_path, image_name))
         image_object.save(img_url)
 
         image_object.close()
-        os.remove(image)
 
         return img_url
 

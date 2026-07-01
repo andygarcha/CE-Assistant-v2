@@ -9,7 +9,7 @@ from pi_screenshot_service.timeout_runner import run_with_timeout
 logger = logging.getLogger(__name__)
 
 PORT = 8731
-CAPTURE_TIMEOUT_SECONDS = 20
+CAPTURE_TIMEOUT_SECONDS = 30
 
 # Only one Selenium/Chrome instance runs at a time: the Pi doesn't have the
 # memory headroom for concurrent headless-browser sessions, and screenshots

@@ -14,6 +14,9 @@ TIMEOUT_LIMIT_SECONDS = 8
 RENDER_SLEEP_SECONDS = 3
 BORDER_WIDTH = 15
 
+WARMUP_GAME_ID = "1e866995-6fec-452e-81ba-1e8f8594f4ea"  # Celeste
+WARMUP_SLEEP_SECONDS = 2
+
 
 def build_driver() -> webdriver.Chrome:
     "Builds a headless Chrome driver suitable for running unattended on the Pi."
@@ -22,12 +25,26 @@ def build_driver() -> webdriver.Chrome:
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1280,1024")
+    options.add_argument("--window-size=1400,2000")
     return webdriver.Chrome(options=options)
+
+
+def _warm_up_browser(driver: webdriver.Chrome) -> None:
+    """Loads a throwaway game page before the real capture.
+
+    Each capture gets a brand-new Chrome profile, so the header's color
+    extraction (a separate cross-origin image fetch) always races a cold CDN
+    connection and loses. Eating that cold fetch here, on a page we don't
+    screenshot, means the real capture's fetch is warm.
+    """
+    driver.get(f"https://cedb.me/game/{WARMUP_GAME_ID}/")
+    time.sleep(WARMUP_SLEEP_SECONDS)
 
 
 def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
     "Navigates to the game page and returns a cropped PNG of its objectives table."
+    _warm_up_browser(driver)
+
     url = f"https://cedb.me/game/{game_id}/"
     driver.get(url)
 
@@ -52,8 +69,8 @@ def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
     bottom_right = objective_list[-2].location
     size = objective_list[-2].size
 
-    top_left_x = top_left["x"] - BORDER_WIDTH
-    top_left_y = top_left["y"] - BORDER_WIDTH
+    top_left_x = max(top_left["x"] - BORDER_WIDTH, 0)
+    top_left_y = max(top_left["y"] - BORDER_WIDTH, 0)
     bottom_right_y = bottom_right["y"] + size["height"] + BORDER_WIDTH
 
     if title_location + title_size > bottom_right["x"] + size["width"]:
