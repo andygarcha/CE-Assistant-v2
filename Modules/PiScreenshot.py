@@ -66,3 +66,36 @@ async def fetch_diff_screenshot(
         f"?old={quote(old_text)}&new={quote(new_text)}"
     )
     return await _get_image_response(session, url)
+
+
+async def _post_image_response(
+    session: aiohttp.ClientSession, url: str, json_body: list[dict]
+) -> tuple[bytes, dict[str, str]]:
+    "Shared POST + error-translation + timing-header extraction for the whole-game diff screenshot endpoint."
+    try:
+        async with session.post(url, json=json_body, timeout=_REQUEST_TIMEOUT) as response:
+            if response.status != 200:
+                body = await response.text()
+                raise ScreenshotError(
+                    f"screenshot service returned {response.status}: {body}"
+                )
+            image_bytes = await response.read()
+            timings = {
+                key: value
+                for key, value in response.headers.items()
+                if key.startswith("X-Timing-")
+            }
+            return image_bytes, timings
+    except (aiohttp.ClientError, TimeoutError) as e:
+        raise ScreenshotError(f"screenshot service unreachable: {e}") from e
+
+
+async def fetch_game_diff_screenshot(
+    session: aiohttp.ClientSession,
+    game_id: str,
+    old_objectives: list[dict],
+    base_url: str = SCREENSHOT_SERVICE_URL,
+) -> tuple[bytes, dict[str, str]]:
+    "Fetches a whole-table diff-highlighted screenshot for a game, POSTing the old objective snapshots."
+    url = f"{base_url}/screenshot-diff/{game_id}"
+    return await _post_image_response(session, url, old_objectives)
