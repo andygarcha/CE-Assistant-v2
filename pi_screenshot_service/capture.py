@@ -41,10 +41,17 @@ def _warm_up_browser(driver: webdriver.Chrome) -> None:
     time.sleep(WARMUP_SLEEP_SECONDS)
 
 
-def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
-    "Navigates to the game page and returns a cropped PNG of its objectives table."
-    _warm_up_browser(driver)
+def capture_game_screenshot(
+    driver: webdriver.Chrome, game_id: str
+) -> tuple[bytes, dict[str, float]]:
+    "Navigates to the game page and returns a cropped PNG of its objectives table, plus a per-phase timing breakdown."
+    timings: dict[str, float] = {}
 
+    phase_start = time.monotonic()
+    _warm_up_browser(driver)
+    timings["warmup"] = time.monotonic() - phase_start
+
+    phase_start = time.monotonic()
     url = f"https://cedb.me/game/{game_id}/"
     driver.get(url)
 
@@ -54,7 +61,9 @@ def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
         if time.monotonic() - start_time > TIMEOUT_LIMIT_SECONDS:
             raise TimeoutError(f"page for game {game_id} did not render in time")
         objective_list = driver.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    timings["page_load"] = time.monotonic() - phase_start
 
+    phase_start = time.monotonic()
     time.sleep(RENDER_SLEEP_SECONDS)
 
     primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
@@ -77,7 +86,9 @@ def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
         bottom_right_x = title_location + title_size + BORDER_WIDTH
     else:
         bottom_right_x = bottom_right["x"] + size["width"] + BORDER_WIDTH
+    timings["render"] = time.monotonic() - phase_start
 
+    phase_start = time.monotonic()
     screenshot = Screenshot(bottom_right_y)
     image_bytes = screenshot.full_screenshot(
         driver,
@@ -95,4 +106,6 @@ def capture_game_screenshot(driver: webdriver.Chrome, game_id: str) -> bytes:
 
     output = io.BytesIO()
     image.save(output, format="PNG")
-    return output.getvalue()
+    timings["screenshot"] = time.monotonic() - phase_start
+
+    return output.getvalue(), timings

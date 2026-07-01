@@ -4,11 +4,12 @@ from unittest.mock import AsyncMock, MagicMock
 from Modules.PiScreenshot import ScreenshotError, fetch_screenshot
 
 
-def _make_session(status: int, body: bytes = b"", text: str = ""):
+def _make_session(status: int, body: bytes = b"", text: str = "", headers: dict | None = None):
     response = MagicMock()
     response.status = status
     response.read = AsyncMock(return_value=body)
     response.text = AsyncMock(return_value=text)
+    response.headers = headers or {}
 
     get_cm = MagicMock()
     get_cm.__aenter__ = AsyncMock(return_value=response)
@@ -22,11 +23,11 @@ def _make_session(status: int, body: bytes = b"", text: str = ""):
 def test_fetch_screenshot_returns_image_bytes_on_success():
     session = _make_session(200, body=b"\x89PNG...")
 
-    result = asyncio.run(
+    image_bytes, _timings = asyncio.run(
         fetch_screenshot(session, "abc-123", base_url="http://pi:8731")
     )
 
-    assert result == b"\x89PNG..."
+    assert image_bytes == b"\x89PNG..."
 
 
 def test_fetch_screenshot_requests_expected_url():
@@ -46,3 +47,21 @@ def test_fetch_screenshot_raises_on_non_200_status():
     except ScreenshotError as e:
         assert "504" in str(e)
         assert "page did not render in time" in str(e)
+
+
+def test_fetch_screenshot_returns_timing_headers_on_success():
+    session = _make_session(
+        200,
+        body=b"\x89PNG...",
+        headers={
+            "X-Timing-Warmup": "2.00",
+            "X-Timing-Page-Load": "1.50",
+            "Content-Type": "image/png",
+        },
+    )
+
+    _image_bytes, timings = asyncio.run(
+        fetch_screenshot(session, "abc-123", base_url="http://pi:8731")
+    )
+
+    assert timings == {"X-Timing-Warmup": "2.00", "X-Timing-Page-Load": "1.50"}

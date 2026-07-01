@@ -17,7 +17,7 @@ CAPTURE_TIMEOUT_SECONDS = 30
 _capture_lock = threading.Lock()
 
 
-def _capture(game_id: str) -> bytes:
+def _capture(game_id: str) -> tuple[bytes, dict[str, float]]:
     with _capture_lock:
         driver = build_driver()
         return run_with_timeout(
@@ -30,7 +30,7 @@ def _capture(game_id: str) -> bytes:
 class ScreenshotHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         game_id = parse_game_id(self.path)
-        status, content_type, body = build_response(game_id, capture=_capture)
+        status, content_type, body, headers = build_response(game_id, capture=_capture)
 
         if status != 200:
             logger.warning("request for %s failed: %s", self.path, body)
@@ -38,6 +38,8 @@ class ScreenshotHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        for name, value in headers.items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 

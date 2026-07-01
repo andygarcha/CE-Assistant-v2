@@ -66,13 +66,17 @@ def _make_capture_driver():
     return driver
 
 
-def test_capture_game_screenshot_warms_up_before_navigating_to_target_game():
-    driver = _make_capture_driver()
-
+def _run_capture(driver, game_id="target-game-id"):
     with patch("pi_screenshot_service.capture.time.sleep"), patch(
         "Modules.Screenshot.time.sleep"
     ):
-        capture_game_screenshot(driver, "target-game-id")
+        return capture_game_screenshot(driver, game_id)
+
+
+def test_capture_game_screenshot_warms_up_before_navigating_to_target_game():
+    driver = _make_capture_driver()
+
+    _run_capture(driver)
 
     urls = [call.args[0] for call in driver.get.call_args_list]
     assert urls == [
@@ -85,10 +89,18 @@ def test_capture_game_screenshot_does_not_pad_with_black_when_header_is_flush_le
     "The header image sits at (0, 0); subtracting BORDER_WIDTH must not go negative."
     driver = _make_capture_driver()
 
-    with patch("pi_screenshot_service.capture.time.sleep"), patch(
-        "Modules.Screenshot.time.sleep"
-    ):
-        result = capture_game_screenshot(driver, "target-game-id")
+    image_bytes, _timings = _run_capture(driver)
 
-    image = Image.open(io.BytesIO(result))
+    image = Image.open(io.BytesIO(image_bytes))
     assert image.getpixel((0, 0)) == (10, 20, 30)
+
+
+def test_capture_game_screenshot_returns_a_timing_breakdown():
+    driver = _make_capture_driver()
+
+    _image_bytes, timings = _run_capture(driver)
+
+    assert set(timings) == {"warmup", "page_load", "render", "screenshot"}
+    for phase, seconds in timings.items():
+        assert isinstance(seconds, float), phase
+        assert seconds >= 0, phase

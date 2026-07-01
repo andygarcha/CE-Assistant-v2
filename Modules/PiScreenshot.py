@@ -16,8 +16,8 @@ async def fetch_screenshot(
     session: aiohttp.ClientSession,
     game_id: str,
     base_url: str = SCREENSHOT_SERVICE_URL,
-) -> bytes:
-    "Fetches a game's screenshot PNG bytes from the pi screenshot service."
+) -> tuple[bytes, dict[str, str]]:
+    "Fetches a game's screenshot PNG bytes and its X-Timing-* headers from the pi screenshot service."
     url = f"{base_url}/screenshot/{game_id}"
     async with session.get(url) as response:
         if response.status != 200:
@@ -25,4 +25,10 @@ async def fetch_screenshot(
             raise ScreenshotError(
                 f"screenshot service returned {response.status}: {body}"
             )
-        return await response.read()
+        image_bytes = await response.read()
+        timings = {
+            key: value
+            for key, value in response.headers.items()
+            if key.startswith("X-Timing-")
+        }
+        return image_bytes, timings

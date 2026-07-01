@@ -2,7 +2,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from commands.screenshot import get_screenshot
+from commands.screenshot import _format_timings, get_screenshot
 
 
 def _make_interaction() -> SimpleNamespace:
@@ -23,6 +23,24 @@ def _run(interaction, game="abc-123"):
         asyncio.run(get_screenshot(interaction, game))
 
 
+_DEFAULT_TIMINGS = {
+    "X-Timing-Warmup": "2.00",
+    "X-Timing-Page-Load": "1.50",
+    "X-Timing-Render": "3.00",
+    "X-Timing-Screenshot": "0.75",
+}
+
+
+def _patch_fetch(**overrides):
+    return_value = overrides.pop("return_value", (b"\x89PNG...", _DEFAULT_TIMINGS))
+    return patch(
+        "commands.screenshot.PiScreenshot.fetch_screenshot",
+        new_callable=AsyncMock,
+        return_value=return_value,
+        **overrides,
+    )
+
+
 def test_sends_file_on_success():
     interaction = _make_interaction()
 
@@ -32,11 +50,7 @@ def test_sends_file_on_success():
             new_callable=AsyncMock,
             return_value=MagicMock(),
         ),
-        patch(
-            "commands.screenshot.PiScreenshot.fetch_screenshot",
-            new_callable=AsyncMock,
-            return_value=b"\x89PNG...",
-        ),
+        _patch_fetch(),
     ):
         _run(interaction)
 
@@ -78,12 +92,41 @@ def test_defers_response():
             new_callable=AsyncMock,
             return_value=MagicMock(),
         ),
-        patch(
-            "commands.screenshot.PiScreenshot.fetch_screenshot",
-            new_callable=AsyncMock,
-            return_value=b"\x89PNG...",
-        ),
+        _patch_fetch(),
     ):
         _run(interaction)
 
     interaction.response.defer.assert_called_once()
+
+
+def test_sends_timing_breakdown_as_message_content():
+    interaction = _make_interaction()
+
+    with (
+        patch(
+            "commands.screenshot.http_session.get_session",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ),
+        _patch_fetch(),
+    ):
+        _run(interaction)
+
+    _, kwargs = interaction.followup.send.call_args
+    content = kwargs["content"]
+    assert "Warmup: 2.00s" in content
+    assert "Page Load: 1.50s" in content
+    assert "Render: 3.00s" in content
+    assert "Screenshot: 0.75s" in content
+
+
+def test_format_timings_turns_headers_into_readable_lines():
+    text = _format_timings(
+        {"X-Timing-Warmup": "2.00", "X-Timing-Page-Load": "1.50"}
+    )
+
+    assert text == "Warmup: 2.00s\nPage Load: 1.50s"
+
+
+def test_format_timings_handles_no_timings():
+    assert _format_timings({}) == ""

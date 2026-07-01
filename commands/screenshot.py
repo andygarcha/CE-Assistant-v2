@@ -25,6 +25,15 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     return
 
 
+def _format_timings(timings: dict[str, str]) -> str:
+    "Turns `X-Timing-*` response headers into readable `Phase: 1.23s` lines."
+    lines = []
+    for header, seconds in timings.items():
+        label = header.removeprefix("X-Timing-").replace("-", " ")
+        lines.append(f"{label}: {seconds}s")
+    return "\n".join(lines)
+
+
 async def get_screenshot(interaction: discord.Interaction, game: str):
     # defer
     await interaction.response.defer()
@@ -34,11 +43,11 @@ async def get_screenshot(interaction: discord.Interaction, game: str):
 
     session = await http_session.get_session()
     try:
-        image_bytes = await PiScreenshot.fetch_screenshot(session, game)
+        image_bytes, timings = await PiScreenshot.fetch_screenshot(session, game)
     except PiScreenshot.ScreenshotError as e:
         return await interaction.followup.send(
             f"Sorry, I couldn't get a screenshot: {e}"
         )
 
     file = discord.File(io.BytesIO(image_bytes), filename=f"{game}.png")
-    return await interaction.followup.send(file=file)
+    return await interaction.followup.send(content=_format_timings(timings), file=file)
