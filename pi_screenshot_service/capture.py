@@ -4,6 +4,7 @@ import time
 
 from PIL import Image
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
 from Modules.Screenshot import Screenshot
@@ -155,15 +156,32 @@ def capture_game_diff(
             game_json, change["objective_id"]
         )
         row_xpath = objective_diff.build_diff_row_xpath(objective_name)
-        row = driver.find_element(By.XPATH, row_xpath)
+        try:
+            row = driver.find_element(By.XPATH, row_xpath)
+        except NoSuchElementException:
+            logger.warning(
+                "could not locate row for objective %s (%r) in game %s; skipping",
+                change["objective_id"],
+                objective_name,
+                game_id,
+            )
+            continue
 
         if change["is_new"]:
             objective_diff.highlight_new_row(driver, row)
         else:
             for field_change in change["field_changes"]:
-                objective_diff.inject_diff_highlight(
+                highlighted = objective_diff.inject_diff_highlight(
                     driver, row, field_change["old"], field_change["new"]
                 )
+                if not highlighted:
+                    logger.warning(
+                        "could not locate text %r to highlight for objective %s field %s in game %s",
+                        field_change["new"],
+                        change["objective_id"],
+                        field_change.get("field"),
+                        game_id,
+                    )
 
     top_left_x, top_left_y, bottom_right_x, bottom_right_y = _compute_table_crop_bounds(
         driver

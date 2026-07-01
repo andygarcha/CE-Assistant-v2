@@ -2,6 +2,7 @@ import io
 from unittest.mock import MagicMock, patch
 
 from PIL import Image
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
 from pi_screenshot_service import objective_diff
@@ -15,7 +16,9 @@ def _make_row(x, y, width, height):
     return row
 
 
-def _make_game_diff_driver(row_a, row_b):
+def _make_game_diff_driver(
+    row_a, row_b, missing_xpath_value=None, diff_highlight_result=True
+):
     driver = MagicMock()
 
     page_scripts = {
@@ -27,7 +30,7 @@ def _make_game_diff_driver(row_a, row_b):
 
     def execute_script(script, *args):
         if script == objective_diff.DIFF_HIGHLIGHT_JS:
-            return True
+            return diff_highlight_result
         if script == objective_diff.HIGHLIGHT_NEW_ROW_JS:
             return None
         return page_scripts.get(script)
@@ -61,6 +64,8 @@ def _make_game_diff_driver(row_a, row_b):
             return title
         if by == By.CLASS_NAME and value == "GamePage-Header-Image":
             return header_image
+        if by == By.XPATH and value == missing_xpath_value:
+            raise NoSuchElementException(f"no row found for xpath {value}")
         if by == By.XPATH and value == xpath_a:
             return row_a
         if by == By.XPATH and value == xpath_b:
@@ -205,3 +210,66 @@ def test_capture_game_diff_skips_unchanged_objectives():
     ]
     assert diff_calls == []
     assert new_row_calls == []
+
+
+def test_capture_game_diff_skips_objective_with_missing_row():
+    row_a = _make_row(0, 100, 800, 60)
+    row_b = _make_row(0, 200, 800, 60)
+    missing_xpath = objective_diff.build_diff_row_xpath("Old Objective")
+    driver = _make_game_diff_driver(row_a, row_b, missing_xpath_value=missing_xpath)
+
+    old_objectives = [
+        _old_objective("obj-1", "Old Objective", "Old desc", 10, "Old req", "primary"),
+    ]
+    game_json = {
+        "objectives": [
+            _live_objective("obj-1", "Old Objective", "New desc", 10, "primary", "Old req"),
+            _live_objective("obj-2", "New Objective", "Brand new", 5, "primary"),
+        ]
+    }
+
+    image_bytes, _timings = _run_capture_game_diff(
+        driver, "game-1", old_objectives, game_json
+    )
+
+    image = Image.open(io.BytesIO(image_bytes))
+    assert image.format == "PNG"
+
+    diff_calls = [
+        c
+        for c in driver.execute_script.call_args_list
+        if c.args[0] == objective_diff.DIFF_HIGHLIGHT_JS
+    ]
+    assert diff_calls == []
+
+    new_row_calls = [
+        c
+        for c in driver.execute_script.call_args_list
+        if c.args[0] == objective_diff.HIGHLIGHT_NEW_ROW_JS
+    ]
+    assert len(new_row_calls) == 1
+    assert new_row_calls[0].args[1] is row_b
+
+
+def test_capture_game_diff_logs_warning_when_highlight_not_found(caplog):
+    row_a = _make_row(0, 100, 800, 60)
+    driver = _make_game_diff_driver(row_a, row_a, diff_highlight_result=False)
+
+    old_objectives = [
+        _old_objective("obj-1", "Old Objective", "Old desc", 10, "Old req", "primary"),
+    ]
+    game_json = {
+        "objectives": [
+            _live_objective("obj-1", "Old Objective", "New desc", 10, "primary", "Old req"),
+        ]
+    }
+
+    with caplog.at_level("WARNING", logger="pi_screenshot_service.capture"):
+        image_bytes, _timings = _run_capture_game_diff(
+            driver, "game-1", old_objectives, game_json
+        )
+
+    image = Image.open(io.BytesIO(image_bytes))
+    assert image.format == "PNG"
+
+    assert any("obj-1" in record.message for record in caplog.records)
