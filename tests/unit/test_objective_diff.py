@@ -78,3 +78,30 @@ def test_xpath_literal_uses_concat_when_value_has_both_quote_types():
 def test_build_diff_row_xpath_embeds_the_literal():
     result = build_diff_row_xpath("Mountain Climber")
     assert result == "//tr[.//h3[contains(., 'Mountain Climber')]]"
+
+
+def test_inject_diff_highlight_calls_execute_script_with_correct_arguments():
+    from pi_screenshot_service.objective_diff import DIFF_HIGHLIGHT_JS, inject_diff_highlight
+
+    driver = MagicMock()
+    driver.execute_script.return_value = True
+    row = MagicMock()
+
+    result = inject_diff_highlight(driver, row, "Win the game", "Beat the game")
+
+    assert result is True
+    driver.execute_script.assert_called_once_with(
+        DIFF_HIGHLIGHT_JS, row, "Win the game", "Beat the game"
+    )
+
+
+def test_inject_diff_highlight_returns_false_when_execute_script_returns_false():
+    from pi_screenshot_service.objective_diff import inject_diff_highlight
+
+    driver = MagicMock()
+    driver.execute_script.return_value = False
+    row = MagicMock()
+
+    result = inject_diff_highlight(driver, row, "old", "new")
+
+    assert result is False
