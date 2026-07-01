@@ -1,5 +1,6 @@
 from pi_screenshot_service.routing import (
     _timing_headers,
+    build_diff_response,
     build_response,
     parse_diff_request,
     parse_game_id,
@@ -132,3 +133,61 @@ def test_parse_diff_request_returns_none_when_old_param_missing():
 
 def test_parse_diff_request_returns_none_when_new_param_missing():
     assert parse_diff_request("/screenshot-diff/game-1/obj-1?old=a") is None
+
+
+# ── build_diff_response ─────────────────────────────────────────────────
+
+
+def test_build_diff_response_returns_400_when_parsed_is_none():
+    status, content_type, body, headers = build_diff_response(
+        None, capture=lambda *a: (b"", {})
+    )
+    assert status == 400
+
+
+def test_build_diff_response_returns_image_png_on_success():
+    status, content_type, body, headers = build_diff_response(
+        ("game-1", "obj-1", "old", "new"),
+        capture=lambda *a: (b"\x89PNG...", {}),
+    )
+    assert (status, content_type, body) == (200, "image/png", b"\x89PNG...")
+
+
+def test_build_diff_response_passes_all_fields_to_capture():
+    received = []
+
+    def capture(game_id, objective_id, old_text, new_text):
+        received.append((game_id, objective_id, old_text, new_text))
+        return b"", {}
+
+    build_diff_response(("game-1", "obj-1", "old", "new"), capture=capture)
+
+    assert received == [("game-1", "obj-1", "old", "new")]
+
+
+def test_build_diff_response_returns_404_when_objective_not_found():
+    def capture(*a):
+        raise ValueError("objective obj-1 not found for game game-1")
+
+    status, content_type, body, headers = build_diff_response(
+        ("game-1", "obj-1", "old", "new"), capture=capture
+    )
+    assert status == 404
+
+
+def test_build_diff_response_returns_504_on_timeout():
+    def capture(*a):
+        raise TimeoutError("too slow")
+
+    status, content_type, body, headers = build_diff_response(
+        ("game-1", "obj-1", "old", "new"), capture=capture
+    )
+    assert status == 504
+
+
+def test_build_diff_response_includes_timing_headers_on_success():
+    status, content_type, body, headers = build_diff_response(
+        ("game-1", "obj-1", "old", "new"),
+        capture=lambda *a: (b"\x89PNG...", {"warmup": 2.0, "highlight": 0.1}),
+    )
+    assert headers == {"X-Timing-Warmup": "2.00", "X-Timing-Highlight": "0.10"}

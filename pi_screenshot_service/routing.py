@@ -59,3 +59,23 @@ def build_response(
         return 504, "text/plain", str(e).encode(), {}
     except Exception as e:
         return 500, "text/plain", str(e).encode(), {}
+
+
+def build_diff_response(
+    parsed: tuple[str, str, str, str] | None,
+    capture: Callable[[str, str, str, str], tuple[bytes, dict[str, float]]],
+) -> tuple[int, str, bytes, dict[str, str]]:
+    "Maps a parsed diff request + the capture call's outcome to an HTTP status/content-type/body/headers."
+    if parsed is None:
+        return 400, "text/plain", b"missing game id, objective id, old, or new", {}
+
+    game_id, objective_id, old_text, new_text = parsed
+    try:
+        image_bytes, timings = capture(game_id, objective_id, old_text, new_text)
+        return 200, "image/png", image_bytes, _timing_headers(timings)
+    except TimeoutError as e:
+        return 504, "text/plain", str(e).encode(), {}
+    except ValueError as e:
+        return 404, "text/plain", str(e).encode(), {}
+    except Exception as e:
+        return 500, "text/plain", str(e).encode(), {}
