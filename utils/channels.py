@@ -5,7 +5,7 @@ import discord
 
 logger = logging.getLogger(__name__)
 
-IN_CE = False
+IN_CE = True
 
 CE_CHANNELS = {
     "gameadditions": 949482536726298666,
