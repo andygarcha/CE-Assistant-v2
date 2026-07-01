@@ -99,3 +99,59 @@ return true;
 def inject_diff_highlight(driver, root_element, old_text: str, new_text: str) -> bool:
     "Injects a strikethrough-red old value + arrow + new value in place of `new_text` inside `root_element`. Returns whether `new_text` was found."
     return driver.execute_script(DIFF_HIGHLIGHT_JS, root_element, old_text, new_text)
+
+
+def _custom_requirement_text(objective: dict) -> str:
+    "Returns the single custom-type requirement's text for an objective, or empty string if it has none."
+    for req in objective.get("objectiveRequirements", []):
+        if req.get("type") == "custom":
+            return req.get("data", "")
+    return ""
+
+
+def compute_objective_diffs(old_objectives: list[dict], game_json: dict) -> list[dict]:
+    "Compares posted old objective snapshots against the live game JSON, returning a diff per live objective that is new or has changed. Removed objectives (present in old_objectives but absent live) are not reported."
+    old_by_id = {obj["id"]: obj for obj in old_objectives}
+    diffs = []
+
+    for live in game_json.get("objectives", []):
+        old = old_by_id.get(live["id"])
+
+        if old is None:
+            diffs.append({"objective_id": live["id"], "is_new": True, "field_changes": []})
+            continue
+
+        if old["type"].lower() != live["type"].lower():
+            diffs.append({"objective_id": live["id"], "is_new": True, "field_changes": []})
+            continue
+
+        field_changes = []
+
+        if old["name"] != live["name"]:
+            field_changes.append({"field": "name", "old": old["name"], "new": live["name"]})
+
+        if old["description"] != live["description"]:
+            field_changes.append(
+                {"field": "description", "old": old["description"], "new": live["description"]}
+            )
+
+        is_community = old["type"].lower() == "community"
+        old_points = 0 if is_community else old["points"]
+        new_points = 0 if is_community else live["points"]
+        if old_points != new_points:
+            field_changes.append(
+                {"field": "points", "old": str(old_points), "new": str(new_points)}
+            )
+
+        new_requirements = _custom_requirement_text(live)
+        if old["requirements"] != new_requirements:
+            field_changes.append(
+                {"field": "requirements", "old": old["requirements"], "new": new_requirements}
+            )
+
+        if field_changes:
+            diffs.append(
+                {"objective_id": live["id"], "is_new": False, "field_changes": field_changes}
+            )
+
+    return diffs

@@ -149,3 +149,202 @@ def test_inject_diff_highlight_returns_false_when_execute_script_returns_false()
     result = inject_diff_highlight(driver, row, "old", "new")
 
     assert result is False
+
+
+from pi_screenshot_service.objective_diff import (
+    _custom_requirement_text,
+    compute_objective_diffs,
+)
+
+
+def _old_objective(id, name, description, points, requirements, type):
+    return {
+        "id": id,
+        "name": name,
+        "description": description,
+        "points": points,
+        "requirements": requirements,
+        "type": type,
+    }
+
+
+def _live_objective(id, name, description, points, type, requirements_data=""):
+    objective_requirements = (
+        [{"type": "custom", "data": requirements_data}] if requirements_data else []
+    )
+    return {
+        "id": id,
+        "name": name,
+        "description": description,
+        "points": points,
+        "type": type,
+        "objectiveRequirements": objective_requirements,
+    }
+
+
+def test_custom_requirement_text_returns_data_for_custom_type():
+    objective = {"objectiveRequirements": [{"type": "custom", "data": "Do the thing"}]}
+    assert _custom_requirement_text(objective) == "Do the thing"
+
+
+def test_custom_requirement_text_ignores_achievement_type():
+    objective = {"objectiveRequirements": [{"type": "achievement", "data": "ach-id"}]}
+    assert _custom_requirement_text(objective) == ""
+
+
+def test_custom_requirement_text_returns_empty_when_no_requirements():
+    objective = {"objectiveRequirements": []}
+    assert _custom_requirement_text(objective) == ""
+
+
+def test_custom_requirement_text_finds_custom_among_mixed_types():
+    objective = {
+        "objectiveRequirements": [
+            {"type": "achievement", "data": "ach-1"},
+            {"type": "custom", "data": "The real requirement"},
+        ]
+    }
+    assert _custom_requirement_text(objective) == "The real requirement"
+
+
+def test_compute_objective_diffs_detects_new_objective():
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "Desc", 10, "primary")]}
+
+    diffs = compute_objective_diffs([], game_json)
+
+    assert diffs == [{"objective_id": "obj-1", "is_new": True, "field_changes": []}]
+
+
+def test_compute_objective_diffs_detects_type_change_as_new():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "", "secondary")]
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "Desc", 10, "primary")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [{"objective_id": "obj-1", "is_new": True, "field_changes": []}]
+
+
+def test_compute_objective_diffs_type_comparison_is_case_insensitive():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "", "Primary")]
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "Desc", 10, "primary")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == []
+
+
+def test_compute_objective_diffs_detects_name_change():
+    old = [_old_objective("obj-1", "Old Name", "Desc", 10, "", "primary")]
+    game_json = {"objectives": [_live_objective("obj-1", "New Name", "Desc", 10, "primary")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [
+        {
+            "objective_id": "obj-1",
+            "is_new": False,
+            "field_changes": [{"field": "name", "old": "Old Name", "new": "New Name"}],
+        }
+    ]
+
+
+def test_compute_objective_diffs_detects_description_change():
+    old = [_old_objective("obj-1", "Name", "Old desc", 10, "", "primary")]
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "New desc", 10, "primary")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [
+        {
+            "objective_id": "obj-1",
+            "is_new": False,
+            "field_changes": [
+                {"field": "description", "old": "Old desc", "new": "New desc"}
+            ],
+        }
+    ]
+
+
+def test_compute_objective_diffs_detects_points_change():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "", "primary")]
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "Desc", 20, "primary")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [
+        {
+            "objective_id": "obj-1",
+            "is_new": False,
+            "field_changes": [{"field": "points", "old": "10", "new": "20"}],
+        }
+    ]
+
+
+def test_compute_objective_diffs_zeroes_points_for_community_type():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "", "community")]
+    game_json = {"objectives": [_live_objective("obj-1", "Name", "Desc", 0, "community")]}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == []
+
+
+def test_compute_objective_diffs_detects_requirements_change():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "Old req", "primary")]
+    game_json = {
+        "objectives": [
+            _live_objective("obj-1", "Name", "Desc", 10, "primary", "New req")
+        ]
+    }
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [
+        {
+            "objective_id": "obj-1",
+            "is_new": False,
+            "field_changes": [
+                {"field": "requirements", "old": "Old req", "new": "New req"}
+            ],
+        }
+    ]
+
+
+def test_compute_objective_diffs_ignores_unchanged_objective():
+    old = [_old_objective("obj-1", "Name", "Desc", 10, "Req", "primary")]
+    game_json = {
+        "objectives": [_live_objective("obj-1", "Name", "Desc", 10, "primary", "Req")]
+    }
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == []
+
+
+def test_compute_objective_diffs_ignores_removed_objective():
+    old = [_old_objective("obj-removed", "Name", "Desc", 10, "", "primary")]
+    game_json = {"objectives": []}
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == []
+
+
+def test_compute_objective_diffs_detects_multiple_field_changes_at_once():
+    old = [_old_objective("obj-1", "Old Name", "Desc", 10, "", "primary")]
+    game_json = {
+        "objectives": [_live_objective("obj-1", "New Name", "Desc", 20, "primary")]
+    }
+
+    diffs = compute_objective_diffs(old, game_json)
+
+    assert diffs == [
+        {
+            "objective_id": "obj-1",
+            "is_new": False,
+            "field_changes": [
+                {"field": "name", "old": "Old Name", "new": "New Name"},
+                {"field": "points", "old": "10", "new": "20"},
+            ],
+        }
+    ]
