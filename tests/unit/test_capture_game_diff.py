@@ -31,7 +31,7 @@ def _make_game_diff_driver(
     def execute_script(script, *args):
         if script == objective_diff.DIFF_HIGHLIGHT_JS:
             return diff_highlight_result
-        if script == objective_diff.HIGHLIGHT_NEW_ROW_JS:
+        if script == objective_diff.HIGHLIGHT_NEW_OBJECTIVE_NAME_JS:
             return None
         return page_scripts.get(script)
 
@@ -154,7 +154,7 @@ def test_capture_game_diff_highlights_changed_and_new_objectives():
     new_row_calls = [
         c
         for c in driver.execute_script.call_args_list
-        if c.args[0] == objective_diff.HIGHLIGHT_NEW_ROW_JS
+        if c.args[0] == objective_diff.HIGHLIGHT_NEW_OBJECTIVE_NAME_JS
     ]
     assert len(new_row_calls) == 1
     assert new_row_calls[0].args[1] is row_b
@@ -206,7 +206,7 @@ def test_capture_game_diff_skips_unchanged_objectives():
     new_row_calls = [
         c
         for c in driver.execute_script.call_args_list
-        if c.args[0] == objective_diff.HIGHLIGHT_NEW_ROW_JS
+        if c.args[0] == objective_diff.HIGHLIGHT_NEW_OBJECTIVE_NAME_JS
     ]
     assert diff_calls == []
     assert new_row_calls == []
@@ -245,7 +245,7 @@ def test_capture_game_diff_skips_objective_with_missing_row():
     new_row_calls = [
         c
         for c in driver.execute_script.call_args_list
-        if c.args[0] == objective_diff.HIGHLIGHT_NEW_ROW_JS
+        if c.args[0] == objective_diff.HIGHLIGHT_NEW_OBJECTIVE_NAME_JS
     ]
     assert len(new_row_calls) == 1
     assert new_row_calls[0].args[1] is row_b

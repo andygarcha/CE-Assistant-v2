@@ -168,7 +168,7 @@ def capture_game_diff(
             continue
 
         if change["is_new"]:
-            objective_diff.highlight_new_row(driver, row)
+            objective_diff.highlight_new_objective_name(driver, row)
         else:
             for field_change in change["field_changes"]:
                 highlighted = objective_diff.inject_diff_highlight(

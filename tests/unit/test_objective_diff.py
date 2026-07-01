@@ -350,12 +350,15 @@ def test_compute_objective_diffs_detects_multiple_field_changes_at_once():
     ]
 
 
-def test_highlight_new_row_calls_execute_script_with_correct_arguments():
-    from pi_screenshot_service.objective_diff import HIGHLIGHT_NEW_ROW_JS, highlight_new_row
+def test_highlight_new_objective_name_calls_execute_script_with_correct_arguments():
+    from pi_screenshot_service.objective_diff import (
+        HIGHLIGHT_NEW_OBJECTIVE_NAME_JS,
+        highlight_new_objective_name,
+    )
 
     driver = MagicMock()
     row = MagicMock()
 
-    highlight_new_row(driver, row)
+    highlight_new_objective_name(driver, row)
 
-    driver.execute_script.assert_called_once_with(HIGHLIGHT_NEW_ROW_JS, row)
+    driver.execute_script.assert_called_once_with(HIGHLIGHT_NEW_OBJECTIVE_NAME_JS, row)

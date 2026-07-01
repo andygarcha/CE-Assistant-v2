@@ -74,7 +74,7 @@ const after = textNode.textContent.slice(idx + newText.length);
 const oldSpan = document.createElement('span');
 oldSpan.textContent = oldText;
 oldSpan.style.textDecoration = 'line-through';
-oldSpan.style.color = 'red';
+oldSpan.style.color = '#c0392b';
 
 const arrowSpan = document.createElement('span');
 arrowSpan.textContent = ' \\u2192 ';
@@ -157,9 +157,21 @@ def compute_objective_diffs(old_objectives: list[dict], game_json: dict) -> list
     return diffs
 
 
-HIGHLIGHT_NEW_ROW_JS = "arguments[0].classList.add('bp4-intent-success');"
+HIGHLIGHT_NEW_OBJECTIVE_NAME_JS = """
+const root = arguments[0];
+const h3 = root.querySelector('h3');
+const nameNode = h3.childNodes[0];
+
+const span = document.createElement('span');
+span.textContent = nameNode.textContent;
+span.style.backgroundColor = 'rgba(15, 153, 96, 0.6)';
+span.style.borderRadius = '3px';
+span.style.padding = '0 4px';
+
+h3.replaceChild(span, nameNode);
+"""
 
 
-def highlight_new_row(driver, root_element) -> None:
-    "Marks a new objective's row with the site's own 'success' (green) styling."
-    driver.execute_script(HIGHLIGHT_NEW_ROW_JS, root_element)
+def highlight_new_objective_name(driver, root_element) -> None:
+    "Marks just a new objective's name (not the whole row) with a green background."
+    driver.execute_script(HIGHLIGHT_NEW_OBJECTIVE_NAME_JS, root_element)
