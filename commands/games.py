@@ -38,7 +38,7 @@ async def get_game_auto(
     The game's name will appear on the user's screen, but the game's CE ID will be passed."""
 
     # log this interaction
-    await hm.log_command(client, interaction, "get_game_auto", True)
+    # await hm.log_command(client, interaction, "get_game_auto", True)
 
     database_name = SupabaseReader.get_database_name()
     choices: list = []
