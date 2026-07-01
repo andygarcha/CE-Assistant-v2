@@ -17,3 +17,18 @@ def find_objective_name(game_json: dict, objective_id: str) -> str | None:
         if objective.get("id") == objective_id:
             return objective.get("name")
     return None
+
+
+def xpath_literal(value: str) -> str:
+    "Builds a safe XPath string literal for `value`, even if it contains both quote types."
+    if "'" not in value:
+        return f"'{value}'"
+    if '"' not in value:
+        return f'"{value}"'
+    parts = value.split("'")
+    return "concat(" + ", \"'\", ".join(f"'{p}'" for p in parts) + ")"
+
+
+def build_diff_row_xpath(objective_name: str) -> str:
+    "Builds an XPath expression matching the `<tr>` containing an objective's title."
+    return f"//tr[.//h3[contains(., {xpath_literal(objective_name)})]]"
