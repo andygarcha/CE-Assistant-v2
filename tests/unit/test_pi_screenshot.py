@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 
-from Modules.PiScreenshot import CONNECT_TIMEOUT_SECONDS, ScreenshotError, fetch_screenshot
+from Modules.PiScreenshot import (
+    CONNECT_TIMEOUT_SECONDS,
+    ScreenshotError,
+    fetch_diff_screenshot,
+    fetch_screenshot,
+)
 
 
 def _make_session(status: int, body: bytes = b"", text: str = "", headers: dict | None = None):
@@ -104,3 +109,49 @@ def test_fetch_screenshot_returns_timing_headers_on_success():
     )
 
     assert timings == {"X-Timing-Warmup": "2.00", "X-Timing-Page-Load": "1.50"}
+
+
+def test_fetch_diff_screenshot_requests_expected_url_with_encoded_params():
+    session = _make_session(200, body=b"\x89PNG...")
+
+    asyncio.run(
+        fetch_diff_screenshot(
+            session,
+            "game-1",
+            "obj-1",
+            "Win the game",
+            "Beat the game",
+            base_url="http://pi:8731",
+        )
+    )
+
+    args, kwargs = session.get.call_args
+    assert args == (
+        "http://pi:8731/screenshot-diff/game-1/obj-1?old=Win%20the%20game&new=Beat%20the%20game",
+    )
+
+
+def test_fetch_diff_screenshot_returns_image_bytes_on_success():
+    session = _make_session(200, body=b"\x89PNG...")
+
+    image_bytes, _timings = asyncio.run(
+        fetch_diff_screenshot(
+            session, "game-1", "obj-1", "old", "new", base_url="http://pi:8731"
+        )
+    )
+
+    assert image_bytes == b"\x89PNG..."
+
+
+def test_fetch_diff_screenshot_raises_on_non_200_status():
+    session = _make_session(404, text="objective obj-1 not found for game game-1")
+
+    try:
+        asyncio.run(
+            fetch_diff_screenshot(
+                session, "game-1", "obj-1", "old", "new", base_url="http://pi:8731"
+            )
+        )
+        assert False, "expected ScreenshotError"
+    except ScreenshotError as e:
+        assert "404" in str(e)
