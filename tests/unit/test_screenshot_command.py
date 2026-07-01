@@ -186,3 +186,76 @@ def test_diff_sends_error_message_on_failure():
 
     msg = interaction.followup.send.call_args[0][0]
     assert "404: objective not found" in msg
+
+
+from commands.screenshot import get_game_diff_screenshot
+
+_OLD_OBJECTIVES_JSON = (
+    '[{"id": "obj-1", "name": "Name", "description": "Desc", '
+    '"points": 10, "requirements": "Req", "type": "primary"}]'
+)
+
+
+def _run_game_diff(interaction, game="abc-123", old_objectives_json=_OLD_OBJECTIVES_JSON):
+    import commands.screenshot as screenshot_mod
+
+    with (
+        patch.object(screenshot_mod, "client", create=True, new=MagicMock()),
+        patch("commands.screenshot.hm.log_command", new_callable=AsyncMock),
+    ):
+        asyncio.run(get_game_diff_screenshot(interaction, game, old_objectives_json))
+
+
+def test_game_diff_sends_file_on_success():
+    interaction = _make_interaction()
+
+    with (
+        patch(
+            "commands.screenshot.http_session.get_session",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ),
+        patch(
+            "commands.screenshot.PiScreenshot.fetch_game_diff_screenshot",
+            new_callable=AsyncMock,
+            return_value=(b"\x89PNG...", _DEFAULT_TIMINGS),
+        ),
+    ):
+        _run_game_diff(interaction)
+
+    interaction.followup.send.assert_called_once()
+    _, kwargs = interaction.followup.send.call_args
+    assert "file" in kwargs
+    assert kwargs["file"].filename == "abc-123-diff.png"
+
+
+def test_game_diff_sends_error_message_on_failure():
+    from Modules.PiScreenshot import ScreenshotError
+
+    interaction = _make_interaction()
+
+    with (
+        patch(
+            "commands.screenshot.http_session.get_session",
+            new_callable=AsyncMock,
+            return_value=MagicMock(),
+        ),
+        patch(
+            "commands.screenshot.PiScreenshot.fetch_game_diff_screenshot",
+            new_callable=AsyncMock,
+            side_effect=ScreenshotError("400: malformed body"),
+        ),
+    ):
+        _run_game_diff(interaction)
+
+    msg = interaction.followup.send.call_args[0][0]
+    assert "400: malformed body" in msg
+
+
+def test_game_diff_sends_error_message_on_invalid_json():
+    interaction = _make_interaction()
+
+    _run_game_diff(interaction, old_objectives_json="not json")
+
+    msg = interaction.followup.send.call_args[0][0]
+    assert "invalid json" in msg.lower()
