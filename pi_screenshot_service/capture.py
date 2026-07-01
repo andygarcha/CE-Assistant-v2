@@ -42,6 +42,30 @@ def _warm_up_browser(driver: webdriver.Chrome) -> None:
     time.sleep(WARMUP_SLEEP_SECONDS)
 
 
+def _compute_table_crop_bounds(driver: webdriver.Chrome) -> tuple[int, int, int, int]:
+    "Computes the crop box (top_left_x, top_left_y, bottom_right_x, bottom_right_y) covering the whole objectives table. Assumes the page has already rendered."
+    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
+    objective_list = primary_table.find_elements(By.CLASS_NAME, "bp4-html-table-striped")
+    title = driver.find_element(By.TAG_NAME, "h1")
+    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
+    title_size = title.size["width"]
+    title_location = title.location["x"]
+
+    bottom_right = objective_list[-2].location
+    size = objective_list[-2].size
+
+    top_left_x = max(top_left["x"] - BORDER_WIDTH, 0)
+    top_left_y = max(top_left["y"] - BORDER_WIDTH, 0)
+    bottom_right_y = bottom_right["y"] + size["height"] + BORDER_WIDTH
+
+    if title_location + title_size > bottom_right["x"] + size["width"]:
+        bottom_right_x = title_location + title_size + BORDER_WIDTH
+    else:
+        bottom_right_x = bottom_right["x"] + size["width"] + BORDER_WIDTH
+
+    return top_left_x, top_left_y, bottom_right_x, bottom_right_y
+
+
 def capture_game_screenshot(
     driver: webdriver.Chrome, game_id: str
 ) -> tuple[bytes, dict[str, float]]:
@@ -66,27 +90,9 @@ def capture_game_screenshot(
 
     phase_start = time.monotonic()
     time.sleep(RENDER_SLEEP_SECONDS)
-
-    primary_table = driver.find_element(By.CLASS_NAME, "css-c4zdq5")
-    objective_list = primary_table.find_elements(
-        By.CLASS_NAME, "bp4-html-table-striped"
+    top_left_x, top_left_y, bottom_right_x, bottom_right_y = _compute_table_crop_bounds(
+        driver
     )
-    title = driver.find_element(By.TAG_NAME, "h1")
-    top_left = driver.find_element(By.CLASS_NAME, "GamePage-Header-Image").location
-    title_size = title.size["width"]
-    title_location = title.location["x"]
-
-    bottom_right = objective_list[-2].location
-    size = objective_list[-2].size
-
-    top_left_x = max(top_left["x"] - BORDER_WIDTH, 0)
-    top_left_y = max(top_left["y"] - BORDER_WIDTH, 0)
-    bottom_right_y = bottom_right["y"] + size["height"] + BORDER_WIDTH
-
-    if title_location + title_size > bottom_right["x"] + size["width"]:
-        bottom_right_x = title_location + title_size + BORDER_WIDTH
-    else:
-        bottom_right_x = bottom_right["x"] + size["width"] + BORDER_WIDTH
     timings["render"] = time.monotonic() - phase_start
 
     phase_start = time.monotonic()
