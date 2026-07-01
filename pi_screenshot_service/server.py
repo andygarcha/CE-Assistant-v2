@@ -4,14 +4,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from pi_screenshot_service.capture import (
     build_driver,
+    capture_game_diff,
     capture_game_screenshot,
     capture_objective_diff,
 )
 from pi_screenshot_service.routing import (
     build_diff_response,
+    build_game_diff_response,
     build_response,
     parse_diff_request,
+    parse_game_diff_path,
     parse_game_id,
+    parse_old_objectives_body,
 )
 from pi_screenshot_service.timeout_runner import run_with_timeout
 
@@ -50,6 +54,18 @@ def _capture_diff(
         )
 
 
+def _capture_game_diff(
+    game_id: str, old_objectives: list[dict]
+) -> tuple[bytes, dict[str, float]]:
+    with _capture_lock:
+        driver = build_driver()
+        return run_with_timeout(
+            lambda: capture_game_diff(driver, game_id, old_objectives),
+            timeout_seconds=CAPTURE_TIMEOUT_SECONDS,
+            cleanup=driver.quit,
+        )
+
+
 class ScreenshotHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         diff_request = parse_diff_request(self.path)
@@ -65,6 +81,27 @@ class ScreenshotHandler(BaseHTTPRequestHandler):
 
         if status != 200:
             logger.warning("request for %s failed: %s", self.path, body)
+
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        for name, value in headers.items():
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        game_id = parse_game_diff_path(self.path)
+        content_length = int(self.headers.get("Content-Length", 0))
+        request_body = self.rfile.read(content_length)
+        old_objectives = parse_old_objectives_body(request_body)
+
+        status, content_type, body, headers = build_game_diff_response(
+            game_id, old_objectives, capture=_capture_game_diff
+        )
+
+        if status != 200:
+            logger.warning("POST request for %s failed: %s", self.path, body)
 
         self.send_response(status)
         self.send_header("Content-Type", content_type)
