@@ -7,7 +7,8 @@ API_TIMEOUT_SECONDS = 10
 def fetch_game_json(game_id: str) -> dict:
     "Fetches a game's full JSON payload (including objectives) from cedb.me's API."
     url = f"https://cedb.me/api/game/{game_id}"
-    with urllib.request.urlopen(url, timeout=API_TIMEOUT_SECONDS) as response:
+    req = urllib.request.Request(url, headers={"User-Agent": "CE-Assistant-pi-screenshot-service/1.0"})
+    with urllib.request.urlopen(req, timeout=API_TIMEOUT_SECONDS) as response:
         return json.loads(response.read())
 
 
