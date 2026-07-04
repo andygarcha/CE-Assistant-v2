@@ -61,6 +61,7 @@ function findTextNode(node, needle) {
 const root = arguments[0];
 const oldText = arguments[1];
 const newText = arguments[2];
+const field = arguments[3];
 
 const textNode = findTextNode(root, newText);
 if (!textNode) {
@@ -73,7 +74,7 @@ const after = textNode.textContent.slice(idx + newText.length);
 
 const oldSpan = document.createElement('span');
 oldSpan.textContent = oldText;
-oldSpan.style.textDecoration = 'line-through';
+oldSpan.style.textDecoration = (field === 'points') ? 'none' : 'line-through';
 oldSpan.style.color = '#c0392b';
 
 const arrowSpan = document.createElement('span');
@@ -96,9 +97,11 @@ return true;
 """
 
 
-def inject_diff_highlight(driver, root_element, old_text: str, new_text: str) -> bool:
-    "Injects a strikethrough-red old value + arrow + new value in place of `new_text` inside `root_element`. Returns whether `new_text` was found."
-    return driver.execute_script(DIFF_HIGHLIGHT_JS, root_element, old_text, new_text)
+def inject_diff_highlight(
+    driver, root_element, old_text: str, new_text: str, field: str | None = None
+) -> bool:
+    "Injects a red old value + arrow + new value in place of `new_text` inside `root_element`. The old value is struck through unless `field` is 'points' (too small to read with a line through it). Returns whether `new_text` was found."
+    return driver.execute_script(DIFF_HIGHLIGHT_JS, root_element, old_text, new_text, field)
 
 
 def _custom_requirement_text(objective: dict) -> str:
@@ -175,3 +178,20 @@ h3.replaceChild(span, nameNode);
 def highlight_new_objective_name(driver, root_element) -> None:
     "Marks just a new objective's name (not the whole row) with a green background."
     driver.execute_script(HIGHLIGHT_NEW_OBJECTIVE_NAME_JS, root_element)
+
+
+# The site's own "hide fade-in elements" class (`tr-fadein`) is shared by
+# ~1000+ unrelated elements on the page (the header background image is the
+# very first match), so it can't be used to target just the player-count
+# badges. `.cursor-pointer.tr-fadein` (both classes together) is unique to
+# those badges specifically.
+HIDE_PLAYER_COUNTS_JS = """
+document.querySelectorAll('.cursor-pointer.tr-fadein').forEach(function(el) {
+    el.style.display = 'none';
+});
+"""
+
+
+def hide_player_counts(driver) -> None:
+    "Hides every objective's player-count badge (the person-icon count to the right of points)."
+    driver.execute_script(HIDE_PLAYER_COUNTS_JS)

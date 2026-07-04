@@ -135,7 +135,21 @@ def test_inject_diff_highlight_calls_execute_script_with_correct_arguments():
 
     assert result is True
     driver.execute_script.assert_called_once_with(
-        DIFF_HIGHLIGHT_JS, row, "Win the game", "Beat the game"
+        DIFF_HIGHLIGHT_JS, row, "Win the game", "Beat the game", None
+    )
+
+
+def test_inject_diff_highlight_passes_field_through_when_given():
+    from pi_screenshot_service.objective_diff import DIFF_HIGHLIGHT_JS, inject_diff_highlight
+
+    driver = MagicMock()
+    driver.execute_script.return_value = True
+    row = MagicMock()
+
+    inject_diff_highlight(driver, row, "5", "20", field="points")
+
+    driver.execute_script.assert_called_once_with(
+        DIFF_HIGHLIGHT_JS, row, "5", "20", "points"
     )
 
 
@@ -362,3 +376,13 @@ def test_highlight_new_objective_name_calls_execute_script_with_correct_argument
     highlight_new_objective_name(driver, row)
 
     driver.execute_script.assert_called_once_with(HIGHLIGHT_NEW_OBJECTIVE_NAME_JS, row)
+
+
+def test_hide_player_counts_calls_execute_script_with_correct_arguments():
+    from pi_screenshot_service.objective_diff import HIDE_PLAYER_COUNTS_JS, hide_player_counts
+
+    driver = MagicMock()
+
+    hide_player_counts(driver)
+
+    driver.execute_script.assert_called_once_with(HIDE_PLAYER_COUNTS_JS)

@@ -172,3 +172,10 @@ docs/
 .superpowers
 .superpowers/sdd/review-final.diff
 data/
+TEST_SLACKERS_output.png
+TEST_SLACKERS.json
+TEST_CELESTE_output.png
+TEST_CELESTE_DATA.json
+TEST_CELESTE.json
+REQUIREMENTShelp.json
+REQUIREMENTS.md

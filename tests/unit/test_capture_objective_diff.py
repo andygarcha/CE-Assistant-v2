@@ -89,7 +89,7 @@ def test_capture_objective_diff_injects_highlight_with_correct_texts():
         if call.args[0] == objective_diff.DIFF_HIGHLIGHT_JS
     ]
     assert len(diff_calls) == 1
-    _script, root_arg, old_arg, new_arg = diff_calls[0].args
+    _script, root_arg, old_arg, new_arg, _field_arg = diff_calls[0].args
     assert root_arg is row
     assert old_arg == "Win the game"
     assert new_arg == "Beat the game"

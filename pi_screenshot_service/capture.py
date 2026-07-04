@@ -97,6 +97,7 @@ def capture_game_screenshot(
     timings["render"] = time.monotonic() - phase_start
 
     phase_start = time.monotonic()
+    objective_diff.hide_player_counts(driver)
     screenshot = Screenshot(bottom_right_y)
     image_bytes = screenshot.full_screenshot(
         driver,
@@ -172,7 +173,11 @@ def capture_game_diff(
         else:
             for field_change in change["field_changes"]:
                 highlighted = objective_diff.inject_diff_highlight(
-                    driver, row, field_change["old"], field_change["new"]
+                    driver,
+                    row,
+                    field_change["old"],
+                    field_change["new"],
+                    field=field_change["field"],
                 )
                 if not highlighted:
                     logger.warning(
@@ -189,6 +194,7 @@ def capture_game_diff(
     timings["highlight"] = time.monotonic() - phase_start
 
     phase_start = time.monotonic()
+    objective_diff.hide_player_counts(driver)
     screenshot = Screenshot(bottom_right_y)
     image_bytes = screenshot.full_screenshot(
         driver,
@@ -263,6 +269,7 @@ def capture_objective_diff(
     bottom_right_x = location["x"] + size["width"] + BORDER_WIDTH
     bottom_right_y = location["y"] + size["height"] + BORDER_WIDTH
 
+    objective_diff.hide_player_counts(driver)
     screenshot = Screenshot(bottom_right_y)
     image_bytes = screenshot.full_screenshot(
         driver,
