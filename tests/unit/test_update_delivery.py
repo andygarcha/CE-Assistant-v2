@@ -2,8 +2,17 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
+import pytest
 
 from update_delivery import deliver_updates
+
+
+@pytest.fixture(autouse=True)
+def _mock_pending_updates():
+    with patch(
+        "update_delivery.SupabaseReader.get_pending_game_updates", return_value=[]
+    ):
+        yield
 
 
 class TestDeliverUpdates:
@@ -98,6 +107,61 @@ class TestDeliverUpdates:
         mock_send.assert_not_awaited()
         mock_mark.assert_not_called()
         assert count == 0
+
+    def test_logs_pending_count_when_sending(self, caplog):
+        mock_client = MagicMock()
+        updates = [
+            {
+                "id": "u1",
+                "is_embed": False,
+                "channel": "casino",
+                "text": "You won!",
+                "title": "",
+                "description": "",
+                "image": "",
+                "url": "",
+                "color": 0,
+            }
+        ]
+
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_stable_updates",
+                return_value=updates,
+            ),
+            patch(
+                "update_delivery.SupabaseReader.get_pending_game_updates",
+                return_value=[{"id": "p1"}, {"id": "p2"}],
+            ),
+            patch("update_delivery.SupabaseReader.mark_updates_delivered"),
+            patch(
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            caplog.at_level("INFO", logger="update_delivery"),
+        ):
+            asyncio.run(deliver_updates(mock_client))
+
+        assert "Sending 1 message (2 not ready yet)" in caplog.text
+
+    def test_logs_when_nothing_stable_but_some_pending(self, caplog):
+        mock_client = MagicMock()
+
+        with (
+            patch("update_delivery.SupabaseReader.get_stable_updates", return_value=[]),
+            patch(
+                "update_delivery.SupabaseReader.get_pending_game_updates",
+                return_value=[{"id": "p1"}],
+            ),
+            patch("update_delivery.SupabaseReader.mark_updates_delivered"),
+            patch("update_delivery.hm.send_message", new_callable=AsyncMock),
+            caplog.at_level("INFO", logger="update_delivery"),
+        ):
+            count = asyncio.run(deliver_updates(mock_client))
+
+        assert count == 0
+        assert "Nothing stable to send yet (1 not ready yet)" in caplog.text
 
     def test_multiple_updates_marks_per_row(self):
         mock_client = MagicMock()

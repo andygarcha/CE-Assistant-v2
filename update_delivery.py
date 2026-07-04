@@ -10,8 +10,22 @@ logger = logging.getLogger(__name__)
 
 async def deliver_updates(client: discord.Client) -> int:
     updates = SupabaseReader.get_stable_updates()
+    not_ready = len(SupabaseReader.get_pending_game_updates())
+
     if not updates:
+        if not_ready:
+            logger.info(
+                ":information_source: Nothing stable to send yet (%d not ready yet).",
+                not_ready,
+            )
         return 0
+
+    logger.info(
+        ":information_source: Sending %d message%s (%d not ready yet).",
+        len(updates),
+        "" if len(updates) == 1 else "s",
+        not_ready,
+    )
 
     delivered = 0
 
