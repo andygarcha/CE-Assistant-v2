@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
@@ -8,11 +9,38 @@ from update_delivery import deliver_updates
 
 
 @pytest.fixture(autouse=True)
-def _mock_pending_updates():
-    with patch(
-        "update_delivery.SupabaseReader.get_pending_game_updates", return_value=[]
+def _mock_delivery_deps():
+    recent = datetime.datetime.now(datetime.timezone.utc)
+    with (
+        patch(
+            "update_delivery.SupabaseReader.get_pending_game_updates",
+            return_value=[],
+        ),
+        patch(
+            "update_delivery.SupabaseReader.get_last_loop",
+            return_value=recent,
+        ),
+        patch(
+            "update_delivery.hm.send_message",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
     ):
         yield
+
+
+def _find_call(mock_send: AsyncMock, channel: str):
+    for call in mock_send.call_args_list:
+        if call.args[1] == channel:
+            return call
+    raise AssertionError(f"no send_message call found for channel {channel!r}")
+
+
+def _find_privatelog_call(mock_send: AsyncMock, substring: str):
+    for call in mock_send.call_args_list:
+        if call.args[1] == "privatelog" and substring in call.args[2]:
+            return call
+    raise AssertionError(f"no privatelog call found containing {substring!r}")
 
 
 class TestDeliverUpdates:
@@ -46,11 +74,11 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        mock_send.assert_awaited_once()
-        call_args = mock_send.call_args
-        assert call_args[0][0] is mock_client
-        assert call_args[0][1] == "casino"
-        assert call_args[0][2] == "You won!"
+        assert mock_send.await_count == 3
+        call_args = _find_call(mock_send, "casino")
+        assert call_args.args[0] is mock_client
+        assert call_args.args[1] == "casino"
+        assert call_args.args[2] == "You won!"
         mock_mark.assert_called_once_with(["u1"])
         assert count == 1
 
@@ -84,8 +112,8 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        mock_send.assert_awaited_once()
-        call_kwargs = mock_send.call_args
+        assert mock_send.await_count == 3
+        call_kwargs = _find_call(mock_send, "gameadditions")
         embed = call_kwargs.kwargs["embed"]
         assert embed.title == "New Game!"
         assert embed.description == "A cool game"
@@ -99,16 +127,62 @@ class TestDeliverUpdates:
             patch("update_delivery.SupabaseReader.get_stable_updates", return_value=[]),
             patch("update_delivery.SupabaseReader.mark_updates_delivered") as mock_mark,
             patch(
-                "update_delivery.hm.send_message", new_callable=AsyncMock
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
             ) as mock_send,
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        mock_send.assert_not_awaited()
+        # only the "checking" announcement goes out; no summary, no per-update sends
+        assert mock_send.await_count == 1
+        assert mock_send.call_args.args[1] == "privatelog"
         mock_mark.assert_not_called()
         assert count == 0
 
-    def test_logs_pending_count_when_sending(self, caplog):
+    def test_checking_message_sent_with_no_warning_when_recent(self):
+        mock_client = MagicMock()
+        recent = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+            minutes=5
+        )
+
+        with (
+            patch("update_delivery.SupabaseReader.get_last_loop", return_value=recent),
+            patch("update_delivery.SupabaseReader.get_stable_updates", return_value=[]),
+            patch(
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
+        ):
+            asyncio.run(deliver_updates(mock_client))
+
+        check_call = _find_privatelog_call(mock_send, ":mag:")
+        assert "Checking, last scraper loop at" in check_call.args[2]
+        assert ":warning:" not in check_call.args[2]
+
+    def test_checking_message_warns_when_scraper_stale(self):
+        mock_client = MagicMock()
+        stale = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+            hours=2
+        )
+
+        with (
+            patch("update_delivery.SupabaseReader.get_last_loop", return_value=stale),
+            patch("update_delivery.SupabaseReader.get_stable_updates", return_value=[]),
+            patch(
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
+        ):
+            asyncio.run(deliver_updates(mock_client))
+
+        check_call = _find_privatelog_call(mock_send, ":mag:")
+        assert ":warning:" in check_call.args[2]
+        assert "more than an hour ago" in check_call.args[2]
+
+    def test_logs_and_announces_when_sending(self, caplog):
         mock_client = MagicMock()
         updates = [
             {
@@ -138,14 +212,18 @@ class TestDeliverUpdates:
                 "update_delivery.hm.send_message",
                 new_callable=AsyncMock,
                 return_value=True,
-            ),
+            ) as mock_send,
             caplog.at_level("INFO", logger="update_delivery"),
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        assert "Sending 1 message (2 not ready yet)" in caplog.text
+        expected = ":information_source: Sending 1 message (2 not ready yet)."
+        assert expected in caplog.text
+        privatelog_call = _find_privatelog_call(mock_send, "Sending 1 message")
+        assert privatelog_call.args[2] == expected
+        assert privatelog_call.args[3] is False
 
-    def test_logs_when_nothing_stable_but_some_pending(self, caplog):
+    def test_logs_and_announces_when_nothing_stable_but_some_pending(self, caplog):
         mock_client = MagicMock()
 
         with (
@@ -155,13 +233,20 @@ class TestDeliverUpdates:
                 return_value=[{"id": "p1"}],
             ),
             patch("update_delivery.SupabaseReader.mark_updates_delivered"),
-            patch("update_delivery.hm.send_message", new_callable=AsyncMock),
+            patch(
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
             caplog.at_level("INFO", logger="update_delivery"),
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
         assert count == 0
-        assert "Nothing stable to send yet (1 not ready yet)" in caplog.text
+        expected = ":information_source: Nothing stable to send yet (1 not ready yet)."
+        assert expected in caplog.text
+        nothing_stable_call = _find_privatelog_call(mock_send, "Nothing stable")
+        assert nothing_stable_call.args[2] == expected
 
     def test_multiple_updates_marks_per_row(self):
         mock_client = MagicMock()
@@ -204,7 +289,7 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        assert mock_send.await_count == 2
+        assert mock_send.await_count == 4
         assert mock_mark.call_count == 2
         mock_mark.assert_any_call(["u1"])
         mock_mark.assert_any_call(["u2"])
@@ -270,6 +355,11 @@ class TestDeliverUpdates:
             },
         ]
 
+        def _side_effect(
+            client, channel, message="", allowed_mentions=True, embed=None
+        ):
+            return channel != "badchannel"
+
         with (
             patch(
                 "update_delivery.SupabaseReader.get_stable_updates",
@@ -279,7 +369,7 @@ class TestDeliverUpdates:
             patch(
                 "update_delivery.hm.send_message",
                 new_callable=AsyncMock,
-                side_effect=[True, False],
+                side_effect=_side_effect,
             ),
         ):
             count = asyncio.run(deliver_updates(mock_client))
@@ -335,6 +425,16 @@ class TestDeliverUpdatesExceptionRecovery:
             with __import__("pytest").raises(Exception, match="supabase down"):
                 asyncio.run(deliver_updates(mock_client))
 
+    def test_get_last_loop_exception_propagates(self):
+        mock_client = MagicMock()
+
+        with patch(
+            "update_delivery.SupabaseReader.get_last_loop",
+            side_effect=Exception("supabase down"),
+        ):
+            with __import__("pytest").raises(Exception, match="supabase down"):
+                asyncio.run(deliver_updates(mock_client))
+
 
 class TestDeliverUpdatesEmbedConstruction:
     """Verify embed details beyond just title/description."""
@@ -372,7 +472,7 @@ class TestDeliverUpdatesEmbedConstruction:
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        embed = mock_send.call_args.kwargs["embed"]
+        embed = _find_call(mock_send, "gameadditions").kwargs["embed"]
         assert embed.image.url is not None
         assert embed.image.url != ""
 
@@ -394,7 +494,7 @@ class TestDeliverUpdatesEmbedConstruction:
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        embed = mock_send.call_args.kwargs["embed"]
+        embed = _find_call(mock_send, "gameadditions").kwargs["embed"]
         assert embed.author.name == "Challenge Enthusiasts"
         assert embed.footer.text == "CE Assistant"
         assert embed.timestamp is not None
@@ -419,6 +519,6 @@ class TestDeliverUpdatesEmbedConstruction:
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        embed = mock_send.call_args.kwargs["embed"]
+        embed = _find_call(mock_send, "gameadditions").kwargs["embed"]
         assert embed.color.value == 0xFF0000
         assert embed.url == "https://cedb.me/game/abc"
