@@ -271,6 +271,9 @@ async def get_user_embeds(
         inline=True,
     )
     summary_embed.add_field(
+        name="CE Link", value=f"{user.display_name_with_link()}", inline=False
+    )
+    summary_embed.add_field(
         name="CR",
         value=user.get_cr(database_name=database_name).cr_string(),
         inline=False,
