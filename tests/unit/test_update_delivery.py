@@ -74,7 +74,7 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        assert mock_send.await_count == 3
+        assert mock_send.await_count == 2
         call_args = _find_call(mock_send, "casino")
         assert call_args.args[0] is mock_client
         assert call_args.args[1] == "casino"
@@ -112,7 +112,7 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        assert mock_send.await_count == 3
+        assert mock_send.await_count == 2
         call_kwargs = _find_call(mock_send, "gameadditions")
         embed = call_kwargs.kwargs["embed"]
         assert embed.title == "New Game!"
@@ -134,13 +134,12 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        # only the "checking" announcement goes out; no summary, no per-update sends
-        assert mock_send.await_count == 1
-        assert mock_send.call_args.args[1] == "privatelog"
+        # no updates and a recent (non-stale) loop: nothing gets sent at all
+        mock_send.assert_not_awaited()
         mock_mark.assert_not_called()
         assert count == 0
 
-    def test_checking_message_sent_with_no_warning_when_recent(self):
+    def test_no_checking_message_when_recent(self):
         mock_client = MagicMock()
         recent = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
             minutes=5
@@ -157,9 +156,7 @@ class TestDeliverUpdates:
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        check_call = _find_privatelog_call(mock_send, ":mag:")
-        assert "Checking, last scraper loop at" in check_call.args[2]
-        assert ":warning:" not in check_call.args[2]
+        mock_send.assert_not_awaited()
 
     def test_checking_message_warns_when_scraper_stale(self):
         mock_client = MagicMock()
@@ -289,7 +286,7 @@ class TestDeliverUpdates:
         ):
             count = asyncio.run(deliver_updates(mock_client))
 
-        assert mock_send.await_count == 4
+        assert mock_send.await_count == 3
         assert mock_mark.call_count == 2
         mock_mark.assert_any_call(["u1"])
         mock_mark.assert_any_call(["u2"])

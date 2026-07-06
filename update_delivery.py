@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 async def deliver_updates(client: discord.Client) -> int:
     last_run = SupabaseReader.get_last_loop(offset=False)
     ts = int(last_run.timestamp())
-    check_msg = f":mag: Checking, last scraper loop at <t:{ts}:f> (<t:{ts}:R>)."
     if datetime.datetime.now(datetime.timezone.utc) - last_run > datetime.timedelta(
         hours=1
     ):
+        check_msg = f":mag: Checking, last scraper loop at <t:{ts}:f> (<t:{ts}:R>)."
         check_msg += "\n:warning: Last scraper loop was more than an hour ago!"
-    logger.info("Checking, last scraper loop at %s.", last_run)
-    await hm.send_message(client, "privatelog", check_msg, False)
+        logger.info("Checking, last scraper loop at %s.", last_run)
+        await hm.send_message(client, "privatelog", check_msg, False)
 
     updates = SupabaseReader.get_stable_updates()
     not_ready = len(SupabaseReader.get_pending_game_updates())
