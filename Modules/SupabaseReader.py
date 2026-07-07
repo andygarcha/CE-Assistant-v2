@@ -1651,3 +1651,69 @@ def dump_objective(objective: CEObjective):
         reqs_payload.append(req_data)
 
     LocalCache.upsert_requirements_bulk(reqs_payload)
+
+
+def get_banned_game(game_id: str) -> dict | None:
+    """
+    Checks the bannedGames table for the game given by `game_id`.
+
+    Parameters
+    ---
+    game_id: `str`
+        The CE ID of the game we're looking for.
+
+    Returns
+    ---
+    banned_game: `dict | None`
+        If the game is currently banned, this will return the row data associated with it.
+        If it is not banned, this will return None.
+    """
+
+    game = supabase.table("bannedGames").select("*").eq("game_id", game_id).execute().data
+
+    if not game:
+        return None
+
+    return game[0]
+
+
+def get_banned_games() -> list[dict]:
+    """
+    Returns a list of all games that are banned from the casino.
+    """
+    games = supabase.table("bannedGames").select('*').execute().data
+
+    return [g for g in games]
+
+
+def ban_game(game_id: str, reason: str, banned_by: str, append: bool = True):
+    """
+    Adds a game to the `bannedGames` table in Supabase.
+
+    If 
+
+    Parameters
+    ---
+    game_id: `str`
+        The CE ID of the game you want to ban.
+    reason: `str`
+        The reason you're banning this game.
+    banned_by: `str`
+        The CE ID of the user who is banning this game.
+    append: `bool` (default `True`)
+        If this is set to true and there already exists a row
+        in the `bannedGames` table with `game_id`, this will
+        append the `reason` to the existing entry.
+    """
+
+    previous_entry = get_banned_game(game_id)
+    if previous_entry is not None and append:
+        reason = f"{previous_entry['reason']}\n{reason}"
+
+    data = {
+        'game_id': game_id,
+        'reason': reason,
+        'banned_by': banned_by
+    }
+
+    supabase.table('bannedGames').upsert(data).execute()

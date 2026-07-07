@@ -6,6 +6,7 @@ import discord
 import logging
 from discord import app_commands
 from Classes.CE_Roll import CERoll
+from commands.games import get_game_auto
 from commands.user import register
 from Modules import hm, SupabaseReader
 
@@ -161,6 +162,18 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(user="The user.")
     async def debug_command(interaction: discord.Interaction, user: discord.Member):
         return await debug(interaction, user)
+    
+    # -- /ban-game {game_id} {reason}} ---------------------------------------------------------------
+    @tree.command(
+        name="ban-game", description="Ban a game from being rolled in the casino.", guild=guild
+    )
+    @app_commands.describe(
+        game="The game you want to ban from the casino.",
+        reason="Why do you want to ban this game from the casino?"
+    )
+    @app_commands.autocomplete(game=get_game_auto)
+    async def ban_game_command(interaction: discord.Interaction, game: str, reason: str):
+        return await ban_game(interaction, game, reason)
 
     pass
 
@@ -639,4 +652,47 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
             f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
             f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
         )
+    )
+
+
+async def ban_game(interaction: discord.Interaction, game: str, reason: str) :
+    """
+    Adds a game to the `banned_games` table in Supabase.
+
+    If this game is already banned, this function will append the given `reason` onto the `reason` column
+    in Supabase.
+
+    If the user who initiated this interaction is not registered, this command will exit early.
+    The user who initiated this command will have their CE ID listed in the `banned_by` column.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    game: `str`
+        The CE ID of the game we're banning.
+    reason: `str`
+        The reason we're banning this game from the casino.
+    """
+    await interaction.response.defer()
+
+    await hm.log_command(
+        client,
+        interaction,
+        "ban-game",
+        True,
+        game=game,
+        reason=reason
+    )
+
+    author = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    if author is None:
+        return await interaction.followup.send(
+            "You must be registered in order to ban a game from the casino."
+        )
+    
+    SupabaseReader.ban_game(game, reason, author.ce_id)
+
+    return await interaction.followup.send(
+        f"Game with ID {game} was banned by {author.mention()} for reason: '{reason}'."
     )
