@@ -15,7 +15,6 @@ import discord  # noqa: E402
 from discord import app_commands  # noqa: E402
 
 # -------- json imports ----------
-import json  # noqa: E402
 from typing import Literal  # noqa: E402
 
 # --------- local class imports --------
@@ -28,8 +27,8 @@ from commands.games import get_game_auto  # noqa: E402
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks  # noqa: E402
-from dotenv import load_dotenv
-import os
+from dotenv import load_dotenv  # noqa: E402
+import os  # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
 
