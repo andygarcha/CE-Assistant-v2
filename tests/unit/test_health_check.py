@@ -3,6 +3,7 @@ from Modules.HealthCheck import (
     check_roll_game_counts,
     check_uncategorized_games,
     check_orphaned_objectives,
+    format_integrity_report,
 )
 from Modules import hm
 
@@ -88,3 +89,28 @@ class TestCheckOrphanedObjectives:
         obj = make_objective(achievement_ce_ids=["ach-0001"])
         game = make_game(objectives=[obj])
         assert check_orphaned_objectives([game]) == []
+
+
+class TestFormatIntegrityReport:
+    def test_no_issues(self):
+        summary = format_integrity_report({"synced": [], "removed": [], "schema": []})
+        assert summary == ":hospital: Integrity check passed — local cache in sync with Supabase"
+
+    def test_synced_only(self):
+        summary = format_integrity_report(
+            {"synced": ["games: 2"], "removed": [], "schema": []}
+        )
+        assert summary == ":hospital: Integrity check: synced [games: 2]"
+
+    def test_all_three_sections(self):
+        summary = format_integrity_report(
+            {
+                "synced": ["games: 2"],
+                "removed": ["users: 1"],
+                "schema": ["added column x"],
+            }
+        )
+        assert summary == (
+            ":hospital: Integrity check: synced [games: 2], "
+            "removed [users: 1], schema [added column x]"
+        )

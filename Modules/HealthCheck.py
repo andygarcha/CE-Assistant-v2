@@ -171,3 +171,36 @@ def check_orphaned_objectives(games: list[CEGame]) -> list[str]:
             )
 
     return warnings
+
+
+def format_integrity_report(report: dict) -> str:
+    """
+    Formats a `Modules.LocalCache.run_integrity_check()` report dict into
+    a single `:hospital:`-prefixed summary string for #privatelog.
+
+    Parameters
+    ---
+    report: `dict`
+        The dict returned by `LocalCache.run_integrity_check()`, with
+        keys "synced", "removed", "schema" (each `list[str]`).
+
+    Returns
+    ---
+    summary: `str`
+        A single summary line.
+    """
+    synced = ", ".join(report.get("synced", []))
+    removed = ", ".join(report.get("removed", []))
+    schema = ", ".join(report.get("schema", []))
+
+    parts = []
+    if synced:
+        parts.append(f"synced [{synced}]")
+    if removed:
+        parts.append(f"removed [{removed}]")
+    if schema:
+        parts.append(f"schema [{schema}]")
+
+    if parts:
+        return ":hospital: Integrity check: " + ", ".join(parts)
+    return ":hospital: Integrity check passed — local cache in sync with Supabase"
