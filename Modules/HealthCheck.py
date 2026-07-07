@@ -207,18 +207,6 @@ def format_integrity_report(report: dict) -> str:
     return ":hospital: Integrity check passed — local cache in sync with Supabase"
 
 
-def _run_uncategorized_games_check() -> list[str]:
-    return check_uncategorized_games(SupabaseReader.get_database_name())
-
-
-def _run_orphaned_objectives_check() -> list[str]:
-    return check_orphaned_objectives(SupabaseReader.get_database_name())
-
-
-def _run_roll_game_count_check() -> list[str]:
-    return check_roll_game_counts(SupabaseReader.get_all_rolls())
-
-
 def run_cheap_checks() -> list[str]:
     """
     Runs every health check that doesn't cost extra Supabase egress
@@ -227,7 +215,10 @@ def run_cheap_checks() -> list[str]:
 
     Each check runs independently — if one raises, it contributes a
     single `:hospital: {check} check failed: {error}` message instead
-    of preventing the other checks from running.
+    of preventing the other checks from running. The games list is
+    fetched once and shared between the uncategorized-games and
+    orphaned-objectives checks to avoid fetching the games table from
+    Supabase twice per invocation.
 
     Returns
     ---
@@ -236,17 +227,29 @@ def run_cheap_checks() -> list[str]:
     """
     warnings: list[str] = []
 
-    checks = (
-        ("Uncategorized-games", _run_uncategorized_games_check),
-        ("Orphaned-objectives", _run_orphaned_objectives_check),
-        ("Roll-game-count", _run_roll_game_count_check),
-    )
-
-    for check_name, check_fn in checks:
+    try:
+        games = SupabaseReader.get_database_name()
+    except Exception as e:
+        logger.exception("Fetching games for health checks failed.")
+        warnings.append(f":hospital: Uncategorized-games check failed: {e}")
+        warnings.append(f":hospital: Orphaned-objectives check failed: {e}")
+    else:
         try:
-            warnings.extend(check_fn())
+            warnings.extend(check_uncategorized_games(games))
         except Exception as e:
-            logger.exception("%s check failed.", check_name)
-            warnings.append(f":hospital: {check_name} check failed: {e}")
+            logger.exception("Uncategorized-games check failed.")
+            warnings.append(f":hospital: Uncategorized-games check failed: {e}")
+
+        try:
+            warnings.extend(check_orphaned_objectives(games))
+        except Exception as e:
+            logger.exception("Orphaned-objectives check failed.")
+            warnings.append(f":hospital: Orphaned-objectives check failed: {e}")
+
+    try:
+        warnings.extend(check_roll_game_counts(SupabaseReader.get_all_rolls()))
+    except Exception as e:
+        logger.exception("Roll-game-count check failed.")
+        warnings.append(f":hospital: Roll-game-count check failed: {e}")
 
     return warnings
