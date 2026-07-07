@@ -190,6 +190,25 @@ def get_game(ce_id: str) -> CEGame | None:
     )
 
 
+def get_game_id_by_name(name: str) -> list[CEGame]:
+    """
+    Takes in a name and returns a list of `CEGame`s whose name contains the parameter.
+
+    Parameters
+    ---
+    name: `str`
+        The name of the game we're trying to match.
+
+    Returns
+    ---
+    games: `list[CEGame]`
+        A list of games that match the name. Empty if none match.
+    """
+
+    game_json = LocalCache.get_game_id_by_name(name)
+    return [__supabase_to_simple_game(g) for g in game_json]
+
+
 # GET USER
 def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
     if not use_discord_id:
@@ -1480,6 +1499,24 @@ def __supabase_to_game(
         banner=game["image_header"],
         objectives=objectives,
     )
+
+
+def __supabase_to_simple_game(game: dict) -> CEGame:
+    """
+    This takes in ONLY the game object - none of the objectives, objectiveRequirements, or categories.
+
+    Parameters
+    ---
+    game: `dict`
+        The game objective from Supabase/LocalCache.
+
+    Returns
+    ---
+    game: `CEGame`
+        The game object, just without any of the objectives/categories stuff.
+    """
+
+    return __supabase_to_game(game, obj=[], reqs=[], cats=[])
 
 
 def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
