@@ -232,7 +232,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
 
     return await og_message.edit(
         content=(
-            "#- To save on memory, these buttons disable after 120 seconds."
+            "-# To save on memory, these buttons disable after 120 seconds. "
             "Please run this command again to view both embeds."
         ),
         view=view,
