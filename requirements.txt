@@ -7,6 +7,7 @@ httpx==0.28.1
 motor==3.7.1
 pillow==11.2.1
 postgrest==1.1.1
+python-dotenv==1.2.2
 requests==2.32.4
 selenium==4.33.0
 supabase==2.16.0

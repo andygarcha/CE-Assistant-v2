@@ -4,10 +4,11 @@ Version 3 : Object-Oriented, and each item has its own document.
 """
 
 # imports
-import json
 from typing import Literal
 import logging
 import uuid
+import os
+from dotenv import load_dotenv
 
 # -- local --
 from Classes.CE_Game import CEAPIGame, CEGame
@@ -29,11 +30,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 logger = logging.getLogger(__name__)
 
-# open secret_info.json
-with open("secret_info.json") as f:
-    """The :class:`ObjectID` values stored under the `_id` value in each document."""
-    local_json_data = json.load(f)
-    _uri = local_json_data["mongo_uri"]
+# open .env
+load_dotenv()
+_uri = os.getenv("MONGODB_URI")
+
 _mongo_client = AsyncIOMotorClient(_uri)
 V3NAMETITLE = "database-name-v3"
 V3USERTITLE = "database-user-v3"

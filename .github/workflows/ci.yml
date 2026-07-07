@@ -47,9 +47,10 @@ jobs:
           cache: "pip"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Create dummy secrets file
+      - name: Create dummy .env file
         run: |
-          echo '{"supabase_url": "https://dummy.supabase.co", "supabase_key_secret": "dummy"}' > secret_info.json
+          echo "SUPABASE_URL=https://dummy.supabase.co" > .env
+          echo "SUPABASE_SECRET_KEY=dummy" >> .env
       - name: Run pytest
         run: pytest --ignore=tests/integration
   

@@ -15,7 +15,6 @@ import discord  # noqa: E402
 from discord import app_commands  # noqa: E402
 
 # -------- json imports ----------
-import json  # noqa: E402
 from typing import Literal  # noqa: E402
 
 # --------- local class imports --------
@@ -28,6 +27,8 @@ from commands.games import get_game_auto  # noqa: E402
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+import os  # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
 
@@ -42,19 +43,17 @@ intents.guilds = True
 intents.message_content = True
 
 
-# open secret_info.json
-with open("secret_info.json") as f:
-    local_json_data = json.load(f)
-    if hm.IN_CE:
-        discord_token = local_json_data["discord_token"]
-        guild_id = local_json_data["ce_guild_ID"]
-    else:
-        RUNNING_LOCALLY = False
-        if RUNNING_LOCALLY:
-            discord_token = local_json_data["other_discord_token"]
-        else:
-            discord_token = local_json_data["third_discord_token"]
-        guild_id = local_json_data["test_guild_ID"]
+# open .env
+load_dotenv()
+if hm.IN_CE:
+    discord_token = os.getenv("DISCORD_BOT_TOKEN")
+    guild_id = os.getenv("DISCORD_GUILD_ID")
+else:
+    discord_token = os.getenv("DISCORD_BOT_TOKEN_TERTIARY")
+    guild_id = os.getenv("DISCORD_TEST_GUILD_ID")
+
+assert discord_token is not None
+assert guild_id is not None
 
 # set up client
 client = discord.Client(intents=intents)
