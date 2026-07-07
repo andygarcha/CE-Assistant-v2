@@ -1,5 +1,9 @@
-from tests.conftest import make_roll, make_game
-from Modules.HealthCheck import check_roll_game_counts, check_uncategorized_games
+from tests.conftest import make_roll, make_game, make_objective
+from Modules.HealthCheck import (
+    check_roll_game_counts,
+    check_uncategorized_games,
+    check_orphaned_objectives,
+)
 from Modules import hm
 
 
@@ -64,3 +68,23 @@ class TestCheckUncategorizedGames:
     def test_does_not_flag_clown_town_game(self):
         game = make_game(ce_id=hm.GAME_ID_CLOWN_TOWN, categories=[])
         assert check_uncategorized_games([game]) == []
+
+
+class TestCheckOrphanedObjectives:
+    def test_flags_objective_with_no_requirements_or_achievements(self):
+        obj = make_objective()  # requirements=None, achievement_ce_ids=None by default
+        game = make_game(objectives=[obj])
+        warnings = check_orphaned_objectives([game])
+        assert len(warnings) == 1
+        assert ":hospital:" in warnings[0]
+        assert obj.name in warnings[0]
+
+    def test_does_not_flag_objective_with_requirements(self):
+        obj = make_objective(requirements="Beat the final boss.")
+        game = make_game(objectives=[obj])
+        assert check_orphaned_objectives([game]) == []
+
+    def test_does_not_flag_objective_with_achievement_ids(self):
+        obj = make_objective(achievement_ce_ids=["ach-0001"])
+        game = make_game(objectives=[obj])
+        assert check_orphaned_objectives([game]) == []

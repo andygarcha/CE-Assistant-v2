@@ -140,3 +140,34 @@ def check_uncategorized_games(games: list[CEGame]) -> list[str]:
         warnings.append(f":hospital: Game {game.name_with_link} has no categories.")
 
     return warnings
+
+
+def check_orphaned_objectives(games: list[CEGame]) -> list[str]:
+    """
+    Flags objectives with no requirements and no achievement IDs attached
+    (i.e. objectives with zero rows in `objectiveRequirements`).
+
+    Parameters
+    ---
+    games: `list[CEGame]`
+        The games whose objectives should be checked.
+
+    Returns
+    ---
+    warnings: `list[str]`
+        One `:hospital:`-prefixed message per offending objective.
+    """
+    warnings: list[str] = []
+
+    for game in games:
+        for objective in game.all_objectives:
+            if objective.requirements is not None:
+                continue
+            if objective.achievement_ce_ids:
+                continue
+            warnings.append(
+                f":hospital: Objective {objective.name} ({objective.ce_id}) "
+                "has no requirements."
+            )
+
+    return warnings
