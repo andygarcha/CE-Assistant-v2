@@ -4,9 +4,14 @@ pasted below each bar instead of text labels."""
 
 from __future__ import annotations
 
+import io
 from typing import TYPE_CHECKING
 
+from PIL import Image, ImageDraw, ImageFont
+
 import Modules.hm as hm
+
+from utils.emoji_cache import get_cached_emoji_path
 
 if TYPE_CHECKING:
     from Classes.CE_User import CEAPIUser
@@ -22,6 +27,32 @@ CATEGORY_ORDER = [
 ]
 
 _TIER_FIELD_NAMES = ["tier1", "tier2", "tier3", "tier4", "tier5"]
+
+# ------------- layout constants -------------
+IMAGE_WIDTH = 800
+TOP_MARGIN = 20
+TITLE_HEIGHT = 30
+BAR_AREA_HEIGHT = 150
+EMOJI_SIZE = 40
+EMOJI_MARGIN = 10
+PANEL_HEIGHT = TITLE_HEIGHT + BAR_AREA_HEIGHT + EMOJI_MARGIN + EMOJI_SIZE
+PANEL_GAP = 20
+IMAGE_HEIGHT = TOP_MARGIN + PANEL_HEIGHT + PANEL_GAP + PANEL_HEIGHT + TOP_MARGIN
+
+BAR_MAX_WIDTH = 70
+COUNT_TEXT_GAP = 22
+
+# ------------- color constants -------------
+BACKGROUND_COLOR = (17, 17, 17)
+TEXT_COLOR = (240, 240, 240)
+CATEGORY_BAR_COLOR = (222, 222, 222)
+TIER_COLORS = {
+    "Tier 1": (0, 188, 99),
+    "Tier 2": (228, 177, 1),
+    "Tier 3": (228, 114, 13),
+    "Tier 4": (230, 68, 52),
+    "Tier 5": (169, 5, 177),
+}
 
 
 def tier_counts(api_user: "CEAPIUser") -> list[tuple[str, int]]:
@@ -45,3 +76,100 @@ def category_counts(api_user: "CEAPIUser") -> list[tuple[str, int]]:
         if genre_name in totals:
             totals[genre_name] = row["total"]
     return [(label, totals[label]) for label in CATEGORY_ORDER]
+
+
+async def _emoji_paths_for(labels: list[str]):
+    paths = []
+    for label in labels:
+        markup = hm.get_emoji(label)  # type: ignore
+        paths.append(await get_cached_emoji_path(markup))
+    return paths
+
+
+def _draw_panel(
+    image: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    title: str,
+    entries: list[tuple[str, int]],
+    colors: list[tuple[int, int, int]],
+    emoji_paths: list,
+    top_y: int,
+) -> None:
+    font_title = ImageFont.load_default(size=20)
+    font_count = ImageFont.load_default(size=16)
+
+    draw.text((TOP_MARGIN, top_y), title, font=font_title, fill=TEXT_COLOR)
+
+    axis_y = top_y + TITLE_HEIGHT + BAR_AREA_HEIGHT
+    n = len(entries)
+    slot_width = IMAGE_WIDTH / n
+    bar_width = min(BAR_MAX_WIDTH, slot_width * 0.6)
+    max_count = max((count for _, count in entries), default=0) or 1
+
+    for i, (_, count) in enumerate(entries):
+        slot_center = slot_width * i + slot_width / 2
+        bar_height = round((count / max_count) * BAR_AREA_HEIGHT) if count else 0
+        bar_top = axis_y - bar_height
+
+        if bar_height > 0:
+            draw.rectangle(
+                [
+                    slot_center - bar_width / 2,
+                    bar_top,
+                    slot_center + bar_width / 2,
+                    axis_y,
+                ],
+                fill=colors[i],
+            )
+
+        count_text = str(count)
+        text_width = draw.textlength(count_text, font=font_count)
+        draw.text(
+            (slot_center - text_width / 2, bar_top - COUNT_TEXT_GAP),
+            count_text,
+            font=font_count,
+            fill=TEXT_COLOR,
+        )
+
+        emoji_path = emoji_paths[i]
+        if emoji_path is not None:
+            emoji_image = (
+                Image.open(emoji_path).convert("RGBA").resize((EMOJI_SIZE, EMOJI_SIZE))
+            )
+            paste_x = round(slot_center - EMOJI_SIZE / 2)
+            paste_y = axis_y + EMOJI_MARGIN
+            image.paste(emoji_image, (paste_x, paste_y), emoji_image)
+
+
+async def generate_completions_chart(api_user: "CEAPIUser") -> io.BytesIO:
+    """Renders the Tiers + Categories completions bar chart and returns a
+    PNG-encoded BytesIO buffer ready for Discord upload."""
+    tiers = tier_counts(api_user)
+    categories = category_counts(api_user)
+
+    tier_colors = [TIER_COLORS[label] for label, _ in tiers]
+    category_colors = [CATEGORY_BAR_COLOR for _ in categories]
+
+    tier_emoji_paths = await _emoji_paths_for([label for label, _ in tiers])
+    category_emoji_paths = await _emoji_paths_for([label for label, _ in categories])
+
+    image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), BACKGROUND_COLOR)
+    draw = ImageDraw.Draw(image)
+
+    _draw_panel(
+        image, draw, "Tiers", tiers, tier_colors, tier_emoji_paths, TOP_MARGIN
+    )
+    _draw_panel(
+        image,
+        draw,
+        "Categories",
+        categories,
+        category_colors,
+        category_emoji_paths,
+        TOP_MARGIN + PANEL_HEIGHT + PANEL_GAP,
+    )
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer

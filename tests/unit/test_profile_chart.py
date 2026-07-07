@@ -82,3 +82,84 @@ class TestCategoryCounts:
             ("Platformer", 0),
             ("Strategy", 0),
         ]
+
+
+import asyncio
+import io
+from unittest.mock import AsyncMock, patch
+
+from PIL import Image
+
+from Modules.ProfileChart import (
+    IMAGE_WIDTH,
+    IMAGE_HEIGHT,
+    BACKGROUND_COLOR,
+    generate_completions_chart,
+)
+
+
+class TestGenerateCompletionsChart:
+    def _make_user_with_counts(self):
+        return _make_api_user(
+            [
+                {
+                    "genreId": TOTAL_GENRE_ID,
+                    "tier1": 4,
+                    "tier2": 9,
+                    "tier3": 2,
+                    "tier4": 0,
+                    "tier5": 1,
+                    "total": 16,
+                },
+                {"genreId": ACTION_GENRE_ID, "total": 7},
+            ]
+        )
+
+    def test_returns_png_of_expected_size(self):
+        api_user = self._make_user_with_counts()
+
+        with patch(
+            "Modules.ProfileChart.get_cached_emoji_path",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            buffer = asyncio.run(generate_completions_chart(api_user))
+
+        assert isinstance(buffer, io.BytesIO)
+        image = Image.open(buffer)
+        assert image.format == "PNG"
+        assert image.size == (IMAGE_WIDTH, IMAGE_HEIGHT)
+
+    def test_background_color_is_near_black(self):
+        api_user = self._make_user_with_counts()
+
+        with patch(
+            "Modules.ProfileChart.get_cached_emoji_path",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            buffer = asyncio.run(generate_completions_chart(api_user))
+
+        image = Image.open(buffer).convert("RGB")
+        # top-left corner should be untouched background
+        assert image.getpixel((0, 0)) == BACKGROUND_COLOR
+
+    def test_draws_a_tier_colored_bar_pixel(self):
+        api_user = self._make_user_with_counts()
+
+        with patch(
+            "Modules.ProfileChart.get_cached_emoji_path",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            buffer = asyncio.run(generate_completions_chart(api_user))
+
+        image = Image.open(buffer).convert("RGB")
+        colors_present = {
+            image.getpixel((x, y))
+            for x in range(0, IMAGE_WIDTH, 4)
+            for y in range(0, IMAGE_HEIGHT, 4)
+        }
+        from Modules.ProfileChart import TIER_COLORS
+
+        assert TIER_COLORS["Tier 2"] in colors_present  # tallest tier bar (count 9)
