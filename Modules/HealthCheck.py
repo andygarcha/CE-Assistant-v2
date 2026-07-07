@@ -13,6 +13,7 @@ import logging
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
 from Modules import hm
+from Modules import SupabaseReader
 
 logger = logging.getLogger(__name__)
 
@@ -204,3 +205,48 @@ def format_integrity_report(report: dict) -> str:
     if parts:
         return ":hospital: Integrity check: " + ", ".join(parts)
     return ":hospital: Integrity check passed — local cache in sync with Supabase"
+
+
+def _run_uncategorized_games_check() -> list[str]:
+    return check_uncategorized_games(SupabaseReader.get_database_name())
+
+
+def _run_orphaned_objectives_check() -> list[str]:
+    return check_orphaned_objectives(SupabaseReader.get_database_name())
+
+
+def _run_roll_game_count_check() -> list[str]:
+    return check_roll_game_counts(SupabaseReader.get_all_rolls())
+
+
+def run_cheap_checks() -> list[str]:
+    """
+    Runs every health check that doesn't cost extra Supabase egress
+    (everything except the LocalCache/Supabase integrity check) and
+    combines their warnings into one flat list.
+
+    Each check runs independently — if one raises, it contributes a
+    single `:hospital: {check} check failed: {error}` message instead
+    of preventing the other checks from running.
+
+    Returns
+    ---
+    warnings: `list[str]`
+        All `:hospital:`-prefixed warning messages from every check.
+    """
+    warnings: list[str] = []
+
+    checks = (
+        ("Uncategorized-games", _run_uncategorized_games_check),
+        ("Orphaned-objectives", _run_orphaned_objectives_check),
+        ("Roll-game-count", _run_roll_game_count_check),
+    )
+
+    for check_name, check_fn in checks:
+        try:
+            warnings.extend(check_fn())
+        except Exception as e:
+            logger.exception("%s check failed.", check_name)
+            warnings.append(f":hospital: {check_name} check failed: {e}")
+
+    return warnings

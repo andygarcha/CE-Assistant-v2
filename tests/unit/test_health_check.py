@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 from tests.conftest import make_roll, make_game, make_objective
 from Modules.HealthCheck import (
     check_roll_game_counts,
     check_uncategorized_games,
     check_orphaned_objectives,
     format_integrity_report,
+    run_cheap_checks,
 )
 from Modules import hm
 
@@ -114,3 +117,59 @@ class TestFormatIntegrityReport:
             ":hospital: Integrity check: synced [games: 2], "
             "removed [users: 1], schema [added column x]"
         )
+
+
+class TestRunCheapChecks:
+    def test_combines_warnings_from_all_checks(self):
+        bad_game = make_game(ce_id="game-a", categories=[])
+        bad_roll = make_roll(roll_name="One Hell of a Day", games=["x", "y"])
+
+        with (
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_database_name",
+                return_value=[bad_game],
+            ),
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_all_rolls",
+                return_value=[bad_roll],
+            ),
+        ):
+            warnings = run_cheap_checks()
+
+        assert len(warnings) == 2
+        assert all(":hospital:" in w for w in warnings)
+
+    def test_no_warnings_when_everything_is_clean(self):
+        good_game = make_game(categories=["Action"])
+        good_roll = make_roll(roll_name="One Hell of a Day", games=["x"])
+
+        with (
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_database_name",
+                return_value=[good_game],
+            ),
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_all_rolls",
+                return_value=[good_roll],
+            ),
+        ):
+            assert run_cheap_checks() == []
+
+    def test_one_failing_check_does_not_block_the_others(self):
+        good_roll = make_roll(roll_name="One Hell of a Day", games=["x"])
+
+        with (
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_database_name",
+                side_effect=RuntimeError("supabase down"),
+            ),
+            patch(
+                "Modules.HealthCheck.SupabaseReader.get_all_rolls",
+                return_value=[good_roll],
+            ),
+        ):
+            warnings = run_cheap_checks()
+
+        # both game-based checks fail (2 failure messages), roll check succeeds clean
+        assert len(warnings) == 2
+        assert all("check failed" in w for w in warnings)
