@@ -219,7 +219,12 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     view = returns[1]
 
     # and send
-    return await interaction.followup.send(view=view, embed=summary_embed)
+    og_message = await interaction.followup.send(
+        view=view, embed=summary_embed, wait=True
+    )
+    if isinstance(view, Discord_Helper.ProfileView):
+        view.message = og_message
+    return og_message
 
 
 async def set_color(interaction: discord.Interaction):
