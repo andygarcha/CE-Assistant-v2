@@ -222,7 +222,8 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     og_message = await interaction.followup.send(
         view=view, embed=summary_embed, wait=True
     )
-    view.message = og_message
+    if isinstance(view, Discord_Helper.ProfileView):
+        view.message = og_message
     return og_message
 
 
