@@ -4,6 +4,7 @@ pasted below each bar instead of text labels."""
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from typing import TYPE_CHECKING
@@ -78,20 +79,26 @@ def category_counts(api_user: "CEAPIUser") -> list[tuple[str, int]]:
         genre_name = hm.genre_id_to_name(row["genreId"])
         if genre_name in totals:
             totals[genre_name] = row["total"]
+        elif genre_name != "Total":
+            logger.warning(
+                "Unknown genreId %r (resolved name %r) encountered while "
+                "computing category counts; skipping row",
+                row["genreId"],
+                genre_name,
+            )
     return [(label, totals[label]) for label in CATEGORY_ORDER]
 
 
 async def _emoji_paths_for(labels: list[str]):
-    paths = []
-    for label in labels:
+    async def _fetch(label: str):
         markup = hm.get_emoji(label)  # type: ignore
         try:
-            path = await get_cached_emoji_path(markup)
-            paths.append(path)
+            return await get_cached_emoji_path(markup)
         except Exception:
             logger.exception("Failed to fetch cached emoji path for label %r", label)
-            paths.append(None)
-    return paths
+            return None
+
+    return await asyncio.gather(*(_fetch(label) for label in labels))
 
 
 def _draw_panel(
@@ -152,18 +159,16 @@ def _draw_panel(
                 logger.exception("Failed to paste emoji from path %r", emoji_path)
 
 
-async def generate_completions_chart(api_user: "CEAPIUser") -> io.BytesIO:
-    """Renders the Tiers + Categories completions bar chart and returns a
-    PNG-encoded BytesIO buffer ready for Discord upload."""
-    tiers = tier_counts(api_user)
-    categories = category_counts(api_user)
-
-    tier_colors = [TIER_COLORS[label] for label, _ in tiers]
-    category_colors = [CATEGORY_BAR_COLOR for _ in categories]
-
-    tier_emoji_paths = await _emoji_paths_for([label for label, _ in tiers])
-    category_emoji_paths = await _emoji_paths_for([label for label, _ in categories])
-
+def _render_image(
+    tiers: list[tuple[str, int]],
+    categories: list[tuple[str, int]],
+    tier_colors: list[tuple[int, int, int]],
+    category_colors: list[tuple[int, int, int]],
+    tier_emoji_paths: list,
+    category_emoji_paths: list,
+) -> io.BytesIO:
+    """Synchronous Pillow rendering work (image creation, panel drawing,
+    PNG encoding). Meant to be run off the event loop via asyncio.to_thread."""
     image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), BACKGROUND_COLOR)
     draw = ImageDraw.Draw(image)
 
@@ -184,3 +189,26 @@ async def generate_completions_chart(api_user: "CEAPIUser") -> io.BytesIO:
     image.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+
+
+async def generate_completions_chart(api_user: "CEAPIUser") -> io.BytesIO:
+    """Renders the Tiers + Categories completions bar chart and returns a
+    PNG-encoded BytesIO buffer ready for Discord upload."""
+    tiers = tier_counts(api_user)
+    categories = category_counts(api_user)
+
+    tier_colors = [TIER_COLORS[label] for label, _ in tiers]
+    category_colors = [CATEGORY_BAR_COLOR for _ in categories]
+
+    tier_emoji_paths = await _emoji_paths_for([label for label, _ in tiers])
+    category_emoji_paths = await _emoji_paths_for([label for label, _ in categories])
+
+    return await asyncio.to_thread(
+        _render_image,
+        tiers,
+        categories,
+        tier_colors,
+        category_colors,
+        tier_emoji_paths,
+        category_emoji_paths,
+    )
