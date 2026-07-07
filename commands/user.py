@@ -206,14 +206,16 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
                 "Sorry! You are not registered. Please run /register and try again!"
             )
 
-    # get the embed and the view
-    returns = await Discord_Helper.get_user_embeds(
+    # get the embed, view, and chart image
+    summary_embed, view, chart_file = await Discord_Helper.get_user_embeds(
         user=ce_user, database_name=database_name
     )
-    summary_embed = returns[0]
-    view = returns[1]
 
     # and send
+    if chart_file is not None:
+        return await interaction.followup.send(
+            view=view, embed=summary_embed, file=chart_file
+        )
     return await interaction.followup.send(view=view, embed=summary_embed)
 
 
