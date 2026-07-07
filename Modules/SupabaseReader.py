@@ -1683,7 +1683,7 @@ def get_banned_games() -> list[dict]:
     """
     games = supabase.table("bannedGames").select('*').execute().data
 
-    return [g for g in games]
+    return games
 
 
 def ban_game(game_id: str, reason: str, banned_by: str, append: bool = True):
