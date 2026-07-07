@@ -178,6 +178,7 @@ async def on_ready():
         "urllib3",
         "discord",
         "aiohttp",
+        "PIL",
     ]:
         logging.getLogger(name).setLevel(logging.WARNING)
         logger.info("Killed logging for %s.", name)

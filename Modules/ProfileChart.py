@@ -33,18 +33,17 @@ CATEGORY_ORDER = [
 _TIER_FIELD_NAMES = ["tier1", "tier2", "tier3", "tier4", "tier5"]
 
 # ------------- layout constants -------------
-IMAGE_WIDTH = 800
+IMAGE_WIDTH = 250
 TOP_MARGIN = 20
-TITLE_HEIGHT = 30
-BAR_AREA_HEIGHT = 150
-EMOJI_SIZE = 40
-EMOJI_MARGIN = 10
-PANEL_HEIGHT = TITLE_HEIGHT + BAR_AREA_HEIGHT + EMOJI_MARGIN + EMOJI_SIZE
-PANEL_GAP = 20
+BAR_AREA_HEIGHT = 40
+EMOJI_SIZE = 25
+EMOJI_MARGIN = 20
+PANEL_HEIGHT =  BAR_AREA_HEIGHT + EMOJI_MARGIN + EMOJI_SIZE
+PANEL_GAP = 40
 IMAGE_HEIGHT = TOP_MARGIN + PANEL_HEIGHT + PANEL_GAP + PANEL_HEIGHT + TOP_MARGIN
 
-BAR_MAX_WIDTH = 70
-COUNT_TEXT_GAP = 22
+BAR_MAX_WIDTH = 40
+COUNT_TEXT_GAP = 15
 
 # ------------- color constants -------------
 BACKGROUND_COLOR = (17, 17, 17)
@@ -110,12 +109,9 @@ def _draw_panel(
     emoji_paths: list,
     top_y: int,
 ) -> None:
-    font_title = ImageFont.load_default(size=20)
-    font_count = ImageFont.load_default(size=16)
+    font_count = ImageFont.load_default(size=10)
 
-    draw.text((TOP_MARGIN, top_y), title, font=font_title, fill=TEXT_COLOR)
-
-    axis_y = top_y + TITLE_HEIGHT + BAR_AREA_HEIGHT
+    axis_y = top_y + BAR_AREA_HEIGHT
     n = len(entries)
     slot_width = IMAGE_WIDTH / n
     bar_width = min(BAR_MAX_WIDTH, slot_width * 0.6)
@@ -127,16 +123,19 @@ def _draw_panel(
         bar_top = axis_y - bar_height
 
         if bar_height > 0:
-            draw.rectangle(
+            # -- the actual bar -------
+            draw.rounded_rectangle(
                 [
                     slot_center - bar_width / 2,
                     bar_top,
                     slot_center + bar_width / 2,
                     axis_y,
                 ],
+                radius=3,
                 fill=colors[i],
             )
 
+        # -- the count that goes on top of the bar -----------
         count_text = str(count)
         text_width = draw.textlength(count_text, font=font_count)
         draw.text(
@@ -157,6 +156,18 @@ def _draw_panel(
                 image.paste(emoji_image, (paste_x, paste_y), emoji_image)
             except Exception:
                 logger.exception("Failed to paste emoji from path %r", emoji_path)
+    
+    # -- the x axis bar -------
+    draw.rounded_rectangle(
+        [
+            10,
+            axis_y + EMOJI_MARGIN - 12,
+            IMAGE_WIDTH - 10,
+            axis_y + EMOJI_MARGIN - 8
+        ],
+        radius=3,
+        fill=(255, 255, 255)
+    )
 
 
 def _render_image(
