@@ -66,4 +66,4 @@ jobs:
         run: pip install -r requirements.txt
       - name: Check IN_CE set to True
         run: |
-          python -c "from utils.channels import IN_CE; assert IN_CE === True, 'IN_CE must be True'"
+          python -c "from utils.channels import IN_CE; assert IN_CE == True, 'IN_CE must be True'"
