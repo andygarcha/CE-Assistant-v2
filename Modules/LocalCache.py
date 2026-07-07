@@ -251,8 +251,12 @@ def get_game_id_by_name(name: str) -> list[dict]:
     """
 
     conn = get_connection()
+    escaped_name = (
+        name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    )
     return conn.execute(
-        f"SELECT * FROM games WHERE name LIKE '%{name}%' LIMIT 25;"
+        "SELECT * FROM games WHERE name LIKE ? ESCAPE '\\' LIMIT 25;",
+        (f"%{escaped_name}%",),
     ).fetchall()
 
 
