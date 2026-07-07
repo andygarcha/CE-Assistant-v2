@@ -31,7 +31,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         event_name="The event you'd like to roll.",
         category="If the event requires a chosen category, select it here.",
         price_restriction="Set this to false if you'd like to be able to roll any game, regardless of price.",
-        hours_restriction="Set this to false if you'd like to be able to roll any game, regardless of SH hours."
+        hours_restriction="Set this to false if you'd like to be able to roll any game, regardless of SH hours.",
     )
     async def solo_roll_command(
         interaction: discord.Interaction,
@@ -54,7 +54,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(
         event_name="The event you'd like to roll.",
         partner="The partner you'd like to roll with.",
-        tier="If the event requires a chosen tier, select it here."
+        tier="If the event requires a chosen tier, select it here.",
     )
     async def coop_roll_command(
         interaction: discord.Interaction,
@@ -70,9 +70,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Check the status of your current and completed casino rolls!",
         guild=guild,
     )
-    @app_commands.describe(
-        friend="The user whose rolls you want to see."
-    )
+    @app_commands.describe(friend="The user whose rolls you want to see.")
     async def check_rolls_command(
         interaction: discord.Interaction, friend: discord.Member | None = None
     ):

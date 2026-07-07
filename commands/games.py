@@ -23,6 +23,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
 
     return
 
+
 async def get_game_auto(
     interaction: discord.Interaction, current: str
 ) -> typing.List[app_commands.Choice[str]]:

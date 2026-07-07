@@ -7,7 +7,7 @@ import logging
 from discord import app_commands
 from Classes.CE_Roll import CERoll
 from commands.user import register
-from Modules import CEAPIReader, hm, SupabaseReader
+from Modules import hm, SupabaseReader
 
 from Modules import http_session
 
@@ -33,7 +33,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(
         ce_link="The link to their CE page (or their ID, either works)",
-        user="The user you want to link this page (or ID) to."
+        user="The user you want to link this page (or ID) to.",
     )
     async def force_register_command(
         interaction: discord.Interaction, ce_link: str, user: discord.Member
@@ -46,9 +46,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         description="Run the loop on ALL games in the CE database.",
         guild=guild,
     )
-    @app_commands.describe(
-        send_updates="Set this to false to silently scrape."
-    )
+    @app_commands.describe(send_updates="Set this to false to silently scrape.")
     async def full_scrape_command(
         interaction: discord.Interaction, send_updates: bool = True
     ):
@@ -72,7 +70,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(
         embed_id="The Message ID of the message you'd like to add notes to.",
         notes="The notes you'd like to append.",
-        clear="Set this to true if you want to replace all previous notes with this one."
+        clear="Set this to true if you want to replace all previous notes with this one.",
     )
     async def add_notes_command(
         interaction: discord.Interaction, embed_id: str, notes: str, clear: bool
@@ -99,7 +97,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(
         member="The user whose roll you're adjusting.",
-        roll_name="The event you're adjusting."
+        roll_name="The event you're adjusting.",
     )
     async def clear_roll_portion_command(
         interaction: discord.Interaction,
@@ -116,7 +114,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(
         roll_id="The ID of the roll you're updating. See https://cebot.me to find it.",
-        is_not_current="Set this to true if you'd like to ignore the current status."
+        is_not_current="Set this to true if you'd like to ignore the current status.",
     )
     async def fail_roll_command(
         interaction: discord.Interaction, roll_id: str, is_not_current: bool = False
@@ -131,7 +129,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(
         member="The user who will have the roll added.",
-        roll_name="The event that will be added."
+        roll_name="The event that will be added.",
     )
     async def force_add_command(
         interaction: discord.Interaction,
@@ -144,9 +142,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @tree.command(
         name="force-unlink", description="Unlink someone from the bot.", guild=guild
     )
-    @app_commands.describe(
-        member="The user who will be unlinked."
-    )
+    @app_commands.describe(member="The user who will be unlinked.")
     async def force_unlink_command(
         interaction: discord.Interaction, member: discord.Member
     ):
@@ -167,6 +163,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         return await debug(interaction, user)
 
     pass
+
 
 async def test(interaction: discord.Interaction):
     """
@@ -250,6 +247,7 @@ async def shutdown(interaction: discord.Interaction):
     )
     await http_session.close_session()
     await client.close()
+
 
 async def add_notes(
     interaction: discord.Interaction, embed_id: str, notes: str, clear: bool

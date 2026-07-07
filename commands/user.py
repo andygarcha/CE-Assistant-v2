@@ -59,6 +59,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await show_summary(interaction, user)
 
+
 async def register(
     interaction: discord.Interaction,
     ce_link: str,
@@ -66,7 +67,7 @@ async def register(
 ):
     """
     This command registers a user with CE Assistant.
-    
+
     Parameters
     ---
     interaction: `discord.Interaction`
@@ -161,6 +162,7 @@ async def register(
     return await interaction.followup.send(
         f"<@{ce_user.discord_id}> has been successfully registered!"
     )
+
 
 async def profile(interaction: discord.Interaction, user: discord.User | None = None):
     """
