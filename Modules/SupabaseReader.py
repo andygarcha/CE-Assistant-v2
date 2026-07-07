@@ -1514,16 +1514,7 @@ def __supabase_to_simple_game(game: dict) -> CEGame:
         The game object, just without any of the objectives/categories stuff.
     """
 
-    return CEGame(
-        ce_id=game["ce_id"],
-        game_name=game["name"],
-        platform=game["platform"],
-        platform_id=game["platform_id"],
-        categories=[],
-        last_updated=game["updated_at_CE"],
-        banner=game["image_header"],
-        objectives=[],
-    )
+    return __supabase_to_game(game, obj=[], reqs=[], cats=[])
 
 
 def __supabase_to_objective(obj: dict, reqs: list[dict]) -> CEObjective:
