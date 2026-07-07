@@ -197,6 +197,26 @@ class ProfileView(discord.ui.View):
         super().__init__(timeout=120)
         self.__summary_embed = summary_embed
         self.__recent_embed = recent_embed
+        self.message: discord.Message | None = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+        if self.message is None:
+            return
+
+        try:
+            await self.message.edit(
+                content=(
+                    "-# To save on memory, these buttons disable after 120 seconds "
+                    "of inactivity. Please run this command again to view both embeds."
+                ),
+                view=self,
+            )
+        except discord.HTTPException:
+            logger.debug("Could not edit profile message on timeout.", exc_info=True)
 
     @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
     async def summary_button(
