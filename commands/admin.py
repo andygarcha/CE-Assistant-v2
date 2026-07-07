@@ -369,7 +369,7 @@ async def clear_roll_portion(
     roll_name: hm.ALL_ROLL_EVENT_NAMES,
 ):
     """
-    Removes the most recently rolled game in a multi-stage game, and sets the roll's status to "between_stages".
+    Removes the most recently rolled game in a multi-stage roll, and sets the roll's status to "between_stages".
     For example, if a user rolls a game in Two Week T2 Streak that should be edited, this command can be run
     to allow them to effectively "reroll" it.
 

@@ -174,7 +174,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
         The discord interaction that initiated this command.
     user: `discord.User | None` (default `None`)
         The user you're requesting to see information about.
-        If this is `None`, assume the `interaction.author` is requesting
+        If this is `None`, assume the `interaction.user` is requesting
         information about themselves.
     """
     await interaction.response.defer()
@@ -253,7 +253,7 @@ async def set_color(interaction: discord.Interaction):
     # the actual assigning role function
     async def assign_role(interaction: discord.Interaction, role: discord.Role):
         """
-        Assigns the requested roll, sends a log, and alerts the user that it happened.
+        Assigns the requested role, sends a log, and alerts the user that it happened.
         """
         if isinstance(interaction.user, discord.User):
             await interaction.response.send_message("error.")
@@ -374,7 +374,7 @@ async def show_summary(
         The discord interaction that initiated this command.
     user: `discord.User | None` (default `None`)
         The user that the information has been requested about.
-        If this is `None`, assume the `interaction.author` has requested
+        If this is `None`, assume the `interaction.user` has requested
         information about themselves.
     """
     await interaction.response.defer()
