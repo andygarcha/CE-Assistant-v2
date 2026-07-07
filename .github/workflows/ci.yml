@@ -52,3 +52,18 @@ jobs:
           echo '{"supabase_url": "https://dummy.supabase.co", "supabase_key_secret": "dummy"}' > secret_info.json
       - name: Run pytest
         run: pytest --ignore=tests/integration
+  
+  in_ce:
+    name: In CE
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check IN_CE set to True
+        run: |
+          python -c "from utils.channels import IN_CE; assert IN_CE === True, 'IN_CE must be True'"
