@@ -147,11 +147,11 @@ def _db_game(
     return make_game(ce_id=ce_id, categories=categories or ["Action"], objectives=[obj])
 
 
-# Every test patches get_banned_games to avoid a real network call.
+# Every test patches SupabaseReader.get_banned_games to avoid a real network call.
 # Override the patch in specific tests that need a banned game.
 @pytest.fixture(autouse=True)
 def no_banned_games():
-    with patch("utils.game_utils.get_banned_games", return_value=[]):
+    with patch("Modules.SupabaseReader.get_banned_games", return_value=[]):
         yield
 
 
@@ -190,7 +190,10 @@ class TestGetRollableGame:
     def test_banned_game_excluded(self):
         game = _db_game(GAME_A, OBJ_A)
         dt = _make_dt({(1, "Action"): [_tier_entry(GAME_A)]})
-        with patch("utils.game_utils.get_banned_games", return_value=[GAME_A]):
+        with patch(
+            "Modules.SupabaseReader.get_banned_games",
+            return_value=[{"game_id": GAME_A}],
+        ):
             result = get_rollable_game(
                 database_name=[game],
                 database_tier=dt,
@@ -206,7 +209,10 @@ class TestGetRollableGame:
         game_a = _db_game(GAME_A, OBJ_A)
         game_b = _db_game(GAME_B, OBJ_B)
         dt = _make_dt({(1, "Action"): [_tier_entry(GAME_A), _tier_entry(GAME_B)]})
-        with patch("utils.game_utils.get_banned_games", return_value=[GAME_A]):
+        with patch(
+            "Modules.SupabaseReader.get_banned_games",
+            return_value=[{"game_id": GAME_A}],
+        ):
             result = get_rollable_game(
                 database_name=[game_a, game_b],
                 database_tier=dt,

@@ -4,7 +4,7 @@ import json
 import random
 from typing import Literal, get_args, TYPE_CHECKING
 from utils.general_utils import get_item_from_list
-from Modules import SupabaseReader, http_session
+from Modules import http_session
 import logging
 
 if TYPE_CHECKING:
@@ -136,7 +136,9 @@ def get_rollable_game(
 
     # get banned games
     try:
-        banned_games = [g['game_id'] for g in SupabaseReader.get_banned_games()]
+        from Modules import SupabaseReader
+
+        banned_games = [g["game_id"] for g in SupabaseReader.get_banned_games()]
     except Exception as e:
         logging.exception(e)
         return None

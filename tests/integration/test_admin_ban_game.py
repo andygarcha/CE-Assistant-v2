@@ -18,10 +18,11 @@ Run with:  pytest tests/integration/test_admin_ban_game.py
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import commands.admin as admin_mod
 from commands.admin import ban_game
 from Modules import SupabaseReader
 
@@ -71,7 +72,11 @@ def _make_interaction(discord_id: int) -> SimpleNamespace:
 
 
 def _run_ban_game(interaction, game: str, reason: str):
-    asyncio.run(ban_game(interaction, game, reason))
+    with (
+        patch.object(admin_mod, "client", create=True, new=MagicMock()),
+        patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+    ):
+        asyncio.run(ban_game(interaction, game, reason))
 
 
 @pytest.fixture(autouse=True)
