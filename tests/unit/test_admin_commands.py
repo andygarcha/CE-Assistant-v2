@@ -340,3 +340,79 @@ class TestFailRoll:
         _, channel, msg = mock_send.call_args[0]
         assert channel == "casino"
         assert "not found" in msg.lower()
+
+
+# ── health_check ──────────────────────────────────────────────────────────────
+
+
+class TestHealthCheck:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _run(
+        self,
+        interaction,
+        include_integrity: bool = False,
+        cheap_warnings=None,
+        integrity_report=None,
+    ):
+        import commands.admin as admin_mod
+        from commands.admin import health_check
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch(
+                "commands.admin.HealthCheck.run_cheap_checks",
+                return_value=cheap_warnings or [],
+            ),
+            patch(
+                "commands.admin.LocalCache.run_integrity_check",
+                return_value=integrity_report or {},
+            ) as mock_integrity,
+            patch(
+                "commands.admin.hm.send_message", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+            asyncio.run(health_check(interaction, include_integrity))
+            return mock_send, mock_integrity
+
+    def test_default_skips_integrity_check(self):
+        interaction = self._make_interaction()
+        _, mock_integrity = self._run(interaction, include_integrity=False)
+        mock_integrity.assert_not_called()
+
+    def test_include_integrity_runs_it(self):
+        interaction = self._make_interaction()
+        _, mock_integrity = self._run(
+            interaction,
+            include_integrity=True,
+            integrity_report={"synced": [], "removed": [], "schema": []},
+        )
+        mock_integrity.assert_called_once()
+
+    def test_sends_each_warning_to_privatelog(self):
+        interaction = self._make_interaction()
+        mock_send, _ = self._run(
+            interaction, cheap_warnings=[":hospital: a", ":hospital: b"]
+        )
+        assert mock_send.await_count == 2
+        for call in mock_send.call_args_list:
+            _, channel, msg = call[0]
+            assert channel == "privatelog"
+            assert msg in (":hospital: a", ":hospital: b")
+
+    def test_followup_reports_warning_count(self):
+        interaction = self._make_interaction()
+        self._run(interaction, cheap_warnings=[":hospital: a", ":hospital: b"])
+        msg = interaction.followup.send.call_args[0][0]
+        assert "2" in msg
+
+    def test_followup_reports_no_issues_when_clean(self):
+        interaction = self._make_interaction()
+        self._run(interaction, cheap_warnings=[])
+        msg = interaction.followup.send.call_args[0][0]
+        assert "no issues" in msg.lower()
