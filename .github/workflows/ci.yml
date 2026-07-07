@@ -50,7 +50,7 @@ jobs:
       - name: Create dummy .env file
         run: |
           echo "SUPABASE_URL=https://dummy.supabase.co" > .env
-          echo "SUPABASE_KEY_SECRET=dummy" >> .env
+          echo "SUPABASE_SECRET_KEY=dummy" >> .env
       - name: Run pytest
         run: pytest --ignore=tests/integration
   
