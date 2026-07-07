@@ -194,7 +194,7 @@ async def get_buttons(view: discord.ui.View, embeds: list[discord.Embed]):
 # set up the view
 class ProfileView(discord.ui.View):
     def __init__(self, summary_embed: discord.Embed, recent_embed: discord.Embed):
-        super().__init__(timeout=None)
+        super().__init__(timeout=120)
         self.__summary_embed = summary_embed
         self.__recent_embed = recent_embed
 
