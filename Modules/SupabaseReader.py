@@ -8,6 +8,7 @@ import uuid
 from typing import Literal, cast
 import logging
 import typing
+from dotenv import load_dotenv
 
 import httpx
 from supabase import ClientOptions, create_client, Client
@@ -25,10 +26,12 @@ from Modules import LocalCache
 
 import os as _os
 
-with open("secret_info.json") as f:
-    x = json.load(f)
-    SUPABASE_URL = x["supabase_url"]
-    SUPABASE_KEY = x["supabase_key_secret"]
+load_dotenv()
+SUPABASE_URL = _os.getenv("SUPABASE_URL")
+SUPABASE_KEY = _os.getenv("SUPABASE_SECRET_KEY")
+
+assert SUPABASE_URL is not None
+assert SUPABASE_KEY is not None
 
 supabase: Client = create_client(
     SUPABASE_URL,
