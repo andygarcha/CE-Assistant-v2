@@ -12,7 +12,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     client = cli
     guild = gui
 
-    # ---- register command ----
+    # -- /register {ce_id} -----------------------------------------------------------------
     @tree.command(
         name="register",
         description="Register with CE Assistant to unlock all features!",
@@ -22,6 +22,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def register_command(interaction: discord.Interaction, ce_id: str):
         return await register(interaction, ce_id)
 
+    # -- /profile {user} --------------------------------------------------------------------
     @tree.command(
         name="profile",
         description="See information about you or anyone else in Challenge Enthusiasts!",
@@ -35,6 +36,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await profile(interaction, user)
 
+    # -- /set-color --------------------------------------------------------------------------
     @tree.command(
         name="set-color",
         description="Set your color to the colors you've unlocked!",
@@ -43,6 +45,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def set_color_command(interaction: discord.Interaction):
         return await set_color(interaction)
 
+    # -- /show-summary {user} -----------------------------------------------------------------
     @tree.command(
         name="show-summary",
         description="Show the CE Summary links for all available years of a user",
@@ -56,25 +59,22 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await show_summary(interaction, user)
 
-
-#  _____    ______    _____   _____    _____   _______   ______   _____
-# |  __ \  |  ____|  / ____| |_   _|  / ____| |__   __| |  ____| |  __ \
-# | |__) | | |__    | |  __    | |   | (___      | |    | |__    | |__) |
-# |  _  /  |  __|   | | |_ |   | |    \___ \     | |    |  __|   |  _  /
-# | | \ \  | |____  | |__| |  _| |_   ____) |    | |    | |____  | | \ \
-# |_|  \_\ |______|  \_____| |_____| |_____/     |_|    |______| |_|  \_\
-
-
 async def register(
     interaction: discord.Interaction,
     ce_link: str,
     discord_user: discord.Member | None = None,
 ):
-    """This command registers a user with CE Assistant.
-    Parameters:
-        interaction (discord.Interaction): The interaction object.
-        ce_id (str): The Challenge Enthusiast ID to register with.
-        discord_user (discord.Member, optional): The user to link this CE ID to. Defaults to None.
+    """
+    This command registers a user with CE Assistant.
+    
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    ce_link: `str`
+        The Challenge Enthusiast ID (or link to their page) to register with.
+    discord_user: `discord.Member | None` (default `None`)
+        The user to link this CE ID to. Defaults to None.
 
     """
     await interaction.response.defer()
@@ -162,16 +162,19 @@ async def register(
         f"<@{ce_user.discord_id}> has been successfully registered!"
     )
 
-
-#  _____    _____     ____    ______   _____   _        ______
-# |  __ \  |  __ \   / __ \  |  ____| |_   _| | |      |  ____|
-# | |__) | | |__) | | |  | | | |__      | |   | |      | |__
-# |  ___/  |  _  /  | |  | | |  __|     | |   | |      |  __|
-# | |      | | \ \  | |__| | | |       _| |_  | |____  | |____
-# |_|      |_|  \_\  \____/  |_|      |_____| |______| |______|
-
-
 async def profile(interaction: discord.Interaction, user: discord.User | None = None):
+    """
+    Returns a set of embeds about a user.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    user: `discord.User | None` (default `None`)
+        The user you're requesting to see information about.
+        If this is `None`, assume the `interaction.author` is requesting
+        information about themselves.
+    """
     await interaction.response.defer()
 
     await hm.log_command(
@@ -218,6 +221,16 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
 
 
 async def set_color(interaction: discord.Interaction):
+    """
+    Gives the user the color role that they've requested.
+    Also removes their current one (if they have it), so they can
+    go up and down as they please.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    """
     await interaction.response.defer(ephemeral=True)
 
     await hm.log_command(client, interaction, "set-color", False)
@@ -237,6 +250,9 @@ async def set_color(interaction: discord.Interaction):
 
     # the actual assigning role function
     async def assign_role(interaction: discord.Interaction, role: discord.Role):
+        """
+        Assigns the requested roll, sends a log, and alerts the user that it happened.
+        """
         if isinstance(interaction.user, discord.User):
             await interaction.response.send_message("error.")
             raise Exception(
@@ -311,6 +327,9 @@ async def set_color(interaction: discord.Interaction):
 
     # account for the clear button
     async def clear_callback(interaction: discord.Interaction):
+        """
+        Removes all color roles from the user.
+        """
         if isinstance(interaction.user, discord.User):
             raise Exception(
                 "set_color.clear_callback() had interaction.user is discord.User!"
@@ -342,6 +361,20 @@ async def set_color(interaction: discord.Interaction):
 async def show_summary(
     interaction: discord.Interaction, user: discord.User | None = None
 ):
+    """
+    Returns a list of links to the CE Summary website for a given user.
+
+    There should be a link for every year this user has been a member of CE.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    user: `discord.User | None` (default `None`)
+        The user that the information has been requested about.
+        If this is `None`, assume the `interaction.author` has requested
+        information about themselves.
+    """
     await interaction.response.defer()
 
     await hm.log_command(

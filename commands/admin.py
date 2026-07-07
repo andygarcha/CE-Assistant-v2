@@ -19,46 +19,42 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     client = cli
     guild = gui
 
-    # ---- test command ----
+    # -- /test ------------------------------------------------------------------------------
     @tree.command(name="test", description="test", guild=guild)
     async def test_command(interaction: discord.Interaction):
         await test(interaction)
         pass
 
-    # ---- force-register command ----
+    # -- /force-register {ce_link} {user} ---------------------------------------------------
     @tree.command(
         name="force-register",
         description="Register another user with CE Assistant!",
         guild=guild,
     )
     @app_commands.describe(
-        ce_link="The link to their CE page (or their ID, either works)"
+        ce_link="The link to their CE page (or their ID, either works)",
+        user="The user you want to link this page (or ID) to."
     )
-    @app_commands.describe(user="The user you want to link this page (or ID) to.")
     async def force_register_command(
         interaction: discord.Interaction, ce_link: str, user: discord.Member
     ):
         await register(interaction, ce_link, user)
 
-    # ---- scrape command ----
-    """
-    @tree.command(name="scrape", description=("Replace database_name with API data WITHOUT sending messages. RUN WHEN NECESSARY."), guild=guild)
-    async def scrape_command(interaction : discord.Interaction) :
-        await scrape(interaction)
-    """
-
+    # -- /full_scrape {send_updates} --------------------------------------------------------
     @tree.command(
         name="full-scrape",
         description="Run the loop on ALL games in the CE database.",
         guild=guild,
     )
-    @app_commands.describe(send_updates="Set this to false to silently scrape.")
+    @app_commands.describe(
+        send_updates="Set this to false to silently scrape."
+    )
     async def full_scrape_command(
         interaction: discord.Interaction, send_updates: bool = True
     ):
         await loop(interaction, True, send_updates=send_updates)
 
-    # ---- initiate loop command ----
+    # -- /initiate-loop ---------------------------------------------------------------------
     @tree.command(
         name="initiate-loop",
         description="Initiate the loop. ONLY RUN WHEN NECESSARY.",
@@ -67,17 +63,15 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def initiate_loop_command(interaction: discord.Interaction):
         await loop(interaction, False)
 
-    # ---- add notes command ----
+    # -- /add-notes {embed_id} {notes} {clear} -----------------------------------------------
     @tree.command(
         name="add-notes",
         description="Add notes to any #game-additions post.",
         guild=guild,
     )
     @app_commands.describe(
-        embed_id="The Message ID of the message you'd like to add notes to."
-    )
-    @app_commands.describe(notes="The notes you'd like to append.")
-    @app_commands.describe(
+        embed_id="The Message ID of the message you'd like to add notes to.",
+        notes="The notes you'd like to append.",
         clear="Set this to true if you want to replace all previous notes with this one."
     )
     async def add_notes_command(
@@ -85,7 +79,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         await add_notes(interaction, embed_id, notes, clear)
 
-    # -- clear roll command ----------------
+    # -- /clear-roll {roll_id} ----------------------------------------------------------------
     @tree.command(
         name="clear-roll",
         description="Clear any user's current/completed rolls, cooldowns, or pendings.",
@@ -97,14 +91,16 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def clear_roll_command(interaction: discord.Interaction, roll_id: str):
         await clear_roll(interaction, roll_id)
 
-    # -- clear roll portion ----------------
+    # -- /clear-roll-portion {member} {roll_name} ----------------------------------------------
     @tree.command(
         name="clear-roll-portion",
         description="Clear the most recently rolled game in a multi-stage roll",
         guild=guild,
     )
-    @app_commands.describe(member="The user whose roll you're adjusting.")
-    @app_commands.describe(roll_name="The event you're adjusting.")
+    @app_commands.describe(
+        member="The user whose roll you're adjusting.",
+        roll_name="The event you're adjusting."
+    )
     async def clear_roll_portion_command(
         interaction: discord.Interaction,
         member: discord.Member,
@@ -112,15 +108,14 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await interaction.response.send_message("Not available.")
 
+    # -- /fail-roll {roll_id} {is_not_current} --------------------------------------------------
     @tree.command(
         name="fail-roll",
         description="Given a roll ID, change the status from 'current' to 'failed'.",
         guild=guild,
     )
     @app_commands.describe(
-        roll_id="The ID of the roll you're updating. See https://cebot.me to find it."
-    )
-    @app_commands.describe(
+        roll_id="The ID of the roll you're updating. See https://cebot.me to find it.",
         is_not_current="Set this to true if you'd like to ignore the current status."
     )
     async def fail_roll_command(
@@ -128,14 +123,16 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await fail_roll(interaction, roll_id, is_not_current)
 
-    # ---- force add command ----
+    # -- /force-add {member} {roll_name} ---------------------------------------------------------
     @tree.command(
         name="force-add",
         description="Force add a roll to a user's completed rolls section.",
         guild=guild,
     )
-    @app_commands.describe(member="The user who will have the roll added.")
-    @app_commands.describe(roll_name="The event that will be added.")
+    @app_commands.describe(
+        member="The user who will have the roll added.",
+        roll_name="The event that will be added."
+    )
     async def force_add_command(
         interaction: discord.Interaction,
         member: discord.Member,
@@ -143,20 +140,25 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         await force_add(interaction, member, roll_name)
 
+    # -- /force-unlink {member} --------------------------------------------------------------------
     @tree.command(
         name="force-unlink", description="Unlink someone from the bot.", guild=guild
     )
-    @app_commands.describe(member="The user who will be unlinked.")
+    @app_commands.describe(
+        member="The user who will be unlinked."
+    )
     async def force_unlink_command(
         interaction: discord.Interaction, member: discord.Member
     ):
         await force_unlink(interaction, member)
 
+    # -- /shutdown ----------------------------------------------------------------------------------
     @tree.command(name="shutdown", description="Shut the bot down.", guild=guild)
     @app_commands.default_permissions(administrator=True)
     async def shutdown_command(interaction: discord.Interaction):
         await shutdown(interaction)
 
+    # -- /debug {user} ------------------------------------------------------------------------------
     @tree.command(
         name="debug", description="Show information regarding this user", guild=guild
     )
@@ -166,16 +168,11 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
 
     pass
 
-
-#  _______   ______    _____   _______
-# |__   __| |  ____|  / ____| |__   __|
-#    | |    | |__    | (___      | |
-#    | |    |  __|    \___ \     | |
-#    | |    | |____   ____) |    | |
-#    |_|    |______| |_____/     |_|
-
-
 async def test(interaction: discord.Interaction):
+    """
+    The test function.
+    If you add anything here, please remove it before you merge to main!
+    """
     await interaction.response.defer()
 
     # log this interaction
@@ -184,52 +181,26 @@ async def test(interaction: discord.Interaction):
     return await interaction.followup.send("testsss done")
 
 
-#   _____    _____   _____               _____    ______
-#  / ____|  / ____| |  __ \      /\     |  __ \  |  ____|
-# | (___   | |      | |__) |    /  \    | |__) | | |__
-#  \___ \  | |      |  _  /    / /\ \   |  ___/  |  __|
-#  ____) | | |____  | | \ \   / ____ \  | |      | |____
-# |_____/   \_____| |_|  \_\ /_/    \_\ |_|      |______|
-
-
-# ---- scrape function ----
-
-
-async def scrape(interaction: discord.Interaction):
-    await interaction.response.defer()
-
-    # log this interaction
-    await hm.log_command(client, interaction, "scrape", True)
-
-    return await interaction.followup.send("Out of date command.")
-
-    user_list = SupabaseReader.get_list("user")
-    database_user = await CEAPIReader.get_api_users_all(user_list)
-    database_name = await CEAPIReader.get_api_games_full()
-
-    for user in database_user:
-        SupabaseReader.dump_user(user)
-
-    for game in database_name:
-        SupabaseReader.dump_game(game)
-
-    return await interaction.followup.send("Database replaced.")
-
-
-#  _____   _   _   _____   _______   _____              _______   ______     _         ____     ____    _____
-# |_   _| | \ | | |_   _| |__   __| |_   _|     /\     |__   __| |  ____|   | |       / __ \   / __ \  |  __ \
-#   | |   |  \| |   | |      | |      | |      /  \       | |    | |__      | |      | |  | | | |  | | | |__) |
-#   | |   | . ` |   | |      | |      | |     / /\ \      | |    |  __|     | |      | |  | | | |  | | |  ___/
-#  _| |_  | |\  |  _| |_     | |     _| |_   / ____ \     | |    | |____    | |____  | |__| | | |__| | | |
-# |_____| |_| \_| |_____|    |_|    |_____| /_/    \_\    |_|    |______|   |______|  \____/   \____/  |_|
-
-
-# ---- initiate loop ----
-
-
 async def loop(
     interaction: discord.Interaction, full_scrape=False, send_updates: bool = True
 ):
+    """
+    The initiate-loop functionality.
+    This function tells the scraper process to initiate a loop.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The interaction for this process.
+    full_scrape: `bool` (default `False`)
+        If this is set to true, the scraping process
+        will do a "full" scrape, rather than just the regular
+        loop.
+    send_updates: `bool` (default `True`)
+        If this is set to true, any updates generated
+        by the scraper process will be saved to the database
+        and sent by the main Discord process.
+    """
     await interaction.response.defer(ephemeral=True)
 
     await hm.log_command(
@@ -256,6 +227,18 @@ async def loop(
 
 
 async def shutdown(interaction: discord.Interaction):
+    """
+    The shutdown command.
+    This should *only* be accessible to administrators.
+    This will:
+    - close the http session
+    - close the Discord client
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    """
     await interaction.response.defer(ephemeral=True)
 
     await hm.log_command(client, interaction, "shutdown", True)
@@ -268,19 +251,26 @@ async def shutdown(interaction: discord.Interaction):
     await http_session.close_session()
     await client.close()
 
-
-#             _____    _____      _   _    ____    _______   ______    _____
-#     /\     |  __ \  |  __ \    | \ | |  / __ \  |__   __| |  ____|  / ____|
-#    /  \    | |  | | | |  | |   |  \| | | |  | |    | |    | |__    | (___
-#   / /\ \   | |  | | | |  | |   | . ` | | |  | |    | |    |  __|    \___ \
-#  / ____ \  | |__| | | |__| |   | |\  | | |__| |    | |    | |____   ____) |
-# /_/    \_\ |_____/  |_____/    |_| \_|  \____/     |_|    |______| |_____/
-
-
 async def add_notes(
     interaction: discord.Interaction, embed_id: str, notes: str, clear: bool
 ):
-    "Adds notes to game additions posts."
+    """
+    Allows notes to be added to #game-additions posts.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    embed_id: `str`
+        The ID of the embed you'd like to add notes to.
+    notes: `str`
+        The note you'd like to add onto the embed
+    clear: `bool`
+        If this is set to true, this will clear all previous notes on this
+        embed, and set the Notes section to the `notes: str` value.
+        If this is set to false, this will simply append the `notes: str`
+        value onto the already-existing notes (if one exists).
+    """
     # defer and make ephemeral
     await interaction.response.defer(ephemeral=True)
 
@@ -343,17 +333,17 @@ async def add_notes(
     await interaction.followup.send("Notes added!", ephemeral=True)
 
 
-#   _____   _        ______              _____
-#  / ____| | |      |  ____|     /\     |  __ \
-# | |      | |      | |__       /  \    | |__) |
-# | |      | |      |  __|     / /\ \   |  _  /
-# | |____  | |____  | |____   / ____ \  | | \ \
-#  \_____| |______| |______| /_/    \_\ |_|  \_\
-
-
 async def clear_roll(interaction: discord.Interaction, roll_id: str):
     """
-    Takes in a roll ID and changes its status from whatever it currently is to 'removed'.
+    Sets a roll object's status to "removed".
+    If there is no roll with this ID, the command will exit early.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    roll_id: `str`
+        The ID of the roll that you'd like set to removed.
     """
     await interaction.response.defer()
 
@@ -380,6 +370,23 @@ async def clear_roll_portion(
     member: discord.Member,
     roll_name: hm.ALL_ROLL_EVENT_NAMES,
 ):
+    """
+    Removes the most recently rolled game in a multi-stage game, and sets the roll's status to "between_stages".
+    For example, if a user rolls a game in Two Week T2 Streak that should be edited, this command can be run
+    to allow them to effectively "reroll" it.
+
+    If the user is not registered with CE Assistant, this command will exit early.
+    If the user does not have a current roll that matches `roll_name`, this command will exit early.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    member: `discord.Member`
+        The user whose roll you're changing.
+    roll_name: `hm.ALL_ROLL_EVENT_NAMES`
+        The roll event you're editing.
+    """
     await interaction.response.defer()
 
     # log this interaction
@@ -423,7 +430,7 @@ async def clear_roll_portion(
     SupabaseReader.dump_user(user)
     return await interaction.followup.send(
         f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. "
-        + "Status set to 'waiting'."
+        + "Status set to 'between_stages'."
     )
 
 
@@ -440,7 +447,7 @@ async def fail_roll(
     Parameters
     ---
     interaction: `discord.Interaction`
-        The interaction we're responding to.
+        The discord interaction that initiated this command.
     roll_id: `str`
         The ID of the roll we're changing the
         status of.
@@ -503,6 +510,18 @@ async def force_add(
     member: discord.Member,
     roll_name: hm.ALL_ROLL_EVENT_NAMES,
 ):
+    """
+    Forcefully adds a roll to a user's 'completed rolls' section.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    member: `discord.Member`
+        The user we're adding this roll to.
+    roll_name: `hm.ALL_ROLL_EVENT_NAMES`
+        The roll that we're adding to the member's completed rolls section.
+    """
     await interaction.response.defer()
 
     # log this interaction
@@ -572,6 +591,16 @@ class UnlinkView(discord.ui.View):
 
 
 async def force_unlink(interaction: discord.Interaction, member: discord.Member):
+    """
+    Forcefully unlink a user from their CE ID.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    member: `discord.Member`
+        The user we're trying to unlink from the database.
+    """
     await interaction.response.defer()
 
     # log this interaction
@@ -585,6 +614,19 @@ async def force_unlink(interaction: discord.Interaction, member: discord.Member)
 
 
 async def debug(interaction: discord.Interaction, user: discord.Member):
+    """
+    Prints out a bunch of information about a user.
+    - A link to their CE page
+    - A link to their CEBot rolls page
+    - A link to their CEBot validate page
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    user: `discord.Member`
+        The user who we're debugging.
+    """
     await interaction.response.defer(ephemeral=True)
 
     await hm.log_command(client, interaction, "debug", True, user=user.mention)

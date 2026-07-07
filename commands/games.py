@@ -10,6 +10,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     client = cli
     guild = gui
 
+    # -- /get-game {game} -----------------------------------------------------
     @tree.command(
         name="get-game",
         description="Get information about any game on CE!",
@@ -22,24 +23,29 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
 
     return
 
-
-#   _____   ______   _______             _____              __  __   ______
-#  / ____| |  ____| |__   __|           / ____|     /\     |  \/  | |  ____|
-# | |  __  | |__       | |     ______  | |  __     /  \    | \  / | | |__
-# | | |_ | |  __|      | |    |______| | | |_ |   / /\ \   | |\/| | |  __|
-# | |__| | | |____     | |             | |__| |  / ____ \  | |  | | | |____
-#  \_____| |______|    |_|              \_____| /_/    \_\ |_|  |_| |______|
-
-
 async def get_game_auto(
     interaction: discord.Interaction, current: str
 ) -> typing.List[app_commands.Choice[str]]:
-    """Function that autocompletes whatever the user is trying to type in.
-    The game's name will appear on the user's screen, but the game's CE ID will be passed."""
+    """
+    Autocompletion function that takes in a game name and spits out the game's CE ID.
+    Use this function when you're trying to take in a game for a command, like this:
+    ```python
+    @app_commands.autocomplete(game=get_game_auto)
+    async def command(...):
+    ```
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The command that we're attached to.
+    current: `str`
+        The current value that the user has typed into the parameter.
+    """
 
     # log this interaction
     await hm.log_command(client, interaction, "get_game_auto", True)
 
+    # TODO: optimize this. Don't need to import the *whole database* every time.
     database_name = SupabaseReader.get_database_name()
     choices: list = []
 
@@ -53,6 +59,16 @@ async def get_game_auto(
 
 
 async def get_game(interaction: discord.Interaction, game: str):
+    """
+    Sends an embed displaying information about a game.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    game: `str`
+        The CE ID of the game whose information is being requested.
+    """
     # defer
     await interaction.response.defer()
 

@@ -21,20 +21,16 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     client = cli
     guild = gui
 
-    # ---- solo roll command ----
+    # -- /solo-roll {event_name} {category} {price_restriction} {hours_restriction} --------------------
     @tree.command(
         name="solo-roll",
         description="Roll a solo event with CE Assistant!",
         guild=guild,
     )
-    @app_commands.describe(event_name="The event you'd like to roll.")
     @app_commands.describe(
-        category="If the event requires a chosen category, select it here."
-    )
-    @app_commands.describe(
-        price_restriction="Set this to false if you'd like to be able to roll any game, regardless of price."
-    )
-    @app_commands.describe(
+        event_name="The event you'd like to roll.",
+        category="If the event requires a chosen category, select it here.",
+        price_restriction="Set this to false if you'd like to be able to roll any game, regardless of price.",
         hours_restriction="Set this to false if you'd like to be able to roll any game, regardless of SH hours."
     )
     async def solo_roll_command(
@@ -44,21 +40,22 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         price_restriction: bool = True,
         hours_restriction: bool = True,
     ):
-        # return await interaction.response.send_message("Under construction.")
         await solo_roll(
             interaction, event_name, category, price_restriction, hours_restriction
         )
         pass
 
-    # ---- coop roll command ----
+    # -- /coop-roll {event_name} {partner} {tier} ------------------------------------------------------
     @tree.command(
         name="coop-roll",
         description="Roll a Co-Op or PvP roll with a friend!",
         guild=guild,
     )
-    @app_commands.describe(event_name="The event you'd like to roll.")
-    @app_commands.describe(partner="The partner you'd like to roll with.")
-    @app_commands.describe(tier="If the event requires a chosen tier, select it here.")
+    @app_commands.describe(
+        event_name="The event you'd like to roll.",
+        partner="The partner you'd like to roll with.",
+        tier="If the event requires a chosen tier, select it here."
+    )
     async def coop_roll_command(
         interaction: discord.Interaction,
         event_name: hm.COOP_ROLL_EVENT_NAMES,
@@ -67,13 +64,15 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await co_op_roll(interaction, partner, event_name, tier, True, True)
 
-    # ---- check rolls command ----
+    # -- /check-rolls {friend} -------------------------------------------------------------------------
     @tree.command(
         name="check-rolls",
         description="Check the status of your current and completed casino rolls!",
         guild=guild,
     )
-    @app_commands.describe(friend="The user whose rolls you want to see.")
+    @app_commands.describe(
+        friend="The user whose rolls you want to see."
+    )
     async def check_rolls_command(
         interaction: discord.Interaction, friend: discord.Member | None = None
     ):
@@ -82,14 +81,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     pass
 
 
-#   _____    ____    _         ____      _____     ____    _        _
-#  / ____|  / __ \  | |       / __ \    |  __ \   / __ \  | |      | |
-# | (___   | |  | | | |      | |  | |   | |__) | | |  | | | |      | |
-#  \___ \  | |  | | | |      | |  | |   |  _  /  | |  | | | |      | |
-#  ____) | | |__| | | |____  | |__| |   | | \ \  | |__| | | |____  | |____
-# |_____/   \____/  |______|  \____/    |_|  \_\  \____/  |______| |______|
-
-
+# -- command implementations -----------------------------------------------------------------------------
 async def solo_roll(
     interaction: discord.Interaction,
     event_name: hm.SOLO_ROLL_EVENT_NAMES,
