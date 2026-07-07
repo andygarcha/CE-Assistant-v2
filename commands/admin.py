@@ -691,6 +691,12 @@ async def ban_game(interaction: discord.Interaction, game: str, reason: str) :
             "You must be registered in order to ban a game from the casino."
         )
     
+    # verify game exists
+    if not SupabaseReader.get_game(game):
+        return await interaction.followup.send(
+            "This is not a real game."
+        )
+    
     SupabaseReader.ban_game(game, reason, author.ce_id)
 
     return await interaction.followup.send(
