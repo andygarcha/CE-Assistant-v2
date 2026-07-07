@@ -187,6 +187,7 @@ def get_game(ce_id: str) -> CEGame | None:
         game_json, objectives_json, requirements_json, categories_json
     )
 
+
 def get_game_id_by_name(name: str) -> list[CEGame]:
     """
     Takes in a name and returns a list of `CEGame`s whose name contains the parameter.
@@ -205,10 +206,8 @@ def get_game_id_by_name(name: str) -> list[CEGame]:
     game_json = LocalCache.get_game_id_by_name(name)
     if game_json is None:
         return []
-    
+
     return [__supabase_to_simple_game(g) for g in game_json]
-
-
 
 
 # GET USER
@@ -1526,7 +1525,7 @@ def __supabase_to_simple_game(game: dict) -> CEGame:
         categories=[],
         last_updated=game["updated_at_CE"],
         banner=game["image_header"],
-        objectives=[]
+        objectives=[],
     )
 
 

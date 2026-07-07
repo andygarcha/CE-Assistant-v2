@@ -251,7 +251,9 @@ def get_game_id_by_name(name: str) -> list[dict]:
     """
 
     conn = get_connection()
-    return conn.execute(f"SELECT * FROM games WHERE name LIKE '%{name}%' LIMIT 25;").fetchall()
+    return conn.execute(
+        f"SELECT * FROM games WHERE name LIKE '%{name}%' LIMIT 25;"
+    ).fetchall()
 
 
 def delete_game(ce_id: str) -> None:
