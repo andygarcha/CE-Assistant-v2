@@ -235,25 +235,6 @@ def get_game_ids() -> list[str]:
     return [r[0] for r in conn.execute("SELECT ce_id FROM games").fetchall()]
 
 
-def get_game_id_by_name(name: str) -> list[dict]:
-    """
-    Takes in a name and returns a list of `CEGame`s whose name contains the parameter.
-
-    Parameters
-    ---
-    name: `str`
-        The name of the game we're trying to match.
-
-    Returns
-    ---
-    games: `list[CEGame]`
-        A list of games that match the name. Empty if none match.
-    """
-
-    conn = get_connection()
-    return conn.execute(f"SELECT * FROM games WHERE name LIKE '%{name}%' LIMIT 25;").fetchall()
-
-
 def delete_game(ce_id: str) -> None:
     conn = get_connection()
     conn.execute("DELETE FROM games WHERE ce_id = ?", (ce_id,))
