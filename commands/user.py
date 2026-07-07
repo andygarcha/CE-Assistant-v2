@@ -220,9 +220,7 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
 
     # and send
     og_message = await interaction.followup.send(
-        view=view,
-        embed=summary_embed,
-        wait=True
+        view=view, embed=summary_embed, wait=True
     )
 
     await view.wait()
@@ -233,12 +231,12 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
             child.disabled = True
 
     return await og_message.edit(
-        content=("#- To save on memory, these buttons disable after 120 seconds."
-                 "Please run this command again to view both embeds."),
-        view=view
+        content=(
+            "#- To save on memory, these buttons disable after 120 seconds."
+            "Please run this command again to view both embeds."
+        ),
+        view=view,
     )
-
-
 
 
 async def set_color(interaction: discord.Interaction):
