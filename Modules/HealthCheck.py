@@ -10,7 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 
+from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
+from Modules import hm
 
 logger = logging.getLogger(__name__)
 
@@ -107,5 +109,34 @@ def check_roll_game_counts(rolls: list[CERoll]) -> list[str]:
                         f":hospital: Won roll {roll.id} ({roll.roll_name}) has "
                         f"{len(roll.games)} games, expected {expectation.won_fixed}."
                     )
+
+    return warnings
+
+
+def check_uncategorized_games(games: list[CEGame]) -> list[str]:
+    """
+    Flags games with no categories, excluding the two games that are
+    legitimately categoryless (Challenge Enthusiasts itself, and Clown Town).
+
+    Parameters
+    ---
+    games: `list[CEGame]`
+        The games to check.
+
+    Returns
+    ---
+    warnings: `list[str]`
+        One `:hospital:`-prefixed message per offending game.
+    """
+    warnings: list[str] = []
+
+    excluded_ids = (hm.GAME_ID_CHALLENGE_ENTHUSIASTS, hm.GAME_ID_CLOWN_TOWN)
+
+    for game in games:
+        if game.categories:
+            continue
+        if game.ce_id in excluded_ids:
+            continue
+        warnings.append(f":hospital: Game {game.name_with_link} has no categories.")
 
     return warnings

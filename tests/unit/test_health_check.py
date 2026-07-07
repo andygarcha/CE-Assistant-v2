@@ -1,5 +1,6 @@
-from tests.conftest import make_roll
-from Modules.HealthCheck import check_roll_game_counts
+from tests.conftest import make_roll, make_game
+from Modules.HealthCheck import check_roll_game_counts, check_uncategorized_games
+from Modules import hm
 
 
 class TestCheckRollGameCounts:
@@ -43,3 +44,23 @@ class TestCheckRollGameCounts:
     def test_ignores_unknown_roll_names(self):
         roll = make_roll(roll_name="Not A Real Roll", games=[])
         assert check_roll_game_counts([roll]) == []
+
+
+class TestCheckUncategorizedGames:
+    def test_flags_game_with_no_categories(self):
+        game = make_game(categories=[])
+        warnings = check_uncategorized_games([game])
+        assert len(warnings) == 1
+        assert ":hospital:" in warnings[0]
+
+    def test_does_not_flag_game_with_categories(self):
+        game = make_game(categories=["Action"])
+        assert check_uncategorized_games([game]) == []
+
+    def test_does_not_flag_challenge_enthusiasts_game(self):
+        game = make_game(ce_id=hm.GAME_ID_CHALLENGE_ENTHUSIASTS, categories=[])
+        assert check_uncategorized_games([game]) == []
+
+    def test_does_not_flag_clown_town_game(self):
+        game = make_game(ce_id=hm.GAME_ID_CLOWN_TOWN, categories=[])
+        assert check_uncategorized_games([game]) == []
