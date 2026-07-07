@@ -163,3 +163,39 @@ class TestGenerateCompletionsChart:
         from Modules.ProfileChart import TIER_COLORS
 
         assert TIER_COLORS["Tier 2"] in colors_present  # tallest tier bar (count 9)
+
+    def test_handles_get_cached_emoji_path_exception(self):
+        """Test that get_cached_emoji_path raising an exception doesn't crash chart generation."""
+        api_user = self._make_user_with_counts()
+
+        with patch(
+            "Modules.ProfileChart.get_cached_emoji_path",
+            new_callable=AsyncMock,
+            side_effect=Exception("boom"),
+        ):
+            buffer = asyncio.run(generate_completions_chart(api_user))
+
+        assert isinstance(buffer, io.BytesIO)
+        image = Image.open(buffer)
+        assert image.format == "PNG"
+        assert image.size == (IMAGE_WIDTH, IMAGE_HEIGHT)
+
+    def test_handles_corrupted_emoji_file(self, tmp_path):
+        """Test that a corrupted emoji file doesn't crash chart generation."""
+        api_user = self._make_user_with_counts()
+
+        # Create a corrupted emoji file (garbage bytes, not a real PNG)
+        bad_emoji_path = tmp_path / "bad.png"
+        bad_emoji_path.write_bytes(b"not a real png")
+
+        with patch(
+            "Modules.ProfileChart.get_cached_emoji_path",
+            new_callable=AsyncMock,
+            return_value=bad_emoji_path,
+        ):
+            buffer = asyncio.run(generate_completions_chart(api_user))
+
+        assert isinstance(buffer, io.BytesIO)
+        image = Image.open(buffer)
+        assert image.format == "PNG"
+        assert image.size == (IMAGE_WIDTH, IMAGE_HEIGHT)

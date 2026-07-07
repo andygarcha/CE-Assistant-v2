@@ -5,6 +5,7 @@ pasted below each bar instead of text labels."""
 from __future__ import annotations
 
 import io
+import logging
 from typing import TYPE_CHECKING
 
 from PIL import Image, ImageDraw, ImageFont
@@ -12,6 +13,8 @@ from PIL import Image, ImageDraw, ImageFont
 import Modules.hm as hm
 
 from utils.emoji_cache import get_cached_emoji_path
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from Classes.CE_User import CEAPIUser
@@ -82,7 +85,12 @@ async def _emoji_paths_for(labels: list[str]):
     paths = []
     for label in labels:
         markup = hm.get_emoji(label)  # type: ignore
-        paths.append(await get_cached_emoji_path(markup))
+        try:
+            path = await get_cached_emoji_path(markup)
+            paths.append(path)
+        except Exception:
+            logger.exception("Failed to fetch cached emoji path for label %r", label)
+            paths.append(None)
     return paths
 
 
@@ -133,12 +141,15 @@ def _draw_panel(
 
         emoji_path = emoji_paths[i]
         if emoji_path is not None:
-            emoji_image = (
-                Image.open(emoji_path).convert("RGBA").resize((EMOJI_SIZE, EMOJI_SIZE))
-            )
-            paste_x = round(slot_center - EMOJI_SIZE / 2)
-            paste_y = axis_y + EMOJI_MARGIN
-            image.paste(emoji_image, (paste_x, paste_y), emoji_image)
+            try:
+                emoji_image = (
+                    Image.open(emoji_path).convert("RGBA").resize((EMOJI_SIZE, EMOJI_SIZE))
+                )
+                paste_x = round(slot_center - EMOJI_SIZE / 2)
+                paste_y = axis_y + EMOJI_MARGIN
+                image.paste(emoji_image, (paste_x, paste_y), emoji_image)
+            except Exception:
+                logger.exception("Failed to paste emoji from path %r", emoji_path)
 
 
 async def generate_completions_chart(api_user: "CEAPIUser") -> io.BytesIO:
