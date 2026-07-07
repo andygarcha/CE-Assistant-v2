@@ -14,6 +14,7 @@ import logging
 # -- local --
 from Classes.CE_Roll import CERoll
 import Modules.hm as hm
+from Modules import ProfileChart
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -247,13 +248,17 @@ class ProfileView(discord.ui.View):
 
 async def get_user_embeds(
     user: CEUser, database_name: list[CEGame]
-) -> tuple[discord.Embed, discord.ui.View]:
+) -> tuple[discord.Embed, discord.ui.View, discord.File | None]:
     """Returns a `discord.Embed` that represents this user."""
 
     # pull api data
     api_user = await user.get_api_user()
     if api_user is None:
-        return (discord.Embed(title="Error!"), discord.ui.View())
+        return (discord.Embed(title="Error!"), discord.ui.View(), None)
+
+    # build the completions chart image
+    chart_buffer = await ProfileChart.generate_completions_chart(api_user)
+    chart_file = discord.File(chart_buffer, filename="completions.png")
 
     # -- two embeds: summary, completions --
     # summary
@@ -278,9 +283,7 @@ async def get_user_embeds(
         value=user.get_cr(database_name=database_name).cr_string(),
         inline=False,
     )
-    summary_embed.add_field(
-        name="Completions", value=api_user.tier_genre_summary_str(), inline=False
-    )
+    summary_embed.set_image(url="attachment://completions.png")
 
     # recent
     recent_embed = discord.Embed(
@@ -293,4 +296,4 @@ async def get_user_embeds(
         name="Monthly Breakdown", value=api_user.monthly_report_str()
     )
 
-    return (summary_embed, ProfileView(summary_embed, recent_embed))
+    return (summary_embed, ProfileView(summary_embed, recent_embed), chart_file)
