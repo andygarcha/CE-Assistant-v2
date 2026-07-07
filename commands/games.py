@@ -47,7 +47,8 @@ async def get_game_auto(
     await hm.log_command(client, interaction, "get_game_auto", True)
 
     # TODO: optimize this. Don't need to import the *whole database* every time.
-    database_name = SupabaseReader.get_database_name()
+    database_name = SupabaseReader.get_game_id_by_name(current)
+    print(f"{len(database_name)=}")
     choices: list = []
 
     for game in database_name:
