@@ -204,9 +204,6 @@ def get_game_id_by_name(name: str) -> list[CEGame]:
     """
 
     game_json = LocalCache.get_game_id_by_name(name)
-    if game_json is None:
-        return []
-
     return [__supabase_to_simple_game(g) for g in game_json]
 
 
