@@ -43,7 +43,7 @@ class TestCreateUpdateRemovedGame:
 class TestUpdateOneGameNewGame:
     def test_returns_new_game_update(self):
         new_game = make_api_game(ce_id=GAME_ID, game_name="Brand New Game")
-        update, removed = update_one_game(None, new_game)
+        update, _removed = update_one_game(None, new_game)
         assert update is not None
         assert "Brand New Game" in update.title
 
@@ -56,7 +56,7 @@ class TestUpdateOneGameNewGame:
 class TestUpdateOneGameRemovedGame:
     def test_returns_removed_game_update(self):
         old_game = make_game(ce_id=GAME_ID, game_name="Doomed Game")
-        update, removed = update_one_game(old_game, None)
+        update, _removed = update_one_game(old_game, None)
         assert update is not None
         assert "Doomed Game" in update.title
         assert "removed" in update.title.lower()
