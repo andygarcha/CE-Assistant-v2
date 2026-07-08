@@ -338,7 +338,7 @@ class CRData:
             if mongo_game is None:
                 continue
 
-            pts = game.get_user_points()
+            pts = game.user_points
             for _cat in mongo_game.categories:
                 cr_groups_multicat[_cat].append(pts)
 

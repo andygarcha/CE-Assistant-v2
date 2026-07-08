@@ -50,7 +50,7 @@ def _uso(points: int, obj_id: str) -> CEUserObjective:
     )
 
 
-# ── get_user_points ───────────────────────────────────────────────────────────
+# ── user_points ───────────────────────────────────────────────────────────
 
 
 class TestGetUserPoints:
@@ -63,16 +63,16 @@ class TestGetUserPoints:
                 ),
             ]
         )
-        assert ug.get_user_points() == 30
+        assert ug.user_points == 30
 
     def test_empty_objectives_zero_points(self):
-        assert make_user_game(user_objectives=[]).get_user_points() == 0
+        assert make_user_game(user_objectives=[]).user_points == 0
 
     def test_single_objective(self):
         assert (
             make_user_game(
                 user_objectives=[make_user_objective(user_points=15)]
-            ).get_user_points()
+            ).user_points
             == 15
         )
 

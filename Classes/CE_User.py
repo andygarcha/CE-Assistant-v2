@@ -112,7 +112,7 @@ class CEUser:
         """Returns the total amount of points this user has."""
         total_points: int = 0
         for game in self._owned_games:
-            total_points += game.get_user_points()
+            total_points += game.user_points
         return total_points
 
     def get_rank(self) -> str:
@@ -562,7 +562,7 @@ class CEUser:
         """Returns true if this user has points in this game."""
         for game in self.owned_games:
             if game.ce_id == game_id:
-                return game.get_user_points() != 0
+                return game.user_points != 0
         return False
 
     def has_po_points(self, game_id: str) -> bool:

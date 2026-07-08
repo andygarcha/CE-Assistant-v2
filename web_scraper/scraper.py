@@ -1482,7 +1482,7 @@ def check_roles(
     updates: list[UpdateMessageForScraperProcess] = []
 
     for game_old in games_old:
-        points = game_old.get_user_points()
+        points = game_old.user_points
         game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
@@ -1497,7 +1497,7 @@ def check_roles(
             old_categories[c_num - 1] += points
 
     for game_new in games_new:
-        points = game_new.get_user_points()
+        points = game_new.user_points
         game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:

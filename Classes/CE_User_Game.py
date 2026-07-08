@@ -15,9 +15,10 @@ class CEUserGame:
         self._user_objectives = user_objectives
         self._name = name
 
-    # ----------- getters -----------
+    # ==== core properties ====
 
-    def get_user_points(self):
+    @property
+    def user_points(self):
         """Returns the total number of points this user has in this game."""
         total_points = 0
         for objective in self.user_objectives:
