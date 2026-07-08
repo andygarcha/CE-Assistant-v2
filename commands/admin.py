@@ -9,7 +9,7 @@ from discord import app_commands
 
 from Classes.CE_Roll import CERoll
 from commands.user import register
-from Modules import SupabaseReader, hm, http_session
+from Modules import HealthCheck, LocalCache, SupabaseReader, hm, http_session
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,20 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(user="The user.")
     async def debug_command(interaction: discord.Interaction, user: discord.Member):
         return await debug(interaction, user)
+
+    # -- /health-check {include_integrity} ---------------------------------------------------
+    @tree.command(
+        name="health-check",
+        description="Check the database for data-quality issues and report them to #privatelog.",
+        guild=guild,
+    )
+    @app_commands.describe(
+        include_integrity="Also run the LocalCache/Supabase integrity check (costs Supabase egress)."
+    )
+    async def health_check_command(
+        interaction: discord.Interaction, include_integrity: bool = False
+    ):
+        return await health_check(interaction, include_integrity)
 
 
 async def test(interaction: discord.Interaction):
@@ -635,3 +649,45 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
         f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
         f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
     )
+
+
+async def health_check(
+    interaction: discord.Interaction, include_integrity: bool = False
+):
+    """
+    Runs the database health checks (uncategorized games, miscounted roll
+    games, orphaned objectives) and reports any warnings to #privatelog.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    include_integrity: `bool` (default `False`)
+        If set to true, also runs the LocalCache/Supabase integrity check.
+        This costs Supabase egress, so it's off by default.
+    """
+    await interaction.response.defer(ephemeral=True)
+
+    await hm.log_command(
+        client, interaction, "health-check", True, include_integrity=include_integrity
+    )
+
+    warnings = HealthCheck.run_cheap_checks()
+
+    if include_integrity:
+        try:
+            integrity_report = LocalCache.run_integrity_check()
+        except Exception as e:
+            logger.exception("Integrity check failed.")
+            warnings.append(f":hospital: Integrity check failed: {e}")
+        else:
+            warnings.append(HealthCheck.format_integrity_report(integrity_report))
+
+    for warning in warnings:
+        await hm.send_message(client, "privatelog", warning, allowed_mentions=False)
+
+    if warnings:
+        return await interaction.followup.send(
+            f"Health check complete. {len(warnings)} warning(s) sent to #privatelog."
+        )
+    return await interaction.followup.send("Health check complete. No issues found.")

@@ -21,7 +21,14 @@ from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEAPIUser, CEUser
 from Classes.CE_User_Game import CEUserGame
-from Modules import CEAPIReader, LocalCache, SupabaseReader, hm, http_session
+from Modules import (
+    CEAPIReader,
+    HealthCheck,
+    LocalCache,
+    SupabaseReader,
+    hm,
+    http_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -251,23 +258,33 @@ async def process_loop(
 
     logger.info("process_loop() complete at time=%s", hm.get_datetime("now"))
 
+    try:
+        health_warnings = HealthCheck.run_cheap_checks()
+        if health_warnings:
+            SupabaseReader.write_scraper_updates_bulk(
+                [
+                    {
+                        "is_embed": False,
+                        "channel": "privatelog",
+                        "text": warning,
+                        "title": "",
+                        "description": "",
+                        "image": "",
+                        "url": "",
+                        "color": 0,
+                        "status": "stable",
+                        "game_ce_id": None,
+                    }
+                    for warning in health_warnings
+                ]
+            )
+    except Exception:
+        logger.exception("Health check failed.")
+
     if full_scrape:
         try:
             integrity_report = LocalCache.run_integrity_check()
-            synced = ", ".join(integrity_report.get("synced", []))
-            removed = ", ".join(integrity_report.get("removed", []))
-            schema = ", ".join(integrity_report.get("schema", []))
-            parts = []
-            if synced:
-                parts.append(f"synced [{synced}]")
-            if removed:
-                parts.append(f"removed [{removed}]")
-            if schema:
-                parts.append(f"schema [{schema}]")
-            if parts:
-                summary = "Integrity check: " + ", ".join(parts)
-            else:
-                summary = "Integrity check passed — local cache in sync with Supabase"
+            summary = HealthCheck.format_integrity_report(integrity_report)
             logger.info(summary)
             SupabaseReader.write_scraper_update(
                 {
@@ -283,8 +300,8 @@ async def process_loop(
                     "game_ce_id": None,
                 }
             )
-        except Exception as e:
-            logger.error("Integrity check failed: %s", e)
+        except Exception:
+            logger.exception("Integrity check failed.")
 
     if SAVEDATA and not full_scrape:
         try:
