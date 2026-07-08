@@ -300,8 +300,8 @@ async def process_loop(
                     "game_ce_id": None,
                 }
             )
-        except Exception as e:
-            logger.error("Integrity check failed: %s", e)
+        except Exception:
+            logger.exception("Integrity check failed.")
 
     if SAVEDATA and not full_scrape:
         try:
