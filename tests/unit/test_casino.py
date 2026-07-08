@@ -907,9 +907,9 @@ class TestCoOpRoll:
 
     def test_user_pending_sends_error(self):
         interaction = _make_interaction_coop()
-        user = make_user(discord_id=123)
+        pending = make_roll(roll_name="Soul Mates", status="pending")
+        user = make_user(discord_id=123, rolls=[pending])
         partner = make_user(discord_id=456)
-        user.add_pending("Soul Mates")
         with patch(
             "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
@@ -919,9 +919,9 @@ class TestCoOpRoll:
 
     def test_partner_pending_sends_error(self):
         interaction = _make_interaction_coop()
+        pending = make_roll(roll_name="Soul Mates", status="pending")
         user = make_user(discord_id=123)
-        partner = make_user(discord_id=456)
-        partner.add_pending("Soul Mates")
+        partner = make_user(discord_id=456, rolls=[pending])
         with patch(
             "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
