@@ -569,7 +569,7 @@ class CEUser:
         """Returns true if this user has points in Primary Objectives in this game."""
         for game in self.owned_games:
             if game.ce_id == game_id:
-                return game.get_user_points_primary() != 0
+                return game.primary_points != 0
         return False
 
     # -- other --
