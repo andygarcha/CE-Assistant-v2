@@ -441,7 +441,7 @@ class CEIndividualValueInput:
             raise Exception(f"Could not find user {self.user_ce_id} in database user.")
 
         # now return
-        return f"  - [{user.display_name}]({user.get_ce_link()}): {self.value}\n"
+        return f"  - [{user.display_name}]({user.ce_link}): {self.value}\n"
 
 
 class CEValueInput:
@@ -626,7 +626,7 @@ class CECurateInput:
                 f"Could not find user with ID {self.user_ce_id} in database name."
             )
 
-        return f"- {user.mention()}: {self.curate_meaning()}\n"
+        return f"- {user.mention}: {self.curate_meaning()}\n"
 
 
 class CETagInput:

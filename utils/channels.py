@@ -155,7 +155,7 @@ async def log_command(
 
         ce_user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
         display = (
-            ce_user.display_name_with_link()
+            ce_user.display_name_with_link
             if ce_user is not None
             else interaction.user.name
         )

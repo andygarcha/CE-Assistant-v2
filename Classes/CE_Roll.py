@@ -609,8 +609,8 @@ class CERoll:
             return (
                 f"Congratulations <@{user.discord_id}> and <@{partner.discord_id}>! "
                 + "You have both completed Destiny Alignment together."
-                + f"\n- {user.mention()} - {game0.name_with_link}"
-                + f"\n- {partner.mention()} - {game1.name_with_link}"
+                + f"\n- {user.mention} - {game0.name_with_link}"
+                + f"\n- {partner.mention} - {game1.name_with_link}"
             )
         # soul mates
         if self.roll_name == "Soul Mates" and partner is not None:
@@ -622,14 +622,14 @@ class CERoll:
                 raise Exception("Could not find game with ID in database_name.")
 
             return (
-                f"Congratulations {user.mention()} and {partner.mention()}! "
+                f"Congratulations {user.mention} and {partner.mention}! "
                 + "You have both completed Soul Mates together."
                 + f"\n- {game0.name_with_link}"
             )
         if self.roll_name == "Teamwork Makes the Dream Work" and partner is not None:
             # get all completed games by both users
-            user_completions = user.get_completed_games_2(database_name)
-            partner_completions = partner.get_completed_games_2(database_name)
+            user_completions = user.get_completed_games(database_name)
+            partner_completions = partner.get_completed_games(database_name)
 
             # go through each of them and decide if they were rolled in this game
             user_wins = partner_wins = []
@@ -642,7 +642,7 @@ class CERoll:
 
             # and now make the actual string
             return_str = (
-                f"Congratulations {user.mention()} and {partner.mention()}! "
+                f"Congratulations {user.mention} and {partner.mention}! "
                 + "You have both completed Teamwork Makes the Dream Work.\n"
             )
 
@@ -658,11 +658,11 @@ class CERoll:
                 return_str += "- " + _game_object.name_with_link
 
                 if _game_id in user_wins and _game_id in partner_wins:
-                    return_str += f" - {user.mention()} and {partner.mention()}\n"
+                    return_str += f" - {user.mention} and {partner.mention}\n"
                 elif _game_id not in user_wins and _game_id in partner_wins:
-                    return_str += f" - {partner.mention()}\n"
+                    return_str += f" - {partner.mention}\n"
                 elif _game_id in user_wins and _game_id not in partner_wins:
-                    return_str += f" - {user.mention()}\n"
+                    return_str += f" - {user.mention}\n"
                 else:
                     return_str += "\n"
             return return_str
@@ -671,7 +671,7 @@ class CERoll:
             return_str = f"Congratulations <@{user.discord_id}>! You have beaten One Hell of a Month!"
 
             # get completions and their ids
-            user_completions = user.get_completed_games_2(database_name)
+            user_completions = user.get_completed_games(database_name)
             user_wins = []
             for game in user_completions:
                 if game.ce_id in self.games:
@@ -690,7 +690,7 @@ class CERoll:
                 return_str += "\n- " + game.game_name + " " + game.category_emojis
             return return_str
 
-        s = f"Congratulations {user.mention()}! You have beaten {self.roll_name}."
+        s = f"Congratulations {user.mention}! You have beaten {self.roll_name}."
         for game_id in self.games:
             game_object = hm.get_item_from_list(game_id, database_name)
             if game_object is None:
@@ -733,14 +733,14 @@ class CERoll:
         """
         if self.roll_name == "Fourward Thinking":
             return (
-                f"Sorry {user.mention()}, you failed your Tier {len(self.games)} in Fourward Thinking. "
+                f"Sorry {user.mention}, you failed your Tier {len(self.games)} in Fourward Thinking. "
                 + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_timestamp()}>."
             )
         if self.is_co_op:
             if partner is None:
                 return "Error code 5. Contact andy."
             return (
-                f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. "
+                f"Sorry {user.mention} and {partner.mention}, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         if self.roll_name == "One Hell of a Day":
@@ -751,12 +751,12 @@ class CERoll:
                 )
                 raise Exception("Could not find game with ID in database_name.")
             return (
-                f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.name_with_link}). "
+                f"Sorry {user.mention}, you failed your {self.roll_name} roll ({game.name_with_link}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
         if self.calculate_cooldown_date() is None:
             return (
-                f"Sorry {user.mention()}, you failed your {self.roll_name} roll. "
+                f"Sorry {user.mention}, you failed your {self.roll_name} roll. "
                 "This event has no cooldown!"
             )
         return (

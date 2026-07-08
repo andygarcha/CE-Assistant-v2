@@ -54,7 +54,7 @@ class TestRankNum:
     )
     def test_rank_boundaries(self, total_points, expected_rank):
         user = make_user(owned_games=[_user_game(GAME_ID_A, total_points)])
-        assert user.rank_num() == expected_rank
+        assert user.rank_num == expected_rank
 
 
 # ── get_rank ──────────────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ class TestGetRank:
     )
     def test_rank_strings(self, points, expected_str):
         user = make_user(owned_games=[_user_game(GAME_ID_A, points)])
-        assert user.get_rank() == expected_str
+        assert user.rank == expected_str
 
 
 # ── get_total_points ──────────────────────────────────────────────────────────
@@ -91,10 +91,10 @@ class TestGetTotalPoints:
                 _user_game(GAME_ID_B, 200),
             ]
         )
-        assert user.get_total_points() == 300
+        assert user.total_points == 300
 
     def test_no_games_zero_points(self):
-        assert make_user(owned_games=[]).get_total_points() == 0
+        assert make_user(owned_games=[]).total_points == 0
 
 
 # ── owns_game ─────────────────────────────────────────────────────────────────
@@ -183,10 +183,10 @@ class TestOnMutelist:
     def test_mutelist_id_returns_true(self):
         muted_id = MUTELIST_CEIDS[0]
         user = make_user(ce_id=muted_id)
-        assert user.on_mutelist() is True
+        assert user.is_muted is True
 
     def test_regular_id_returns_false(self):
-        assert make_user(ce_id="not-on-mutelist-000000000000").on_mutelist() is False
+        assert make_user(ce_id="not-on-mutelist-000000000000").is_muted is False
 
 
 # ── mention ───────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ class TestOnMutelist:
 class TestMention:
     def test_mention_format(self):
         user = make_user(discord_id=123456789)
-        assert user.mention() == "<@123456789>"
+        assert user.mention == "<@123456789>"
 
 
 # ── completions ───────────────────────────────────────────────────────────────
@@ -245,22 +245,22 @@ class TestCompletions:
         assert user.completions([game]) == 1
 
 
-# ── get_completed_games_2 ─────────────────────────────────────────────────────
+# ── get_completed_games ─────────────────────────────────────────────────────
 
 
 class TestGetCompletedGames2:
     def test_returns_list(self):
         user = make_user(owned_games=[])
-        assert isinstance(user.get_completed_games_2([]), list)
+        assert isinstance(user.get_completed_games([]), list)
 
     def test_empty_games_returns_empty_list(self):
         user = make_user(owned_games=[])
-        assert user.get_completed_games_2([]) == []
+        assert user.get_completed_games([]) == []
 
     def test_completed_game_appears_in_result(self):
         game = _db_game(GAME_ID_A)
         user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
-        result = user.get_completed_games_2([game])
+        result = user.get_completed_games([game])
         assert len(result) == 1
         assert result[0].ce_id == GAME_ID_A
 
@@ -268,39 +268,39 @@ class TestGetCompletedGames2:
         game = _db_game(GAME_ID_A)
         ug = make_user_game(ce_id=GAME_ID_A, user_objectives=[])
         user = make_user(owned_games=[ug])
-        assert user.get_completed_games_2([game]) == []
+        assert user.get_completed_games([game]) == []
 
     def test_returns_cegame_objects(self):
         from Classes.CE_Game import CEGame
 
         game = _db_game(GAME_ID_A)
         user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
-        result = user.get_completed_games_2([game])
+        result = user.get_completed_games([game])
         assert all(isinstance(g, CEGame) for g in result)
 
     def test_game_not_in_database_excluded(self):
         user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
-        assert user.get_completed_games_2([]) == []
+        assert user.get_completed_games([]) == []
 
     def test_raises_on_none_database(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2(None)  # type: ignore
+            user.get_completed_games(None)  # type: ignore
 
     def test_raises_on_database_containing_none(self):
         user = make_user(owned_games=[])
         with pytest.raises(ValueError):
-            user.get_completed_games_2([None])  # type: ignore
+            user.get_completed_games([None])  # type: ignore
 
     def test_uses_precomputed_lookup_not_linear_scan(self, monkeypatch):
         game = _db_game(GAME_ID_A)
         user = make_user(owned_games=[_completed_ug(GAME_ID_A)])
 
         def _fail(*_a, **_kw):
-            raise AssertionError("get_completed_games_2 must not use a linear scan")
+            raise AssertionError("get_completed_games must not use a linear scan")
 
         monkeypatch.setattr(ce_user_module.hm, "get_item_from_list", _fail)
-        assert user.get_completed_games_2([game]) == [game]
+        assert user.get_completed_games([game]) == [game]
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────

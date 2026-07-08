@@ -432,7 +432,7 @@ async def co_op_roll(
     # -- partner confirmation --
     confirm_view = CoOpConfirmView(partner.discord_id)
     confirm_msg = await interaction.followup.send(
-        f"Hey {partner.mention()}, {user.mention()} wants to start a "
+        f"Hey {partner.mention}, {user.mention} wants to start a "
         f"**{event_name}** roll with you! Do you accept?",
         view=confirm_view,
         wait=True,
@@ -448,12 +448,10 @@ async def co_op_roll(
     if not confirm_view.confirmed:
         SupabaseReader.kill_pending(event_name, user.ce_id, partner.ce_id)
         return await confirm_msg.edit(
-            content=f"{partner.mention()} declined the roll. No worries!",
+            content=f"{partner.mention} declined the roll. No worries!",
             view=None,
         )
-    await confirm_msg.edit(
-        content=f"{partner.mention()} accepted! Rolling...", view=None
-    )
+    await confirm_msg.edit(content=f"{partner.mention} accepted! Rolling...", view=None)
 
     # jarvis's random event!
     # -- make sure to not reroll this on every time they move forward
@@ -462,7 +460,7 @@ async def co_op_roll(
         await hm.send_message(
             client,
             "userlog",
-            f"Congratulations {user.mention()} and {partner.mention()}! You've won Jarvis's super secret reward. "
+            f"Congratulations {user.mention} and {partner.mention}! You've won Jarvis's super secret reward. "
             "Please DM him for your prize :)",
         )
 
@@ -1056,21 +1054,21 @@ def roll_destinyalignment(
     """
     # --- error checking ---
     if (
-        user.rank_num() < 6 or partner.rank_num() < 6
-    ) and user.rank_num() != partner.rank_num():
+        user.rank_num < 6 or partner.rank_num < 6
+    ) and user.rank_num != partner.rank_num:
         return RollResult(
             None,
             (
                 "For Destiny Alignment, both users must be either:\n"
                 "- the same rank, or\n"
                 "- both be rank SS or above.\n"
-                f"You are {user.get_rank()} and your partner is {partner.get_rank()}."
+                f"You are {user.rank} and your partner is {partner.rank}."
             ),
         )
 
     # roll user's game from partner's library
     _player_1_game = hm.get_rollable_game(
-        partner.get_completed_games_2(database_name),
+        partner.get_completed_games(database_name),
         database_tier,
         completion_limit=None,
         price_limit=20,
@@ -1090,7 +1088,7 @@ def roll_destinyalignment(
 
     # roll partner's game from user's library
     _player_2_game = hm.get_rollable_game(
-        user.get_completed_games_2(database_name),
+        user.get_completed_games(database_name),
         database_tier,
         completion_limit=None,
         price_limit=20,

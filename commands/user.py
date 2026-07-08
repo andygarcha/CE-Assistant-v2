@@ -256,7 +256,7 @@ async def set_color(interaction: discord.Interaction):
             "Please run /register before you do any additional commands!"
         )
 
-    user_rank_num = user_ce.rank_num()
+    user_rank_num = user_ce.rank_num
 
     # the actual assigning role function
     async def assign_role(interaction: discord.Interaction, role: discord.Role):
@@ -289,7 +289,7 @@ async def set_color(interaction: discord.Interaction):
         await hm.send_message(
             client,
             "privatelog",
-            f":art: <@{interaction.user.id}> ({user_ce.get_rank()}) changed their color to **{role.name}**.",
+            f":art: <@{interaction.user.id}> ({user_ce.rank}) changed their color to **{role.name}**.",
             allowed_mentions=False,
         )
 
@@ -410,7 +410,7 @@ async def show_summary(
         )
     join_year = int(user_api.join_date[0:4])
 
-    text = f"**CE Summary for user** {user_ce.display_name_with_link()}:\n\n"
+    text = f"**CE Summary for user** {user_ce.display_name_with_link}:\n\n"
     for year in range(join_year, hm.current_year_num() + 1):
         text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
 

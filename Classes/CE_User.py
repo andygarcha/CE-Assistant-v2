@@ -52,28 +52,7 @@ class CEUser:
         self._last_updated: datetime.datetime = last_updated
         self._steam_id: str = steam_id
 
-    # ------------ getters -------------
-
-    @property
-    def display_name(self):
-        "Returns the display name of this user."
-        return self._display_name
-
-    def display_name_with_link(self):
-        return f"[{self.display_name}](<https://cedb.me/user/{self.ce_id}>)"
-
-    def set_display_name(self, display_name: str):
-        "Setter for display name."
-        self._display_name = display_name
-
-    @property
-    def avatar(self):
-        "Returns the avatar of this user."
-        return self._avatar
-
-    def set_avatar(self, avatar: str):
-        "Setter."
-        self._avatar = avatar
+    # ==== core properties ====
 
     @property
     def ce_id(self):
@@ -85,18 +64,48 @@ class CEUser:
         """Returns the Discord ID associated with this user."""
         return self._discord_id
 
-    def mention(self):
-        "Returns the Discord ID with brackets (Example: '<@1234>')."
-        return f"<@{self.discord_id}>"
+    @discord_id.setter
+    def discord_id(self, input: int) -> None:
+        """Sets this object's Discord ID according to `input`."""
+        self._discord_id = input
+
+    @property
+    def display_name(self):
+        "Returns the display name of this user."
+        return self._display_name
+
+    @property
+    def avatar(self):
+        "Returns the avatar of this user."
+        return self._avatar
 
     @property
     def last_updated(self) -> datetime.datetime:
         "Returns the last updated time."
         return self._last_updated
 
-    def set_last_updated(self, last_updated: datetime.datetime):
+    @last_updated.setter
+    def last_updated(self, last_updated: datetime.datetime) -> None:
         "Setter for last updated."
-        self._last_updated: datetime.datetime = last_updated
+        self._last_updated = last_updated
+
+    # ==== identity / formatting ====
+
+    @property
+    def mention(self):
+        "Returns the Discord ID with brackets (Example: '<@1234>')."
+        return f"<@{self.discord_id}>"
+
+    @property
+    def display_name_with_link(self):
+        return f"[{self.display_name}](<https://cedb.me/user/{self.ce_id}>)"
+
+    @property
+    def ce_link(self) -> str:
+        "Returns the link to this user's Challenge Enthusiasts page."
+        return f"https://cedb.me/user/{self.ce_id}"
+
+    # ==== scoring ====
 
     def casino_score(self, rolls: list[CERoll]):
         """Returns the casino score associated with this user."""
@@ -108,18 +117,21 @@ class CEUser:
                 _casino_score += roll.casino_increase()
         return _casino_score
 
-    def get_total_points(self):
+    @property
+    def total_points(self):
         """Returns the total amount of points this user has."""
         total_points: int = 0
         for game in self._owned_games:
             total_points += game.user_points
         return total_points
 
-    def get_rank(self) -> str:
+    @property
+    def rank(self) -> str:
         """Returns the current rank for this user."""
         ranks = ["E", "D", "C", "B", "A", "S", "SS", "SSS", "EX"]
-        return f"{ranks[self.rank_num()]} Rank"
+        return f"{ranks[self.rank_num]} Rank"
 
+    @property
     def rank_num(self) -> int:
         """
         Returns the rank as an int.
@@ -133,16 +145,23 @@ class CEUser:
         - SSS Rank is 7
         - EX Rank is 8
         """
-        points = self.get_total_points()
+        points = self.total_points
         for threshold, rank in RANK_THRESHOLDS:
             if points >= threshold:
                 return rank
         return 0
 
+    # ==== owned games ====
+
     @property
     def owned_games(self):
         """Returns a list of :class:`CEUserGame`s that this user owns."""
         return self._owned_games
+
+    @owned_games.setter
+    def owned_games(self, games):
+        """Sets the 'owned games' to `games`."""
+        self._owned_games = games
 
     def get_owned_game(self, ce_id: str) -> CEUserGame | None:
         """Returns the :class:`CEUserGame` object associated
@@ -175,7 +194,7 @@ class CEUser:
                     o.append(game)
         return o
 
-    def get_completed_games_2(self, database_name: Sequence[CEGame]) -> list[CEGame]:
+    def get_completed_games(self, database_name: Sequence[CEGame]) -> list[CEGame]:
         """Returns a list of :class:`CEGame`'s that this user has completed."""
         if database_name is None:
             raise ValueError("Argument 'database_name' is None.")
@@ -237,6 +256,77 @@ class CEUser:
         "Returns the CR class."
         return CRData(owned_games=self.owned_games, database_name=database_name)
 
+    def has_completed_game(self, game_id: str, database_name: list[CEGame]):
+        "Returns true if this user has completed this game, returns false otherwise."
+        for user_game in self.owned_games:
+            if user_game.ce_id == game_id:
+                return user_game.is_completed(database_name)
+        return False
+
+    def owns_game(self, game_id: str) -> bool:
+        """Returns true if this user owns the game with
+        Challenge Enthusiast ID `game_id`."""
+        return any(game.ce_id == game_id for game in self.owned_games)
+
+    def has_points(self, game_id: str) -> bool:
+        """Returns true if this user has points in this game."""
+        for game in self.owned_games:
+            if game.ce_id == game_id:
+                return game.user_points != 0
+        return False
+
+    def has_po_points(self, game_id: str) -> bool:
+        """Returns true if this user has points in Primary Objectives in this game."""
+        for game in self.owned_games:
+            if game.ce_id == game_id:
+                return game.primary_points != 0
+        return False
+
+    def completions(self, database_name: list[CEGame]) -> int:
+        "Returns the number of completions this user has."
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
+        completions = 0
+        for owned_game in self.owned_games:
+            if owned_game.is_completed(database_name=games_by_ce_id):
+                completions += 1
+        return completions
+
+    # ==== moderation ====
+
+    @property
+    def is_muted(self) -> bool:
+        """Returns true if the user is on the mutelist. Messages about this user should not
+        be sent in #user-log or #casino-log."""
+        return self.ce_id in MUTELIST_CEIDS
+
+    # ==== network ====
+
+    async def get_api_user(self) -> "CEAPIUser | None":
+        "Returns the CEAPIUser."
+        session = await http_session.get_session()
+        async with session.get(f"https://cedb.me/api/user/{self.ce_id}/") as response:
+            if response.status != 200:
+                return None
+            try:
+                data = await response.json()
+            except aiohttp.ContentTypeError:
+                return None
+
+            return CEAPIUser(
+                discord_id=self.discord_id,
+                ce_id=self.ce_id,
+                owned_games=self.owned_games,
+                rolls=self.rolls,
+                full_data=data,
+                display_name=self.display_name,
+                avatar=self.avatar,
+                last_updated=self.last_updated,
+            )
+
+    # ======== rolls ======== #
+
     @property
     def rolls(self) -> list[CERoll]:
         "Returns an array of `CERoll`s."
@@ -249,25 +339,6 @@ class CEUser:
             for roll in self.rolls
             if (roll.status == "won" or roll.status == "failed")
         ]
-
-    def on_mutelist(self) -> bool:
-        """Returns true if the user is on the mutelist. Messages about this user should not
-        be sent in #user-log or #casino-log."""
-        return self.ce_id in MUTELIST_CEIDS
-
-    # ----------- setters -----------
-
-    @discord_id.setter
-    def discord_id(self, input: int) -> None:
-        """Sets this object's Discord ID according to `input`."""
-        self._discord_id = input
-
-    @owned_games.setter
-    def owned_games(self, games):
-        """Sets the 'owned games' to `games`."""
-        self._owned_games = games
-
-    # ======== rolls ======== #
 
     # ==== current rolls ==== #
 
@@ -543,73 +614,7 @@ class CEUser:
         "Removes all cooldowns."
         raise NotImplementedError("There is no way to clear cooldowns anymore.")
 
-    # ----------- other methods ------------
-    # -- game ownership and completion --
-
-    def has_completed_game(self, game_id: str, database_name: list[CEGame]):
-        "Returns true if this user has completed this game, returns false otherwise."
-        for user_game in self.owned_games:
-            if user_game.ce_id == game_id:
-                return user_game.is_completed(database_name)
-        return False
-
-    def owns_game(self, game_id: str) -> bool:
-        """Returns true if this user owns the game with
-        Challenge Enthusiast ID `game_id`."""
-        return any(game.ce_id == game_id for game in self.owned_games)
-
-    def has_points(self, game_id: str) -> bool:
-        """Returns true if this user has points in this game."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return game.user_points != 0
-        return False
-
-    def has_po_points(self, game_id: str) -> bool:
-        """Returns true if this user has points in Primary Objectives in this game."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return game.primary_points != 0
-        return False
-
-    # -- other --
-
-    def get_ce_link(self) -> str:
-        "Returns the link to this user's Challenge Enthusiasts page."
-        return f"https://cedb.me/user/{self.ce_id}"
-
-    async def get_api_user(self) -> "CEAPIUser | None":
-        "Returns the CEAPIUser."
-        session = await http_session.get_session()
-        async with session.get(f"https://cedb.me/api/user/{self.ce_id}/") as response:
-            if response.status != 200:
-                return None
-            try:
-                data = await response.json()
-            except aiohttp.ContentTypeError:
-                return None
-
-            return CEAPIUser(
-                discord_id=self.discord_id,
-                ce_id=self.ce_id,
-                owned_games=self.owned_games,
-                rolls=self.rolls,
-                full_data=data,
-                display_name=self.display_name,
-                avatar=self.avatar,
-                last_updated=self.last_updated,
-            )
-
-    def completions(self, database_name: list[CEGame]) -> int:
-        "Returns the number of completions this user has."
-        games_by_ce_id: dict[str, CEGame] = {}
-        for game in database_name:
-            games_by_ce_id.setdefault(game.ce_id, game)
-        completions = 0
-        for owned_game in self.owned_games:
-            if owned_game.is_completed(database_name=games_by_ce_id):
-                completions += 1
-        return completions
+    # ==== serialization ====
 
     def to_dict_supabase(self) -> dict:
         return {
@@ -737,13 +742,6 @@ class CEAPIUser(CEUser):
     @property
     def api_tier_summary(self) -> list:
         return self.full_data["userTierSummaries"]
-
-    def unfinished_games(self) -> list[str]:
-        unfinished = []
-        for game in self.full_data["userGames"]:
-            if not game["game"]["isFinished"]:
-                unfinished.append(game["gameId"])
-        return unfinished
 
     def most_recent_objectives(self):
         "Returns a list of `CEObjective`s."

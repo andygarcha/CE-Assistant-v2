@@ -95,7 +95,7 @@ class TestCompletionMessage:
         game = _game(po_points=80, name="Celeste")
         updates = _run(user, completed_new=[game])
         assert len(updates) == 1
-        assert user.mention() in updates[0].text
+        assert user.mention in updates[0].text
         assert "Celeste" in updates[0].text
 
     def test_message_is_not_embed(self):
@@ -118,7 +118,7 @@ class TestCompletionMessage:
         game = _game(po_points=80)
         updates = _run(user, completed_new=[game])
         assert "Muted user" in updates[0].text
-        assert user.display_name_with_link() in updates[0].text
+        assert user.display_name_with_link in updates[0].text
 
     def test_multiple_newly_completed_games_each_get_a_message(self):
         game_a = _game(po_points=80, ce_id=GAME_ID)
