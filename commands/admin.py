@@ -656,7 +656,9 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
     )
 
 
-async def health_check(interaction: discord.Interaction, include_integrity: bool = False):
+async def health_check(
+    interaction: discord.Interaction, include_integrity: bool = False
+):
     """
     Runs the database health checks (uncategorized games, miscounted roll
     games, orphaned objectives) and reports any warnings to #privatelog.

@@ -18,7 +18,14 @@ from Classes.CE_Game import CEGame, CEAPIGame
 from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser, CEAPIUser
 from Classes.CE_User_Game import CEUserGame
-from Modules import CEAPIReader, HealthCheck, LocalCache, SupabaseReader, http_session, hm
+from Modules import (
+    CEAPIReader,
+    HealthCheck,
+    LocalCache,
+    SupabaseReader,
+    http_session,
+    hm,
+)
 import logging
 
 logger = logging.getLogger(__name__)

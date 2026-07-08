@@ -38,9 +38,7 @@ class TestCheckRollGameCounts:
         assert len(warnings) == 1
 
     def test_does_not_flag_won_roll_with_correct_won_count(self):
-        roll = make_roll(
-            roll_name="Two Week T2 Streak", status="won", games=["a", "b"]
-        )
+        roll = make_roll(roll_name="Two Week T2 Streak", status="won", games=["a", "b"])
         assert check_roll_game_counts([roll]) == []
 
     def test_ignores_won_legacy_rolls(self):
@@ -97,7 +95,10 @@ class TestCheckOrphanedObjectives:
 class TestFormatIntegrityReport:
     def test_no_issues(self):
         summary = format_integrity_report({"synced": [], "removed": [], "schema": []})
-        assert summary == ":hospital: Integrity check passed — local cache in sync with Supabase"
+        assert (
+            summary
+            == ":hospital: Integrity check passed — local cache in sync with Supabase"
+        )
 
     def test_synced_only(self):
         summary = format_integrity_report(

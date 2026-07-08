@@ -122,6 +122,7 @@ class TestSoloRollGameCounts:
     def test_one_hell_of_a_day_has_one_game(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("One Hell of a Day", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["One Hell of a Day"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'One Hell of a Day' rolls have the wrong game count:\n{_ids(bad)}"
@@ -130,6 +131,7 @@ class TestSoloRollGameCounts:
     def test_one_hell_of_a_week_has_five_games(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("One Hell of a Week", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["One Hell of a Week"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'One Hell of a Week' rolls have the wrong game count:\n{_ids(bad)}"
@@ -138,6 +140,7 @@ class TestSoloRollGameCounts:
     def test_one_hell_of_a_month_has_25_games(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("One Hell of a Month", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["One Hell of a Month"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'One Hell of a Month' rolls have the wrong game count:\n{_ids(bad)}"
@@ -146,6 +149,7 @@ class TestSoloRollGameCounts:
     def test_never_lucky_has_one_game(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("Never Lucky", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Never Lucky"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Never Lucky' rolls have the wrong game count:\n{_ids(bad)}"
@@ -154,6 +158,7 @@ class TestSoloRollGameCounts:
     def test_triple_threat_has_three_games(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("Triple Threat", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Triple Threat"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Triple Threat' rolls have the wrong game count:\n{_ids(bad)}"
@@ -162,6 +167,7 @@ class TestSoloRollGameCounts:
     def test_let_fate_decide_has_one_game(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("Let Fate Decide", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Let Fate Decide"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Let Fate Decide' rolls have the wrong game count:\n{_ids(bad)}"
@@ -173,7 +179,9 @@ class TestSoloRollGameCounts:
         self, by_name: dict[str, list[CERoll]]
     ):
         rolls = by_name.get("Two Week T2 Streak", [])
-        lo, hi = ROLL_GAME_COUNT_EXPECTATIONS["Two Week T2 Streak"].range
+        count_range = ROLL_GAME_COUNT_EXPECTATIONS["Two Week T2 Streak"].range
+        assert count_range is not None
+        lo, hi = count_range
         bad = _out_of_range(rolls, lo, hi)
         assert not bad, (
             f"{len(bad)} 'Two Week T2 Streak' rolls have a game count outside [{lo}, {hi}]:\n"
@@ -185,6 +193,7 @@ class TestSoloRollGameCounts:
     ):
         won = _rolls_won(by_name.get("Two Week T2 Streak", []))
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Two Week T2 Streak"].won_fixed
+        assert expected is not None
         bad = _wrong_count(won, expected)
         assert not bad, (
             f"{len(bad)} won 'Two Week T2 Streak' rolls have the wrong game count "
@@ -195,7 +204,11 @@ class TestSoloRollGameCounts:
         self, by_name: dict[str, list[CERoll]]
     ):
         rolls = by_name.get('Two "Two Week T2 Streak" Streak', [])
-        lo, hi = ROLL_GAME_COUNT_EXPECTATIONS['Two "Two Week T2 Streak" Streak'].range
+        count_range = ROLL_GAME_COUNT_EXPECTATIONS[
+            'Two "Two Week T2 Streak" Streak'
+        ].range
+        assert count_range is not None
+        lo, hi = count_range
         bad = _out_of_range(rolls, lo, hi)
         assert not bad, (
             f"{len(bad)} 'Two \"Two Week T2 Streak\" Streak' rolls have a game count "
@@ -210,6 +223,7 @@ class TestSoloRollGameCounts:
         expected = ROLL_GAME_COUNT_EXPECTATIONS[
             'Two "Two Week T2 Streak" Streak'
         ].won_fixed
+        assert expected is not None
         bad = _wrong_count(won, expected)
         assert not bad, (
             f"{len(bad)} won 'Two \"Two Week T2 Streak\" Streak' rolls have wrong "
@@ -220,7 +234,9 @@ class TestSoloRollGameCounts:
         self, by_name: dict[str, list[CERoll]]
     ):
         rolls = by_name.get("Fourward Thinking", [])
-        lo, hi = ROLL_GAME_COUNT_EXPECTATIONS["Fourward Thinking"].range
+        count_range = ROLL_GAME_COUNT_EXPECTATIONS["Fourward Thinking"].range
+        assert count_range is not None
+        lo, hi = count_range
         bad = _out_of_range(rolls, lo, hi)
         assert not bad, (
             f"{len(bad)} 'Fourward Thinking' rolls have a game count outside [{lo}, {hi}]:\n"
@@ -232,6 +248,7 @@ class TestSoloRollGameCounts:
     ):
         won = _rolls_won(by_name.get("Fourward Thinking", []))
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Fourward Thinking"].won_fixed
+        assert expected is not None
         bad = _wrong_count(won, expected)
         assert not bad, (
             f"{len(bad)} won 'Fourward Thinking' rolls have wrong game count "
@@ -246,6 +263,7 @@ class TestCoopRollGameCounts:
     def test_destiny_alignment_has_two_games(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("Destiny Alignment", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Destiny Alignment"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Destiny Alignment' rolls have the wrong game count "
@@ -255,6 +273,7 @@ class TestCoopRollGameCounts:
     def test_soul_mates_has_one_game(self, by_name: dict[str, list[CERoll]]):
         rolls = by_name.get("Soul Mates", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Soul Mates"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Soul Mates' rolls have the wrong game count:\n{_ids(bad)}"
@@ -265,6 +284,7 @@ class TestCoopRollGameCounts:
     ):
         rolls = by_name.get("Teamwork Makes the Dream Work", [])
         expected = ROLL_GAME_COUNT_EXPECTATIONS["Teamwork Makes the Dream Work"].fixed
+        assert expected is not None
         bad = _wrong_count(rolls, expected)
         assert not bad, (
             f"{len(bad)} 'Teamwork Makes the Dream Work' rolls have the wrong game "
@@ -311,6 +331,7 @@ class TestCrossRollConsistency:
             )
         }
         for name, max_games in checks.items():
+            assert max_games is not None
             active = _rolls_active(by_name.get(name, []))
             bad = _out_of_range(active, 1, max_games)
             assert not bad, (
