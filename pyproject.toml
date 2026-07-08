@@ -12,3 +12,10 @@ select = ["E4", "E7", "E9", "F", "S", "B", "I", "UP", "T20", "RUF", "C4", "SIM",
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    "test.py",
+    "main.py",  # calls client.run() unconditionally at import time; not unit-testable without heavy mocking (see scripts/smoke_test_imports.py)
+    ".venv/*",
+]

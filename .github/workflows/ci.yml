@@ -106,3 +106,28 @@ jobs:
         run: pip install pip-audit
       - name: Run pip-audit
         run: pip-audit -r requirements.txt
+
+  coverage:
+    name: Coverage floor (pytest-cov)
+    runs-on: ubuntu-latest
+    # Report-only for now: confirm this passes cleanly on real PRs before
+    # flipping continue-on-error to false to make it a hard gate. Floor is
+    # set a few points below the current ~55% production-code coverage
+    # (tests/, test.py, and main.py excluded via [tool.coverage.run] in
+    # pyproject.toml) so normal fluctuation doesn't flap CI -- raise it
+    # over time as coverage genuinely improves.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Create dummy .env file
+        run: |
+          echo "SUPABASE_URL=https://dummy.supabase.co" > .env
+          echo "SUPABASE_SECRET_KEY=dummy" >> .env
+      - name: Run pytest with coverage floor
+        run: pytest --ignore=tests/integration --cov=. --cov-report=term --cov-fail-under=50
