@@ -359,23 +359,6 @@ class CERoll:
         "Designates whether the roll was chosen for Jarvis's bonus (I don't even know what it is)"
         return self._lucky
 
-    def __status_mongo_to_supabase(self):
-        if (self.init_time == 0 and self.due_time is None) or self.games is None:
-            return "won_legacy"
-        match self.status:
-            case "current":
-                return "current"
-            case "failed":
-                return "failed"
-            case "pending":
-                return "pending"
-            case "removed":
-                return "removed"
-            case "waiting":
-                return "between_stages"
-            case "won":
-                return "won"
-
     # ==== derived / boolean state properties ====
 
     @property
