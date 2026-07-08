@@ -569,7 +569,7 @@ class CERoll:
 
     def rolled_categories(self, database_name: list[CEGame]) -> list[CATEGORIES]:
         "Returns a list of the categories that have been rolled so far."
-        # TODO casino fix: this does not work with dual categories
+
         _categories = set()
         for _game in self.games:
             _game_supa = hm.get_item_from_list(_game, database_name)
