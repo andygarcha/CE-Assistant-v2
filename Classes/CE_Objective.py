@@ -71,7 +71,8 @@ class CEObjective:
         """Returns the name of this objective."""
         return self._name
 
-    def uncleared_name(self) -> str:
+    @property
+    def name_uncleared(self) -> str:
         "Returns the name of this objective without the 'UNCLEARED' nonsense."
         if not self.is_uncleared():
             return self.name

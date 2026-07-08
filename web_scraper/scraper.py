@@ -1429,7 +1429,7 @@ def create_update_updated_game(
                 (
                     old_objective.is_uncleared()
                     and not new_objective.is_uncleared()
-                    and (old_objective.uncleared_name() != new_objective.name)
+                    and (old_objective.name_uncleared != new_objective.name)
                 )
                 or not old_objective.is_uncleared()
                 or new_objective.is_uncleared()
