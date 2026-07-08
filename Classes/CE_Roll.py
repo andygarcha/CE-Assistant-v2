@@ -900,18 +900,6 @@ class CERoll:
                     return False
             return True
 
-        # winner takes all
-        if self.roll_name == "Winner Takes All":
-            if partner is None:
-                logger.error(
-                    "When evaluating if %s is won, partner was None.", self.roll_name
-                )
-                raise Exception
-            game = self.games[0]
-            main_won = user.has_completed_game(game, database_name)
-            partner_won = partner.has_completed_game(game, database_name)
-            return main_won or partner_won
-
         # destiny alignment
         if self.roll_name == "Destiny Alignment":
             if partner is None:
@@ -934,27 +922,8 @@ class CERoll:
                 self.games[0], database_name
             ) and partner.has_completed_game(self.games[0], database_name)
 
-        # game theory
-        if self.roll_name == "Game Theory":
-            if partner is None:
-                logger.error(
-                    "When evaluating if %s is won, partner was None.", self.roll_name
-                )
-                raise Exception
-            return user.has_completed_game(
-                self.games[0], database_name
-            ) and partner.has_completed_game(self.games[1], database_name)
-
-            """
-            # multistage rolls
-            elif(self.is_multi_stage() and not self.in_final_stage()) : return False
-            """
-
         # all other rolls
         return all(user.has_completed_game(game, database_name) for game in self.games)
-
-        # TODO: finish this function
-        return NotImplemented
 
     def casino_increase(self) -> int:
         "Returns the number of casino points the user would gain if the roll is won."
