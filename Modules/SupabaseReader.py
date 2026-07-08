@@ -421,7 +421,7 @@ def get_database_user() -> list[CEUser]:
     return _users
 
 
-def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
+def get_users_bulk(ce_ids: list[str], include_rolls=False) -> list[CEUser]:
     if not ce_ids:
         return []
 
@@ -786,7 +786,9 @@ def bulk_dump_users(
     - for each batch: collect users, userGames, and userObjectives
     - bulk upsert users, userGames, and userObjectives
     - optional `pause_seconds` between batches to avoid overwhelming the server
-    - rolls are dumped individually (per user) after batch
+
+    Rolls are not touched here -- they're written independently via
+    `dump_roll`/`bulk_dump_rolls`, never through a `CEUser` object.
     """
     if not users:
         return
@@ -882,11 +884,6 @@ def bulk_dump_users(
         if user_objectives_payload:
             supabase.table("userObjectives").upsert(user_objectives_payload).execute()
             LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
-
-        # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
-        for user in batch:
-            for roll in user.rolls:
-                dump_roll(roll)
 
         # small pause to avoid overloading the server
         if pause_seconds and (i + batch_size) < len(users):
