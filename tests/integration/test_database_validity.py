@@ -35,6 +35,11 @@ def by_name(all_rolls: list[CERoll]) -> dict[str, list[CERoll]]:
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+# Sentinel game_id used for "blank"/removed-game slots in rollGames. Multiple
+# blank slots in the same roll legitimately share this ID, so it's excluded
+# from duplicate-game detection.
+_PLACEHOLDER_GAME_ID = "00000000-0000-0000-0000-000000000000"
+
 
 def _wrong_count(rolls: list[CERoll], expected: int) -> list[CERoll]:
     return [r for r in rolls if len(r.games) != expected]
@@ -55,6 +60,16 @@ def _rolls_won(rolls: list[CERoll]) -> list[CERoll]:
 
 def _rolls_active(rolls: list[CERoll]) -> list[CERoll]:
     return [r for r in rolls if r.status in ("current", "between_stages", "pending")]
+
+
+def _is_legacy(roll: CERoll) -> bool:
+    """A roll with no init/due/completed time is a legacy row predating
+    those fields being tracked, so timing/consistency checks don't apply."""
+    return (
+        roll.init_time is None
+        and roll.due_time is None
+        and roll.completed_time is None
+    )
 
 
 # ── structural checks ─────────────────────────────────────────────────────────
@@ -84,7 +99,11 @@ class TestStructural:
         )
 
     def test_no_roll_has_duplicate_games(self, all_rolls: list[CERoll]):
-        bad = [r for r in all_rolls if len(r.games) != len(set(r.games))]
+        bad = []
+        for r in all_rolls:
+            real_games = [g for g in r.games if g != _PLACEHOLDER_GAME_ID]
+            if len(real_games) != len(set(real_games)):
+                bad.append(r)
         assert not bad, f"{len(bad)} rolls contain duplicate game IDs:\n{_ids(bad)}"
 
     def test_all_game_ids_are_non_empty(self, all_rolls: list[CERoll]):
@@ -303,7 +322,11 @@ class TestCrossRollConsistency:
             "Teamwork Makes the Dream Work",
         )
         for name in co_op_names:
-            bad = [r for r in by_name.get(name, []) if not r.partner_ce_id]
+            bad = [
+                r
+                for r in by_name.get(name, [])
+                if not r.partner_ce_id and not _is_legacy(r)
+            ]
             assert not bad, (
                 f"{len(bad)} '{name}' rolls are missing a partner_ce_id:\n{_ids(bad)}"
             )
