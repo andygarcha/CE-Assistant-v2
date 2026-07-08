@@ -202,7 +202,7 @@ class CEUserGame:
             return False
         return self.__is_completed_helper(game, ignore_zero_pos=True)
 
-    def get_category_v2(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
+    def get_categories(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
         """Returns the category of this game."""
         for _game in database_name:
             if _game.ce_id == self.ce_id:

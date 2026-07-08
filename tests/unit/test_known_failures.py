@@ -102,23 +102,23 @@ def test_is_curatable_low_percentage_ten_votes():
     assert ci.is_curatable() is False
 
 
-# ── CEUserGame.get_category_v2 (CE_User_Game.py:136-143) ─────────────────────
+# ── CEUserGame.get_categories (CE_User_Game.py:136-143) ─────────────────────
 # Bug: raises NotImplementedError unconditionally (TODO casino fix).
 # Expected: returns the category string for the game.
 
 
-def test_get_category_v2_returns_category():
+def test_get_categories_returns_category():
     game = make_game(
         ce_id="game-001-0000-0000-000000000000", categories=["Action", "Arcade"]
     )
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
-    result = ug.get_category_v2([game])
+    result = ug.get_categories([game])
     assert result is not None
 
 
-def test_get_category_v2_returns_correct_category():
+def test_get_categories_returns_correct_category():
     game = make_game(
         ce_id="game-001-0000-0000-000000000000", categories=["Strategy", "First-Person"]
     )
     ug = make_user_game(ce_id="game-001-0000-0000-000000000000")
-    assert ug.get_category_v2([game]) == ["Strategy", "First-Person"]
+    assert ug.get_categories([game]) == ["Strategy", "First-Person"]

@@ -868,7 +868,7 @@ class CERoll:
             for game in user.owned_games:
                 if game.ce_id in self.games and game.is_completed(database_name):
                     # TODO: casino fix doesn't work with dual categories
-                    __category_check = game.get_category_v2(database_name)
+                    __category_check = game.get_categories(database_name)
                     if __category_check is None:
                         raise Exception(
                             "The correct game was not passed in through database_name."
