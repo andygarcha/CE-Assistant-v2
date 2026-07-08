@@ -77,29 +77,6 @@ class TestGetUserPoints:
         )
 
 
-# ── has_completed_objective ───────────────────────────────────────────────────
-
-
-class TestHasCompletedObjective:
-    def test_found_by_id_and_points(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective(OBJ_ID, 10) is True
-
-    def test_wrong_points_returns_false(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective(OBJ_ID, 5) is False
-
-    def test_wrong_id_returns_false(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective("wrong-id", 10) is False
-
-    def test_empty_objectives_returns_false(self):
-        assert (
-            make_user_game(user_objectives=[]).has_completed_objective(OBJ_ID, 10)
-            is False
-        )
-
-
 # ── is_completed ──────────────────────────────────────────────────────────────
 
 

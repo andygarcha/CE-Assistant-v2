@@ -867,7 +867,6 @@ class CERoll:
                 categories[category] = 0
             for game in user.owned_games:
                 if game.ce_id in self.games and game.is_completed(database_name):
-                    
                     # assumption here is that no dual-category games were rolled.
                     __category_check = game.get_categories(database_name)
                     if __category_check is None:

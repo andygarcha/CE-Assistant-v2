@@ -71,22 +71,6 @@ class CEUserGame:
             total_points += objective.user_points
         return total_points
 
-    def get_user_community_objectives(self) -> list[CEUserObjective]:
-        """Returns the array of Community :class:`CEUserObjective`'s
-        associated with this game."""
-        p = []
-        for obj in self.user_objectives:
-            if obj.type == "Community":
-                p.append(obj)
-        return p
-
-    def has_completed_objective(self, objective_id: str, points: int) -> bool:
-        "Returns true if this user has completed the specified objective."
-        for obj in self.user_objectives:
-            if obj.ce_id == objective_id and obj.user_points == points:
-                return True
-        return False
-
     @property
     def name(self):
         """Returns the name of this game."""
@@ -99,13 +83,6 @@ class CEUserGame:
         self._user_objectives.append(objective)
 
     # ----------- other methods ------------
-
-    async def get_regular_game(self) -> CEGame | None:
-        """Returns the regular :class:`CEGame` object associated with this game.
-        \n**NOTE**: uses bad method"""
-        import Modules.CEAPIReader as CEAPIReader
-
-        return await CEAPIReader.get_game(self.ce_id)
 
     def is_completed(
         self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame

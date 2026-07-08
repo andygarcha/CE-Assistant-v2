@@ -153,7 +153,7 @@ class CEObjective:
                 self.achievement_ce_ids, new_objective.achievement_ce_ids
             )
         )
-    
+
     # ==== idk where you belong ====
 
     def to_dict(self) -> dict:
@@ -182,4 +182,3 @@ class CEObjective:
             "requirements": self.requirements,
             "partial_value": self.partial_points,
         }
-
