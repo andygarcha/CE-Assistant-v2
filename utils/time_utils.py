@@ -13,7 +13,7 @@ def months_to_days(num_months: int) -> int:
     # function output = number of days between now and input months away
     if num_months == 0:
         return 0
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.UTC)
     end_year = now.year + (now.month + num_months - 1) // 12
     end_month = (now.month + num_months - 1) % 12 + 1
     end_date = datetime.date(
@@ -83,25 +83,30 @@ def get_unix(days=0, minutes=None, months=None, old_unix=None) -> int:
 
 def current_month_str() -> str:
     "Returns the name of the current month."
-    return datetime.datetime.now().strftime("%B")
+    return datetime.datetime.now(datetime.UTC).strftime("%B")
 
 
 def current_month_num() -> int:
     "The number of the current month."
-    return datetime.datetime.now().month
+    return datetime.datetime.now(datetime.UTC).month
 
 
 def current_year_num() -> int:
-    return datetime.datetime.now().year
+    return datetime.datetime.now(datetime.UTC).year
 
 
 def previous_month_str() -> str:
     "Returns the name of the previous month."
-    current_month_num = datetime.datetime.now().month
+    current_month_num = datetime.datetime.now(datetime.UTC).month
     previous_month_num = (current_month_num - 1) if current_month_num != 1 else 12
-    return datetime.datetime(year=2024, month=previous_month_num, day=1).strftime("%B")
+    return datetime.datetime(
+        year=2024, month=previous_month_num, day=1, tzinfo=datetime.UTC
+    ).strftime("%B")
 
 
 def cetimestamp_to_datetime(timestamp: str) -> datetime.datetime:
-    "Takes in a CE timestamp and returns a datetime."
-    return datetime.datetime.strptime(str(timestamp[:-5:]), "%Y-%m-%dT%H:%M:%S")
+    "Takes in a CE timestamp (UTC, trailing 'Z') and returns a UTC-aware datetime."
+    naive = datetime.datetime.strptime(  # noqa: DTZ007 -- converted to UTC-aware on the next line
+        str(timestamp[:-5:]), "%Y-%m-%dT%H:%M:%S"
+    )
+    return naive.replace(tzinfo=datetime.UTC)

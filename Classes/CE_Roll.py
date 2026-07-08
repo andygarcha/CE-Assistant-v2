@@ -5,11 +5,11 @@ import logging
 from typing import TYPE_CHECKING, Literal, get_args
 
 import Modules.hm as hm
-from utils.game_utils import CATEGORIES
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
+    from utils.game_utils import CATEGORIES
 
 logger = logging.getLogger(__name__)
 

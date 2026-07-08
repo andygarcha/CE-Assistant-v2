@@ -51,7 +51,7 @@ async def deliver_updates(client: discord.Client) -> int:
                 embed.set_image(url=update["image"])
             else:
                 embed.set_image(url=hm.SCREENSHOT_FAILED_IMAGE)
-            embed.timestamp = datetime.datetime.now()
+            embed.timestamp = datetime.datetime.now(datetime.UTC)
             embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
             embed.set_footer(text="CE Assistant", icon_url=hm.FINAL_CE_ICON)
             sent = await hm.send_message(client, channel, embed=embed)

@@ -543,7 +543,7 @@ async def force_add(
             user_ce_id=user.ce_id,
             games=None,
             status="won",
-            completed_time=datetime.datetime.now(),
+            completed_time=datetime.datetime.now(datetime.UTC),
             _id=str(uuid.uuid4()),
         )
     )

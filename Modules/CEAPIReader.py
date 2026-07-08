@@ -70,7 +70,7 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         _type: str = str(objective["type"]).capitalize()
         ce_objective = CEObjective(
             ce_id=objective["id"],
-            objective_type=cast(hm.OBJECTIVE_TYPES, _type),
+            objective_type=cast("hm.OBJECTIVE_TYPES", _type),
             description=objective["description"],
             point_value=objective["points"],
             name=objective["name"],
@@ -133,7 +133,7 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         game_name=json_response["name"],
         platform=json_response["platform"],
         platform_id=json_response["platformId"],
-        categories=cast(list[hm.CATEGORIES], _categories),
+        categories=cast("list[hm.CATEGORIES]", _categories),
         objectives=all_objectives,
         last_updated=None,
         full_data=json_response,
@@ -366,10 +366,10 @@ async def get_api_users_all(
     if database_user is not None and len(database_user) > 0:
         registered_ids: list[str] = []
         if isinstance(database_user[0], CEUser):
-            _db_user_casted = cast(list[CEUser], database_user)
+            _db_user_casted = cast("list[CEUser]", database_user)
             registered_ids = [user.ce_id for user in _db_user_casted]
         elif isinstance(database_user[0], str):
-            _db_user_casted = cast(list[str], database_user)
+            _db_user_casted = cast("list[str]", database_user)
             registered_ids = _db_user_casted
         else:
             database_user = None
@@ -483,7 +483,7 @@ def _ce_to_user(json_response: dict) -> CEAPIUser | None:
         new_objective = CEUserObjective(
             ce_id=objective["objective"]["id"],
             game_ce_id=objective["objective"]["gameId"],
-            type=cast(hm.OBJECTIVE_TYPES, _type),
+            type=cast("hm.OBJECTIVE_TYPES", _type),
             user_points=user_points,
             name=objective["objective"]["name"],
         )
@@ -502,7 +502,7 @@ def _ce_to_user(json_response: dict) -> CEAPIUser | None:
         rolls=[],
         display_name=json_response["displayName"],
         avatar=json_response["avatar"],
-        last_updated=datetime.datetime.now(),
+        last_updated=datetime.datetime.now(datetime.UTC),
         steam_id=steam_id,
         full_data=json_response,
     )

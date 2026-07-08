@@ -7,8 +7,7 @@ import os as _os
 import time
 import typing
 import uuid
-from collections.abc import Sequence
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import httpx
 from dotenv import load_dotenv
@@ -21,8 +20,12 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.OtherClasses import CEInput
 from Modules import LocalCache, hm
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from Classes.OtherClasses import CEInput
 
 load_dotenv()
 SUPABASE_URL = _os.getenv("SUPABASE_URL")
@@ -1495,7 +1498,7 @@ def __supabase_to_game(
         game_name=game["name"],
         platform=game["platform"],
         platform_id=game["platform_id"],
-        categories=cast(list[hm.CATEGORIES], categories),
+        categories=cast("list[hm.CATEGORIES]", categories),
         last_updated=game["updated_at_CE"],
         banner=game["image_header"],
         objectives=objectives,

@@ -326,7 +326,7 @@ async def update_games(
 
     updates: list[UpdateMessageForScraperProcess] = []
     objectives_removed: list[str] = []
-    last_run: datetime.datetime = datetime.datetime(2000, 1, 1)
+    last_run: datetime.datetime = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
     _updated_game_ids: set = set()
 
     # Step 0: Determine the last time the loop ran

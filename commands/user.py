@@ -1,9 +1,13 @@
 """This module contains all the commands about users for the bot."""
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord import app_commands
 
-from Classes.CE_User import CEUser
+if TYPE_CHECKING:
+    from Classes.CE_User import CEUser
+
 from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
 
 

@@ -43,16 +43,16 @@ class TestMonthsToDays:
 class TestCETimestampToDatetime:
     def test_parses_standard_timestamp(self):
         result = cetimestamp_to_datetime("2024-01-15T12:30:45.000Z")
-        assert result == datetime.datetime(2024, 1, 15, 12, 30, 45)
+        assert result == datetime.datetime(2024, 1, 15, 12, 30, 45, tzinfo=datetime.UTC)
 
     def test_parses_midnight(self):
         result = cetimestamp_to_datetime("2023-12-31T00:00:00.000Z")
-        assert result == datetime.datetime(2023, 12, 31, 0, 0, 0)
+        assert result == datetime.datetime(2023, 12, 31, 0, 0, 0, tzinfo=datetime.UTC)
 
     def test_fractional_seconds_ignored(self):
         # Only the .000 part (5 chars) is stripped — fractional digits don't bleed through
         result = cetimestamp_to_datetime("2024-06-01T08:15:30.999Z")
-        assert result == datetime.datetime(2024, 6, 1, 8, 15, 30)
+        assert result == datetime.datetime(2024, 6, 1, 8, 15, 30, tzinfo=datetime.UTC)
 
     def test_returns_datetime_object(self):
         result = cetimestamp_to_datetime("2024-03-20T18:45:00.000Z")
@@ -132,7 +132,7 @@ class TestGetDatetime:
         assert result == expected
 
     def test_naive_old_datetime_gets_utc_applied(self):
-        naive = datetime.datetime(2024, 6, 15, 12, 0, 0)  # no tzinfo
+        naive = datetime.datetime(2024, 6, 15, 12, 0, 0)  # noqa: DTZ001 -- intentionally naive; this test verifies get_datetime() promotes it to UTC
         result = get_datetime(days=1, old_datetime=naive)
         expected = datetime.datetime(2024, 6, 16, 12, 0, 0, tzinfo=datetime.UTC)
         assert result == expected

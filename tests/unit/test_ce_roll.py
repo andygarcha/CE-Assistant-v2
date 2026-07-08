@@ -124,12 +124,12 @@ class TestIsExpired:
 
     def test_naive_past_datetime_is_expired(self):
         roll = make_roll()
-        roll._due_time = datetime.datetime(2000, 1, 1)  # no tzinfo
+        roll._due_time = datetime.datetime(2000, 1, 1)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         assert roll.is_expired is True
 
     def test_naive_future_datetime_not_expired(self):
         roll = make_roll()
-        roll._due_time = datetime.datetime(2099, 1, 1)  # no tzinfo
+        roll._due_time = datetime.datetime(2099, 1, 1)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         assert roll.is_expired is False
 
 
@@ -320,7 +320,7 @@ class TestNormalizeDatetime:
         assert make_roll()._normalize_datetime(None) is None
 
     def test_naive_datetime_becomes_utc(self):
-        naive = datetime.datetime(2024, 6, 1, 12, 0, 0)
+        naive = datetime.datetime(2024, 6, 1, 12, 0, 0)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         result = make_roll()._normalize_datetime(naive)
         assert isinstance(result, datetime.datetime)
         assert result.tzinfo is not None

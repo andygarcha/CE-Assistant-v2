@@ -6,7 +6,7 @@ everything else gets a safe default.
 
 import datetime
 import uuid
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch as _patch
 
 from Classes.CE_Game import CEAPIGame, CEGame
@@ -15,7 +15,9 @@ from Classes.CE_Roll import ROLL_STATUS, CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Modules import hm
+
+if TYPE_CHECKING:
+    from Modules import hm
 
 # Prevent SupabaseReader from making network calls at import time.
 # Must run before any test module imports SupabaseReader (directly or transitively).
@@ -74,7 +76,7 @@ def make_user_objective(
     return CEUserObjective(
         ce_id=ce_id,
         game_ce_id=game_ce_id,
-        type=cast(hm.OBJECTIVE_TYPES, obj_type),
+        type=cast("hm.OBJECTIVE_TYPES", obj_type),
         user_points=user_points,
         name=name,
     )
@@ -151,10 +153,10 @@ def make_roll(
     tier_num: int | None = None,
 ) -> CERoll:
     return CERoll(
-        roll_name=cast(hm.ALL_ROLL_EVENT_NAMES, roll_name),
+        roll_name=cast("hm.ALL_ROLL_EVENT_NAMES", roll_name),
         user_ce_id="user-001-0000-0000-000000000000",
         games=games if games is not None else ["game-001-0000-0000-000000000000"],
-        status=cast(ROLL_STATUS, status),
+        status=cast("ROLL_STATUS", status),
         partner_ce_id=partner_ce_id,
         init_time=init_time
         if init_time is not None

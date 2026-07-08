@@ -15,11 +15,9 @@ import discord
 
 import Modules.hm as hm
 
-# -- local --
-from Classes.CE_Roll import CERoll
-
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
+    from Classes.CE_Roll import CERoll
     from Classes.CE_User import CEUser
 
 
@@ -38,7 +36,9 @@ async def get_roll_embeds(
     # -- set up the intro embed --
     embeds.append(
         discord.Embed(
-            title=roll.roll_name, timestamp=datetime.datetime.now(), color=0x000000
+            title=roll.roll_name,
+            timestamp=datetime.datetime.now(datetime.UTC),
+            color=0x000000,
         )
     )
     embeds[0].set_footer(
@@ -108,7 +108,7 @@ async def get_game_embed(
         url=f"https://cedb.me/game/{game_id}",
         description="To be determined.",
         color=0x000000,
-        timestamp=datetime.datetime.now(),
+        timestamp=datetime.datetime.now(datetime.UTC),
     )
     embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
 
@@ -280,7 +280,7 @@ async def get_user_embeds(
     # -- two embeds: summary, completions --
     # summary
     summary_embed = discord.Embed(
-        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now()
+        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now(datetime.UTC)
     )
     summary_embed.add_field(
         name="User",
@@ -306,7 +306,7 @@ async def get_user_embeds(
 
     # recent
     recent_embed = discord.Embed(
-        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now()
+        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now(datetime.UTC)
     )
     recent_embed.add_field(
         name="Recent Completions", value=api_user.most_recent_objectives_str()

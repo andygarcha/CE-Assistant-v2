@@ -9,6 +9,8 @@ from Modules import http_session
 from Modules.Screenshot import Screenshot
 
 if TYPE_CHECKING:
+    from selenium import webdriver
+
     from Classes.CE_Game import CEGame
 
 
@@ -17,7 +19,6 @@ import io
 
 from bs4 import BeautifulSoup, Tag
 from PIL import Image
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 logger = logging.getLogger(__name__)

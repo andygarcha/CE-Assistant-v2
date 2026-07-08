@@ -2,7 +2,7 @@ import datetime
 import logging
 import uuid
 from collections.abc import Sequence
-from typing import cast, get_args
+from typing import TYPE_CHECKING, cast, get_args
 
 import aiohttp
 
@@ -752,7 +752,8 @@ class CEAPIUser(CEUser):
         NUM_OF_OBJECTIVES = 3
 
         # imports
-        from Classes.CE_User_Objective import CEUserObjective
+        if TYPE_CHECKING:
+            from Classes.CE_User_Objective import CEUserObjective
 
         # grab all the data
         ce_ids: list[str] = []
@@ -824,14 +825,15 @@ class CEAPIUser(CEUser):
         curr_month_points = 0
         prev_month_points = 0
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         current_month_datetime = datetime.datetime(
-            year=now.year, month=now.month, day=1
+            year=now.year, month=now.month, day=1, tzinfo=datetime.UTC
         )
         previous_month_datetime = datetime.datetime(
             year=(now.year if now.month != 1 else now.year - 1),
             month=(now.month - 1 if now.month != 1 else 12),
             day=1,
+            tzinfo=datetime.UTC,
         )
 
         for api_objective in self.api_user_objectives:
@@ -894,7 +896,7 @@ class CEAPIUser(CEUser):
                 return_str += "\n"
 
             # add the actual emoji and value
-            return_str += f"{hm.get_emoji(cast(hm.CATEGORIES, genre_name))}: {genre_dict[genre_name]}\t"
+            return_str += f"{hm.get_emoji(cast('hm.CATEGORIES', genre_name))}: {genre_dict[genre_name]}\t"
 
         # set up tiers
         return_str += "\n"
