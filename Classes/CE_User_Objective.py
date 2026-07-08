@@ -27,7 +27,7 @@ class CEUserObjective:
             f"\nObjective Type: {self.type}"
             f"\nUser Points: {self.user_points}"
         )
-    
+
     # ==== core properties ====
 
     @property
