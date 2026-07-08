@@ -162,7 +162,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         return await debug(interaction, user)
 
 
-
 async def test(interaction: discord.Interaction):
     """
     The test function.

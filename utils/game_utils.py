@@ -212,7 +212,7 @@ def get_rollable_game(
 
         # too pricey
         if (
-            price_restriction 
+            price_restriction
             and price_limit is not None
             and game["price"] > (price_limit * 100)
         ):
@@ -226,7 +226,7 @@ def get_rollable_game(
 
         # too many hours
         if (
-            hours_restriction 
+            hours_restriction
             and completion_limit is not None
             and game["sh_hours"] > (completion_limit * 60)
         ):

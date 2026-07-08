@@ -742,9 +742,7 @@ class CEInput:
         if self.curator_count() == 0:
             return 0
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
-        return (
-            float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
-        )
+        return float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
 
     def curator_count(self) -> int:
         "Returns the number of people who have given curator inputs."

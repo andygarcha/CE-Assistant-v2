@@ -574,7 +574,10 @@ class CERoll:
         if self.roll_name not in hm.MULTI_STAGE_ROLLS_TUPLE:
             return
 
-        if self.roll_name == "Two Week T2 Streak" or self.roll_name == 'Two "Two Week T2 Streak" Streak':
+        if (
+            self.roll_name == "Two Week T2 Streak"
+            or self.roll_name == 'Two "Two Week T2 Streak" Streak'
+        ):
             self.due_time = 7
         elif self.roll_name == "Fourward Thinking":
             self.due_time = len(self.games) * 7

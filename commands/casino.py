@@ -78,7 +78,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         return await check_rolls(interaction, friend)
 
 
-
 # -- command implementations -----------------------------------------------------------------------------
 async def solo_roll(
     interaction: discord.Interaction,

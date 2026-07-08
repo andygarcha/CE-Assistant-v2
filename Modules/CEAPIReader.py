@@ -528,5 +528,5 @@ async def get_api_page_data(
             if len(json_response) == 0:
                 return None
             return _ce_to_game(json_response=json_response)
-    
+
     raise ValueError(f"Invalid `type` passed into get_api_page_data: {type}")
