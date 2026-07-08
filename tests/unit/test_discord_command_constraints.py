@@ -1,9 +1,10 @@
 """Validates that every registered slash command meets Discord's API character limits."""
 
+from types import SimpleNamespace
+
 import discord
 import pytest
 from discord import app_commands
-from types import SimpleNamespace
 
 from commands import load_commands
 

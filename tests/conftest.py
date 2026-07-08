@@ -5,17 +5,19 @@ everything else gets a safe default.
 """
 
 import datetime
-from typing import cast
-from unittest.mock import patch as _patch
 import uuid
+from typing import TYPE_CHECKING, cast
+from unittest.mock import patch as _patch
 
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Game import CEGame, CEAPIGame
-from Classes.CE_Roll import CERoll, ROLL_STATUS
+from Classes.CE_Roll import ROLL_STATUS, CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Modules import hm
+
+if TYPE_CHECKING:
+    from Modules import hm
 
 # Prevent SupabaseReader from making network calls at import time.
 # Must run before any test module imports SupabaseReader (directly or transitively).
@@ -74,7 +76,7 @@ def make_user_objective(
     return CEUserObjective(
         ce_id=ce_id,
         game_ce_id=game_ce_id,
-        type=cast(hm.OBJECTIVE_TYPES, obj_type),
+        type=cast("hm.OBJECTIVE_TYPES", obj_type),
         user_points=user_points,
         name=name,
     )
@@ -135,7 +137,7 @@ def make_user(
         rolls=rolls if rolls is not None else [],
         display_name=display_name,
         avatar="",
-        last_updated=datetime.datetime.now(datetime.timezone.utc),
+        last_updated=datetime.datetime.now(datetime.UTC),
     )
 
 
@@ -151,14 +153,14 @@ def make_roll(
     tier_num: int | None = None,
 ) -> CERoll:
     return CERoll(
-        roll_name=cast(hm.ALL_ROLL_EVENT_NAMES, roll_name),
+        roll_name=cast("hm.ALL_ROLL_EVENT_NAMES", roll_name),
         user_ce_id="user-001-0000-0000-000000000000",
         games=games if games is not None else ["game-001-0000-0000-000000000000"],
-        status=cast(ROLL_STATUS, status),
+        status=cast("ROLL_STATUS", status),
         partner_ce_id=partner_ce_id,
         init_time=init_time
         if init_time is not None
-        else datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+        else datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
         due_time=due_time,
         completed_time=completed_time,
         rerolls=rerolls,

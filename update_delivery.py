@@ -11,9 +11,7 @@ logger = logging.getLogger(__name__)
 async def deliver_updates(client: discord.Client) -> int:
     last_run = SupabaseReader.get_last_loop(offset=False)
     ts = int(last_run.timestamp())
-    if datetime.datetime.now(datetime.timezone.utc) - last_run > datetime.timedelta(
-        hours=1
-    ):
+    if datetime.datetime.now(datetime.UTC) - last_run > datetime.timedelta(hours=1):
         check_msg = f":mag: Checking, last scraper loop at <t:{ts}:f> (<t:{ts}:R>)."
         check_msg += "\n:warning: Last scraper loop was more than an hour ago!"
         logger.info("Checking, last scraper loop at %s.", last_run)
@@ -53,7 +51,7 @@ async def deliver_updates(client: discord.Client) -> int:
                 embed.set_image(url=update["image"])
             else:
                 embed.set_image(url=hm.SCREENSHOT_FAILED_IMAGE)
-            embed.timestamp = datetime.datetime.now()
+            embed.timestamp = datetime.datetime.now(datetime.UTC)
             embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
             embed.set_footer(text="CE Assistant", icon_url=hm.FINAL_CE_ICON)
             sent = await hm.send_message(client, channel, embed=embed)

@@ -1,4 +1,5 @@
 import datetime
+
 import pytest
 
 from tests.conftest import (
@@ -14,7 +15,7 @@ GAME_ID_A = "game-aaa-0000-0000-000000000000"
 GAME_ID_B = "game-bbb-0000-0000-000000000000"
 OBJ_ID = "obj-0001-0000-0000-000000000000"
 
-_PAST = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc)
+_PAST = datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)
 
 
 def _db_game(game_id: str, points: int = 100):

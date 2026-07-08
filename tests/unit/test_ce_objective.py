@@ -3,7 +3,6 @@ import pytest
 from Classes.CE_Objective import CEObjective
 from tests.conftest import make_objective
 
-
 # ── constructor normalization ─────────────────────────────────────────────────
 
 

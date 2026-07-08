@@ -1,8 +1,9 @@
 from collections.abc import Mapping
 
+from Classes.CE_Game import CEGame
+
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_Game import CEGame
 from utils.game_utils import CATEGORIES
 
 
@@ -180,9 +181,7 @@ class CEUserGame:
             return False
         if len(user_pos) != len(game_pos):
             return False
-        if user_points != game_points:
-            return False
-        return True
+        return user_points == game_points
 
     def __is_overcompleted_helper(self, game: CEGame):
         """

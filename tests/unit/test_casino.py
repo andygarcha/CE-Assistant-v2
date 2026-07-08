@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from typing import get_args
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 from Classes.CE_User import CEUser
 from commands.casino import (
     RollResult,
@@ -18,8 +17,8 @@ from commands.casino import (
     roll_soulmates,
     roll_teamworkmakesthedreamwork,
     roll_triplethreat,
-    roll_twoweekt2streak,
     roll_twotwoweekt2streakstreak,
+    roll_twoweekt2streak,
     solo_roll,
 )
 from Modules import hm
@@ -225,7 +224,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -243,7 +242,7 @@ class TestRollOnehellofamonth:
         ]
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS[:5]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS[:5]),
         ):
             result = roll_onehellofamonth(db, EMPTY_DT, user, True, True)
         assert result.error is None
@@ -255,12 +254,13 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         # "Action" (first pick) fails immediately; the remaining 5 categories succeed
         choice_seq = ALL_CATS  # Action first, then the other 5
-        game_seq = [None] + GAME_IDS[
-            :25
+        game_seq = [
+            None,
+            *GAME_IDS[:25],
         ]  # None for Action's first call, then 25 successes
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -272,10 +272,10 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         # both "Action" and "Arcade" fail immediately
         choice_seq = ALL_CATS
-        game_seq = [None, None] + GAME_IDS  # first two category attempts fail
+        game_seq = [None, None, *GAME_IDS]  # first two category attempts fail
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None
@@ -284,10 +284,10 @@ class TestRollOnehellofamonth:
     def test_error_message_names_failed_categories(self):
         user = _user_with_completed("One Hell of a Week")
         choice_seq = ALL_CATS
-        game_seq = [None, None] + GAME_IDS
+        game_seq = [None, None, *GAME_IDS]
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is not None
@@ -303,8 +303,8 @@ class TestRollOnehellofamonth:
 
         # one failure: should recover
         with (
-            patch("Modules.hm.get_rollable_game", side_effect=[None] + GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("Modules.hm.get_rollable_game", side_effect=[None, *GAME_IDS[:25]]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -312,8 +312,8 @@ class TestRollOnehellofamonth:
         # two failures: should error
         user2 = _user_with_completed("One Hell of a Week")
         with (
-            patch("Modules.hm.get_rollable_game", side_effect=[None, None] + GAME_IDS),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("Modules.hm.get_rollable_game", side_effect=[None, None, *GAME_IDS]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user2, True, True)
         assert result.games is None
@@ -323,7 +323,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", return_value=None),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None
@@ -1146,7 +1146,7 @@ class TestRollDestinyalignment:
 # describe the required behaviour and will fail until the body is written.
 #
 # HOUR_LIMITS (per tier): [15, 40, 80, 160, None, None]
-# Tier 6 rolls from T5–T7.
+# Tier 6 rolls from T5-T7.
 
 
 _SOUL_MATES_HOUR_LIMITS = {1: 15, 2: 40, 3: 80, 4: 160, 5: None, 6: None}
@@ -1217,7 +1217,7 @@ class TestRollSoulmates:
         assert mock.call_args.kwargs["completion_limit"] == expected_hours
 
     def test_tier_6_passes_tier_number_6_to_get_rollable_game(self):
-        """Tier 6 in Soul Mates means 'T5–T7', which get_rollable_game handles
+        """Tier 6 in Soul Mates means 'T5-T7', which get_rollable_game handles
         when tier_number=6 is passed."""
         user = make_user(ce_id="user-001-0000-0000-000000000000")
         partner = make_user(ce_id="user-002-0000-0000-000000000000")

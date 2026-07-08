@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-import random
-from typing import Literal, get_args, TYPE_CHECKING
-from utils.general_utils import get_item_from_list
-from Modules import http_session
 import logging
+import secrets
+from typing import TYPE_CHECKING, Literal, get_args
+
+from Modules import http_session
+from utils.general_utils import get_item_from_list
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
@@ -30,9 +31,8 @@ def get_banned_games() -> list[str] | None:
 
     # return banned_game_ids
 
-    with open("./Assets/games_banned.json", "r") as f:
-        lines = json.load(f)
-    return lines
+    with open("./Assets/games_banned.json") as f:
+        return json.load(f)
 
 
 def get_rollable_game(
@@ -155,7 +155,7 @@ def get_rollable_game(
             for c in get_args(CATEGORIES):
                 database_tier_games.extend(database_tier[str(tn)][c])
 
-    random.shuffle(database_tier_games)
+    secrets.SystemRandom().shuffle(database_tier_games)
 
     # get banned games
     try:
@@ -211,20 +211,26 @@ def get_rollable_game(
                 continue
 
         # too pricey
-        if price_restriction and price_limit is not None:
-            if not game["price"] <= (price_limit * 100):
-                fails = False
-                for _user in user:
-                    if not _user.owns_game(game["ce_id"]):
-                        fails = True
-                        break
-                if fails:
-                    continue
+        if (
+            price_restriction
+            and price_limit is not None
+            and game["price"] > (price_limit * 100)
+        ):
+            fails = False
+            for _user in user:
+                if not _user.owns_game(game["ce_id"]):
+                    fails = True
+                    break
+            if fails:
+                continue
 
         # too many hours
-        if hours_restriction and completion_limit is not None:
-            if game["sh_hours"] > (completion_limit * 60):
-                continue
+        if (
+            hours_restriction
+            and completion_limit is not None
+            and game["sh_hours"] > (completion_limit * 60)
+        ):
+            continue
 
         # already completed
         fails = False

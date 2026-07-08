@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from web_scraper.scraper import stabilize_pending_updates
 
 

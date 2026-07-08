@@ -1,6 +1,6 @@
 from Classes.CE_Objective import CEObjective
-from web_scraper.scraper import create_update_new_game
 from tests.conftest import make_api_game, make_objective
+from web_scraper.scraper import create_update_new_game
 
 
 def _po(points: int, name: str = "Test PO") -> CEObjective:
