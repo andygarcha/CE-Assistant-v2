@@ -166,7 +166,7 @@ class CEObjective:
             "Requirements" : "Send proof to #proof-submission.",
             "Partial Points" : 10
         }"""
-        objective_dict = {
+        return {
             "name": self.name,
             "ce_id": self.ce_id,
             "value": self.point_value,
@@ -177,7 +177,6 @@ class CEObjective:
             "requirements": self.requirements,
             "partial_value": self.partial_points,
         }
-        return objective_dict
 
     def __str__(self):
         """String representation of this objective."""

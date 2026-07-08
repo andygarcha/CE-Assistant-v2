@@ -49,29 +49,27 @@ def get_datetime(
 
         if minutes is not None:
             return old_datetime + datetime.timedelta(minutes=minutes)
-        elif months is not None:
+        if months is not None:
             return old_datetime + datetime.timedelta(days=months_to_days(months))
-        else:
-            return old_datetime + datetime.timedelta(days=days)
+        return old_datetime + datetime.timedelta(days=days)
 
     # -- old datetime NOT passed --
     # return right now
     if days == "now":
         return datetime.datetime.now(datetime.UTC)
     # return the minutes
-    elif minutes is not None:
+    if minutes is not None:
         return datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=minutes)
     # return the months
-    elif months is not None:
+    if months is not None:
         return get_datetime(days=months_to_days(months))
     # return the days
-    elif days is None:
+    if days is None:
         return None
-    elif isinstance(days, str):
+    if isinstance(days, str):
         raise ValueError(f"days is a str but not = 'now'. {days=}")
 
-    else:
-        return datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=days)
+    return datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=days)
 
 
 def get_unix(days=0, minutes=None, months=None, old_unix=None) -> int:

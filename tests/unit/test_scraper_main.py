@@ -520,6 +520,7 @@ class TestLifecycleOrdering:
                     return "run-1"
                 if name == "get_pending_commands":
                     return []
+                return None
 
             return _inner
 

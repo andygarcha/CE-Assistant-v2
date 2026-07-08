@@ -32,8 +32,7 @@ def get_banned_games() -> list[str] | None:
     # return banned_game_ids
 
     with open("./Assets/games_banned.json") as f:
-        lines = json.load(f)
-    return lines
+        return json.load(f)
 
 
 def get_rollable_game(
@@ -212,20 +211,26 @@ def get_rollable_game(
                 continue
 
         # too pricey
-        if price_restriction and price_limit is not None:
-            if not game["price"] <= (price_limit * 100):
-                fails = False
-                for _user in user:
-                    if not _user.owns_game(game["ce_id"]):
-                        fails = True
-                        break
-                if fails:
-                    continue
+        if (
+            price_restriction 
+            and price_limit is not None
+            and game["price"] > (price_limit * 100)
+        ):
+            fails = False
+            for _user in user:
+                if not _user.owns_game(game["ce_id"]):
+                    fails = True
+                    break
+            if fails:
+                continue
 
         # too many hours
-        if hours_restriction and completion_limit is not None:
-            if game["sh_hours"] > (completion_limit * 60):
-                continue
+        if (
+            hours_restriction 
+            and completion_limit is not None
+            and game["sh_hours"] > (completion_limit * 60)
+        ):
+            continue
 
         # already completed
         fails = False

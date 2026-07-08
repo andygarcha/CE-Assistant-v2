@@ -383,9 +383,7 @@ class CERoll:
         """Returns true if this roll is co-op or pvp."""
         if self.partner_ce_id is not None and self.partner_ce_id != "":
             return True
-        if self.roll_name in hm.COOP_ROLL_EVENT_NAMES_TUPLE:
-            return True
-        return False
+        return self.roll_name in hm.COOP_ROLL_EVENT_NAMES_TUPLE
 
     @property
     def is_pvp(self) -> bool:
@@ -576,9 +574,7 @@ class CERoll:
         if self.roll_name not in hm.MULTI_STAGE_ROLLS_TUPLE:
             return
 
-        if self.roll_name == "Two Week T2 Streak":
-            self.due_time = 7
-        elif self.roll_name == 'Two "Two Week T2 Streak" Streak':
+        if self.roll_name == "Two Week T2 Streak" or self.roll_name == 'Two "Two Week T2 Streak" Streak':
             self.due_time = 7
         elif self.roll_name == "Fourward Thinking":
             self.due_time = len(self.games) * 7
@@ -631,7 +627,7 @@ class CERoll:
                 + f"\n- {partner.mention()} - {game1.name_with_link}"
             )
         # soul mates
-        elif self.roll_name == "Soul Mates" and partner is not None:
+        if self.roll_name == "Soul Mates" and partner is not None:
             game0 = hm.get_item_from_list(self.games[0], database_name)
             if game0 is None:
                 logger.error(
@@ -644,7 +640,7 @@ class CERoll:
                 + "You have both completed Soul Mates together."
                 + f"\n- {game0.name_with_link}"
             )
-        elif self.roll_name == "Teamwork Makes the Dream Work" and partner is not None:
+        if self.roll_name == "Teamwork Makes the Dream Work" and partner is not None:
             # get all completed games by both users
             user_completions = user.get_completed_games_2(database_name)
             partner_completions = partner.get_completed_games_2(database_name)
@@ -685,7 +681,7 @@ class CERoll:
                     return_str += "\n"
             return return_str
         # winner takes all
-        elif self.roll_name == "Winner Takes All" and partner is not None:
+        if self.roll_name == "Winner Takes All" and partner is not None:
             # determine winner
             user_wins = False
             partner_wins = False
@@ -707,21 +703,20 @@ class CERoll:
             if user_wins and not partner_wins:
                 self._winner = True
                 return f"Congratulations to <@{user.discord_id}> for beating <@{partner.discord_id}> in Winner Takes All!\n- {game_name}"
-            elif user_wins and partner_wins:
+            if user_wins and partner_wins:
                 return (
                     f"<@{user.discord_id}> <@{partner.discord_id}> y'all both won winner takes all?"
                     + " i'm confused someone ping andy pls"
                 )
-            elif not user_wins and partner_wins:
+            if not user_wins and partner_wins:
                 self._winner = False
                 return f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Winner Takes All!\n- {game_name}"
-            else:
-                logger.error(
-                    "Failed to determine winner in Winner Takes All with roll ID %s.",
-                    self._id,
-                )
-                return "something's gone wrong with winner takes all. please ping andy!"
-        elif self.roll_name == "Game Theory" and partner is not None:
+            logger.error(
+                "Failed to determine winner in Winner Takes All with roll ID %s.",
+                self._id,
+            )
+            return "something's gone wrong with winner takes all. please ping andy!"
+        if self.roll_name == "Game Theory" and partner is not None:
             # determine winner
             user_wins, partner_wins = False, False
             user_game = self.games[0]
@@ -746,26 +741,25 @@ class CERoll:
                     + f"\n- <@{user.discord_id}> - {user_game_name}"
                     + f"\n- <@{partner.discord_id}> - {partner_game_name}"
                 )
-            elif user_wins and partner_wins:
+            if user_wins and partner_wins:
                 return (
                     f"<@{user.discord_id}> <@{partner.discord_id}>, y'all both won game theory?"
                     + " i'm confused someone please ping andy"
                 )
-            elif not user_wins and partner_wins:
+            if not user_wins and partner_wins:
                 self._winner = False
                 return (
                     f"Congratulations to <@{partner.discord_id}> for beating <@{user.discord_id}> in Game Theory!"
                     + f"\n- <@{partner.discord_id}> - {partner_game_name}"
                     + f"\n- <@{user.discord_id}> - {user_game_name}"
                 )
-            else:
-                logger.error(
-                    "Failed to determine winner in Game Theory with roll ID %s.",
-                    self._id,
-                )
-                return "something's gone wrong with game theory. please ping andy!"
+            logger.error(
+                "Failed to determine winner in Game Theory with roll ID %s.",
+                self._id,
+            )
+            return "something's gone wrong with game theory. please ping andy!"
 
-        elif self.roll_name == "One Hell of a Month":
+        if self.roll_name == "One Hell of a Month":
             return_str = f"Congratulations <@{user.discord_id}>! You have beaten One Hell of a Month!"
 
             # get completions and their ids
@@ -788,17 +782,16 @@ class CERoll:
                 return_str += "\n- " + game.game_name + " " + game.category_emojis
             return return_str
 
-        else:
-            s = f"Congratulations {user.mention()}! You have beaten {self.roll_name}."
-            for game_id in self.games:
-                game_object = hm.get_item_from_list(game_id, database_name)
-                if game_object is None:
-                    logger.error(
-                        "Could not find game with ID %s in database_name.", game_id
-                    )
-                    raise Exception("Could not find game with ID in database_name.")
-                s += f"\n- {game_object.name_with_link}"
-            return s
+        s = f"Congratulations {user.mention()}! You have beaten {self.roll_name}."
+        for game_id in self.games:
+            game_object = hm.get_item_from_list(game_id, database_name)
+            if game_object is None:
+                logger.error(
+                    "Could not find game with ID %s in database_name.", game_id
+                )
+                raise Exception("Could not find game with ID in database_name.")
+            s += f"\n- {game_object.name_with_link}"
+        return s
 
     def get_fail_message(
         self, database_name: list[CEGame], user: CEUser, partner: CEUser | None
@@ -835,14 +828,14 @@ class CERoll:
                 f"Sorry {user.mention()}, you failed your Tier {len(self.games)} in Fourward Thinking. "
                 + f"You are now on cooldown for Fourward Thinking until <t:{self.calculate_cooldown_timestamp()}>."
             )
-        elif self.is_co_op:
+        if self.is_co_op:
             if partner is None:
                 return "Error code 5. Contact andy."
             return (
                 f"Sorry {user.mention()} and {partner.mention()}, you failed your {self.roll_name} roll. "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
-        elif self.roll_name == "One Hell of a Day":
+        if self.roll_name == "One Hell of a Day":
             game = hm.get_item_from_list(self.games[0], database_name)
             if game is None:
                 logger.error(
@@ -853,16 +846,15 @@ class CERoll:
                 f"Sorry {user.mention()}, you failed your {self.roll_name} roll ({game.name_with_link}). "
                 + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
             )
-        elif self.calculate_cooldown_date() is None:
+        if self.calculate_cooldown_date() is None:
             return (
                 f"Sorry {user.mention()}, you failed your {self.roll_name} roll. "
                 "This event has no cooldown!"
             )
-        else:
-            return (
-                f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. "
-                + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
-            )
+        return (
+            f"Sorry <@{user.discord_id}>, you failed your {self.roll_name} roll. "
+            + f"You are now on cooldown for {self.roll_name} until <t:{self.calculate_cooldown_timestamp()}>."
+        )
 
     def get_initialization_message(self, database_name: list[CEGame]) -> str | None:
         """
@@ -917,11 +909,10 @@ class CERoll:
         game = hm.get_item_from_list(self.games[-1], database_name)
         if game is None:
             return None
-        message = (
+        return (
             f"The next stage of your {self.roll_name} roll is {game.name_with_link}. "
             f"You have until {self.due_discord_timestamp} to complete this. Good luck!"
         )
-        return message
 
     def calculate_cooldown_date(self) -> datetime.datetime | None:
         """Calculates the date of which the cooldown should be set
@@ -988,7 +979,7 @@ class CERoll:
             return completed_categories >= 5
 
         # teamwork makes the dream work
-        elif self.roll_name == "Teamwork Makes the Dream Work":
+        if self.roll_name == "Teamwork Makes the Dream Work":
             if partner is None:
                 logger.error(
                     "When evaluating if %s is won, partner was None.", self.roll_name
@@ -1002,7 +993,7 @@ class CERoll:
             return True
 
         # winner takes all
-        elif self.roll_name == "Winner Takes All":
+        if self.roll_name == "Winner Takes All":
             if partner is None:
                 logger.error(
                     "When evaluating if %s is won, partner was None.", self.roll_name
@@ -1014,7 +1005,7 @@ class CERoll:
             return main_won or partner_won
 
         # destiny alignment
-        elif self.roll_name == "Destiny Alignment":
+        if self.roll_name == "Destiny Alignment":
             if partner is None:
                 logger.error(
                     "When evaluating if %s is won, partner was None.", self.roll_name
@@ -1025,7 +1016,7 @@ class CERoll:
             ) and partner.has_completed_game(self.games[1], database_name)
 
         # soul mates
-        elif self.roll_name == "Soul Mates":
+        if self.roll_name == "Soul Mates":
             if partner is None:
                 logger.error(
                     "When evaluating if %s is won, partner was None.", self.roll_name
@@ -1036,7 +1027,7 @@ class CERoll:
             ) and partner.has_completed_game(self.games[0], database_name)
 
         # game theory
-        elif self.roll_name == "Game Theory":
+        if self.roll_name == "Game Theory":
             if partner is None:
                 logger.error(
                     "When evaluating if %s is won, partner was None.", self.roll_name
@@ -1052,11 +1043,7 @@ class CERoll:
             """
 
         # all other rolls
-        else:
-            for game in self.games:
-                if not user.has_completed_game(game, database_name):
-                    return False
-            return True
+        return all(user.has_completed_game(game, database_name) for game in self.games)
 
         # TODO: finish this function
         return NotImplemented

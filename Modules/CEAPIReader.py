@@ -128,7 +128,7 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         if "" in _categories:
             raise Exception(f"Could not convert categories correctly. {_categories}")
 
-    ce_game = CEAPIGame(
+    return CEAPIGame(
         ce_id=json_response["id"],
         game_name=json_response["name"],
         platform=json_response["platform"],
@@ -139,9 +139,6 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         full_data=json_response,
         banner=json_response["header"],
     )
-
-    # ... and return it.
-    return ce_game
 
 
 async def get_game(ce_id: str) -> CEAPIGame | None:
@@ -531,3 +528,5 @@ async def get_api_page_data(
             if len(json_response) == 0:
                 return None
             return _ce_to_game(json_response=json_response)
+    
+    raise ValueError(f"Invalid `type` passed into get_api_page_data: {type}")

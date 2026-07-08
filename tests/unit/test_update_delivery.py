@@ -404,29 +404,33 @@ class TestDeliverUpdatesExceptionRecovery:
                 new_callable=AsyncMock,
                 side_effect=discord.HTTPException(MagicMock(), "server error"),
             ),
+            pytest.raises(discord.HTTPException),
         ):
-            with __import__("pytest").raises(discord.HTTPException):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
     def test_get_stable_updates_exception_propagates(self):
         mock_client = MagicMock()
 
-        with patch(
-            "update_delivery.SupabaseReader.get_stable_updates",
-            side_effect=Exception("supabase down"),
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_stable_updates",
+                side_effect=Exception("supabase down"),
+            ),
+            pytest.raises(Exception, match="supabase down"),
         ):
-            with __import__("pytest").raises(Exception, match="supabase down"):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
     def test_get_last_loop_exception_propagates(self):
         mock_client = MagicMock()
 
-        with patch(
-            "update_delivery.SupabaseReader.get_last_loop",
-            side_effect=Exception("supabase down"),
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_last_loop",
+                side_effect=Exception("supabase down"),
+            ),
+            pytest.raises(Exception, match="supabase down"),
         ):
-            with __import__("pytest").raises(Exception, match="supabase down"):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
 
 class TestDeliverUpdatesEmbedConstruction:

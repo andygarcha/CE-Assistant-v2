@@ -801,7 +801,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
     steam_ids: list[int] = []
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue
 
         steam_ids.append(int(game.platform_id))
@@ -889,7 +889,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
             hours[str(item["appId"])] = item["medianCompletionTime"]
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue  # non steam game
         if game.tier_num == 0:
             continue  # t0
@@ -922,7 +922,7 @@ def update_one_game(
         return create_update_new_game(game_new), []
 
     # REMOVED GAME
-    elif game_new is None and game_old is not None:
+    if game_new is None and game_old is not None:
         return create_update_removed_game(game_old), []
 
     # by this point neither should be none but they could both be...?
@@ -1407,16 +1407,13 @@ def create_update_updated_game(
                 )
 
             # if the name was changed
-            if old_objective.name != new_objective.name:
-                # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
-                if (
-                    old_objective.is_uncleared()
-                    and not new_objective.is_uncleared()
-                    and (old_objective.uncleared_name() != new_objective.name)
-                ):
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
-                elif not old_objective.is_uncleared() or new_objective.is_uncleared():
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
+            # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
+            if (old_objective.name != new_objective.name and (
+                old_objective.is_uncleared()
+                and not new_objective.is_uncleared()
+                and (old_objective.uncleared_name() != new_objective.name)
+            )) or not old_objective.is_uncleared() or new_objective.is_uncleared():
+                update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
 
     for old_objective_ce_id in old_objective_ce_ids:
         old_objective = game_old.get_objective(old_objective_ce_id)

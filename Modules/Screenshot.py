@@ -33,7 +33,6 @@ class Screenshot:
             N/A
         """
         self.fph = final_page_height
-        pass
 
     def full_screenshot(
         self,
@@ -94,103 +93,102 @@ class Screenshot:
             logger.debug("7")
             return image_name
 
-        else:
-            logger.debug("8")
-            total_width = driver.execute_script("return document.body.offsetWidth")
-            logger.debug("9")
-            total_height = driver.execute_script(
-                "return document.body.parentNode.scrollHeight"
-            )
-            logger.debug("10")
-            viewport_width = driver.execute_script("return document.body.clientWidth")
-            logger.debug("11")
-            viewport_height = driver.execute_script("return window.innerHeight")
-            logger.debug("12")
-            driver.execute_script("window.scrollTo(0, 0)")
-            logger.debug("13")
-            time.sleep(3)
-            logger.debug("14")
-            rectangles = []
+        logger.debug("8")
+        total_width = driver.execute_script("return document.body.offsetWidth")
+        logger.debug("9")
+        total_height = driver.execute_script(
+            "return document.body.parentNode.scrollHeight"
+        )
+        logger.debug("10")
+        viewport_width = driver.execute_script("return document.body.clientWidth")
+        logger.debug("11")
+        viewport_height = driver.execute_script("return window.innerHeight")
+        logger.debug("12")
+        driver.execute_script("window.scrollTo(0, 0)")
+        logger.debug("13")
+        time.sleep(3)
+        logger.debug("14")
+        rectangles = []
 
-            i = 0
-            while i < total_height:
-                logger.debug("while")
-                ii = 0
-                top_height = i + viewport_height
-                if top_height > total_height:
-                    top_height = total_height
-                while ii < total_width:
-                    top_width = ii + viewport_width
-                    if top_width > total_width:
-                        top_width = total_width
-                    rectangles.append((ii, i, top_width, top_height))
-                    ii = ii + viewport_width
-                i = i + viewport_height
-            stitched_image = Image.new("RGB", (total_width, total_height))
-            logger.debug("while broken")
-            previous = None
-            part = 0
+        i = 0
+        while i < total_height:
+            logger.debug("while")
+            ii = 0
+            top_height = i + viewport_height
+            if top_height > total_height:
+                top_height = total_height
+            while ii < total_width:
+                top_width = ii + viewport_width
+                if top_width > total_width:
+                    top_width = total_width
+                rectangles.append((ii, i, top_width, top_height))
+                ii = ii + viewport_width
+            i = i + viewport_height
+        stitched_image = Image.new("RGB", (total_width, total_height))
+        logger.debug("while broken")
+        previous = None
+        part = 0
 
-            for rectangle in rectangles:
-                logger.debug("for")
-                if previous is not None:
-                    logger.debug("prev not none")
-                    driver.execute_script(
-                        f"window.scrollTo({rectangle[0]}, {rectangle[1]})"
-                    )
-                    time.sleep(10)
-                logger.debug("broke if 1")
+        for rectangle in rectangles:
+            logger.debug("for")
+            if previous is not None:
+                logger.debug("prev not none")
+                driver.execute_script(
+                    f"window.scrollTo({rectangle[0]}, {rectangle[1]})"
+                )
+                time.sleep(10)
+            logger.debug("broke if 1")
 
-                if hide_elements is not None:
-                    self.hide_elements(driver, hide_elements)
-                    logger.debug("15")
+            if hide_elements is not None:
+                self.hide_elements(driver, hide_elements)
+                logger.debug("15")
 
-                file_name = f"part{part}.png"
-                path = Path(f"/CE-Assistant/part{part}.png")
-                logger.debug("16")
-                logger.debug("file_name=%s", file_name)
-                logger.debug("path=%s", str(path))
+            file_name = f"part{part}.png"
+            path = Path(f"/CE-Assistant/part{part}.png")
+            logger.debug("16")
+            logger.debug("file_name=%s", file_name)
+            logger.debug("path=%s", str(path))
 
-                ss = driver.get_screenshot_as_png()
-                logger.debug("gotcha >:)")
-                return ss
-                logger.debug("ss")
-                path.parent.mkdir(parents=True, exist_ok=True)
-                logger.debug("makedirs")
-                with open(path, "wb") as ss_file:
-                    logger.debug("with open")
-                    ss_file.write(ss)
-                    logger.debug("Svreenshot saved")
-                # print('directory: ' + str(os.listdir('/home/user/CE-Assistant')))
-                logger.debug("17")
-                screenshot = Image.open(path)
-                logger.debug("18")
+            ss = driver.get_screenshot_as_png()
+            logger.debug("gotcha >:)")
+            return ss
+            logger.debug("ss")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            logger.debug("makedirs")
+            with open(path, "wb") as ss_file:
+                logger.debug("with open")
+                ss_file.write(ss)
+                logger.debug("Svreenshot saved")
+            # print('directory: ' + str(os.listdir('/home/user/CE-Assistant')))
+            logger.debug("17")
+            screenshot = Image.open(path)
+            logger.debug("18")
 
-                if rectangle[1] + viewport_height > total_height:
-                    logger.debug("if2")
-                    offset = (rectangle[0], total_height - viewport_height)
-                else:
-                    logger.debug("else2")
-                    offset = (rectangle[0], rectangle[1])
-                logger.debug("broke if 2")
+            if rectangle[1] + viewport_height > total_height:
+                logger.debug("if2")
+                offset = (rectangle[0], total_height - viewport_height)
+            else:
+                logger.debug("else2")
+                offset = (rectangle[0], rectangle[1])
+            logger.debug("broke if 2")
 
-                stitched_image.paste(screenshot, offset)
-                logger.debug("19")
-                del screenshot
-                logger.debug("20")
-                os.remove(path)
-                logger.debug("21")
-                part = part + 1
-                logger.debug("22")
-                previous = rectangle
-                logger.debug("23")
-            logger.debug("for loop broken")
-            save_path = str(Path("/CE-Assistant/Pictures/" + image_name))
-            logger.debug("24")
-            logger.debug("save_path=%s", save_path)
-            stitched_image.save(save_path)
-            logger.debug("25")
-            return save_path
+            stitched_image.paste(screenshot, offset)
+            logger.debug("19")
+            del screenshot
+            logger.debug("20")
+            os.remove(path)
+            logger.debug("21")
+            part = part + 1
+            logger.debug("22")
+            previous = rectangle
+            logger.debug("23")
+        logger.debug("for loop broken")
+        save_path = str(Path("/CE-Assistant/Pictures/" + image_name))
+        logger.debug("24")
+        logger.debug("save_path=%s", save_path)
+        stitched_image.save(save_path)
+        logger.debug("25")
+        return save_path
 
     def get_element(
         self,

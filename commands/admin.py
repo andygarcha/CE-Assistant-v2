@@ -23,7 +23,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @tree.command(name="test", description="test", guild=guild)
     async def test_command(interaction: discord.Interaction):
         await test(interaction)
-        pass
 
     # -- /force-register {ce_link} {user} ---------------------------------------------------
     @tree.command(
@@ -162,7 +161,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def debug_command(interaction: discord.Interaction, user: discord.Member):
         return await debug(interaction, user)
 
-    pass
 
 
 async def test(interaction: discord.Interaction):
@@ -328,7 +326,7 @@ async def add_notes(
     await message.edit(embed=embed, attachments=[])
 
     # and send a response to the original interaction
-    await interaction.followup.send("Notes added!", ephemeral=True)
+    return await interaction.followup.send("Notes added!", ephemeral=True)
 
 
 async def clear_roll(interaction: discord.Interaction, roll_id: str):

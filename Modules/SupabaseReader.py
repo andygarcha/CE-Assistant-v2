@@ -1639,8 +1639,8 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         status=roll.get("status", "pending"),
         _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
-        tier_num=roll.get("chosen_tier", None),
-        tier_num_partner=roll.get("chosen_tier_partner", None),
+        tier_num=roll.get("chosen_tier"),
+        tier_num_partner=roll.get("chosen_tier_partner"),
     )
 
 

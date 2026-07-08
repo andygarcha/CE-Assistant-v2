@@ -297,10 +297,7 @@ class CRData:
             cr += (CR_MULTIPLIER**i) * (float(point_value))
 
         # and now round it to two decimal places
-        cr = round(cr, 2)
-
-        # and return it.
-        return cr
+        return round(cr, 2)
 
     @staticmethod
     def calculate_total_cr(
@@ -433,7 +430,6 @@ class CEIndividualValueInput:
     def set_value(self, value):
         "Sets the input's `value` attribute to argument `value`."
         self.__value = value
-        pass
 
     def to_dict(self):
         return {"user_ce_id": self.user_ce_id, "recommendation": self.value}
@@ -712,7 +708,6 @@ class CEInput:
     def replace_value_input(self, objective_id: str, value_input: CEValueInput):
         index = self.index_of_value_input(objective_id)
         self.__value_inputs[index] = value_input
-        pass
 
     def add_value_input(self, objective_id: str, user_id: str, value: int):
         "Adds a new value input for this game."
@@ -735,7 +730,6 @@ class CEInput:
             )
             value_input.add_new_individual_input(user_id=user_id, value=value)
             self.__value_inputs.append(value_input)
-        pass
 
     # == curate input stuff ==
 
@@ -748,10 +742,9 @@ class CEInput:
         if self.curator_count() == 0:
             return 0
         inputs = [curate_input.curate for curate_input in self.curate_inputs]
-        average = (
+        return (
             float(inputs.count(1)) / float(inputs.count(0) + inputs.count(1)) * 100
         )
-        return average
 
     def curator_count(self) -> int:
         "Returns the number of people who have given curator inputs."
@@ -784,12 +777,10 @@ class CEInput:
             self.replace_curate_input(user_id, curate)
         else:
             self.add_new_curate_input(user_id, curate)
-        pass
 
     def add_new_curate_input(self, user_id: str, curate: int):
         "Adds a new curate input."
         self.__curate_inputs.append(CECurateInput(user_ce_id=user_id, curate=curate))
-        pass
 
     def has_curate_input(self, user_id: str):
         "Returns true if this user has already made a curate input."
@@ -814,7 +805,6 @@ class CEInput:
             )
 
         self.__curate_inputs[self.index_of_curate_input(user_id)].set_curate(curate)
-        pass
 
     def is_curatable(self):
         "Returns true if this game belongs on the curator."

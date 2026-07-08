@@ -45,7 +45,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         await solo_roll(
             interaction, event_name, category, price_restriction, hours_restriction
         )
-        pass
 
     # -- /coop-roll {event_name} {partner} {tier} ------------------------------------------------------
     @tree.command(
@@ -78,7 +77,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await check_rolls(interaction, friend)
 
-    pass
 
 
 # -- command implementations -----------------------------------------------------------------------------
@@ -1013,10 +1011,7 @@ def roll_fourwardthinking(
         )
 
     roll = user.get_current_roll("Fourward Thinking")
-    if roll is None:
-        already_rolled_games = []
-    else:
-        already_rolled_games = roll.games
+    already_rolled_games = [] if roll is None else roll.games
 
     tier = len(already_rolled_games) + 1
 

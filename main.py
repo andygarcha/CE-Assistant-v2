@@ -142,8 +142,7 @@ async def get_game_data(interaction: discord.Interaction, ce_id: str):
     game = SupabaseReader.get_game(ce_id)
     if game is None:
         return await interaction.followup.send("game not found")
-    else:
-        return await interaction.followup.send(f"{game.to_dict()}")
+    return await interaction.followup.send(f"{game.to_dict()}")
 
 
 INPUT_MESSAGES_ARE_EPHEMERAL: bool = True
@@ -195,9 +194,8 @@ async def on_ready():
     # asyncio.create_task(start_webhook_server())
 
     # delivery loop — polls scraper_updates table for messages to send
-    if hm.IN_CE:
-        if not delivery_loop.is_running():
-            delivery_loop.start()
+    if hm.IN_CE and not delivery_loop.is_running():
+        delivery_loop.start()
 
 
 # @client.event

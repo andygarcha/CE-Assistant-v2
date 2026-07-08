@@ -239,9 +239,11 @@ class TestGetListFromCache:
     def test_get_list_invalid_raises(self):
         tmpdir = _init_cache()
         try:
-            with patch.object(SupabaseReader, "supabase"):
-                with pytest.raises(ValueError, match="Invalid get_list argument"):
-                    SupabaseReader.get_list("invalid")  # type: ignore[arg-type]
+            with (
+                patch.object(SupabaseReader, "supabase"),
+                pytest.raises(ValueError, match="Invalid get_list argument"),
+            ):
+                SupabaseReader.get_list("invalid")  # type: ignore[arg-type]
         finally:
             _teardown_cache(tmpdir)
 

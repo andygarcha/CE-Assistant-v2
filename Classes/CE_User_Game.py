@@ -181,9 +181,7 @@ class CEUserGame:
             return False
         if len(user_pos) != len(game_pos):
             return False
-        if user_points != game_points:
-            return False
-        return True
+        return user_points == game_points
 
     def __is_overcompleted_helper(self, game: CEGame):
         """

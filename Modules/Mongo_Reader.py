@@ -67,8 +67,7 @@ async def get_list(database: Literal["name", "user", "input"]) -> list[str]:
     cursor = collection.find({}, {"ce_id": 1, "_id": 0})
     ce_ids = await cursor.to_list(length=None)
 
-    ce_id_values = [doc["ce_id"] for doc in ce_ids if "ce_id" in doc]
-    return ce_id_values
+    return [doc["ce_id"] for doc in ce_ids if "ce_id" in doc]
 
 
 # -- games -- #
@@ -115,7 +114,6 @@ async def dump_game(game: CEGame | CEAPIGame):
         await collection.insert_one(game.to_dict())
     else:
         await collection.replace_one({"ce_id": game.ce_id}, game.to_dict())
-    pass
 
 
 async def delete_game(ce_id: str):
@@ -168,8 +166,7 @@ async def get_user(ce_id: str, use_discord_id: bool = False) -> CEUser:
     if db is None:
         if use_discord_id:
             raise ValueError(f"No user found with discord id {ce_id} in mongo.")
-        else:
-            raise ValueError(f"No user found with ce id {ce_id} in mongo.")
+        raise ValueError(f"No user found with ce id {ce_id} in mongo.")
 
     return __mongo_to_user(db)
 
@@ -280,7 +277,6 @@ async def dump_input(input: CEInput):
         await collection.insert_one(input.to_dict())
     else:
         await collection.replace_one({"ce_id": input.ce_id}, input.to_dict())
-    pass
 
 
 async def get_database_input() -> list[CEInput]:
