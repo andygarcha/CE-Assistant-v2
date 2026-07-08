@@ -551,7 +551,7 @@ async def force_add(
         )
         raise Exception(f"Could not find user with discord id {member.id} in supabase.")
 
-    user.add_completed_roll(
+    SupabaseReader.dump_roll(
         CERoll(
             roll_name=roll_name,
             user_ce_id=user.ce_id,
@@ -562,7 +562,6 @@ async def force_add(
         )
     )
 
-    SupabaseReader.dump_user(user)
     return await interaction.followup.send("Done!")
 
 
