@@ -1,9 +1,14 @@
+[tool.ruff]
 target-version = "py312"
 line-length = 88
 
-[lint]
+[tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "S", "B", "I", "UP", "T20", "RUF", "C4", "SIM", "RET", "PIE", "TC", "DTZ"]
 
-[lint.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]  # allow `assert` in tests
 "scripts/**" = ["T201"]  # standalone scripts are allowed to print status directly
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
