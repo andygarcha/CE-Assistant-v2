@@ -867,7 +867,8 @@ class CERoll:
                 categories[category] = 0
             for game in user.owned_games:
                 if game.ce_id in self.games and game.is_completed(database_name):
-                    # TODO: casino fix doesn't work with dual categories
+                    
+                    # assumption here is that no dual-category games were rolled.
                     __category_check = game.get_categories(database_name)
                     if __category_check is None:
                         raise Exception(
@@ -985,8 +986,6 @@ class CERoll:
 
     def display_str(self, database_name: list[CEGame]) -> str:
         "Turns this object into a string representation to be sent to discord."
-
-        # import and type hinting
 
         if (
             self.games
