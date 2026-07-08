@@ -2,31 +2,33 @@
 THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 """
 
+import os
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-import sys
-import os
 
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import datetime
 import json
+import logging
 import typing
+
 import requests
-from Classes.CE_Game import CEGame, CEAPIGame
+
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Roll import CERoll
-from Classes.CE_User import CEUser, CEAPIUser
+from Classes.CE_User import CEAPIUser, CEUser
 from Classes.CE_User_Game import CEUserGame
 from Modules import (
     CEAPIReader,
     HealthCheck,
     LocalCache,
     SupabaseReader,
-    http_session,
     hm,
+    http_session,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +58,11 @@ class UpdateMessageForScraperProcess:
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
-            string += f"{repr(self.title)} ----- {repr(self.description)}\n"
+            string += f"{self.title!r} ----- {self.description!r}\n"
         else:
-            string += f"{repr(self.text)}\n"
+            string += f"{self.text!r}\n"
 
-        print(string)
+        print(string)  # noqa: T201 -- intentional console output for dry-run/silent scrapes, in addition to logging below
 
         if full and info:
             logger.info(string)
@@ -130,11 +132,10 @@ async def process_loop(
 
     full_scrape = (
         (  # Noon/1PM EST (based on daylight savings)
-            datetime.datetime.now(datetime.timezone.utc).hour == 17
+            datetime.datetime.now(datetime.UTC).hour == 17
         )
-        and (datetime.datetime.now(datetime.timezone.utc).minute == 0)
-        or full_scrape
-    )
+        and (datetime.datetime.now(datetime.UTC).minute == 0)
+    ) or full_scrape
 
     logger.info("full_scrape=%s (second try)", full_scrape)
 
@@ -147,7 +148,7 @@ async def process_loop(
     logger.debug(
         "FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES
     )
-    time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
+    time_current: datetime.datetime = datetime.datetime.now(datetime.UTC)
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -342,7 +343,7 @@ async def update_games(
 
     updates: list[UpdateMessageForScraperProcess] = []
     objectives_removed: list[str] = []
-    last_run: datetime.datetime = datetime.datetime(2000, 1, 1)
+    last_run: datetime.datetime = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
     _updated_game_ids: set = set()
 
     # Step 0: Determine the last time the loop ran
@@ -421,14 +422,14 @@ async def update_games(
     if full_scrape:
         logger.info("Full scraping: pulling from /api/games/full.")
         games = await CEAPIReader.get_api_games_full()
-        notIsFinished = set([g.ce_id for g in games if not g.is_finished])
+        notIsFinished = {g.ce_id for g in games if not g.is_finished}
         games = [g for g in games if g.is_finished]
     else:
         logger.info(
             "Pulling %d games one at a time using /api/game/[id].",
             len(_updated_game_ids),
         )
-        for i, gameId in enumerate(_updated_game_ids.copy()):
+        for gameId in _updated_game_ids.copy():
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
@@ -507,7 +508,7 @@ async def update_users(
     games_old: list[CEGame],
     games_new: list[CEGame],
     full_scrape=False,
-    notIsFinished: set = set(),
+    notIsFinished: set | None = None,
 ) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
@@ -529,6 +530,9 @@ async def update_users(
         so that we don't run updates on userGames corresponding
         to these 'unfinished' games.
     """
+
+    if notIsFinished is None:
+        notIsFinished = set()
 
     # Step 0: Determine the last time the loop ran.
     last_run = SupabaseReader.get_last_loop()
@@ -814,7 +818,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
     steam_ids: list[int] = []
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue
 
         steam_ids.append(int(game.platform_id))
@@ -847,6 +851,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                 "cc": "US",
                 "filters": "price_overview",
             },
+            timeout=15,
         )
 
         response_prices_json: dict[str, dict] = json.loads(response_prices.text)
@@ -887,6 +892,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                     1:-1
                 ]  # appIds=220,480,730
             },
+            timeout=15,
         )
 
         response_hours_json: list[dict[str, int]] = json.loads(response_hours.text)
@@ -900,7 +906,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
             hours[str(item["appId"])] = item["medianCompletionTime"]
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue  # non steam game
         if game.tier_num == 0:
             continue  # t0
@@ -933,7 +939,7 @@ def update_one_game(
         return create_update_new_game(game_new), []
 
     # REMOVED GAME
-    elif game_new is None and game_old is not None:
+    if game_new is None and game_old is not None:
         return create_update_removed_game(game_old), []
 
     # by this point neither should be none but they could both be...?
@@ -1418,16 +1424,17 @@ def create_update_updated_game(
                 )
 
             # if the name was changed
-            if old_objective.name != new_objective.name:
-                # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
-                if (
+            # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
+            if old_objective.name != new_objective.name and (
+                (
                     old_objective.is_uncleared()
                     and not new_objective.is_uncleared()
                     and (old_objective.uncleared_name() != new_objective.name)
-                ):
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
-                elif not old_objective.is_uncleared() or new_objective.is_uncleared():
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
+                )
+                or not old_objective.is_uncleared()
+                or new_objective.is_uncleared()
+            ):
+                update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
 
     for old_objective_ce_id in old_objective_ce_ids:
         old_objective = game_old.get_objective(old_objective_ce_id)
@@ -1682,15 +1689,8 @@ def check_newly_completed_games(
 
         update.is_embed = False
         update.text += (
-            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            f"Holy moly {user.mention()} ({user.display_name_with_link()})! You've now *over*completed {game.name_with_link}, a {game.tier_emoji} worth {game.get_po_points()} points, with an additional {game.get_so_points()} points "
             "worth of SOs."
-        ).format(
-            user.mention(),
-            user.display_name_with_link(),
-            game.name_with_link,
-            game.tier_emoji,
-            game.get_po_points(),
-            game.get_so_points(),
         )
         updates.append(update)
 

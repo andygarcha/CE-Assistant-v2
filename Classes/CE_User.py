@@ -1,14 +1,17 @@
 import datetime
-from typing import Sequence, cast, get_args
+import logging
 import uuid
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast, get_args
+
 import aiohttp
-from Classes.CE_Roll import CERoll
-from Classes.CE_Game import CEGame
-from Classes.CE_User_Game import CEUserGame
+
 import Modules.hm as hm
+from Classes.CE_Game import CEGame
+from Classes.CE_Roll import CERoll
+from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import CRData
 from Modules import http_session
-import logging
 
 MUTELIST_CEIDS = ["e790e8f0-f67e-4646-8fa9-de436b2c8d5e"]  # athenavenny
 
@@ -62,7 +65,6 @@ class CEUser:
     def set_display_name(self, display_name: str):
         "Setter for display name."
         self._display_name = display_name
-        pass
 
     @property
     def avatar(self):
@@ -72,7 +74,6 @@ class CEUser:
     def set_avatar(self, avatar: str):
         "Setter."
         self._avatar = avatar
-        pass
 
     @property
     def ce_id(self):
@@ -96,7 +97,6 @@ class CEUser:
     def set_last_updated(self, last_updated: datetime.datetime):
         "Setter for last updated."
         self._last_updated: datetime.datetime = last_updated
-        pass
 
     def casino_score(self, rolls: list[CERoll]):
         """Returns the casino score associated with this user."""
@@ -281,7 +281,6 @@ class CEUser:
         """Adds `roll` to this user's Current Rolls section."""
         roll.set_status("current")
         self._rolls.append(roll)
-        pass
 
     def fail_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
         "Fails a current roll associated with `roll_name`."
@@ -343,10 +342,7 @@ class CEUser:
 
     def has_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently working on `roll_name`."""
-        for event in self.current_rolls:
-            if event.roll_name == roll_name:
-                return True
-        return False
+        return any(event.roll_name == roll_name for event in self.current_rolls)
 
     def get_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
         "REturns the `CERoll` associated with `roll_name`."
@@ -390,21 +386,16 @@ class CEUser:
         """Adds `roll` to this user's Completed Rolls section."""
         roll.status = "won"
         self._rolls.append(roll)
-        pass
 
     def remove_completed_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
         "Removes all completed rolls associated with roll_name."
         for i, roll in enumerate(self.rolls):
             if roll.roll_name == roll_name and roll.status == "won":
                 self._rolls[i].set_status("removed")
-        pass
 
     def has_completed_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user has completed `roll_name`."""
-        for event in self.completed_rolls:
-            if event.roll_name == roll_name:
-                return True
-        return False
+        return any(event.roll_name == roll_name for event in self.completed_rolls)
 
     def get_completed_rolls(
         self, roll_name: hm.ALL_ROLL_EVENT_NAMES
@@ -436,7 +427,6 @@ class CEUser:
                 _id=str(uuid.uuid4()),
             )
         )
-        pass
 
     def remove_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES):
         "Removes the pending from this user."
@@ -444,7 +434,6 @@ class CEUser:
             if p.roll_name == pending and p.status == "pending":
                 del self._rolls[i]
                 break
-        pass
 
     def get_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
         for p in self.rolls:
@@ -454,10 +443,7 @@ class CEUser:
 
     def has_pending(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently on pending for `roll_name`."""
-        for pending in self.pending_rolls:
-            if pending.roll_name == roll_name:
-                return True
-        return False
+        return any(pending.roll_name == roll_name for pending in self.pending_rolls)
 
     # ==== failed rolls ==== #
 
@@ -470,7 +456,6 @@ class CEUser:
         for i, roll in enumerate(self.rolls):
             if roll.roll_name == roll_name and roll.status == "failed":
                 del self._rolls[i]
-        pass
 
     # ==== waiting rolls ==== #
 
@@ -571,10 +556,7 @@ class CEUser:
     def owns_game(self, game_id: str) -> bool:
         """Returns true if this user owns the game with
         Challenge Enthusiast ID `game_id`."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return True
-        return False
+        return any(game.ce_id == game_id for game in self.owned_games)
 
     def has_points(self, game_id: str) -> bool:
         """Returns true if this user has points in this game."""
@@ -656,7 +638,7 @@ class CEUser:
             owned_games_array.append(game.to_dict())
         rolls_array = [roll.to_dict() for roll in self.rolls]
 
-        user_dict = {
+        return {
             "ce_id": self.ce_id,
             "discord_id": self.discord_id,
             "owned_games": owned_games_array,
@@ -666,8 +648,6 @@ class CEUser:
             "last_updated": self.last_updated,
             "steam_id": self._steam_id,
         }
-
-        return user_dict
 
     def __str__(self):
         "Returns the string representation about this CEUser."
@@ -772,7 +752,8 @@ class CEAPIUser(CEUser):
         NUM_OF_OBJECTIVES = 3
 
         # imports
-        from Classes.CE_User_Objective import CEUserObjective
+        if TYPE_CHECKING:
+            from Classes.CE_User_Objective import CEUserObjective
 
         # grab all the data
         ce_ids: list[str] = []
@@ -784,13 +765,13 @@ class CEAPIUser(CEUser):
             game_names.append(objective["objective"]["game"]["name"])
 
         # make sure they didn't request too much
-        if NUM_OF_OBJECTIVES > len(ce_ids):
+        if len(ce_ids) < NUM_OF_OBJECTIVES:
             return None
 
         # sort and shear them to the number requested
-        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[
-            0:NUM_OF_OBJECTIVES
-        ]
+        ordered_pairs = sorted(
+            zip(completion_dates, ce_ids, game_names, strict=False), reverse=True
+        )[0:NUM_OF_OBJECTIVES]
 
         # now get the objects and zip them with the completion dates
         objective_tuples: list[
@@ -844,14 +825,15 @@ class CEAPIUser(CEUser):
         curr_month_points = 0
         prev_month_points = 0
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         current_month_datetime = datetime.datetime(
-            year=now.year, month=now.month, day=1
+            year=now.year, month=now.month, day=1, tzinfo=datetime.UTC
         )
         previous_month_datetime = datetime.datetime(
             year=(now.year if now.month != 1 else now.year - 1),
             month=(now.month - 1 if now.month != 1 else 12),
             day=1,
+            tzinfo=datetime.UTC,
         )
 
         for api_objective in self.api_user_objectives:
@@ -914,7 +896,7 @@ class CEAPIUser(CEUser):
                 return_str += "\n"
 
             # add the actual emoji and value
-            return_str += f"{hm.get_emoji(cast(hm.CATEGORIES, genre_name))}: {genre_dict[genre_name]}\t"
+            return_str += f"{hm.get_emoji(cast('hm.CATEGORIES', genre_name))}: {genre_dict[genre_name]}\t"
 
         # set up tiers
         return_str += "\n"

@@ -72,14 +72,13 @@ class CEUserObjective:
             "Type" : "Badge",
             "User Points" : 20
         }"""
-        d = {
+        return {
             "name": self.name,
             "ce_id": self.ce_id,
             "game_ce_id": self.game_ce_id,
             "type": self.type,
             "user_points": self.user_points,
         }
-        return d
 
     def __str__(self) -> str:
         return (

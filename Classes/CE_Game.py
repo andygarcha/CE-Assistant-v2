@@ -1,9 +1,9 @@
-from Classes.CE_Objective import CEObjective
-from Classes.OtherClasses import CECompletion
-import Modules.hm as hm
-from Modules import http_session
 import logging
 
+import Modules.hm as hm
+from Classes.CE_Objective import CEObjective
+from Classes.OtherClasses import CECompletion
+from Modules import http_session
 
 logger = logging.getLogger(__name__)
 
@@ -365,14 +365,13 @@ class CEGame:
 
             if json_response[steam_id]["data"]["is_free"]:
                 return 0
-            elif "price_overview" in json_response[steam_id]["data"]:
+            if "price_overview" in json_response[steam_id]["data"]:
                 return float(
                     json_response[steam_id]["data"]["price_overview"][
                         "final_formatted"
                     ][1::]
                 )
-            else:
-                return None
+            return None
         return None
 
     async def get_steamhunters_data_async(self) -> int | None:
@@ -398,8 +397,7 @@ class CEGame:
 
             if "medianCompletionTime" in json_response:
                 return int(int(json_response["medianCompletionTime"]) / 60)
-            else:
-                return None
+            return None
 
     async def get_completion_data(self) -> CECompletion:
         """Returns the completion data for this game."""

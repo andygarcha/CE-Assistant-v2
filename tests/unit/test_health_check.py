@@ -1,14 +1,14 @@
 from unittest.mock import patch
 
-from tests.conftest import make_roll, make_game, make_objective
+from Modules import hm
 from Modules.HealthCheck import (
+    check_orphaned_objectives,
     check_roll_game_counts,
     check_uncategorized_games,
-    check_orphaned_objectives,
     format_integrity_report,
     run_cheap_checks,
 )
-from Modules import hm
+from tests.conftest import make_game, make_objective, make_roll
 
 
 class TestCheckRollGameCounts:

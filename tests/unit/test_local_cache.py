@@ -1408,18 +1408,27 @@ class TestRunIntegrityCheck:
                 }
             )
 
+            # `run_integrity_check` calls `sb.table("games")` twice (once for
+            # the id-pagination pass, once for the full-row select) -- both
+            # calls must share the same mock so this side_effect list is
+            # consumed in order across both, not restarted per call.
+            games_mock_table = MagicMock()
+            games_mock_table.select.return_value = games_mock_table
+            games_mock_table.range.return_value = games_mock_table
+            games_mock_table.in_.return_value = games_mock_table
+            games_mock_table.execute.side_effect = [
+                MagicMock(data=[{"ce_id": "g-new"}]),
+                MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}]),
+            ]
+
             def _table_with_full_data(name):
+                if name == "games":
+                    return games_mock_table
                 mock_table = MagicMock()
                 mock_table.select.return_value = mock_table
                 mock_table.range.return_value = mock_table
                 mock_table.in_.return_value = mock_table
-                if name == "games":
-                    mock_table.execute.side_effect = [
-                        MagicMock(data=[{"ce_id": "g-new"}]),
-                        MagicMock(data=[{**GAME_ROW, "ce_id": "g-new"}]),
-                    ]
-                else:
-                    mock_table.execute.return_value = MagicMock(data=[])
+                mock_table.execute.return_value = MagicMock(data=[])
                 return mock_table
 
             mock_sb.table.side_effect = _table_with_full_data

@@ -4,7 +4,6 @@ from Classes.CE_Game import CEGame
 from Classes.CE_Objective import CEObjective
 from tests.conftest import make_game, make_objective
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 

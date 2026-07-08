@@ -14,7 +14,6 @@ from Modules import SupabaseReader
 from Modules.HealthCheck import ROLL_GAME_COUNT_EXPECTATIONS
 from utils.game_utils import ALL_ROLL_EVENT_NAMES_TUPLE
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 

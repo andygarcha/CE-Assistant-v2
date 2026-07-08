@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 import sqlite3
+import typing
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +147,19 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row)
 
 
+def _json_ids(ids: list) -> str:
+    """
+    Serializes a list of IDs as a JSON array string, for binding into a
+    query that matches against it with `IN (SELECT value FROM json_each(?))`.
+
+    This keeps the query text fully static (no dynamically-sized placeholder
+    string spliced in) regardless of how many IDs are being matched, since
+    sqlite3 has no native way to bind a variable-length list into an IN(...)
+    clause otherwise.
+    """
+    return json.dumps(ids)
+
+
 _ROLL_DEFAULTS = {
     "id": None,
     "event_name": "",
@@ -221,11 +236,11 @@ def get_games_by_ids(ce_ids: list[str]) -> list[dict]:
     if not ce_ids:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(ce_ids))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f"SELECT * FROM games WHERE ce_id IN ({placeholders})", ce_ids
+            "SELECT * FROM games WHERE ce_id IN (SELECT value FROM json_each(?))",
+            (_json_ids(ce_ids),),
         ).fetchall()
     ]
 
@@ -273,10 +288,10 @@ def delete_game_cascade(ce_id: str) -> None:
         ).fetchall()
     ]
     if obj_ids:
-        ph = ",".join("?" * len(obj_ids))
         conn.execute(
-            f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({ph})",
-            obj_ids,
+            "DELETE FROM objective_requirements "
+            "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+            (_json_ids(obj_ids),),
         )
     conn.execute("DELETE FROM objectives WHERE game_ce_id = ?", (ce_id,))
     conn.execute("DELETE FROM categories WHERE game_id = ?", (ce_id,))
@@ -319,11 +334,11 @@ def get_objectives_by_ids(ce_ids: list[str]) -> list[dict]:
     if not ce_ids:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(ce_ids))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f"SELECT * FROM objectives WHERE ce_id IN ({placeholders})", ce_ids
+            "SELECT * FROM objectives WHERE ce_id IN (SELECT value FROM json_each(?))",
+            (_json_ids(ce_ids),),
         ).fetchall()
     ]
 
@@ -337,8 +352,10 @@ def delete_objectives_by_ids(ce_ids: list[str]) -> None:
     if not ce_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(ce_ids))
-    conn.execute(f"DELETE FROM objectives WHERE ce_id IN ({placeholders})", ce_ids)
+    conn.execute(
+        "DELETE FROM objectives WHERE ce_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(ce_ids),),
+    )
     conn.commit()
 
 
@@ -362,10 +379,10 @@ def delete_requirements_by_objectives(objective_ce_ids: list[str]) -> None:
     if not objective_ce_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(objective_ce_ids))
     conn.execute(
-        f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({placeholders})",
-        objective_ce_ids,
+        "DELETE FROM objective_requirements "
+        "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(objective_ce_ids),),
     )
     conn.commit()
 
@@ -374,12 +391,12 @@ def get_requirements_by_objectives(objective_ce_ids: list[str]) -> list[dict]:
     if not objective_ce_ids:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(objective_ce_ids))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f"SELECT * FROM objective_requirements WHERE objective_ce_id IN ({placeholders})",
-            objective_ce_ids,
+            "SELECT * FROM objective_requirements "
+            "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+            (_json_ids(objective_ce_ids),),
         ).fetchall()
     ]
 
@@ -409,8 +426,10 @@ def delete_categories_by_games(game_ids: list[str]) -> None:
     if not game_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(game_ids))
-    conn.execute(f"DELETE FROM categories WHERE game_id IN ({placeholders})", game_ids)
+    conn.execute(
+        "DELETE FROM categories WHERE game_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(game_ids),),
+    )
     conn.commit()
 
 
@@ -485,11 +504,11 @@ def get_users_by_ids(ce_ids: list[str]) -> list[dict]:
     if not ce_ids:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(ce_ids))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f"SELECT * FROM users WHERE ce_id IN ({placeholders})", ce_ids
+            "SELECT * FROM users WHERE ce_id IN (SELECT value FROM json_each(?))",
+            (_json_ids(ce_ids),),
         ).fetchall()
     ]
 
@@ -550,9 +569,9 @@ def delete_user_games_by_game_ids(game_ids: list[str]) -> None:
     if not game_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(game_ids))
     conn.execute(
-        f"DELETE FROM user_games WHERE game_ce_id IN ({placeholders})", game_ids
+        "DELETE FROM user_games WHERE game_ce_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(game_ids),),
     )
     conn.commit()
 
@@ -594,10 +613,10 @@ def delete_user_objectives_by_objective_ids(objective_ids: list[str]) -> None:
     if not objective_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(objective_ids))
     conn.execute(
-        f"DELETE FROM user_objectives WHERE objective_ce_id IN ({placeholders})",
-        objective_ids,
+        "DELETE FROM user_objectives "
+        "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(objective_ids),),
     )
     conn.commit()
 
@@ -679,12 +698,11 @@ def get_rolls_by_event_names(event_names: list[str]) -> list[dict]:
     if not event_names:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(event_names))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f"SELECT * FROM rolls WHERE event_name IN ({placeholders})",
-            event_names,
+            "SELECT * FROM rolls WHERE event_name IN (SELECT value FROM json_each(?))",
+            (_json_ids(event_names),),
         ).fetchall()
     ]
 
@@ -715,9 +733,15 @@ def delete_rolls_by_ids(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(roll_ids))
-    conn.execute(f"DELETE FROM roll_games WHERE roll_id IN ({placeholders})", roll_ids)
-    conn.execute(f"DELETE FROM rolls WHERE id IN ({placeholders})", roll_ids)
+    ids_json = _json_ids(roll_ids)
+    conn.execute(
+        "DELETE FROM roll_games WHERE roll_id IN (SELECT value FROM json_each(?))",
+        (ids_json,),
+    )
+    conn.execute(
+        "DELETE FROM rolls WHERE id IN (SELECT value FROM json_each(?))",
+        (ids_json,),
+    )
     conn.commit()
 
 
@@ -751,12 +775,12 @@ def get_roll_games_by_ids(roll_ids: list[str]) -> list[dict]:
     if not roll_ids:
         return []
     conn = get_connection()
-    placeholders = ",".join("?" * len(roll_ids))
     return [
         _row_to_dict(r)
         for r in conn.execute(
-            f'SELECT * FROM roll_games WHERE roll_id IN ({placeholders}) ORDER BY "index" ASC',
-            roll_ids,
+            "SELECT * FROM roll_games WHERE roll_id IN (SELECT value FROM json_each(?)) "
+            'ORDER BY "index" ASC',
+            (_json_ids(roll_ids),),
         ).fetchall()
     ]
 
@@ -771,8 +795,10 @@ def delete_roll_games_by_rolls(roll_ids: list[str]) -> None:
     if not roll_ids:
         return
     conn = get_connection()
-    placeholders = ",".join("?" * len(roll_ids))
-    conn.execute(f"DELETE FROM roll_games WHERE roll_id IN ({placeholders})", roll_ids)
+    conn.execute(
+        "DELETE FROM roll_games WHERE roll_id IN (SELECT value FROM json_each(?))",
+        (_json_ids(roll_ids),),
+    )
     conn.commit()
 
 
@@ -801,6 +827,23 @@ def get_tier_all() -> list[dict]:
 # === REBUILD ===
 
 _SUPABASE_PAGE_SIZE = 1000
+
+# Dispatch table mapping each local table name to its fully-static, parameterized
+# bulk-upsert function. Using these instead of dynamically building INSERT
+# statements from whatever columns a Supabase response happens to contain keeps
+# every rebuild/sync query text 100% static -- no dynamic column-list f-strings.
+_UPSERT_BULK_FUNCS: dict[str, typing.Callable[[list[dict]], None]] = {
+    "games": upsert_games_bulk,
+    "objectives": upsert_objectives_bulk,
+    "objective_requirements": upsert_requirements_bulk,
+    "categories": upsert_categories_bulk,
+    "users": upsert_users_bulk,
+    "user_games": upsert_user_games_bulk,
+    "user_objectives": upsert_user_objectives_bulk,
+    "rolls": upsert_rolls_bulk,
+    "roll_games": upsert_roll_games_bulk,
+    "tier": upsert_tier_bulk,
+}
 
 # Child tables to sync when new parent rows are inserted by the integrity check.
 # Format: parent_local_table -> [(supabase_child_table, fk_col, local_child_table), ...]
@@ -836,6 +879,30 @@ def _fetch_all_rows(sb_client, table_name: str) -> list[dict]:
     return all_rows
 
 
+def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
+    """
+    Returns the set of column names defined on `table_name` in the local
+    schema. `table_name` must always be a hardcoded literal from this
+    module's own table-name constants (`table_map`, `checks`, `_CHILD_SYNCS`)
+    -- never a value derived from Supabase or any other external input.
+    """
+    return {
+        row[1] for row in conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+    }
+
+
+def _fill_missing_columns(rows: list[dict], columns: set[str]) -> list[dict]:
+    """
+    Ensures every row has a key for each column name in `columns`, defaulting
+    any missing ones to None. The upsert_*_bulk functions bind named
+    parameters for every column they declare, so a row missing an expected
+    key would otherwise raise `sqlite3.ProgrammingError` -- this keeps that
+    contract safe even if a Supabase response is ever missing a column that
+    a `SELECT *` would normally include (e.g. a schema still catching up).
+    """
+    return [{**dict.fromkeys(columns), **row} for row in rows]
+
+
 def rebuild_from_supabase() -> dict:
     from Modules.SupabaseReader import supabase as sb
 
@@ -863,13 +930,13 @@ def rebuild_from_supabase() -> dict:
         if not data:
             continue
 
-        # Only insert columns that exist in the local schema
-        local_cols = {
-            row[1]
-            for row in conn.execute(f'PRAGMA table_info("{local_table}")').fetchall()
-        }
-        supabase_cols = set(data[0].keys())
-        dropped = supabase_cols - local_cols
+        # Warn about any Supabase columns this table doesn't track locally.
+        # This is diagnostic only -- upsert_*_bulk below only ever binds the
+        # columns it explicitly declares, via named parameters, so extra
+        # keys in `data` are simply ignored, not dropped as a side effect
+        # of dynamically-built SQL.
+        local_cols = _table_columns(conn, local_table)
+        dropped = set(data[0].keys()) - local_cols
         if dropped:
             logger.warning(
                 "Supabase table '%s' has columns not in local schema: %s. "
@@ -877,15 +944,11 @@ def rebuild_from_supabase() -> dict:
                 sb_table,
                 ", ".join(sorted(dropped)),
             )
-        cols = [c for c in data[0].keys() if c in local_cols]
-        col_names = ",".join(f'"{c}"' for c in cols)
-        params = ",".join(f":{c}" for c in cols)
 
-        conn.execute(f'DELETE FROM "{local_table}"')
-        conn.executemany(
-            f'INSERT INTO "{local_table}" ({col_names}) VALUES ({params})',
-            data,
+        conn.execute(
+            f'DELETE FROM "{local_table}"'  # noqa: S608 -- local_table is always a hardcoded entry from table_map above, never external input
         )
+        _UPSERT_BULK_FUNCS[local_table](_fill_missing_columns(data, local_cols))
 
     conn.commit()
     logger.info("Rebuild complete: %s", counts)
@@ -928,7 +991,7 @@ def run_integrity_check() -> dict:
         local_ids = {
             row[0]
             for row in conn.execute(
-                f'SELECT "{id_col}" FROM "{local_table}"'
+                f'SELECT "{id_col}" FROM "{local_table}"'  # noqa: S608 -- id_col/local_table are hardcoded entries from `checks` above, never external input
             ).fetchall()
         }
 
@@ -943,12 +1006,7 @@ def run_integrity_check() -> dict:
                     sb.table(sb_table).select().in_(id_col, chunk).execute().data or []
                 )
                 if data:
-                    local_cols = {
-                        row[1]
-                        for row in conn.execute(
-                            f'PRAGMA table_info("{local_table}")'
-                        ).fetchall()
-                    }
+                    local_cols = _table_columns(conn, local_table)
                     dropped = set(data[0].keys()) - local_cols
                     if dropped:
                         logger.warning(
@@ -957,12 +1015,8 @@ def run_integrity_check() -> dict:
                             sb_table,
                             ", ".join(sorted(dropped)),
                         )
-                    cols = [c for c in data[0].keys() if c in local_cols]
-                    col_names = ",".join(f'"{c}"' for c in cols)
-                    params = ",".join(f":{c}" for c in cols)
-                    conn.executemany(
-                        f'INSERT OR REPLACE INTO "{local_table}" ({col_names}) VALUES ({params})',
-                        data,
+                    _UPSERT_BULK_FUNCS[local_table](
+                        _fill_missing_columns(data, local_cols)
                     )
             # Sync child tables whose rows were not included in the parent select above.
             for sb_child, fk_col, child_local in _CHILD_SYNCS.get(local_table, []):
@@ -987,12 +1041,7 @@ def run_integrity_check() -> dict:
                 if not child_rows:
                     continue
 
-                child_local_cols = {
-                    row[1]
-                    for row in conn.execute(
-                        f'PRAGMA table_info("{child_local}")'
-                    ).fetchall()
-                }
+                child_local_cols = _table_columns(conn, child_local)
                 dropped = set(child_rows[0].keys()) - child_local_cols
                 if dropped:
                     logger.warning(
@@ -1000,20 +1049,16 @@ def run_integrity_check() -> dict:
                         sb_child,
                         ", ".join(sorted(dropped)),
                     )
-                child_cols = [c for c in child_rows[0].keys() if c in child_local_cols]
-                child_col_names = ",".join(f'"{c}"' for c in child_cols)
-                child_params = ",".join(f":{c}" for c in child_cols)
                 # Clear any orphaned rows before inserting
                 for j in range(0, len(missing_list), 100):
                     parent_chunk = missing_list[j : j + 100]
-                    ph = ",".join("?" * len(parent_chunk))
                     conn.execute(
-                        f'DELETE FROM "{child_local}" WHERE "{fk_col}" IN ({ph})',
-                        parent_chunk,
+                        f'DELETE FROM "{child_local}" '  # noqa: S608 -- child_local/fk_col come from the hardcoded _CHILD_SYNCS constant above, never external input
+                        f'WHERE "{fk_col}" IN (SELECT value FROM json_each(?))',
+                        (_json_ids(parent_chunk),),
                     )
-                conn.executemany(
-                    f'INSERT INTO "{child_local}" ({child_col_names}) VALUES ({child_params})',
-                    child_rows,
+                _UPSERT_BULK_FUNCS[child_local](
+                    _fill_missing_columns(child_rows, child_local_cols)
                 )
                 report["synced"].append(f"{len(child_rows)} {child_local}")
 
@@ -1021,10 +1066,11 @@ def run_integrity_check() -> dict:
 
         if stale_locally:
             stale_list = list(stale_locally)
-            placeholders = ",".join("?" * len(stale_list))
+            stale_json = _json_ids(stale_list)
             conn.execute(
-                f'DELETE FROM "{local_table}" WHERE "{id_col}" IN ({placeholders})',
-                stale_list,
+                f'DELETE FROM "{local_table}" '  # noqa: S608 -- local_table/id_col come from the hardcoded `checks` constant above, never external input
+                f'WHERE "{id_col}" IN (SELECT value FROM json_each(?))',
+                (stale_json,),
             )
 
             # Cascade to child tables
@@ -1032,42 +1078,49 @@ def run_integrity_check() -> dict:
                 obj_ids = [
                     r[0]
                     for r in conn.execute(
-                        f"SELECT ce_id FROM objectives WHERE game_ce_id IN ({placeholders})",
-                        stale_list,
+                        "SELECT ce_id FROM objectives "
+                        "WHERE game_ce_id IN (SELECT value FROM json_each(?))",
+                        (stale_json,),
                     ).fetchall()
                 ]
                 conn.execute(
-                    f"DELETE FROM objectives WHERE game_ce_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM objectives "
+                    "WHERE game_ce_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
                 if obj_ids:
-                    obj_ph = ",".join("?" * len(obj_ids))
                     conn.execute(
-                        f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({obj_ph})",
-                        obj_ids,
+                        "DELETE FROM objective_requirements "
+                        "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+                        (_json_ids(obj_ids),),
                     )
                 conn.execute(
-                    f"DELETE FROM categories WHERE game_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM categories "
+                    "WHERE game_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
             elif local_table == "users":
                 conn.execute(
-                    f"DELETE FROM user_games WHERE user_ce_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM user_games "
+                    "WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
                 conn.execute(
-                    f"DELETE FROM user_objectives WHERE user_ce_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM user_objectives "
+                    "WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
             elif local_table == "rolls":
                 conn.execute(
-                    f"DELETE FROM roll_games WHERE roll_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM roll_games "
+                    "WHERE roll_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
             elif local_table == "objectives":
                 conn.execute(
-                    f"DELETE FROM objective_requirements WHERE objective_ce_id IN ({placeholders})",
-                    stale_list,
+                    "DELETE FROM objective_requirements "
+                    "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
                 )
 
             report["removed"].append(f"{len(stale_locally)} {local_table}")
@@ -1080,16 +1133,9 @@ def run_integrity_check() -> dict:
     if game_count > 0 and cat_count == 0:
         data = _fetch_all_rows(sb, "categories")
         if data:
-            local_cols = {
-                row[1]
-                for row in conn.execute('PRAGMA table_info("categories")').fetchall()
-            }
-            cols = [c for c in data[0].keys() if c in local_cols]
-            col_names = ",".join(f'"{c}"' for c in cols)
-            params = ",".join(f":{c}" for c in cols)
             conn.execute("DELETE FROM categories")
-            conn.executemany(
-                f'INSERT INTO "categories" ({col_names}) VALUES ({params})', data
+            upsert_categories_bulk(
+                _fill_missing_columns(data, _table_columns(conn, "categories"))
             )
             report["synced"].append(f"{len(data)} categories (rebuilt)")
 

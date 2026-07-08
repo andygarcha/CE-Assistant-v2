@@ -1,9 +1,13 @@
 """This module contains all the commands about users for the bot."""
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord import app_commands
 
-from Classes.CE_User import CEUser
+if TYPE_CHECKING:
+    from Classes.CE_User import CEUser
+
 from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
 
 
@@ -206,10 +210,9 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
                 f"Sorry! <@{_user.id}> is not registered. Please have them run /register!",
                 allowed_mentions=discord.AllowedMentions.none(),
             )
-        else:
-            return await interaction.followup.send(
-                "Sorry! You are not registered. Please run /register and try again!"
-            )
+        return await interaction.followup.send(
+            "Sorry! You are not registered. Please run /register and try again!"
+        )
 
     # get the embed and the view
     returns = await Discord_Helper.get_user_embeds(
@@ -355,7 +358,7 @@ async def set_color(interaction: discord.Interaction):
     view.add_item(clear_button)
 
     # send the final message
-    await interaction.followup.send(
+    return await interaction.followup.send(
         view=view,
         ephemeral=True,
         content=(
@@ -392,10 +395,7 @@ async def show_summary(
         user=(None if user is None else user.mention),
     )
 
-    if user is None:
-        _user_local = interaction.user
-    else:
-        _user_local = user
+    _user_local = interaction.user if user is None else user
 
     user_ce = SupabaseReader.get_user(_user_local.id, use_discord_id=True)
     if user_ce is None:

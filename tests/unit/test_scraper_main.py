@@ -1,8 +1,9 @@
 import asyncio
-from unittest.mock import AsyncMock, patch
 from contextlib import contextmanager
+from unittest.mock import AsyncMock, patch
 
 import pytest
+
 import scraper_main
 
 
@@ -519,6 +520,7 @@ class TestLifecycleOrdering:
                     return "run-1"
                 if name == "get_pending_commands":
                     return []
+                return None
 
             return _inner
 

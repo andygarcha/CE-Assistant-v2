@@ -7,13 +7,15 @@ strings for #privatelog. None of these functions mutate any data.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from Classes.CE_Game import CEGame
-from Classes.CE_Roll import CERoll
-from Modules import hm
-from Modules import SupabaseReader
+from Modules import SupabaseReader, hm
+
+if TYPE_CHECKING:
+    from Classes.CE_Game import CEGame
+    from Classes.CE_Roll import CERoll
 
 logger = logging.getLogger(__name__)
 

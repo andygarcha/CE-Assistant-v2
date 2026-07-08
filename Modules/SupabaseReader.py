@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 import datetime
-import time
-import uuid
-from typing import Literal, cast
+import json
 import logging
+import os as _os
+import time
 import typing
-from dotenv import load_dotenv
+import uuid
+from typing import TYPE_CHECKING, Literal, cast
 
 import httpx
-from supabase import ClientOptions, create_client, Client
+from dotenv import load_dotenv
+from supabase import Client, ClientOptions, create_client
 
 # -- local --
 from Classes.CE_Game import CEGame
@@ -19,18 +20,21 @@ from Classes.CE_Roll import CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.OtherClasses import CEInput
-from Modules import hm
-from Modules import LocalCache
+from Modules import LocalCache, hm
 
-import os as _os
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from Classes.OtherClasses import CEInput
 
 load_dotenv()
 SUPABASE_URL = _os.getenv("SUPABASE_URL")
 SUPABASE_KEY = _os.getenv("SUPABASE_SECRET_KEY")
 
-assert SUPABASE_URL is not None
-assert SUPABASE_KEY is not None
+if SUPABASE_URL is None:
+    raise ValueError("SUPABASE_URL env variable not found!")
+if SUPABASE_KEY is None:
+    raise ValueError("SUPABASE_KEY env variable not found!")
 
 supabase: Client = create_client(
     SUPABASE_URL,
@@ -167,7 +171,7 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
         case "objectives":
             return LocalCache.get_objective_ids()
         case _:
-            raise Exception(f"Invalid get_list argument! argument: {database}")
+            raise ValueError(f"Invalid get_list argument! argument: {database}")
 
 
 # GET GAME
@@ -286,22 +290,24 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     conn = LocalCache.get_connection()
 
     # Bulk-fetch related data
-    gid_ph = ",".join("?" * len(game_ce_ids))
+    game_ids_json = json.dumps(game_ce_ids)
     objectives_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM objectives WHERE game_ce_id IN ({gid_ph})", game_ce_ids
+            "SELECT * FROM objectives "
+            "WHERE game_ce_id IN (SELECT value FROM json_each(?))",
+            (game_ids_json,),
         ).fetchall()
     ]
 
     objective_ids = [o["ce_id"] for o in objectives_json]
     if objective_ids:
-        oid_ph = ",".join("?" * len(objective_ids))
         requirements_json = [
             dict(r)
             for r in conn.execute(
-                f"SELECT * FROM objective_requirements WHERE objective_ce_id IN ({oid_ph})",
-                objective_ids,
+                "SELECT * FROM objective_requirements "
+                "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+                (json.dumps(objective_ids),),
             ).fetchall()
         ]
     else:
@@ -310,7 +316,8 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     categories_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM categories WHERE game_id IN ({gid_ph})", game_ce_ids
+            "SELECT * FROM categories WHERE game_id IN (SELECT value FROM json_each(?))",
+            (game_ids_json,),
         ).fetchall()
     ]
 
@@ -426,17 +433,20 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     conn = LocalCache.get_connection()
 
     # Bulk-fetch related data
-    uid_ph = ",".join("?" * len(user_ce_ids))
+    user_ids_json = json.dumps(user_ce_ids)
     userGames_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM user_games WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+            "SELECT * FROM user_games WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+            (user_ids_json,),
         ).fetchall()
     ]
     userObjectives_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM user_objectives WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+            "SELECT * FROM user_objectives "
+            "WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+            (user_ids_json,),
         ).fetchall()
     ]
 
@@ -659,7 +669,7 @@ def bulk_dump_games(
     # process in batches
     for i in range(0, len(games), batch_size):
         batch = games[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
         games_payload = []
         objectives_payload = []
@@ -680,9 +690,7 @@ def bulk_dump_games(
                     "category_primary": None,
                     "image_header": game._banner,
                     "image_icon": "",
-                    "updated_at_CE": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat(),
+                    "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
                 }
             )
 
@@ -792,7 +800,7 @@ def bulk_dump_users(
     # process in batches
     for i in range(0, len(users), batch_size):
         batch = users[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
         users_payload = []
         user_games_payload = []
@@ -892,13 +900,13 @@ def dump_user(user: CEUser):
         "display_name": user.display_name,
         "image_avatar": user.avatar,
         "steam_id": user._steam_id,
-        "created_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "created_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
         "updated_at_CE": user.last_updated
         if isinstance(user.last_updated, str)
         else (
             user.last_updated.isoformat()
             if hasattr(user.last_updated, "isoformat")
-            else datetime.datetime.now(datetime.timezone.utc).isoformat()
+            else datetime.datetime.now(datetime.UTC).isoformat()
         ),
     }
     supabase.table("users").upsert(user_data).execute()
@@ -914,7 +922,7 @@ def dump_user(user: CEUser):
         game_data = {
             "user_ce_id": user.ce_id,
             "game_ce_id": game.ce_id,
-            "updated_at_CE": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
         }
         supabase.table("userGames").upsert(game_data).execute()
         user_games_payload.append(game_data)
@@ -924,9 +932,7 @@ def dump_user(user: CEUser):
                 "user_ce_id": user.ce_id,
                 "objective_ce_id": objective.ce_id,
                 "user_points": objective.user_points,
-                "updated_at_CE": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
+                "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
             }
             supabase.table("userObjectives").upsert(obj_data).execute()
             user_objectives_payload.append(obj_data)
@@ -954,7 +960,7 @@ def bulk_dump_rolls(
 
     for i in range(0, len(rolls), batch_size):
         batch = rolls[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
         roll_ids = [r._id for r in batch]
         rolls_payload = []
@@ -1038,7 +1044,7 @@ def dump_roll(roll: CERoll):
             "roll_id": roll._id,
             "game_id": game_id,
             "index": idx,
-            "rolled_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "rolled_at": datetime.datetime.now(datetime.UTC).isoformat(),
         }
         supabase.table("rollGames").upsert(game_data).execute()
         rollgames_payload.append(game_data)
@@ -1137,8 +1143,7 @@ def mark_updates_delivered(ids: list[str]) -> None:
 
 def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
     cutoff = (
-        datetime.datetime.now(datetime.timezone.utc)
-        - datetime.timedelta(hours=older_than_hours)
+        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=older_than_hours)
     ).isoformat()
     result = (
         supabase.table("scraper_updates")
@@ -1218,7 +1223,7 @@ def acknowledge_command(command_id: str) -> None:
     supabase.table("scraper_commands").update(
         {
             "status": "acknowledged",
-            "acknowledged_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "acknowledged_at": datetime.datetime.now(datetime.UTC).isoformat(),
         }
     ).eq("id", command_id).execute()
 
@@ -1227,15 +1232,14 @@ def complete_command(command_id: str) -> None:
     supabase.table("scraper_commands").update(
         {
             "status": "completed",
-            "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "completed_at": datetime.datetime.now(datetime.UTC).isoformat(),
         }
     ).eq("id", command_id).execute()
 
 
 def cleanup_completed_commands(older_than_hours: int = 24) -> int:
     cutoff = (
-        datetime.datetime.now(datetime.timezone.utc)
-        - datetime.timedelta(hours=older_than_hours)
+        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=older_than_hours)
     ).isoformat()
     result = (
         supabase.table("scraper_commands")
@@ -1255,7 +1259,7 @@ def start_loop_run() -> str:
         supabase.table("loopruns")
         .insert(
             {
-                "ran_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "ran_at": datetime.datetime.now(datetime.UTC).isoformat(),
                 "start": True,
             }
         )
@@ -1341,7 +1345,7 @@ def add_pending(
     user2_ce_id: `str | None` (default None)
         Optional second user to create the pending for.
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     due = now + datetime.timedelta(minutes=10)
 
     user_ids = [user1_ce_id] + ([user2_ce_id] if user2_ce_id is not None else [])
@@ -1494,7 +1498,7 @@ def __supabase_to_game(
         game_name=game["name"],
         platform=game["platform"],
         platform_id=game["platform_id"],
-        categories=cast(list[hm.CATEGORIES], categories),
+        categories=cast("list[hm.CATEGORIES]", categories),
         last_updated=game["updated_at_CE"],
         banner=game["image_header"],
         objectives=objectives,
@@ -1638,8 +1642,8 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         status=roll.get("status", "pending"),
         _id=roll["id"],
         games=[g["game_id"] for g in rollGames] if rollGames else [],
-        tier_num=roll.get("chosen_tier", None),
-        tier_num_partner=roll.get("chosen_tier_partner", None),
+        tier_num=roll.get("chosen_tier"),
+        tier_num_partner=roll.get("chosen_tier_partner"),
     )
 
 
@@ -1649,7 +1653,7 @@ def dump_objective(objective: CEObjective):
         "objective_ce_id", objective.ce_id
     ).eq("requirement_type", "custom").execute()
 
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
     obj_data = {
         "ce_id": objective.ce_id,

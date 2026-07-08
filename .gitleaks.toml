@@ -1,0 +1,18 @@
+title = "CE-Assistant-v2 gitleaks config"
+
+[extend]
+# Start from gitleaks' built-in ruleset and layer our allowlist on top.
+useDefault = true
+
+[allowlist]
+description = "Known non-issues, reviewed manually"
+regexes = [
+    # UUID-shaped values in game-name-mapping/backup data files trip the
+    # generic-api-key rule's entropy heuristic but are just CE game IDs,
+    # not credentials.
+    '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''',
+]
+paths = [
+    '''namemappings_games\.json''',
+    '''Assets/dbbackups/.*\.sql''',
+]

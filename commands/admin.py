@@ -1,15 +1,15 @@
 """This module contains all the admin commands for the bot."""
 
 import datetime
-import uuid
-import discord
 import logging
+import uuid
+
+import discord
 from discord import app_commands
+
 from Classes.CE_Roll import CERoll
 from commands.user import register
-from Modules import hm, HealthCheck, LocalCache, SupabaseReader
-
-from Modules import http_session
+from Modules import HealthCheck, LocalCache, SupabaseReader, hm, http_session
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @tree.command(name="test", description="test", guild=guild)
     async def test_command(interaction: discord.Interaction):
         await test(interaction)
-        pass
 
     # -- /force-register {ce_link} {user} ---------------------------------------------------
     @tree.command(
@@ -176,8 +175,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await health_check(interaction, include_integrity)
 
-    pass
-
 
 async def test(interaction: discord.Interaction):
     """
@@ -301,7 +298,7 @@ async def add_notes(
     site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
     if isinstance(
         site_additions_channel,
-        (discord.ForumChannel, discord.CategoryChannel, discord.abc.PrivateChannel),
+        discord.ForumChannel | discord.CategoryChannel | discord.abc.PrivateChannel,
     ):
         raise Exception(
             f"Cannot fetch messages from channel of type {type(site_additions_channel)}"
@@ -342,7 +339,7 @@ async def add_notes(
     await message.edit(embed=embed, attachments=[])
 
     # and send a response to the original interaction
-    await interaction.followup.send("Notes added!", ephemeral=True)
+    return await interaction.followup.send("Notes added!", ephemeral=True)
 
 
 async def clear_roll(interaction: discord.Interaction, roll_id: str):
@@ -560,7 +557,7 @@ async def force_add(
             user_ce_id=user.ce_id,
             games=None,
             status="won",
-            completed_time=datetime.datetime.now(),
+            completed_time=datetime.datetime.now(datetime.UTC),
             _id=str(uuid.uuid4()),
         )
     )
@@ -648,11 +645,9 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
         return await interaction.followup.send("This user isn't registered.")
 
     return await interaction.followup.send(
-        (
-            f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
-            f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
-            f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
-        )
+        f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
+        f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
+        f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
     )
 
 
