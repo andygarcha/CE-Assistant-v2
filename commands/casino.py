@@ -1,16 +1,18 @@
 """This module is for all casino-related commands."""
 
-from dataclasses import dataclass
-import random
-from typing import get_args
+import logging
+import secrets
 import uuid
+from dataclasses import dataclass
+from typing import get_args
+
 import discord
 from discord import app_commands
-from Classes.CE_User import CEUser
+
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
+from Classes.CE_User import CEUser
 from Modules import SupabaseReader, hm
-import logging
 
 """ === GETTING CLIENT TO WORK === """
 logger = logging.getLogger(__name__)
@@ -185,7 +187,7 @@ async def solo_roll(
 
     # jarvis's random event!
     # -- make sure to not reroll this on every time they move forward
-    if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
+    if secrets.randbelow(100) == 0 and not user.has_waiting_roll(event_name):
         lucky = True
         await hm.send_message(
             client,
@@ -458,7 +460,7 @@ async def co_op_roll(
 
     # jarvis's random event!
     # -- make sure to not reroll this on every time they move forward
-    if random.randint(0, 99) == 0 and not user.has_waiting_roll(event_name):
+    if secrets.randbelow(100) == 0 and not user.has_waiting_roll(event_name):
         lucky = True
         await hm.send_message(
             client,
@@ -547,7 +549,9 @@ async def co_op_roll(
                 content="Oops! I accidentally rolled you a T0."
             )
 
-    assert tier is not None
+    if tier is None:
+        raise ValueError("tier was supposed to be NOne by this point!")
+    
     roll = CERoll(
         roll_name=event_name,
         user_ce_id=user.ce_id,
@@ -703,7 +707,7 @@ def roll_onehellofamonth(
     max_failures = len(categories_total) - 5
 
     while len(rolled_games) < 25:
-        category_curr = random.choice(categories_remaining)
+        category_curr = secrets.choice(categories_remaining)
         categories_remaining.remove(category_curr)
 
         category_games: list[str] = []

@@ -2,24 +2,26 @@
 THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 """
 
+import os
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-import sys
-import os
 
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import datetime
 import json
-import typing
-import requests
-from Classes.CE_Game import CEGame, CEAPIGame
-from Classes.CE_Roll import CERoll
-from Classes.CE_User import CEUser, CEAPIUser
-from Classes.CE_User_Game import CEUserGame
-from Modules import CEAPIReader, LocalCache, SupabaseReader, http_session, hm
 import logging
+import typing
+
+import requests
+
+from Classes.CE_Game import CEAPIGame, CEGame
+from Classes.CE_Roll import CERoll
+from Classes.CE_User import CEAPIUser, CEUser
+from Classes.CE_User_Game import CEUserGame
+from Modules import CEAPIReader, LocalCache, SupabaseReader, hm, http_session
 
 logger = logging.getLogger(__name__)
 
@@ -411,7 +413,7 @@ async def update_games(
             "Pulling %d games one at a time using /api/game/[id].",
             len(_updated_game_ids),
         )
-        for i, gameId in enumerate(_updated_game_ids.copy()):
+        for gameId in _updated_game_ids.copy():
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
@@ -490,7 +492,7 @@ async def update_users(
     games_old: list[CEGame],
     games_new: list[CEGame],
     full_scrape=False,
-    notIsFinished: set = set(),
+    notIsFinished: set | None = None,
 ) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
@@ -512,6 +514,9 @@ async def update_users(
         so that we don't run updates on userGames corresponding
         to these 'unfinished' games.
     """
+
+    if notIsFinished is None:
+        notIsFinished = set()
 
     # Step 0: Determine the last time the loop ran.
     last_run = SupabaseReader.get_last_loop()
@@ -830,6 +835,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                 "cc": "US",
                 "filters": "price_overview",
             },
+            timeout=15,
         )
 
         response_prices_json: dict[str, dict] = json.loads(response_prices.text)
@@ -870,6 +876,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                     1:-1
                 ]  # appIds=220,480,730
             },
+            timeout=15,
         )
 
         response_hours_json: list[dict[str, int]] = json.loads(response_hours.text)

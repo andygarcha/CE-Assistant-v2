@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-import random
-from typing import Literal, get_args, TYPE_CHECKING
-from utils.general_utils import get_item_from_list
-from Modules import http_session
 import logging
+import secrets
+from typing import TYPE_CHECKING, Literal, get_args
+
+from Modules import http_session
+from utils.general_utils import get_item_from_list
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
@@ -155,7 +156,7 @@ def get_rollable_game(
             for c in get_args(CATEGORIES):
                 database_tier_games.extend(database_tier[str(tn)][c])
 
-    random.shuffle(database_tier_games)
+    secrets.SystemRandom().shuffle(database_tier_games)
 
     # get banned games
     try:

@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 import datetime
-import time
-import uuid
-from typing import Literal, cast
+import json
 import logging
+import os as _os
+import time
 import typing
-from dotenv import load_dotenv
+import uuid
+from collections.abc import Sequence
+from typing import Literal, cast
 
 import httpx
-from supabase import ClientOptions, create_client, Client
+from dotenv import load_dotenv
+from supabase import Client, ClientOptions, create_client
 
 # -- local --
 from Classes.CE_Game import CEGame
@@ -20,17 +22,16 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import CEInput
-from Modules import hm
-from Modules import LocalCache
-
-import os as _os
+from Modules import LocalCache, hm
 
 load_dotenv()
 SUPABASE_URL = _os.getenv("SUPABASE_URL")
 SUPABASE_KEY = _os.getenv("SUPABASE_SECRET_KEY")
 
-assert SUPABASE_URL is not None
-assert SUPABASE_KEY is not None
+if SUPABASE_URL is None:
+    raise ValueError("SUPABASE_URL env variable not found!")
+if SUPABASE_KEY is None:
+    raise ValueError("SUPABASE_KEY env variable not found!")
 
 supabase: Client = create_client(
     SUPABASE_URL,
@@ -167,7 +168,7 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
         case "objectives":
             return LocalCache.get_objective_ids()
         case _:
-            raise Exception(f"Invalid get_list argument! argument: {database}")
+            raise ValueError(f"Invalid get_list argument! argument: {database}")
 
 
 # GET GAME
@@ -286,22 +287,24 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     conn = LocalCache.get_connection()
 
     # Bulk-fetch related data
-    gid_ph = ",".join("?" * len(game_ce_ids))
+    game_ids_json = json.dumps(game_ce_ids)
     objectives_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM objectives WHERE game_ce_id IN ({gid_ph})", game_ce_ids
+            "SELECT * FROM objectives "
+            "WHERE game_ce_id IN (SELECT value FROM json_each(?))",
+            (game_ids_json,),
         ).fetchall()
     ]
 
     objective_ids = [o["ce_id"] for o in objectives_json]
     if objective_ids:
-        oid_ph = ",".join("?" * len(objective_ids))
         requirements_json = [
             dict(r)
             for r in conn.execute(
-                f"SELECT * FROM objective_requirements WHERE objective_ce_id IN ({oid_ph})",
-                objective_ids,
+                "SELECT * FROM objective_requirements "
+                "WHERE objective_ce_id IN (SELECT value FROM json_each(?))",
+                (json.dumps(objective_ids),),
             ).fetchall()
         ]
     else:
@@ -310,7 +313,8 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     categories_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM categories WHERE game_id IN ({gid_ph})", game_ce_ids
+            "SELECT * FROM categories WHERE game_id IN (SELECT value FROM json_each(?))",
+            (game_ids_json,),
         ).fetchall()
     ]
 
@@ -426,17 +430,20 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     conn = LocalCache.get_connection()
 
     # Bulk-fetch related data
-    uid_ph = ",".join("?" * len(user_ce_ids))
+    user_ids_json = json.dumps(user_ce_ids)
     userGames_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM user_games WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+            "SELECT * FROM user_games WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+            (user_ids_json,),
         ).fetchall()
     ]
     userObjectives_json = [
         dict(r)
         for r in conn.execute(
-            f"SELECT * FROM user_objectives WHERE user_ce_id IN ({uid_ph})", user_ce_ids
+            "SELECT * FROM user_objectives "
+            "WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+            (user_ids_json,),
         ).fetchall()
     ]
 

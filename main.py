@@ -1,5 +1,6 @@
 # -------- discord imports -----------
 import logging
+
 from Modules import hm
 
 logging.basicConfig(
@@ -11,24 +12,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-import discord  # noqa: E402
-from discord import app_commands  # noqa: E402
+import os  # noqa: E402
 
 # -------- json imports ----------
 from typing import Literal  # noqa: E402
 
-# --------- local class imports --------
-
-# from Modules.WebInteractor import master_loop
-from update_delivery import deliver_updates  # noqa: E402
-from Modules import SupabaseReader  # noqa: E402
-from commands import load_commands  # noqa: E402
-from commands.games import get_game_auto  # noqa: E402
+import discord  # noqa: E402
+from discord import app_commands  # noqa: E402
 
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
-import os  # noqa: E402
+
+from commands import load_commands  # noqa: E402
+from commands.games import get_game_auto  # noqa: E402
+from Modules import SupabaseReader  # noqa: E402
+
+# --------- local class imports --------
+# from Modules.WebInteractor import master_loop
+from update_delivery import deliver_updates  # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
 
@@ -52,8 +54,10 @@ else:
     discord_token = os.getenv("DISCORD_BOT_TOKEN_TERTIARY")
     guild_id = os.getenv("DISCORD_TEST_GUILD_ID")
 
-assert discord_token is not None
-assert guild_id is not None
+if discord_token is None:
+    raise ValueError("discord_token env variable not found!")
+if guild_id is None:
+    raise ValueError("guild_id env variable not found!")
 
 # set up client
 client = discord.Client(intents=intents)

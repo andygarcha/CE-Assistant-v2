@@ -1,5 +1,6 @@
 import logging
 from typing import Literal
+
 import aiohttp
 import discord
 

@@ -15,7 +15,6 @@ from Classes.OtherClasses import (
     CRData,
 )
 
-
 # ── CECompletion ──────────────────────────────────────────────────────────────
 
 

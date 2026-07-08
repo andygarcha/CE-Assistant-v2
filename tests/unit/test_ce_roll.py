@@ -458,7 +458,7 @@ class TestRolledCategories:
 
     def test_game_not_in_database_raises(self):
         roll = make_roll(games=[GAME_A])
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Could not find game"):
             roll.rolled_categories([])
 
     def test_extra_database_games_not_in_roll_ignored(self):

@@ -8,13 +8,15 @@ It will:
 from __future__ import annotations
 
 import datetime
-import discord
 import logging
+from typing import TYPE_CHECKING
+
+import discord
+
+import Modules.hm as hm
 
 # -- local --
 from Classes.CE_Roll import CERoll
-import Modules.hm as hm
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame

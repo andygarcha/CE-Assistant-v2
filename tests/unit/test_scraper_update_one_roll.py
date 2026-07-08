@@ -2,10 +2,10 @@ import datetime
 
 import pytest
 
-from Classes.CE_User import MUTELIST_CEIDS
-from web_scraper.scraper import UpdateMessageForScraperProcess, update_one_roll
 from Classes.CE_Roll import CERoll
+from Classes.CE_User import MUTELIST_CEIDS
 from tests.conftest import make_game, make_roll, make_user
+from web_scraper.scraper import UpdateMessageForScraperProcess, update_one_roll
 
 GAME_ID = "game-001-0000-0000-000000000000"
 ROLL_NAME = "One Hell of a Day"

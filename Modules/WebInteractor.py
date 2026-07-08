@@ -1,23 +1,24 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING, Literal, NoReturn
-from Modules import http_session
-import requests
-from Modules.Screenshot import Screenshot
+
 import Modules.hm as hm
-import logging
+from Modules import http_session
+from Modules.Screenshot import Screenshot
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
 
 
 # selenium and beautiful soup stuff
+import io
+
 from bs4 import BeautifulSoup, Tag
+from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-import io
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -226,27 +227,3 @@ async def get_curator_count() -> int | None:
     "Returns the current curator count. Uses `requests` but I don't care!"
 
     raise NotImplementedError
-
-    # set the payload and pull from the curator
-    payload = {"cc": "us", "l": "english"}
-    data = requests.get(
-        "https://store.steampowered.com/curator/36185934", params=payload
-    )
-
-    # beautiful soupify
-    soup_data = BeautifulSoup(data.text, features="html.parser")
-
-    # get all spans
-    spans = soup_data.find_all("span")
-
-    # iterate through them
-    for item in spans:
-        try:
-            if item["id"] == "Recommendations_total":
-                return int(item.string)
-        except Exception as e:
-            logger.exception(e)
-            continue
-
-    # return None if this fails.
-    return None

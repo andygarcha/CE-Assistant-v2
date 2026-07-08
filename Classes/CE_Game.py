@@ -1,9 +1,9 @@
-from Classes.CE_Objective import CEObjective
-from Classes.OtherClasses import CECompletion
-import Modules.hm as hm
-from Modules import http_session
 import logging
 
+import Modules.hm as hm
+from Classes.CE_Objective import CEObjective
+from Classes.OtherClasses import CECompletion
+from Modules import http_session
 
 logger = logging.getLogger(__name__)
 

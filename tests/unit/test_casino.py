@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from typing import get_args
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 from Classes.CE_User import CEUser
 from commands.casino import (
     RollResult,
@@ -18,8 +17,8 @@ from commands.casino import (
     roll_soulmates,
     roll_teamworkmakesthedreamwork,
     roll_triplethreat,
-    roll_twoweekt2streak,
     roll_twotwoweekt2streakstreak,
+    roll_twoweekt2streak,
     solo_roll,
 )
 from Modules import hm
@@ -225,7 +224,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -243,7 +242,7 @@ class TestRollOnehellofamonth:
         ]
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS[:5]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS[:5]),
         ):
             result = roll_onehellofamonth(db, EMPTY_DT, user, True, True)
         assert result.error is None
@@ -260,7 +259,7 @@ class TestRollOnehellofamonth:
         ]  # None for Action's first call, then 25 successes
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -275,7 +274,7 @@ class TestRollOnehellofamonth:
         game_seq = [None, None] + GAME_IDS  # first two category attempts fail
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None
@@ -287,7 +286,7 @@ class TestRollOnehellofamonth:
         game_seq = [None, None] + GAME_IDS
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is not None
@@ -304,7 +303,7 @@ class TestRollOnehellofamonth:
         # one failure: should recover
         with (
             patch("Modules.hm.get_rollable_game", side_effect=[None] + GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -313,7 +312,7 @@ class TestRollOnehellofamonth:
         user2 = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", side_effect=[None, None] + GAME_IDS),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user2, True, True)
         assert result.games is None
@@ -323,7 +322,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", return_value=None),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None

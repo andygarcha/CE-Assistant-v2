@@ -1,13 +1,12 @@
+import logging
 import os
-from pathlib import Path
 import time
+from pathlib import Path
 
 from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-
-import logging
 
 logger = logging.getLogger(__name__)
 

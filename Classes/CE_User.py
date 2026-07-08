@@ -1,14 +1,16 @@
 import datetime
-from typing import Sequence, cast, get_args
+import logging
 import uuid
+from typing import Sequence, cast, get_args
+
 import aiohttp
-from Classes.CE_Roll import CERoll
-from Classes.CE_Game import CEGame
-from Classes.CE_User_Game import CEUserGame
+
 import Modules.hm as hm
+from Classes.CE_Game import CEGame
+from Classes.CE_Roll import CERoll
+from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import CRData
 from Modules import http_session
-import logging
 
 MUTELIST_CEIDS = ["e790e8f0-f67e-4646-8fa9-de436b2c8d5e"]  # athenavenny
 
@@ -788,7 +790,7 @@ class CEAPIUser(CEUser):
             return None
 
         # sort and shear them to the number requested
-        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[
+        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names, strict=False), reverse=True)[
             0:NUM_OF_OBJECTIVES
         ]
 

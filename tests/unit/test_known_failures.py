@@ -8,14 +8,13 @@ Each test documents:
 """
 
 from Classes.OtherClasses import CEInput
-from utils.general_utils import get_grammar_str
 from tests.conftest import (
     make_game,
     make_user,
     make_user_game,
     make_user_objective,
 )
-
+from utils.general_utils import get_grammar_str
 
 # ── get_grammar_str (utils/general_utils.py:25-31) ───────────────────────────
 # Bug: function body is `return NotImplemented` (a bare sentinel, not a string).

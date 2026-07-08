@@ -45,7 +45,7 @@ def get_datetime(
         if old_datetime.tzinfo is None:
             old_datetime = old_datetime.replace(tzinfo=datetime.timezone.utc)
         if isinstance(days, str):
-            raise Exception(f"old_datetime not None and days is a str. {days=}")
+            raise ValueError(f"old_datetime not None and days is a str. {days=}")
 
         if minutes is not None:
             return old_datetime + datetime.timedelta(minutes=minutes)
@@ -70,7 +70,7 @@ def get_datetime(
     elif days is None:
         return None
     elif isinstance(days, str):
-        raise Exception(f"days is a str but not = 'now'. {days=}")
+        raise ValueError(f"days is a str but not = 'now'. {days=}")
 
     else:
         return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(

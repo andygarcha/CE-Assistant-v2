@@ -21,18 +21,17 @@ Users
 
 import asyncio
 import datetime
-from typing import Literal, cast
 import logging
-
-from Modules import hm, http_session
+from typing import Literal, cast
 
 # -- local --
 from Classes.CE_Game import CEAPIGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_User import CEUser, CEAPIUser
+from Classes.CE_User import CEAPIUser, CEUser
 from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEUserObjective
 from Exceptions.FailedScrapeException import FailedScrapeException
+from Modules import hm, http_session
 
 # -- other --
 
@@ -428,7 +427,7 @@ async def get_api_users_all(
         raise FailedScrapeException(
             "Failed scraping from api/users/all/ "
             + f"on users {(i - 1) * PULL_LIMIT} through {i * PULL_LIMIT - 1}"
-        )
+        ) from e
     logger.info("done fetching users! total users: %d", len(total_response))
 
     # convert to objects

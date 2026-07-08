@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import datetime
-from typing import Literal, get_args
 import logging
+from typing import TYPE_CHECKING, Literal, get_args
 
 import Modules.hm as hm
-
-from typing import TYPE_CHECKING
-
 from utils.game_utils import CATEGORIES
 
 if TYPE_CHECKING:
@@ -595,7 +592,7 @@ class CERoll:
         for _game in self.games:
             _game_supa = hm.get_item_from_list(_game, database_name)
             if _game_supa is None:
-                raise Exception(
+                raise ValueError(
                     f"Could not find game {_game} in database_name. rolled_categories"
                 )
             _categories.update(_game_supa.categories)

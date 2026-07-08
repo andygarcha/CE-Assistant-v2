@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-
 from utils.general_utils import (
     format_ce_link,
     get_index_from_list,

@@ -1,8 +1,9 @@
 from collections.abc import Mapping
 
+from Classes.CE_Game import CEGame
+
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_Game import CEGame
 from utils.game_utils import CATEGORIES
 
 

@@ -1,8 +1,9 @@
 import re
+
 import pytest
 
-from utils.icons import get_emoji
 from utils.channels import id_num
+from utils.icons import get_emoji
 
 EMOJI_PATTERN = re.compile(r"^<:.+:\d+>$")
 

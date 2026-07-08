@@ -1,12 +1,11 @@
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Game import CEGame, CEAPIGame
 from Modules import hm
+from tests.conftest import make_api_game, make_game, make_objective
 from web_scraper.scraper import (
-    create_update_updated_game,
     UpdateMessageForScraperProcess,
+    create_update_updated_game,
 )
-from tests.conftest import make_game, make_api_game, make_objective
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 

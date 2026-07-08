@@ -142,11 +142,11 @@ class TestGetDatetime:
         assert result == expected
 
     def test_string_days_with_old_datetime_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="old_datetime not None and days is a str"):
             get_datetime(days="now", old_datetime=FIXED_DT)
 
     def test_invalid_string_days_without_old_datetime_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="days is a str but not = 'now'"):
             get_datetime(days="tomorrow")
 
     def test_cetimestamp_string_as_old_datetime(self):

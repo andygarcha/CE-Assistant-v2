@@ -1,8 +1,9 @@
 import asyncio
-from unittest.mock import AsyncMock, patch
 from contextlib import contextmanager
+from unittest.mock import AsyncMock, patch
 
 import pytest
+
 import scraper_main
 
 

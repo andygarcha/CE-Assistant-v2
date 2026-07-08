@@ -1,5 +1,6 @@
 from unittest.mock import patch
-from web_scraper.scraper import flush_updates, UpdateMessageForScraperProcess
+
+from web_scraper.scraper import UpdateMessageForScraperProcess, flush_updates
 
 
 def _make_update(**kwargs) -> UpdateMessageForScraperProcess:

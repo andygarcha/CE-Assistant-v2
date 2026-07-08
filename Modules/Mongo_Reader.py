@@ -4,11 +4,13 @@ Version 3 : Object-Oriented, and each item has its own document.
 """
 
 # imports
-from typing import Literal
 import logging
-import uuid
 import os
+import uuid
+from typing import Literal
+
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # -- local --
 from Classes.CE_Game import CEAPIGame, CEGame
@@ -18,15 +20,12 @@ from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import (
-    CEInput,
-    CETagInput,
     CECurateInput,
     CEIndividualValueInput,
+    CEInput,
+    CETagInput,
     CEValueInput,
 )
-
-from motor.motor_asyncio import AsyncIOMotorClient
-
 
 logger = logging.getLogger(__name__)
 

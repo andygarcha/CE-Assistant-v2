@@ -5,13 +5,13 @@ everything else gets a safe default.
 """
 
 import datetime
+import uuid
 from typing import cast
 from unittest.mock import patch as _patch
-import uuid
 
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Game import CEGame, CEAPIGame
-from Classes.CE_Roll import CERoll, ROLL_STATUS
+from Classes.CE_Roll import ROLL_STATUS, CERoll
 from Classes.CE_User import CEUser
 from Classes.CE_User_Game import CEUserGame
 from Classes.CE_User_Objective import CEUserObjective
