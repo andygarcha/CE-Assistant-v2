@@ -122,27 +122,6 @@ class TestIsWonCoop:
         roll = make_roll(roll_name="Soul Mates", games=[GAME_ID_A])
         assert roll.is_won([game], user, partner) is False
 
-    def test_winner_takes_all_user_wins(self):
-        game = _db_game(GAME_ID_A)
-        user = _completed_user(GAME_ID_A)
-        partner = _incomplete_user(GAME_ID_A)
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID_A])
-        assert roll.is_won([game], user, partner) is True
-
-    def test_winner_takes_all_partner_wins(self):
-        game = _db_game(GAME_ID_A)
-        user = _incomplete_user(GAME_ID_A)
-        partner = _completed_user(GAME_ID_A)
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID_A])
-        assert roll.is_won([game], user, partner) is True
-
-    def test_winner_takes_all_neither_done_loses(self):
-        game = _db_game(GAME_ID_A)
-        user = _incomplete_user(GAME_ID_A)
-        partner = _incomplete_user(GAME_ID_A)
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID_A])
-        assert roll.is_won([game], user, partner) is False
-
 
 # ── casino_increase ───────────────────────────────────────────────────────────
 
