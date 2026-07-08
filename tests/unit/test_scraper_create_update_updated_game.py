@@ -607,6 +607,28 @@ class TestCreateUpdateUpdatedGameObjectiveMetaChanges:
         update, _ = create_update_updated_game(old, new)
         assert update is not None
 
+    def test_unchanged_name_on_cleared_objective_not_mentioned(self):
+        # Name identical, only points changed, neither copy is UNCLEARED/UNVALUED.
+        # The "Name changed" note must not fire just because the objective
+        # wasn't in an uncleared state.
+        old = _old(
+            [
+                make_objective(
+                    ce_id=OBJ_A, obj_type="Primary", point_value=10, name="Same Name"
+                )
+            ]
+        )
+        new = _new(
+            [
+                make_objective(
+                    ce_id=OBJ_A, obj_type="Primary", point_value=20, name="Same Name"
+                )
+            ]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Name changed" not in update.description
+
     def test_co_description_change_triggers_update(self):
         old_co = make_objective(
             ce_id=OBJ_C, obj_type="Community", point_value=0, name="Solid Gold"

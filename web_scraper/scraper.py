@@ -1408,14 +1408,11 @@ def create_update_updated_game(
 
             # if the name was changed
             # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
-            if (
+            if old_objective.name != new_objective.name and (
                 (
-                    old_objective.name != new_objective.name
-                    and (
-                        old_objective.is_uncleared()
-                        and not new_objective.is_uncleared()
-                        and (old_objective.uncleared_name() != new_objective.name)
-                    )
+                    old_objective.is_uncleared()
+                    and not new_objective.is_uncleared()
+                    and (old_objective.uncleared_name() != new_objective.name)
                 )
                 or not old_objective.is_uncleared()
                 or new_objective.is_uncleared()
