@@ -551,7 +551,7 @@ async def co_op_roll(
 
     if tier is None:
         raise ValueError("tier was supposed to be NOne by this point!")
-    
+
     roll = CERoll(
         roll_name=event_name,
         user_ce_id=user.ce_id,

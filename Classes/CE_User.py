@@ -790,9 +790,9 @@ class CEAPIUser(CEUser):
             return None
 
         # sort and shear them to the number requested
-        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names, strict=False), reverse=True)[
-            0:NUM_OF_OBJECTIVES
-        ]
+        ordered_pairs = sorted(
+            zip(completion_dates, ce_ids, game_names, strict=False), reverse=True
+        )[0:NUM_OF_OBJECTIVES]
 
         # now get the objects and zip them with the completion dates
         objective_tuples: list[
