@@ -8,7 +8,7 @@ from utils.time_utils import (
     months_to_days,
 )
 
-FIXED_DT = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+FIXED_DT = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.UTC)
 
 
 # ── months_to_days ────────────────────────────────────────────────────────────
@@ -93,33 +93,31 @@ class TestGetDatetime:
 
     def test_string_old_datetime_parsed(self):
         result = get_datetime(days=1, old_datetime="2024-06-15T12:00:00")
-        expected_base = datetime.datetime(
-            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        expected_base = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.UTC)
         assert result == expected_base + datetime.timedelta(days=1)
 
     def test_zero_days_from_now_is_recent(self):
-        before = datetime.datetime.now(datetime.timezone.utc)
+        before = datetime.datetime.now(datetime.UTC)
         result = get_datetime(days=0)
-        after = datetime.datetime.now(datetime.timezone.utc)
+        after = datetime.datetime.now(datetime.UTC)
         assert before <= result <= after
 
     def test_future_days_from_now(self):
-        before = datetime.datetime.now(datetime.timezone.utc)
+        before = datetime.datetime.now(datetime.UTC)
         result = get_datetime(days=7)
         expected_approx = before + datetime.timedelta(days=7)
         delta = abs((result - expected_approx).total_seconds())
         assert delta < 2  # within 2 seconds of expected
 
     def test_minutes_from_now(self):
-        before = datetime.datetime.now(datetime.timezone.utc)
+        before = datetime.datetime.now(datetime.UTC)
         result = get_datetime(minutes=60)
         expected_approx = before + datetime.timedelta(minutes=60)
         delta = abs((result - expected_approx).total_seconds())
         assert delta < 2
 
     def test_months_from_now(self):
-        before = datetime.datetime.now(datetime.timezone.utc)
+        before = datetime.datetime.now(datetime.UTC)
         result = get_datetime(months=1)
         # one month ahead is between 28 and 31 days
         assert (
@@ -136,9 +134,7 @@ class TestGetDatetime:
     def test_naive_old_datetime_gets_utc_applied(self):
         naive = datetime.datetime(2024, 6, 15, 12, 0, 0)  # no tzinfo
         result = get_datetime(days=1, old_datetime=naive)
-        expected = datetime.datetime(
-            2024, 6, 16, 12, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        expected = datetime.datetime(2024, 6, 16, 12, 0, 0, tzinfo=datetime.UTC)
         assert result == expected
 
     def test_string_days_with_old_datetime_raises(self):
@@ -152,7 +148,5 @@ class TestGetDatetime:
     def test_cetimestamp_string_as_old_datetime(self):
         # CE-format string falls back to cetimestamp_to_datetime (line 37-38)
         result = get_datetime(days=0, old_datetime="2024-06-15T12:00:00.000Z")
-        expected = datetime.datetime(
-            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        expected = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.UTC)
         assert result == expected

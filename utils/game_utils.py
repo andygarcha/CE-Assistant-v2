@@ -31,7 +31,7 @@ def get_banned_games() -> list[str] | None:
 
     # return banned_game_ids
 
-    with open("./Assets/games_banned.json", "r") as f:
+    with open("./Assets/games_banned.json") as f:
         lines = json.load(f)
     return lines
 

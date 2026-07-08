@@ -43,7 +43,7 @@ class SteamData(GameData):
     @property
     def raw_data(self) -> dict:
         "Returns the raw .json data."
-        key = list(self.__data.keys())[0]
+        key = next(iter(self.__data.keys()))
         return self.__data[key]["data"]
 
     @property
@@ -317,7 +317,7 @@ class CRData:
             Multi-cat games advance the power counter for ALL their categories,
             but only their max per-category contribution counts toward total CR.
         """
-        powers: dict[str, int] = {cat: 0 for cat in get_args(hm.CATEGORIES)}
+        powers: dict[str, int] = dict.fromkeys(get_args(hm.CATEGORIES), 0)
         total_cr: float = 0.0
 
         for points, categories in all_games:

@@ -287,7 +287,7 @@ async def add_notes(
     site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
     if isinstance(
         site_additions_channel,
-        (discord.ForumChannel, discord.CategoryChannel, discord.abc.PrivateChannel),
+        discord.ForumChannel | discord.CategoryChannel | discord.abc.PrivateChannel,
     ):
         raise Exception(
             f"Cannot fetch messages from channel of type {type(site_additions_channel)}"
@@ -634,9 +634,7 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
         return await interaction.followup.send("This user isn't registered.")
 
     return await interaction.followup.send(
-        (
-            f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
-            f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
-            f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
-        )
+        f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
+        f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
+        f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
     )

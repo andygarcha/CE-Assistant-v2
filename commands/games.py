@@ -1,5 +1,3 @@
-import typing
-
 import discord
 from discord import app_commands
 
@@ -27,7 +25,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
 
 async def get_game_auto(
     interaction: discord.Interaction, current: str
-) -> typing.List[app_commands.Choice[str]]:
+) -> list[app_commands.Choice[str]]:
     """
     Autocompletion function that takes in a game name and spits out the game's CE ID.
     Use this function when you're trying to take in a game for a command, like this:

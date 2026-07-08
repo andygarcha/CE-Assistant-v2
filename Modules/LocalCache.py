@@ -887,10 +887,7 @@ def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
     -- never a value derived from Supabase or any other external input.
     """
     return {
-        row[1]
-        for row in conn.execute(
-            f'PRAGMA table_info("{table_name}")'  # noqa: S608 -- table_name is always a hardcoded local constant, see docstring
-        ).fetchall()
+        row[1] for row in conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
     }
 
 

@@ -51,11 +51,11 @@ class UpdateMessageForScraperProcess:
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
-            string += f"{repr(self.title)} ----- {repr(self.description)}\n"
+            string += f"{self.title!r} ----- {self.description!r}\n"
         else:
-            string += f"{repr(self.text)}\n"
+            string += f"{self.text!r}\n"
 
-        print(string)
+        print(string)  # noqa: T201 -- intentional console output for dry-run/silent scrapes, in addition to logging below
 
         if full and info:
             logger.info(string)
@@ -125,11 +125,10 @@ async def process_loop(
 
     full_scrape = (
         (  # Noon/1PM EST (based on daylight savings)
-            datetime.datetime.now(datetime.timezone.utc).hour == 17
+            datetime.datetime.now(datetime.UTC).hour == 17
         )
-        and (datetime.datetime.now(datetime.timezone.utc).minute == 0)
-        or full_scrape
-    )
+        and (datetime.datetime.now(datetime.UTC).minute == 0)
+    ) or full_scrape
 
     logger.info("full_scrape=%s (second try)", full_scrape)
 
@@ -142,7 +141,7 @@ async def process_loop(
     logger.debug(
         "FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES
     )
-    time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
+    time_current: datetime.datetime = datetime.datetime.now(datetime.UTC)
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -406,7 +405,7 @@ async def update_games(
     if full_scrape:
         logger.info("Full scraping: pulling from /api/games/full.")
         games = await CEAPIReader.get_api_games_full()
-        notIsFinished = set([g.ce_id for g in games if not g.is_finished])
+        notIsFinished = {g.ce_id for g in games if not g.is_finished}
         games = [g for g in games if g.is_finished]
     else:
         logger.info(
@@ -1672,15 +1671,8 @@ def check_newly_completed_games(
 
         update.is_embed = False
         update.text += (
-            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            f"Holy moly {user.mention()} ({user.display_name_with_link()})! You've now *over*completed {game.name_with_link}, a {game.tier_emoji} worth {game.get_po_points()} points, with an additional {game.get_so_points()} points "
             "worth of SOs."
-        ).format(
-            user.mention(),
-            user.display_name_with_link(),
-            game.name_with_link,
-            game.tier_emoji,
-            game.get_po_points(),
-            game.get_so_points(),
         )
         updates.append(update)
 

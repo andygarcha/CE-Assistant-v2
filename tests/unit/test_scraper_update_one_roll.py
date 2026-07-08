@@ -13,7 +13,7 @@ MUTED_CE_ID = MUTELIST_CEIDS[0]
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 def _past(minutes: int = 10) -> datetime.datetime:

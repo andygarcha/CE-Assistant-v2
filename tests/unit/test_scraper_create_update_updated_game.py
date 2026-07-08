@@ -808,7 +808,7 @@ class TestCreateUpdateUpdatedGameTierChanges:
         )
 
     def test_point_change_without_tier_change_does_not_mention_tier(self):
-        # Both old and new are T2 (20–39 PO points); no tier transition.
+        # Both old and new are T2 (20-39 PO points); no tier transition.
         update, _ = create_update_updated_game(
             _old([_po(points=20)]), _new([_po(points=25)])
         )

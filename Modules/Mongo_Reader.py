@@ -354,10 +354,9 @@ async def dump_curator_count(cc: int):
 
     # Check if the document was found and updated
     if result.matched_count > 0:
-        print("Document updated successfully.")
+        logger.info("Document updated successfully.")
     else:
-        print("No document with 'curator_count' found.")
-    pass
+        logger.warning("No document with 'curator_count' found.")
 
 
 async def dump_curator_ids(ids: list[str]):
@@ -372,7 +371,7 @@ async def dump_curator_ids(ids: list[str]):
         if idnum not in mongoids:
             mongoids.append(idnum)
 
-    print(mongoids)
+    logger.debug("Updated curator ids: %s", mongoids)
 
     await collection.replace_one({"curated": {"$exists": True}}, {"curated": mongoids})
 
@@ -405,7 +404,6 @@ async def dump_database_tier(database_tier: dict):
 
     # Check if the document was found and updated
     if result.matched_count > 0:
-        print("Database Tier document updated successfully.")
+        logger.info("Database Tier document updated successfully.")
     else:
-        print("No document with 'database_tier' found.")
-    pass
+        logger.warning("No document with 'database_tier' found.")

@@ -31,7 +31,7 @@ class TestAddPending:
         roll = user.get_pending("Never Lucky")
         assert roll is not None
         assert roll.due_time is not None
-        assert roll.due_time > datetime.datetime.now(datetime.timezone.utc)
+        assert roll.due_time > datetime.datetime.now(datetime.UTC)
 
     def test_does_not_affect_other_event_names(self):
         user = make_user()

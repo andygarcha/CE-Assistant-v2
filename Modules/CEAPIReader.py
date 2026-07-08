@@ -234,7 +234,7 @@ async def get_objective_ids() -> list[str]:
 async def post_users_query(ids: list[str]) -> list[CEAPIUser]:
     raise NotImplementedError
     if len(ids) > 100:
-        print(f"post_users_query() called with {len(ids)=}")
+        logger.warning("post_users_query() called with %d ids", len(ids))
         return []
 
     session = await http_session.get_session()

@@ -42,7 +42,7 @@ async def get_roll_embeds(
         )
     )
     embeds[0].set_footer(
-        text=f"Page 1 of {str(len(roll.games) + 1)}", icon_url=hm.FINAL_CE_ICON
+        text=f"Page 1 of {len(roll.games) + 1!s}", icon_url=hm.FINAL_CE_ICON
     )
     embeds[0].set_author(name="Challenge Enthusiasts")
 

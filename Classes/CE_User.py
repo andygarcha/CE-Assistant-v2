@@ -1,7 +1,8 @@
 import datetime
 import logging
 import uuid
-from typing import Sequence, cast, get_args
+from collections.abc import Sequence
+from typing import cast, get_args
 
 import aiohttp
 

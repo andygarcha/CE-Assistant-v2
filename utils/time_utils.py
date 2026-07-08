@@ -43,7 +43,7 @@ def get_datetime(
     if old_datetime is not None:
         # ensure timezone-aware
         if old_datetime.tzinfo is None:
-            old_datetime = old_datetime.replace(tzinfo=datetime.timezone.utc)
+            old_datetime = old_datetime.replace(tzinfo=datetime.UTC)
         if isinstance(days, str):
             raise ValueError(f"old_datetime not None and days is a str. {days=}")
 
@@ -57,12 +57,10 @@ def get_datetime(
     # -- old datetime NOT passed --
     # return right now
     if days == "now":
-        return datetime.datetime.now(datetime.timezone.utc)
+        return datetime.datetime.now(datetime.UTC)
     # return the minutes
     elif minutes is not None:
-        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-            minutes=minutes
-        )
+        return datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=minutes)
     # return the months
     elif months is not None:
         return get_datetime(days=months_to_days(months))
@@ -73,16 +71,14 @@ def get_datetime(
         raise ValueError(f"days is a str but not = 'now'. {days=}")
 
     else:
-        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-            days=days
-        )
+        return datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=days)
 
 
 def get_unix(days=0, minutes=None, months=None, old_unix=None) -> int:
     """Deprecated: Use get_datetime() instead. Returns a unix timestamp."""
     old_dt = None
     if isinstance(old_unix, int):
-        old_dt = datetime.datetime.fromtimestamp(old_unix, datetime.timezone.utc)
+        old_dt = datetime.datetime.fromtimestamp(old_unix, datetime.UTC)
     dt = get_datetime(days, minutes, months, old_dt)
     return int(dt.timestamp())
 

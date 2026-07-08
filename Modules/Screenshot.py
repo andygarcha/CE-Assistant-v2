@@ -136,7 +136,7 @@ class Screenshot:
                 if previous is not None:
                     logger.debug("prev not none")
                     driver.execute_script(
-                        "window.scrollTo({0}, {1})".format(rectangle[0], rectangle[1])
+                        f"window.scrollTo({rectangle[0]}, {rectangle[1]})"
                     )
                     time.sleep(10)
                 logger.debug("broke if 1")
@@ -145,8 +145,8 @@ class Screenshot:
                     self.hide_elements(driver, hide_elements)
                     logger.debug("15")
 
-                file_name = "part{0}.png".format(part)
-                path = Path("/CE-Assistant/part{0}.png".format(part))
+                file_name = f"part{part}.png"
+                path = Path(f"/CE-Assistant/part{part}.png")
                 logger.debug("16")
                 logger.debug("file_name=%s", file_name)
                 logger.debug("path=%s", str(path))
@@ -246,10 +246,10 @@ class Screenshot:
         if elements is not None:
             try:
                 for e in elements:
-                    js_script = """
-                        element1 = document.getElementsByClassName('{}');
+                    js_script = f"""
+                        element1 = document.getElementsByClassName('{e}');
                         element1[0].style.display = 'none';
-                        """.format(e)
+                        """
                     driver.execute_script(js_script)
             except Exception as Error:
                 logger.error("Error : %s", str(Error))

@@ -275,7 +275,7 @@ class CERoll:
                 except Exception:
                     return None
         if isinstance(dt, datetime.datetime) and dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dt = dt.replace(tzinfo=datetime.UTC)
         return dt
 
     def _to_timestamp(self, datum) -> int | None:
@@ -360,7 +360,7 @@ class CERoll:
         return self._lucky
 
     def __status_mongo_to_supabase(self):
-        if self.init_time == 0 and self.due_time is None or self.games is None:
+        if (self.init_time == 0 and self.due_time is None) or self.games is None:
             return "won_legacy"
         match self.status:
             case "current":
@@ -401,7 +401,7 @@ class CERoll:
         dt = self.due_time
         if isinstance(dt, int):
             try:
-                dt = datetime.datetime.fromtimestamp(dt, tz=datetime.timezone.utc)
+                dt = datetime.datetime.fromtimestamp(dt, tz=datetime.UTC)
             except (OverflowError, OSError, ValueError) as e:
                 logger.error(
                     "Expiration check failed. Due Time: %s, couldn't normalize int timestamp. %s",
@@ -435,7 +435,7 @@ class CERoll:
 
         # ensure timezone-aware for comparison
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dt = dt.replace(tzinfo=datetime.UTC)
 
         return dt < hm.get_datetime("now")
 

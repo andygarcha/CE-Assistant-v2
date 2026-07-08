@@ -70,7 +70,7 @@ def get_channel(client: discord.Client | None, channel: CHANNEL_NAMES):
 
     if isinstance(
         _channel,
-        (discord.ForumChannel, discord.CategoryChannel, discord.abc.PrivateChannel),
+        discord.ForumChannel | discord.CategoryChannel | discord.abc.PrivateChannel,
     ):
         return None
 

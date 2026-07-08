@@ -135,7 +135,7 @@ def make_user(
         rolls=rolls if rolls is not None else [],
         display_name=display_name,
         avatar="",
-        last_updated=datetime.datetime.now(datetime.timezone.utc),
+        last_updated=datetime.datetime.now(datetime.UTC),
     )
 
 
@@ -158,7 +158,7 @@ def make_roll(
         partner_ce_id=partner_ce_id,
         init_time=init_time
         if init_time is not None
-        else datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+        else datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
         due_time=due_time,
         completed_time=completed_time,
         rerolls=rerolls,
