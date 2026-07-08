@@ -66,9 +66,7 @@ def _is_legacy(roll: CERoll) -> bool:
     """A roll with no init/due/completed time is a legacy row predating
     those fields being tracked, so timing/consistency checks don't apply."""
     return (
-        roll.init_time is None
-        and roll.due_time is None
-        and roll.completed_time is None
+        roll.init_time is None and roll.due_time is None and roll.completed_time is None
     )
 
 
