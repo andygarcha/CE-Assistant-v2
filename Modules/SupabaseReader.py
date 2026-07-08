@@ -190,6 +190,15 @@ def get_game_id_by_name(name: str) -> list[CEGame]:
 
 
 def get_database_name() -> list[CEGame]:
+    """Returns every game in the database.
+
+    Deliberately does NOT delegate to `get_games_bulk(get_list("name"))`: that
+    would bind the full list of game ids into a `json_each(?)` filter, which
+    benchmarked ~20-25% slower than these flat, unconditioned `SELECT *`
+    queries at current table sizes. This is a hot path (called on nearly
+    every interactive Discord command that touches games), so the two
+    functions stay separate on purpose -- this isn't unnoticed duplication.
+    """
     conn = LocalCache.get_connection()
     games_json = [dict(r) for r in conn.execute("SELECT * FROM games").fetchall()]
     objectives_json = [
@@ -445,59 +454,8 @@ def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
 
 
 def get_database_user() -> list[CEUser]:
-    conn = LocalCache.get_connection()
-    response_user = [dict(r) for r in conn.execute("SELECT * FROM users").fetchall()]
-    response_ugames = [
-        dict(r) for r in conn.execute("SELECT * FROM user_games").fetchall()
-    ]
-    response_uobjectives = [
-        dict(r) for r in conn.execute("SELECT * FROM user_objectives").fetchall()
-    ]
-    response_rolls = [dict(r) for r in conn.execute("SELECT * FROM rolls").fetchall()]
-    response_rgames = [
-        dict(r) for r in conn.execute("SELECT * FROM roll_games").fetchall()
-    ]
-    response_objectives = [
-        dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()
-    ]
-
-    # Index by user for O(1) lookups
-    ugames_by_user: dict[str, list[dict]] = {}
-    for ug in response_ugames:
-        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
-    uobjs_by_user: dict[str, list[dict]] = {}
-    for uo in response_uobjectives:
-        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
-    rolls_by_user: dict[str, list[dict]] = {}
-    for r in response_rolls:
-        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
-        if r["user2_ce_id"] is not None:
-            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
-    rgames_by_roll: dict[str, list[dict]] = {}
-    for rg in response_rgames:
-        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
-    objectives_index = {o["ce_id"]: o for o in response_objectives}
-
-    _users = []
-    for user in response_user:
-        uid = user["ce_id"]
-        ugames = ugames_by_user.get(uid, [])
-        uobjectives = uobjs_by_user.get(uid, [])
-        rolls = rolls_by_user.get(uid, [])
-        roll_ids = {r["id"] for r in rolls}
-        rgames = [rg for rid in roll_ids for rg in rgames_by_roll.get(rid, [])]
-        obj_ids = {uo["objective_ce_id"] for uo in uobjectives}
-        user_objectives = [
-            objectives_index[oid] for oid in obj_ids if oid in objectives_index
-        ]
-
-        _users.append(
-            __supabase_to_user(
-                user, ugames, uobjectives, rolls, rgames, user_objectives
-            )
-        )
-
-    return _users
+    "Returns every user in the database, with rolls included."
+    return get_users_bulk(get_list("user"), include_rolls=True)
 
 
 def get_users_bulk(ce_ids: list[str], include_rolls=False) -> list[CEUser]:
