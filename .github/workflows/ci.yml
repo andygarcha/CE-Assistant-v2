@@ -68,3 +68,41 @@ jobs:
       - name: Check IN_CE set to True
         run: |
           python -c "from utils.channels import IN_CE; assert IN_CE is True, 'IN_CE must be True'"
+
+  smoke_test:
+    name: Import smoke test (main.py / scraper_main.py)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Create dummy .env file
+        run: |
+          echo "SUPABASE_URL=https://dummy.supabase.co" > .env
+          echo "SUPABASE_SECRET_KEY=dummy" >> .env
+          echo "DISCORD_BOT_TOKEN=dummy_token" >> .env
+          echo "DISCORD_GUILD_ID=123456789" >> .env
+      - name: Run import smoke test
+        run: python scripts/smoke_test_imports.py
+
+  pip_audit:
+    name: Dependency vulnerability scan (pip-audit)
+    runs-on: ubuntu-latest
+    # Report-only for now: 47 pre-existing vulnerabilities (mostly outdated
+    # aiohttp) haven't been triaged yet. Flip continue-on-error to false once
+    # they're resolved, so this becomes a real merge gate.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt
