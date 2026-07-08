@@ -277,8 +277,8 @@ async def process_loop(
                     for warning in health_warnings
                 ]
             )
-    except Exception as e:
-        logger.error("Health check failed: %s", e)
+    except Exception:
+        logger.exception("Health check failed.")
 
     if full_scrape:
         try:

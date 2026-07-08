@@ -247,7 +247,13 @@ def run_cheap_checks() -> list[str]:
             warnings.append(f":hospital: Orphaned-objectives check failed: {e}")
 
     try:
-        warnings.extend(check_roll_game_counts(SupabaseReader.get_all_rolls()))
+        warnings.extend(
+            check_roll_game_counts(
+                SupabaseReader.get_all_rolls(
+                    event_names=list(ROLL_GAME_COUNT_EXPECTATIONS)
+                )
+            )
+        )
     except Exception as e:
         logger.exception("Roll-game-count check failed.")
         warnings.append(f":hospital: Roll-game-count check failed: {e}")

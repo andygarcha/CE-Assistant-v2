@@ -680,8 +680,13 @@ async def health_check(
     warnings = HealthCheck.run_cheap_checks()
 
     if include_integrity:
-        integrity_report = LocalCache.run_integrity_check()
-        warnings.append(HealthCheck.format_integrity_report(integrity_report))
+        try:
+            integrity_report = LocalCache.run_integrity_check()
+        except Exception as e:
+            logger.exception("Integrity check failed.")
+            warnings.append(f":hospital: Integrity check failed: {e}")
+        else:
+            warnings.append(HealthCheck.format_integrity_report(integrity_report))
 
     for warning in warnings:
         await hm.send_message(client, "privatelog", warning, allowed_mentions=False)
