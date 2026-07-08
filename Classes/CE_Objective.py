@@ -34,7 +34,21 @@ class CEObjective:
         else:
             self._achievement_ce_ids = achievement_ce_ids
 
-    # -------------- getters -----------------
+    def __str__(self):
+        """String representation of this objective."""
+        return (
+            "--- CEObjective ---"
+            + f"\nObjective Name: {self.name}"
+            + f"\nPoint Value: {self.point_value}"
+            + f"\nPartial Point Value: {self.partial_points}"
+            + f"\nObjective CE ID: {self.ce_id}"
+            + f"\nGame's CE ID: {self.game_ce_id}"
+            + f"\nObjective Type: {self.type}"
+            + f"\nAchievements: {self.achievement_ce_ids}"
+            + f"\nRequirements: {self.requirements}"
+        )
+
+    # ==== core properties ====
 
     @property
     def point_value(self) -> int:
@@ -99,19 +113,7 @@ class CEObjective:
         """The Challenge Enthusiast ID associated with this objective's game."""
         return self._game_ce_id
 
-    # -------------- setters ----------------
-
-    @type.setter
-    def type(self, type: hm.OBJECTIVE_TYPES):
-        """Takes in the type and sets the objective's type to it."""
-        self._objective_type = type
-
-    @game_ce_id.setter
-    def game_ce_id(self, game_id: str):
-        """Takes in a string `game_id` and sets the local value to such."""
-        self._game_ce_id = game_id
-
-    # -------------- helper methods -------------
+    # ==== boolean properties ====
 
     def has_partial(self) -> bool:
         """Returns true if this game has partial points, false if not."""
@@ -151,6 +153,8 @@ class CEObjective:
                 self.achievement_ce_ids, new_objective.achievement_ce_ids
             )
         )
+    
+    # ==== idk where you belong ====
 
     def to_dict(self) -> dict:
         """Returns this objective as a :class:`dict` for storage purposes.
@@ -179,16 +183,3 @@ class CEObjective:
             "partial_value": self.partial_points,
         }
 
-    def __str__(self):
-        """String representation of this objective."""
-        return (
-            "--- CEObjective ---"
-            + f"\nObjective Name: {self.name}"
-            + f"\nPoint Value: {self.point_value}"
-            + f"\nPartial Point Value: {self.partial_points}"
-            + f"\nObjective CE ID: {self.ce_id}"
-            + f"\nGame's CE ID: {self.game_ce_id}"
-            + f"\nObjective Type: {self.type}"
-            + f"\nAchievements: {self.achievement_ce_ids}"
-            + f"\nRequirements: {self.requirements}"
-        )
