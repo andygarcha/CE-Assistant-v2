@@ -143,7 +143,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(member="The user who will be unlinked.")
     async def force_unlink_command(
-        interaction: discord.Interaction, member: discord.Member
+        interaction: discord.Interaction, member: discord.User
     ):
         await force_unlink(interaction, member)
 
@@ -599,7 +599,7 @@ class UnlinkView(discord.ui.View):
         )
 
 
-async def force_unlink(interaction: discord.Interaction, member: discord.Member):
+async def force_unlink(interaction: discord.Interaction, member: discord.User):
     """
     Forcefully unlink a user from their CE ID.
 
