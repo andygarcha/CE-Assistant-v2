@@ -962,20 +962,6 @@ class TestCoOpRoll:
             "Soul Mates", user.ce_id, partner.ce_id
         )
 
-    # ── retired / invalid events ──────────────────────────────────────────────
-
-    def test_retired_event_winner_takes_all_sends_error(self):
-        interaction = _make_interaction_coop()
-        _run_coop(interaction, _make_partner_member(), "Winner Takes All")
-        msg = interaction.followup.send.call_args[0][0]
-        assert "retired" in msg.lower()
-
-    def test_retired_event_game_theory_sends_error(self):
-        interaction = _make_interaction_coop()
-        _run_coop(interaction, _make_partner_member(), "Game Theory")
-        msg = interaction.followup.send.call_args[0][0]
-        assert "retired" in msg.lower()
-
 
 # ── roll_destinyalignment ─────────────────────────────────────────────────────
 #

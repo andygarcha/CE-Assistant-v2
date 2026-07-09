@@ -359,15 +359,3 @@ class TestWonMultiStageNotFinal:
         update, __, ___ = update_one_roll(roll, user, None, [game])
         assert update is not None
         assert update.location == "casino"
-
-
-class TestWonPvpNotImplemented:
-    def test_pvp_win_raises_not_implemented(self):
-        # "Winner Takes All" is a PvP roll; update_one_roll explicitly punts
-        # on PvP win handling.
-        roll = make_roll(roll_name="Winner Takes All", games=[GAME_ID])
-        user = _completed_user(GAME_ID)
-        partner = _user()
-        game = _db_game(GAME_ID)
-        with pytest.raises(NotImplementedError):
-            update_one_roll(roll, user, partner, [game])

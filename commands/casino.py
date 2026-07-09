@@ -353,11 +353,6 @@ async def co_op_roll(
 
     lucky = False
 
-    # retired events
-    RETIRED = ["Game Theory", "Winner Takes All"]
-    if event_name in RETIRED:
-        return await interaction.followup.send(f"{event_name} is retired.")
-
     # they tried to roll with themselves
     if interaction.user.id == partner_.id:
         return await interaction.followup.send(
@@ -501,8 +496,6 @@ async def co_op_roll(
                 price_restriction,
                 hours_restriction,
             )
-        case "Game Theory" | "Winner Takes All":
-            result = RollResult(None, "This event is retired.")
         case _:
             result = RollResult(None, f"{event_name} is not a valid co-op roll.")
 

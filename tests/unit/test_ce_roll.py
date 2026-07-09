@@ -49,27 +49,10 @@ class TestIsCoop:
             "Destiny Alignment",
             "Soul Mates",
             "Teamwork Makes the Dream Work",
-            "Winner Takes All",
-            "Game Theory",
         ],
     )
     def test_coop_roll_names_are_coop(self, name):
         assert make_roll(roll_name=name).is_co_op is True
-
-
-# ── is_pvp ────────────────────────────────────────────────────────────────────
-
-
-class TestIsPvp:
-    @pytest.mark.parametrize("name", ["Winner Takes All", "Game Theory"])
-    def test_pvp_roll_names(self, name):
-        assert make_roll(roll_name=name).is_pvp is True
-
-    def test_non_pvp_roll(self):
-        assert make_roll(roll_name="Soul Mates").is_pvp is False
-
-    def test_solo_roll_not_pvp(self):
-        assert make_roll(roll_name="One Hell of a Day").is_pvp is False
 
 
 # ── is_expired ────────────────────────────────────────────────────────────────

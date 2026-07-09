@@ -303,8 +303,6 @@ ALL_ROLL_EVENT_NAMES = Literal[
     "Destiny Alignment",
     "Soul Mates",
     "Teamwork Makes the Dream Work",
-    "Winner Takes All",
-    "Game Theory",
 ]
 ALL_ROLL_EVENT_NAMES_TUPLE = get_args(ALL_ROLL_EVENT_NAMES)
 SOLO_ROLL_EVENT_NAMES = Literal[
@@ -323,16 +321,12 @@ COOP_ROLL_EVENT_NAMES = Literal[
     "Destiny Alignment",
     "Soul Mates",
     "Teamwork Makes the Dream Work",
-    "Winner Takes All",
-    "Game Theory",
 ]
 COOP_ROLL_EVENT_NAMES_TUPLE = get_args(COOP_ROLL_EVENT_NAMES)
 MULTI_STAGE_ROLLS = Literal[
     "Two Week T2 Streak", 'Two "Two Week T2 Streak" Streak', "Fourward Thinking"
 ]
 MULTI_STAGE_ROLLS_TUPLE = get_args(MULTI_STAGE_ROLLS)
-PVP_ROLL_EVENT_NAMES = Literal["Winner Takes All", "Game Theory"]
-PVP_ROLL_EVENT_NAMES_TUPLE = get_args(PVP_ROLL_EVENT_NAMES)
 
 
 OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]

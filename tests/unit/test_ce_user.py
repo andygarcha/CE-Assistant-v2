@@ -347,7 +347,6 @@ class TestCasinoScore:
             ("Triple Threat", CASINO_POINTS["Triple Threat"][0]),  # type: ignore
             ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][0]),  # type: ignore
             ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][0]),  # type: ignore
-            ("Game Theory", CASINO_POINTS["Game Theory"][0]),  # type: ignore
             (
                 "Teamwork Makes the Dream Work",
                 CASINO_POINTS["Teamwork Makes the Dream Work"][0],  # type: ignore
@@ -370,7 +369,6 @@ class TestCasinoScore:
             ("Triple Threat", CASINO_POINTS["Triple Threat"][1]),  # type: ignore
             ("Let Fate Decide", CASINO_POINTS["Let Fate Decide"][1]),  # type: ignore
             ("Fourward Thinking", CASINO_POINTS["Fourward Thinking"][1]),  # type: ignore
-            ("Game Theory", CASINO_POINTS["Game Theory"][1]),  # type: ignore
             (
                 "Teamwork Makes the Dream Work",
                 CASINO_POINTS["Teamwork Makes the Dream Work"][1],  # type: ignore
@@ -389,24 +387,7 @@ class TestCasinoScore:
         roll = make_roll(roll_name="One Hell of a Day", status="failed")
         assert make_user().casino_score([roll]) == 0
 
-    # ── Game Theory: symmetric penalty ───────────────────────────────────────
-
-    def test_game_theory_won_and_failed_cancel(self):
-        won = make_roll(roll_name="Game Theory", status="won")
-        lost = make_roll(roll_name="Game Theory", status="failed")
-        assert make_user().casino_score([won, lost]) == 0
-
     # ── relative rolls (tier-based) ───────────────────────────────────────────
-
-    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
-    def test_winner_takes_all_won_equals_relative(self, tier):
-        roll = make_roll(roll_name="Winner Takes All", status="won", tier_num=tier)
-        assert make_user().casino_score([roll]) == relative(tier)
-
-    @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
-    def test_winner_takes_all_failed_equals_negative_relative(self, tier):
-        roll = make_roll(roll_name="Winner Takes All", status="failed", tier_num=tier)
-        assert make_user().casino_score([roll]) == int(-1 * relative(tier))
 
     @pytest.mark.parametrize("tier", [1, 2, 3, 4, 5])
     def test_destiny_alignment_won_equals_relative(self, tier):

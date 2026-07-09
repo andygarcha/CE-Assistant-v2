@@ -1132,25 +1132,14 @@ def update_one_roll(
         roll.due_time = None
         return update, roll, False
 
-    # Case 2: The roll is won.
-    #  -- case 2a) the roll is single-player
-    #  -- case 2b) the roll is co-op
-    #  -- case 2c) the roll is pvp (currently none... hallelujah.)
-
+    # Case 2: The roll is won (single-player or co-op).
     if won:
         update.location = "casinolog"
         update.is_embed = False
         update.text = roll.get_win_message(games, user1, user2)
         roll.completed_time = hm.get_datetime("now")
         roll.set_status("won")
-
-        # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp:
-            return update, roll, False
-
-        # Case 2C (pvp)
-        # -- not dealing with this.
-        raise NotImplementedError
+        return update, roll, False
 
     if roll.is_expired:
         update.location = "casino"

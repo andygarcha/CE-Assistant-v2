@@ -17,8 +17,6 @@ roll_cooldowns: dict[str, int | None | dict[int, int]] = {
     "Destiny Alignment": hm.months_to_days(1),
     "Soul Mates": {1: 7 * 10, 2: 7 * 8, 3: 7 * 6, 4: 7 * 4, 5: 7 * 2},
     "Teamwork Makes the Dream Work": hm.months_to_days(3),
-    "Winner Takes All": hm.months_to_days(3),
-    "Game Theory": hm.months_to_days(1),
     "One Hell of a Day": 7,
     "One Hell of a Week": hm.months_to_days(1),
     "One Hell of a Month": hm.months_to_days(3),
@@ -67,8 +65,6 @@ CASINO_POINTS: dict[str, tuple[int, int] | None] = {
     "Destiny Alignment": None,  # RELATIVE
     "Soul Mates": None,  # RELATIVE
     "Teamwork Makes the Dream Work": (10, -2),
-    "Winner Takes All": None,  # RELATIVE
-    "Game Theory": (4, -4),
 }
 
 RELATIVE: dict[int, int] = {
@@ -367,11 +363,6 @@ class CERoll:
         if self.partner_ce_id is not None and self.partner_ce_id != "":
             return True
         return self.roll_name in hm.COOP_ROLL_EVENT_NAMES_TUPLE
-
-    @property
-    def is_pvp(self) -> bool:
-        "Returns true if this roll is PvP."
-        return self.roll_name in hm.PVP_ROLL_EVENT_NAMES_TUPLE
 
     @property
     def is_expired(self) -> bool:
@@ -958,8 +949,6 @@ class CERoll:
                     return int(-1 * relative(tier) / 3)
                 case "Soul Mates":
                     return int(-1 * relative(tier) / 2)
-                case "Winner Takes All":
-                    return int(-1 * relative(tier))
                 case _:
                     logger.error("Weird error #8. Roll ID %s", self._id)
                     raise Exception
