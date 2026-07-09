@@ -966,10 +966,10 @@ def kill_pending(
 
 
 def dump_objective(objective: CEObjective):
-    # Delete all previous custom requirements for this objective to prevent duplicates
+    # Delete all previous requirements for this objective to prevent stale rows
     supabase.table("objectiveRequirements").delete().eq(
         "objective_ce_id", objective.ce_id
-    ).eq("requirement_type", "custom").execute()
+    ).execute()
 
     now_iso = _now_iso()
 
