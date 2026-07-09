@@ -985,22 +985,22 @@ def update_one_user(
     updates: list[UpdateMessageForScraperProcess] = []
 
     # gather old info
-    points_original = user.get_total_points()
+    points_original = user.total_points
     completed_games_original, overcompleted_games_original = (
         user.get_completed_games_all(database_name_old)
     )
-    rank_original = user.get_rank()
+    rank_original = user.rank
     games_original = user.owned_games.copy()
 
     # update the user!
     user.owned_games = site_data.owned_games
 
     # gather new info
-    points_new = user.get_total_points()
+    points_new = user.total_points
     completed_games_new, overcompleted_games_new = user.get_completed_games_all(
         database_name_new
     )
-    rank_new = user.get_rank()
+    rank_new = user.rank
     games_new = user.owned_games.copy()
 
     # -- CHECK ROLES --
@@ -1035,7 +1035,7 @@ def update_one_user(
     if _result is not None:
         updates.append(_result)
 
-    user.set_last_updated(hm.get_datetime("now"))
+    user.last_updated = hm.get_datetime("now")
     return updates
 
 
@@ -1083,10 +1083,10 @@ def update_one_roll(
         update.is_embed = False
         _user2_text = ""
         if user2 is not None:
-            _user2_text = f" and {user2.mention()}"
+            _user2_text = f" and {user2.mention}"
 
         update.text = (
-            f"{user1.mention()}{_user2_text}, you rolled a game that has now been removed"
+            f"{user1.mention}{_user2_text}, you rolled a game that has now been removed"
             + " from the site. This will not impact your casino score. Apologies for the inconvenience."
             + " Please feel free to reach out to Andy for more information or reroll. No cooldown has"
             + " been applied."
@@ -1108,9 +1108,9 @@ def update_one_roll(
             update.location = "casino"
             _user2_text = ""
             if user2 is not None:
-                _user2_text = f"and {user2.mention()}"
+                _user2_text = f"and {user2.mention}"
             update.text = (
-                f"{user1.mention()} {_user2_text}, you may now re-initiate {roll.roll_name}. "
+                f"{user1.mention} {_user2_text}, you may now re-initiate {roll.roll_name}. "
                 + "Any button presses to the previous message will do nothing."
             )
             return update, None, True
@@ -1124,7 +1124,7 @@ def update_one_roll(
         update.location = "casino"
         update.is_embed = False
         update.text = (
-            f"{user1.mention()}, you've finished the current stage in {roll.roll_name}. "
+            f"{user1.mention}, you've finished the current stage in {roll.roll_name}. "
             + f"To roll your next stage, type /solo-roll {roll.roll_name} in <#{hm.CASINO_ID}> at any time."
         )
 
@@ -1132,25 +1132,14 @@ def update_one_roll(
         roll.due_time = None
         return update, roll, False
 
-    # Case 2: The roll is won.
-    #  -- case 2a) the roll is single-player
-    #  -- case 2b) the roll is co-op
-    #  -- case 2c) the roll is pvp (currently none... hallelujah.)
-
+    # Case 2: The roll is won (single-player or co-op).
     if won:
         update.location = "casinolog"
         update.is_embed = False
         update.text = roll.get_win_message(games, user1, user2)
         roll.completed_time = hm.get_datetime("now")
         roll.set_status("won")
-
-        # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp:
-            return update, roll, False
-
-        # Case 2C (pvp)
-        # -- not dealing with this.
-        raise NotImplementedError
+        return update, roll, False
 
     if roll.is_expired:
         update.location = "casino"
@@ -1429,7 +1418,7 @@ def create_update_updated_game(
                 (
                     old_objective.is_uncleared()
                     and not new_objective.is_uncleared()
-                    and (old_objective.uncleared_name() != new_objective.name)
+                    and (old_objective.name_uncleared != new_objective.name)
                 )
                 or not old_objective.is_uncleared()
                 or new_objective.is_uncleared()
@@ -1482,7 +1471,7 @@ def check_roles(
     updates: list[UpdateMessageForScraperProcess] = []
 
     for game_old in games_old:
-        points = game_old.get_user_points()
+        points = game_old.user_points
         game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
@@ -1497,7 +1486,7 @@ def check_roles(
             old_categories[c_num - 1] += points
 
     for game_new in games_new:
-        points = game_new.get_user_points()
+        points = game_new.user_points
         game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:
@@ -1522,7 +1511,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
+                    f"Congratulations to {user.mention} ({user.display_name_with_link})! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1534,7 +1523,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
+                f"Congratulations to {user.mention} ({user.display_name_with_link})! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
@@ -1554,7 +1543,7 @@ def check_roles(
             update.is_embed = False
 
             update.text = (
-                f"Woah. {user.mention()} ({user.display_name_with_link()}) just unlocked "
+                f"Woah. {user.mention} ({user.display_name_with_link}) just unlocked "
                 f"{'Grandm' if i == 1000 else 'M'}aster of All ({i} points in every category). Congratulations!"
             )
             update.location = "userlog"
@@ -1565,7 +1554,7 @@ def check_roles(
         update.is_embed = False
 
         update.text = (
-            f"Everyone listen up. {user.mention()} ({user.display_name_with_link()}) has just unlocked "
+            f"Everyone listen up. {user.mention} ({user.display_name_with_link}) has just unlocked "
             "Overpowered, by having 3000 points in a single category. Well done!"
         )
         update.location = "userlog"
@@ -1633,17 +1622,17 @@ def check_newly_completed_games(
         update = UpdateMessageForScraperProcess()
 
         # check mutelist
-        if user.on_mutelist():
+        if user.is_muted:
             update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+            update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
 
         update.is_embed = False
         update.text += (
             "Wow {} ({})! You've completed {}, a {} worth {} points {}".format(
-                user.mention(),
-                user.display_name_with_link(),
+                user.mention,
+                user.display_name_with_link,
                 game.name_with_link,
                 game.tier_emoji,
                 game.get_po_points(),
@@ -1681,15 +1670,15 @@ def check_newly_completed_games(
         update = UpdateMessageForScraperProcess()
 
         # check mutelist
-        if user.on_mutelist():
+        if user.is_muted:
             update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+            update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
 
         update.is_embed = False
         update.text += (
-            f"Holy moly {user.mention()} ({user.display_name_with_link()})! You've now *over*completed {game.name_with_link}, a {game.tier_emoji} worth {game.get_po_points()} points, with an additional {game.get_so_points()} points "
+            f"Holy moly {user.mention} ({user.display_name_with_link})! You've now *over*completed {game.name_with_link}, a {game.tier_emoji} worth {game.get_po_points()} points, with an additional {game.get_so_points()} points "
             "worth of SOs."
         )
         updates.append(update)
@@ -1728,19 +1717,19 @@ def check_rank(
     if rank_new == rank_old or points_new <= points_old:
         return None
 
-    if not user.on_mutelist():
+    if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Congrats to {user.mention()} ({user.display_name_with_link()}) for ranking up from Rank "
+            f"Congrats to {user.mention} ({user.display_name_with_link}) for ranking up from Rank "
             + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
         )
     else:
         update = UpdateMessageForScraperProcess()
         update.location = "privatelog"
         update.is_embed = False
-        update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_old} to {rank_new}."
+        update.text = f"🤫 Muted user {user.display_name_with_link} ranked up from {rank_old} to {rank_new}."
     return update
 
 
@@ -1757,12 +1746,12 @@ def check_completion_count(
         num_completions_new / COMPLETION_INCREMENT
     ):
         return None
-    if not user.on_mutelist():
+    if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Amazing! {user.mention()} ({user.display_name_with_link()}) has passed the milestone of "
+            f"Amazing! {user.mention} ({user.display_name_with_link}) has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
         )
     else:
@@ -1770,7 +1759,7 @@ def check_completion_count(
         update.location = "privatelog"
         update.is_embed = False
         update.text = (
-            f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of "
+            f"🤫 Muted user {user.display_name_with_link} has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games."
         )
     return update

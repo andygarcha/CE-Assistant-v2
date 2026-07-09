@@ -18,7 +18,17 @@ class CEUserObjective:
         self._user_points = user_points
         self._name = name
 
-    # -------- getters ----------
+    def __str__(self) -> str:
+        return (
+            "-- CEUserObjective --"
+            f"\nObjective Name: {self.name}"
+            f"\nObjective CE ID: {self.ce_id}"
+            f"\nGame CE ID: {self.game_ce_id}"
+            f"\nObjective Type: {self.type}"
+            f"\nUser Points: {self.user_points}"
+        )
+
+    # ==== core properties ====
 
     @property
     def user_points(self) -> int:
@@ -45,14 +55,7 @@ class CEUserObjective:
         """Returns the name of this objective."""
         return self._name
 
-    # ---------- setters -------------
-
-    @name.setter
-    def set_name(self, name: str) -> None:
-        """Sets the name of this objective to `name`."""
-        self._name = name
-
-    # --------- other methods ---------
+    # ==== idk where this goes ====
     def to_dict_supabase(self, user_ce_id: str) -> dict:
         return {
             "user_ce_id": user_ce_id,
@@ -79,18 +82,3 @@ class CEUserObjective:
             "type": self.type,
             "user_points": self.user_points,
         }
-
-    def __str__(self) -> str:
-        return (
-            "-- CEUserObjective --"
-            + "\nObjective Name: "
-            + self.name
-            + "\nObjective CE ID: "
-            + self.ce_id
-            + "\nGame CE ID: "
-            + self.game_ce_id
-            + "\nObjective Type: "
-            + self.type
-            + "\nUser Points: "
-            + str(self.user_points)
-        )

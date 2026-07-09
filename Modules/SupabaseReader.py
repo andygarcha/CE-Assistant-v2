@@ -25,7 +25,6 @@ from Modules import LocalCache, hm
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from Classes.OtherClasses import CEInput
 
 load_dotenv()
 SUPABASE_URL = _os.getenv("SUPABASE_URL")
@@ -90,51 +89,9 @@ def _iso_or_none(value):
     return None
 
 
-def _fetch_in_chunks(
-    table_name: str, column: str, values: list, chunk_size: int = 100
-) -> list[dict]:
-    """
-    Fetch rows using .in_() in chunks to avoid oversized requests/Bad Request errors.
-
-    Supabase/PostgREST can reject very long `in()` queries (URL length or server limits).
-    This helper splits `values` into batches and aggregates results.
-
-    Parameters
-    ---
-    table_name: `str`
-        The name of the table you're pulling from.
-    column: `str`
-        The column you're checking if certain values are in
-    values: `list`
-        The values you're checking against a column
-    chunk_size: `int` (default 100)
-        The chunk size. Probably shouldn't adjust this.
-
-    Example
-    ---
-    I want to find all userGames that belong to users with ids ['a', 'b', 'c']\n
-    `_fetch_in_chunks('userGames', 'user_ce_id', ['a', 'b', 'c'])`
-    """
-    if not values:
-        return []
-    out: list[dict] = []
-    for i in range(0, len(values), chunk_size):
-        chunk = values[i : i + chunk_size]
-        for attempt in range(3):
-            try:
-                resp = supabase.table(table_name).select().in_(column, chunk).execute()
-                out.extend(resp.data or [])
-                break
-            except httpx.ReadTimeout:
-                if attempt == 2:
-                    raise
-                logger.warning(
-                    "ReadTimeout on %s (attempt %d/3), retrying...",
-                    table_name,
-                    attempt + 1,
-                )
-                time.sleep(2**attempt)
-    return out
+def _now_iso() -> str:
+    "Current UTC time as an ISO string, for `created_at`/`updated_at`-style columns."
+    return datetime.datetime.now(datetime.UTC).isoformat()
 
 
 def _delete_in_chunks(
@@ -151,10 +108,27 @@ def _delete_in_chunks(
     return deleted
 
 
-# == GETTERS ==
+def _cleanup_older_than(
+    table_name: str, status_column: str, status_value: str, older_than_hours: int
+) -> int:
+    """Deletes rows from `table_name` where `status_column` equals `status_value`
+    and `created_at` is older than `older_than_hours`. Returns the number deleted."""
+    cutoff = (
+        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=older_than_hours)
+    ).isoformat()
+    result = (
+        supabase.table(table_name)
+        .delete()
+        .eq(status_column, status_value)
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    return len(result.data) if result.data else 0
 
 
-# GET LIST
+# === LISTS ===
+
+
 def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[str]:
     """
     Returns a list of ce-ids in that database.
@@ -174,7 +148,9 @@ def get_list(database: Literal["name", "user", "input", "objectives"]) -> list[s
             raise ValueError(f"Invalid get_list argument! argument: {database}")
 
 
-# GET GAME
+# === GAMES ===
+
+
 def get_game(ce_id: str) -> CEGame | None:
     game_json = LocalCache.get_game(ce_id)
     if game_json is None:
@@ -213,38 +189,16 @@ def get_game_id_by_name(name: str) -> list[CEGame]:
     return [__supabase_to_simple_game(g) for g in game_json]
 
 
-# GET USER
-def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
-    if not use_discord_id:
-        user_json = LocalCache.get_user(str(ce_id))
-    else:
-        user_json = LocalCache.get_user_by_discord_id(int(ce_id))
-    if user_json is None:
-        return None
-    if use_discord_id:
-        ce_id = user_json["ce_id"]
-
-    userGames_json = LocalCache.get_user_games(str(ce_id))
-    userObjectives_json = LocalCache.get_user_objectives(str(ce_id))
-    userobjectives_list = [o["objective_ce_id"] for o in userObjectives_json]
-    objectives_json = LocalCache.get_objectives_by_ids(userobjectives_list)
-
-    rolls_json = LocalCache.get_rolls_by_user(str(ce_id))
-    roll_ids = [r["id"] for r in rolls_json]
-    userRollGames_json = LocalCache.get_roll_games_by_ids(roll_ids)
-
-    return __supabase_to_user(
-        user_json,
-        userGames_json,
-        userObjectives_json,
-        rolls_json,
-        userRollGames_json,
-        objectives_json,
-    )
-
-
-# DATABASE NAME
 def get_database_name() -> list[CEGame]:
+    """Returns every game in the database.
+
+    Deliberately does NOT delegate to `get_games_bulk(get_list("name"))`: that
+    would bind the full list of game ids into a `json_each(?)` filter, which
+    benchmarked ~20-25% slower than these flat, unconditioned `SELECT *`
+    queries at current table sizes. This is a hot path (called on nearly
+    every interactive Discord command that touches games), so the two
+    functions stay separate on purpose -- this isn't unnoticed duplication.
+    """
     conn = LocalCache.get_connection()
     games_json = [dict(r) for r in conn.execute("SELECT * FROM games").fetchall()]
     objectives_json = [
@@ -341,13 +295,9 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
         if not game_json:
             continue
 
-        game_categories = categories_by_game.get(ce_id)
-        if not game_categories and ce_id not in [
-            hm.GAME_ID_CHALLENGE_ENTHUSIASTS,
-            hm.GAME_ID_CLOWN_TOWN,
-        ]:
-            logger.error("Game with ID %s has no categories.", ce_id)
-            continue
+        # Matches get_game()'s behavior: a game with no category rows gets
+        # categories=[] rather than being excluded from the result.
+        game_categories = categories_by_game.get(ce_id, [])
         game_objectives = objectives_by_game.get(ce_id, [])
         game_requirements: list[dict] = []
         for objective in game_objectives:
@@ -364,64 +314,151 @@ def get_games_bulk(ce_ids: list[str]) -> list[CEGame]:
     return out_games
 
 
-# DATABASE USER
-def get_database_user() -> list[CEUser]:
-    conn = LocalCache.get_connection()
-    response_user = [dict(r) for r in conn.execute("SELECT * FROM users").fetchall()]
-    response_ugames = [
-        dict(r) for r in conn.execute("SELECT * FROM user_games").fetchall()
-    ]
-    response_uobjectives = [
-        dict(r) for r in conn.execute("SELECT * FROM user_objectives").fetchall()
-    ]
-    response_rolls = [dict(r) for r in conn.execute("SELECT * FROM rolls").fetchall()]
-    response_rgames = [
-        dict(r) for r in conn.execute("SELECT * FROM roll_games").fetchall()
-    ]
-    response_objectives = [
-        dict(r) for r in conn.execute("SELECT * FROM objectives").fetchall()
-    ]
+def bulk_dump_games(
+    games: Sequence[CEGame], batch_size: int = 50, pause_seconds: float = 0.1
+):
+    """Bulk dump many games at once in batches to reduce HTTP calls and avoid connection termination.
 
-    # Index by user for O(1) lookups
-    ugames_by_user: dict[str, list[dict]] = {}
-    for ug in response_ugames:
-        ugames_by_user.setdefault(ug["user_ce_id"], []).append(ug)
-    uobjs_by_user: dict[str, list[dict]] = {}
-    for uo in response_uobjectives:
-        uobjs_by_user.setdefault(uo["user_ce_id"], []).append(uo)
-    rolls_by_user: dict[str, list[dict]] = {}
-    for r in response_rolls:
-        rolls_by_user.setdefault(r["user1_ce_id"], []).append(r)
-        if r["user2_ce_id"] is not None:
-            rolls_by_user.setdefault(r["user2_ce_id"], []).append(r)
-    rgames_by_roll: dict[str, list[dict]] = {}
-    for rg in response_rgames:
-        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
-    objectives_index = {o["ce_id"]: o for o in response_objectives}
+    - groups games into batches of `batch_size`
+    - for each batch: collect games, objectives, achievement requirements, and custom requirements
+    - delete existing custom requirements for all objectives in the batch in a single call
+    - bulk upsert games, objectives, achievement requirements, and custom requirements
+    - optional `pause_seconds` between batches to avoid overwhelming the server
+    """
+    if not games:
+        return
 
-    _users = []
-    for user in response_user:
-        uid = user["ce_id"]
-        ugames = ugames_by_user.get(uid, [])
-        uobjectives = uobjs_by_user.get(uid, [])
-        rolls = rolls_by_user.get(uid, [])
-        roll_ids = {r["id"] for r in rolls}
-        rgames = [rg for rid in roll_ids for rg in rgames_by_roll.get(rid, [])]
-        obj_ids = {uo["objective_ce_id"] for uo in uobjectives}
-        user_objectives = [
-            objectives_index[oid] for oid in obj_ids if oid in objectives_index
-        ]
+    # process in batches
+    for i in range(0, len(games), batch_size):
+        batch = games[i : i + batch_size]
+        now_iso = _now_iso()
 
-        _users.append(
-            __supabase_to_user(
-                user, ugames, uobjectives, rolls, rgames, user_objectives
+        games_payload = []
+        objectives_payload = []
+        achievement_reqs_payload = []
+        custom_reqs_payload = []
+        objective_ids = []
+        categories_payload = []
+        game_ids = []
+
+        for game in batch:
+            game_ids.append(game.ce_id)
+            games_payload.append(
+                {
+                    "ce_id": game.ce_id,
+                    "name": game.game_name,
+                    "platform": game.platform,
+                    "platform_id": game.platform_id,
+                    "category_primary": None,
+                    "image_header": game._banner,
+                    "image_icon": "",
+                    "updated_at_CE": _now_iso(),
+                }
             )
-        )
 
-    return _users
+            for i, _cat in enumerate(game.categories):
+                # We sort these on the way in so dw about sorting on the way out
+                categories_payload.append(
+                    {"game_id": game.ce_id, "category": _cat, "index": i}
+                )
+
+            for objective in game.all_objectives:
+                objective_ids.append(objective.ce_id)
+                objectives_payload.append(
+                    {
+                        "ce_id": objective.ce_id,
+                        "game_ce_id": objective.game_ce_id,
+                        "type": objective.type,
+                        "name": objective.name,
+                        "description": objective.description,
+                        "points": objective.point_value,
+                        "points_partial": objective.partial_points,
+                        "updated_at_CE": now_iso,
+                    }
+                )
+
+                for achievement_id in objective.achievement_ce_ids or []:
+                    achievement_reqs_payload.append(
+                        {
+                            "objective_ce_id": objective.ce_id,
+                            "requirement_type": "achievement",
+                            "data": achievement_id,
+                            "updated_at_CE": now_iso,
+                        }
+                    )
+
+                if objective.requirements:
+                    custom_reqs_payload.append(
+                        {
+                            "objective_ce_id": objective.ce_id,
+                            "requirement_type": "custom",
+                            "data": objective.requirements,
+                            "updated_at_CE": now_iso,
+                        }
+                    )
+
+        # Delete all achievements and requirements for all objectives in this batch
+        if objective_ids:
+            supabase.table("objectiveRequirements").delete().in_(
+                "objective_ce_id", objective_ids
+            ).execute()
+            LocalCache.delete_requirements_by_objectives(objective_ids)
+
+        # Bulk upsert games
+        if games_payload:
+            supabase.table("games").upsert(games_payload).execute()
+            LocalCache.upsert_games_bulk(games_payload)
+
+        if categories_payload:
+            _delete_in_chunks("categories", "game_id", game_ids, chunk_size=200)
+            LocalCache.delete_categories_by_games(game_ids)
+            supabase.table("categories").upsert(categories_payload).execute()
+            LocalCache.upsert_categories_bulk(categories_payload)
+
+        # Bulk upsert objectives
+        if objectives_payload:
+            supabase.table("objectives").upsert(objectives_payload).execute()
+            LocalCache.upsert_objectives_bulk(objectives_payload)
+
+        # Bulk upsert achievement requirements
+        if achievement_reqs_payload:
+            supabase.table("objectiveRequirements").upsert(
+                achievement_reqs_payload
+            ).execute()
+            LocalCache.upsert_requirements_bulk(achievement_reqs_payload)
+
+        # Bulk upsert custom requirements
+        if custom_reqs_payload:
+            supabase.table("objectiveRequirements").upsert(
+                custom_reqs_payload
+            ).execute()
+            LocalCache.upsert_requirements_bulk(custom_reqs_payload)
+
+        # small pause to avoid overloading the server
+        if pause_seconds and (i + batch_size) < len(games):
+            time.sleep(pause_seconds)
 
 
-def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
+# === USERS ===
+
+
+def get_user(ce_id: str | int, use_discord_id: bool = False) -> CEUser | None:
+    if use_discord_id:
+        user_json = LocalCache.get_user_by_discord_id(int(ce_id))
+        if user_json is None:
+            return None
+        ce_id = user_json["ce_id"]
+
+    users = get_users_bulk([str(ce_id)], include_rolls=True)
+    return users[0] if users else None
+
+
+def get_database_user() -> list[CEUser]:
+    "Returns every user in the database, with rolls included."
+    return get_users_bulk(get_list("user"), include_rolls=True)
+
+
+def get_users_bulk(ce_ids: list[str], include_rolls=False) -> list[CEUser]:
     if not ce_ids:
         return []
 
@@ -513,268 +550,52 @@ def get_users_bulk(ce_ids: list[str], include_rolls=True) -> list[CEUser]:
     return out_users
 
 
-def get_roll(roll_id: str) -> CERoll | None:
-    roll_json = LocalCache.get_roll(roll_id)
-    if roll_json is None:
-        return None
-    rollGames_json = LocalCache.get_roll_games(roll_id)
-    return __supabase_to_roll(roll_json, rollGames_json)
+def dump_user(user: CEUser):
+    user_data = {
+        "ce_id": user.ce_id,
+        "discord_id": user.discord_id,
+        "display_name": user.display_name,
+        "image_avatar": user.avatar,
+        "steam_id": user._steam_id,
+        "created_at_CE": _now_iso(),
+        "updated_at_CE": user.last_updated
+        if isinstance(user.last_updated, str)
+        else (
+            user.last_updated.isoformat()
+            if hasattr(user.last_updated, "isoformat")
+            else _now_iso()
+        ),
+    }
+    supabase.table("users").upsert(user_data).execute()
+    LocalCache.upsert_user(user_data)
 
+    # Clear stale cache entries before re-upserting
+    LocalCache.delete_user_games(user.ce_id)
+    LocalCache.delete_user_objectives(user.ce_id)
 
-def get_all_rolls(event_names: list[str] | None = None) -> list[CERoll]:
-    if event_names:
-        rolls_json = LocalCache.get_rolls_by_event_names(event_names)
-    else:
-        rolls_json = LocalCache.get_rolls_all()
+    user_games_payload = []
+    user_objectives_payload = []
+    for game in user.owned_games:
+        game_data = {
+            "user_ce_id": user.ce_id,
+            "game_ce_id": game.ce_id,
+            "updated_at_CE": _now_iso(),
+        }
+        supabase.table("userGames").upsert(game_data).execute()
+        user_games_payload.append(game_data)
 
-    roll_ids = [r["id"] for r in rolls_json]
-    rollGames_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
+        for objective in game.user_objectives:
+            obj_data = {
+                "user_ce_id": user.ce_id,
+                "objective_ce_id": objective.ce_id,
+                "user_points": objective.user_points,
+                "updated_at_CE": _now_iso(),
+            }
+            supabase.table("userObjectives").upsert(obj_data).execute()
+            user_objectives_payload.append(obj_data)
 
-    rgames_by_roll: dict[str, list[dict]] = {}
-    for rg in rollGames_json:
-        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
-
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
-    return _rolls
-
-
-def get_checkable_rolls() -> list[CERoll]:
-    rolls_json = LocalCache.get_checkable_rolls()
-    roll_ids = [r["id"] for r in rolls_json]
-    roll_games_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
-
-    rgames_by_roll: dict[str, list[dict]] = {}
-    for rg in roll_games_json:
-        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
-
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
-    return _rolls
-
-
-def get_user_rolls(user_id: str) -> list[CERoll]:
-    rolls_json = LocalCache.get_rolls_by_user(user_id)
-    roll_ids = [r["id"] for r in rolls_json]
-    rollGames_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
-
-    rgames_by_roll: dict[str, list[dict]] = {}
-    for rg in rollGames_json:
-        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
-
-    _rolls = []
-    for roll in rolls_json:
-        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
-    return _rolls
-
-
-def get_input(ce_id: str) -> CEInput:
-    # TODO: Implement after input schema is finalized
-    raise NotImplementedError
-
-
-def get_database_tier(database_name: list[CEGame]) -> dict:
-    """
-    Gets database_tier from Supabase.
-    The output `database_tier` will be formatted like this:
-    database_tier[str(tiernum)][category] = `entries`,
-    where `entries` is a list of dicts with keys:
-    'ce_id', 'price', 'sh_hours'
-    - Note that multi-category games will be placed
-      in all category arrays that they belong to.
-    """
-    response = LocalCache.get_tier_all()
-
-    database_name_mapping: dict[str, CEGame] = {}
-    for game in database_name:
-        # neither of these conditions should ever happen
-        if game.is_t0:
-            continue
-        if game.platform != "steam":
-            continue
-        database_name_mapping[game.ce_id] = game
-
-    # separate out games by tier and category
-    database_tier: dict[str, dict[str, list[dict]]] = {}
-
-    for tier in range(1, 8):
-        database_tier[str(tier)] = {}
-        for category in typing.get_args(hm.CATEGORIES):
-            database_tier[str(tier)][category] = []
-
-    for tier_entry in response:
-        _game_object = database_name_mapping.get(tier_entry["ce_id"])
-        if _game_object is None:
-            logger.warning(
-                "Could not find game %s from database_name when generating database tier.",
-                tier_entry["ce_id"],
-            )
-            continue
-
-        for _cat in _game_object.categories:
-            database_tier[str(_game_object.tier_num)][_cat].append(tier_entry)
-
-    return database_tier
-
-
-def get_curator_ids() -> list[str]:
-    # Assuming curator_ids table exists with curator_id column
-    response = supabase.table("curator_ids").select("curator_id").execute().data
-    return [item["curator_id"] for item in response]
-
-
-def get_curator_count() -> int:
-    # Not currently needed, but can be implemented if required
-    raise NotImplementedError
-
-
-def get_last_loop(offset=True) -> datetime.datetime:
-    data = (
-        supabase.table("loopruns")
-        .select("ran_at")
-        .order("ran_at", desc=True)
-        .limit(1)
-        .execute()
-        .data
-    )
-
-    dt = datetime.datetime.fromisoformat(data[0]["ran_at"])
-    if offset:
-        dt = dt - datetime.timedelta(hours=2, minutes=10)
-
-    return dt
-
-
-# === DUMPERS ===
-def dump_game(game: CEGame):
-    return bulk_dump_games([game])
-
-
-def bulk_dump_games(
-    games: Sequence[CEGame], batch_size: int = 50, pause_seconds: float = 0.1
-):
-    """Bulk dump many games at once in batches to reduce HTTP calls and avoid connection termination.
-
-    - groups games into batches of `batch_size`
-    - for each batch: collect games, objectives, achievement requirements, and custom requirements
-    - delete existing custom requirements for all objectives in the batch in a single call
-    - bulk upsert games, objectives, achievement requirements, and custom requirements
-    - optional `pause_seconds` between batches to avoid overwhelming the server
-    """
-    if not games:
-        return
-
-    # process in batches
-    for i in range(0, len(games), batch_size):
-        batch = games[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
-
-        games_payload = []
-        objectives_payload = []
-        achievement_reqs_payload = []
-        custom_reqs_payload = []
-        objective_ids = []
-        categories_payload = []
-        game_ids = []
-
-        for game in batch:
-            game_ids.append(game.ce_id)
-            games_payload.append(
-                {
-                    "ce_id": game.ce_id,
-                    "name": game.game_name,
-                    "platform": game.platform,
-                    "platform_id": game.platform_id,
-                    "category_primary": None,
-                    "image_header": game._banner,
-                    "image_icon": "",
-                    "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
-                }
-            )
-
-            for i, _cat in enumerate(game.categories):
-                # We sort these on the way in so dw about sorting on the way out
-                categories_payload.append(
-                    {"game_id": game.ce_id, "category": _cat, "index": i}
-                )
-
-            for objective in game.all_objectives:
-                objective_ids.append(objective.ce_id)
-                objectives_payload.append(
-                    {
-                        "ce_id": objective.ce_id,
-                        "game_ce_id": objective.game_ce_id,
-                        "type": objective.type,
-                        "name": objective.name,
-                        "description": objective.description,
-                        "points": objective.point_value,
-                        "points_partial": objective.partial_points,
-                        "updated_at_CE": now_iso,
-                    }
-                )
-
-                for achievement_id in objective.achievement_ce_ids or []:
-                    achievement_reqs_payload.append(
-                        {
-                            "objective_ce_id": objective.ce_id,
-                            "requirement_type": "achievement",
-                            "data": achievement_id,
-                            "updated_at_CE": now_iso,
-                        }
-                    )
-
-                if objective.requirements:
-                    custom_reqs_payload.append(
-                        {
-                            "objective_ce_id": objective.ce_id,
-                            "requirement_type": "custom",
-                            "data": objective.requirements,
-                            "updated_at_CE": now_iso,
-                        }
-                    )
-
-        # Delete all achievements and requirements for all objectives in this batch
-        if objective_ids:
-            supabase.table("objectiveRequirements").delete().in_(
-                "objective_ce_id", objective_ids
-            ).execute()
-            LocalCache.delete_requirements_by_objectives(objective_ids)
-
-        # Bulk upsert games
-        if games_payload:
-            supabase.table("games").upsert(games_payload).execute()
-            LocalCache.upsert_games_bulk(games_payload)
-
-        if categories_payload:
-            _delete_in_chunks("categories", "game_id", game_ids, chunk_size=200)
-            LocalCache.delete_categories_by_games(game_ids)
-            supabase.table("categories").upsert(categories_payload).execute()
-            LocalCache.upsert_categories_bulk(categories_payload)
-
-        # Bulk upsert objectives
-        if objectives_payload:
-            supabase.table("objectives").upsert(objectives_payload).execute()
-            LocalCache.upsert_objectives_bulk(objectives_payload)
-
-        # Bulk upsert achievement requirements
-        if achievement_reqs_payload:
-            supabase.table("objectiveRequirements").upsert(
-                achievement_reqs_payload
-            ).execute()
-            LocalCache.upsert_requirements_bulk(achievement_reqs_payload)
-
-        # Bulk upsert custom requirements
-        if custom_reqs_payload:
-            supabase.table("objectiveRequirements").upsert(
-                custom_reqs_payload
-            ).execute()
-            LocalCache.upsert_requirements_bulk(custom_reqs_payload)
-
-        # small pause to avoid overloading the server
-        if pause_seconds and (i + batch_size) < len(games):
-            time.sleep(pause_seconds)
+    LocalCache.upsert_user_games_bulk(user_games_payload)
+    LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
 
 
 def bulk_dump_users(
@@ -786,7 +607,9 @@ def bulk_dump_users(
     - for each batch: collect users, userGames, and userObjectives
     - bulk upsert users, userGames, and userObjectives
     - optional `pause_seconds` between batches to avoid overwhelming the server
-    - rolls are dumped individually (per user) after batch
+
+    Rolls are not touched here -- they're written independently via
+    `dump_roll`/`bulk_dump_rolls`, never through a `CEUser` object.
     """
     if not users:
         return
@@ -800,7 +623,7 @@ def bulk_dump_users(
     # process in batches
     for i in range(0, len(users), batch_size):
         batch = users[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+        now_iso = _now_iso()
 
         users_payload = []
         user_games_payload = []
@@ -883,67 +706,104 @@ def bulk_dump_users(
             supabase.table("userObjectives").upsert(user_objectives_payload).execute()
             LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
 
-        # Dump rolls individually per user (keep serial for now to avoid overwhelming connection)
-        for user in batch:
-            for roll in user.rolls:
-                dump_roll(roll)
-
         # small pause to avoid overloading the server
         if pause_seconds and (i + batch_size) < len(users):
             time.sleep(pause_seconds)
 
 
-def dump_user(user: CEUser):
-    user_data = {
-        "ce_id": user.ce_id,
-        "discord_id": user.discord_id,
-        "display_name": user.display_name,
-        "image_avatar": user.avatar,
-        "steam_id": user._steam_id,
-        "created_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
-        "updated_at_CE": user.last_updated
-        if isinstance(user.last_updated, str)
-        else (
-            user.last_updated.isoformat()
-            if hasattr(user.last_updated, "isoformat")
-            else datetime.datetime.now(datetime.UTC).isoformat()
-        ),
+# === ROLLS ===
+
+
+def get_roll(roll_id: str) -> CERoll | None:
+    roll_json = LocalCache.get_roll(roll_id)
+    if roll_json is None:
+        return None
+    rollGames_json = LocalCache.get_roll_games(roll_id)
+    return __supabase_to_roll(roll_json, rollGames_json)
+
+
+def get_all_rolls(event_names: list[str] | None = None) -> list[CERoll]:
+    if event_names:
+        rolls_json = LocalCache.get_rolls_by_event_names(event_names)
+    else:
+        rolls_json = LocalCache.get_rolls_all()
+
+    roll_ids = [r["id"] for r in rolls_json]
+    rollGames_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
+
+    rgames_by_roll: dict[str, list[dict]] = {}
+    for rg in rollGames_json:
+        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
+
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
+    return _rolls
+
+
+def get_checkable_rolls() -> list[CERoll]:
+    rolls_json = LocalCache.get_checkable_rolls()
+    roll_ids = [r["id"] for r in rolls_json]
+    roll_games_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
+
+    rgames_by_roll: dict[str, list[dict]] = {}
+    for rg in roll_games_json:
+        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
+
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
+    return _rolls
+
+
+def get_user_rolls(user_id: str) -> list[CERoll]:
+    rolls_json = LocalCache.get_rolls_by_user(user_id)
+    roll_ids = [r["id"] for r in rolls_json]
+    rollGames_json = LocalCache.get_roll_games_by_ids(roll_ids) if roll_ids else []
+
+    rgames_by_roll: dict[str, list[dict]] = {}
+    for rg in rollGames_json:
+        rgames_by_roll.setdefault(rg["roll_id"], []).append(rg)
+
+    _rolls = []
+    for roll in rolls_json:
+        _rolls.append(__supabase_to_roll(roll, rgames_by_roll.get(roll["id"], [])))
+    return _rolls
+
+
+def dump_roll(roll: CERoll):
+    roll_data = {
+        "id": roll._id,
+        "event_name": roll.roll_name,
+        "user1_ce_id": roll.user_ce_id,
+        "user2_ce_id": roll.partner_ce_id,
+        "time_created": _iso_or_none(roll.init_time),
+        "time_due": _iso_or_none(roll.due_time),
+        "time_completed": _iso_or_none(roll.completed_time),
+        "is_lucky": roll.lucky,
+        "chosen_tier": roll._tier_num,
+        "chosen_tier_partner": roll._tier_num_partner,
+        "status": roll.status,
+        "rerolls_remaining": roll.rerolls,
+        "rerolls_used": 0,  # TODO: calculate or track
+        "winner": None,  # TODO: determine on completion
     }
-    supabase.table("users").upsert(user_data).execute()
-    LocalCache.upsert_user(user_data)
+    supabase.table("rolls").upsert(roll_data).execute()
+    LocalCache.upsert_roll(roll_data)
 
-    # Clear stale cache entries before re-upserting
-    LocalCache.delete_user_games(user.ce_id)
-    LocalCache.delete_user_objectives(user.ce_id)
-
-    user_games_payload = []
-    user_objectives_payload = []
-    for game in user.owned_games:
+    supabase.table("rollGames").delete().eq("roll_id", roll._id).execute()
+    LocalCache.delete_roll_games_by_roll(roll._id)
+    rollgames_payload = []
+    for idx, game_id in enumerate(roll.games):
         game_data = {
-            "user_ce_id": user.ce_id,
-            "game_ce_id": game.ce_id,
-            "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
+            "roll_id": roll._id,
+            "game_id": game_id,
+            "index": idx,
+            "rolled_at": _now_iso(),
         }
-        supabase.table("userGames").upsert(game_data).execute()
-        user_games_payload.append(game_data)
-
-        for objective in game.user_objectives:
-            obj_data = {
-                "user_ce_id": user.ce_id,
-                "objective_ce_id": objective.ce_id,
-                "user_points": objective.user_points,
-                "updated_at_CE": datetime.datetime.now(datetime.UTC).isoformat(),
-            }
-            supabase.table("userObjectives").upsert(obj_data).execute()
-            user_objectives_payload.append(obj_data)
-
-    LocalCache.upsert_user_games_bulk(user_games_payload)
-    LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
-
-
-def __dump_JUST_user(d: dict):
-    "Just used for discord id updating. No games/objectives propogated."
-    supabase.table("users").upsert(d).execute()
+        supabase.table("rollGames").upsert(game_data).execute()
+        rollgames_payload.append(game_data)
+    LocalCache.upsert_roll_games_bulk(rollgames_payload)
 
 
 def bulk_dump_rolls(
@@ -960,7 +820,7 @@ def bulk_dump_rolls(
 
     for i in range(0, len(rolls), batch_size):
         batch = rolls[i : i + batch_size]
-        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+        now_iso = _now_iso()
 
         roll_ids = [r._id for r in batch]
         rolls_payload = []
@@ -1014,316 +874,6 @@ def bulk_dump_rolls(
 
         if pause_seconds and (i + batch_size) < len(rolls):
             time.sleep(pause_seconds)
-
-
-def dump_roll(roll: CERoll):
-    roll_data = {
-        "id": roll._id,
-        "event_name": roll.roll_name,
-        "user1_ce_id": roll.user_ce_id,
-        "user2_ce_id": roll.partner_ce_id,
-        "time_created": _iso_or_none(roll.init_time),
-        "time_due": _iso_or_none(roll.due_time),
-        "time_completed": _iso_or_none(roll.completed_time),
-        "is_lucky": roll.lucky,
-        "chosen_tier": roll._tier_num,
-        "chosen_tier_partner": roll._tier_num_partner,
-        "status": roll.status,
-        "rerolls_remaining": roll.rerolls,
-        "rerolls_used": 0,  # TODO: calculate or track
-        "winner": None,  # TODO: determine on completion
-    }
-    supabase.table("rolls").upsert(roll_data).execute()
-    LocalCache.upsert_roll(roll_data)
-
-    supabase.table("rollGames").delete().eq("roll_id", roll._id).execute()
-    LocalCache.delete_roll_games_by_roll(roll._id)
-    rollgames_payload = []
-    for idx, game_id in enumerate(roll.games):
-        game_data = {
-            "roll_id": roll._id,
-            "game_id": game_id,
-            "index": idx,
-            "rolled_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        }
-        supabase.table("rollGames").upsert(game_data).execute()
-        rollgames_payload.append(game_data)
-    LocalCache.upsert_roll_games_bulk(rollgames_payload)
-
-
-def dump_input(input: CEInput):
-    # TODO: Implement after input schema is finalized
-    raise NotImplementedError
-
-
-def dump_curator_ids(ids: list[str]):
-    for curator_id in ids:
-        supabase.table("curator_ids").upsert({"curator_id": curator_id}).execute()
-
-
-def dump_curator_count(cc: int):
-    # Not currently needed
-    raise NotImplementedError
-
-
-def dump_database_tier(database_tier: dict):
-    """
-    Dumps database_tier back to Supabase.
-    The input `database_tier` will be formatted like this:
-    database_tier[str(tiernum)][category] = `entries`,
-    where `entries` is a list of dicts with keys:
-    'ce_id', 'price', 'sh_hours'
-    """
-
-    # sort out
-    all_entries: list[dict] = []
-
-    for tier in range(1, 8):
-        for category in list(typing.get_args(hm.CATEGORIES)):
-            all_entries.extend(database_tier[str(tier)][category])
-
-    # remove duplicates (multi-category)
-    all_entries = list({e["ce_id"]: e for e in all_entries}.values())
-
-    # dump 100 at a time
-    BATCH_SIZE = 100
-    for i in range(0, len(all_entries), BATCH_SIZE):
-        batch = all_entries[i : i + BATCH_SIZE]
-
-        payload = []
-
-        for entry in batch:
-            payload.append(entry)
-
-        if payload:
-            supabase.table("tier").upsert(payload).execute()
-            LocalCache.upsert_tier_bulk(payload)
-
-
-def dump_loop(dt: datetime.datetime):
-    supabase.table("loopruns").insert(
-        {
-            "ran_at": dt.isoformat(),
-            "start": False,
-        }
-    ).execute()
-
-
-# === SCRAPER UPDATES ===
-
-
-def write_scraper_update(update: dict) -> None:
-    supabase.table("scraper_updates").insert(update).execute()
-
-
-def write_scraper_updates_bulk(updates: list[dict]) -> None:
-    if not updates:
-        return
-    supabase.table("scraper_updates").insert(updates).execute()
-
-
-def get_stable_updates() -> list[dict]:
-    return (
-        supabase.table("scraper_updates")
-        .select()
-        .eq("status", "stable")
-        .order("created_at", desc=False)
-        .execute()
-        .data
-    )
-
-
-def mark_updates_delivered(ids: list[str]) -> None:
-    if not ids:
-        return
-    supabase.table("scraper_updates").update({"status": "delivered"}).in_(
-        "id", ids
-    ).execute()
-
-
-def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
-    cutoff = (
-        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=older_than_hours)
-    ).isoformat()
-    result = (
-        supabase.table("scraper_updates")
-        .delete()
-        .eq("status", "delivered")
-        .lt("created_at", cutoff)
-        .execute()
-    )
-    return len(result.data) if result.data else 0
-
-
-def get_pending_game_updates() -> list[dict]:
-    return (
-        supabase.table("scraper_updates")
-        .select()
-        .eq("status", "pending")
-        .not_.is_("game_ce_id", "null")
-        .execute()
-        .data
-    )
-
-
-def promote_pending_to_stable(ids: list[str]) -> None:
-    if not ids:
-        return
-    supabase.table("scraper_updates").update({"status": "stable"}).in_(
-        "id", ids
-    ).execute()
-
-
-def upsert_pending_update(update: dict) -> None:
-    existing = (
-        supabase.table("scraper_updates")
-        .select("id")
-        .eq("status", "pending")
-        .eq("game_ce_id", update["game_ce_id"])
-        .execute()
-        .data
-    )
-    if existing:
-        supabase.table("scraper_updates").update(update).eq(
-            "id", existing[0]["id"]
-        ).execute()
-    else:
-        supabase.table("scraper_updates").insert(update).execute()
-
-
-# === SCRAPER COMMANDS ===
-
-
-def write_scraper_command(command: str) -> str:
-    result = (
-        supabase.table("scraper_commands")
-        .insert(
-            {
-                "command": command,
-                "status": "pending",
-            }
-        )
-        .execute()
-    )
-    return result.data[0]["id"]
-
-
-def get_pending_commands() -> list[dict]:
-    return (
-        supabase.table("scraper_commands")
-        .select()
-        .eq("status", "pending")
-        .order("created_at", desc=False)
-        .execute()
-        .data
-    )
-
-
-def acknowledge_command(command_id: str) -> None:
-    supabase.table("scraper_commands").update(
-        {
-            "status": "acknowledged",
-            "acknowledged_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        }
-    ).eq("id", command_id).execute()
-
-
-def complete_command(command_id: str) -> None:
-    supabase.table("scraper_commands").update(
-        {
-            "status": "completed",
-            "completed_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        }
-    ).eq("id", command_id).execute()
-
-
-def cleanup_completed_commands(older_than_hours: int = 24) -> int:
-    cutoff = (
-        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=older_than_hours)
-    ).isoformat()
-    result = (
-        supabase.table("scraper_commands")
-        .delete()
-        .eq("status", "completed")
-        .lt("created_at", cutoff)
-        .execute()
-    )
-    return len(result.data) if result.data else 0
-
-
-# === LOOP LOCKING ===
-
-
-def start_loop_run() -> str:
-    result = (
-        supabase.table("loopruns")
-        .insert(
-            {
-                "ran_at": datetime.datetime.now(datetime.UTC).isoformat(),
-                "start": True,
-            }
-        )
-        .execute()
-    )
-    return result.data[0]["id"]
-
-
-def finish_loop_run(run_id: str) -> None:
-    supabase.table("loopruns").update(
-        {
-            "start": False,
-        }
-    ).eq("id", run_id).execute()
-
-
-def is_loop_running() -> bool:
-    data = (
-        supabase.table("loopruns")
-        .select("start")
-        .order("ran_at", desc=True)
-        .limit(1)
-        .execute()
-        .data
-    )
-    if not data:
-        return False
-    return data[0]["start"] is True
-
-
-# === SUPABASE DELETERS ===
-def delete_game(ce_id: str):
-    # Delete objectives first (foreign key constraint)
-    objectives = (
-        supabase.table("objectives")
-        .select("ce_id")
-        .eq("game_ce_id", ce_id)
-        .execute()
-        .data
-    )
-    for obj in objectives:
-        supabase.table("objectiveRequirements").delete().eq(
-            "objective_ce_id", obj["ce_id"]
-        ).execute()
-    supabase.table("objectives").delete().eq("game_ce_id", ce_id).execute()
-    supabase.table("categories").delete().eq("game_id", ce_id).execute()
-    supabase.table("games").delete().eq("ce_id", ce_id).execute()
-
-    LocalCache.delete_game_cascade(ce_id)
-
-
-def delete_user(ce_id: str):
-    supabase.table("userGames").delete().eq("user_ce_id", ce_id).execute()
-    supabase.table("userObjectives").delete().eq("user_ce_id", ce_id).execute()
-    supabase.table("users").delete().eq("ce_id", ce_id).execute()
-
-    LocalCache.delete_user_cascade(ce_id)
-
-
-def delete_roll(roll_id: str):
-    supabase.table("rollGames").delete().eq("roll_id", roll_id).execute()
-    supabase.table("rolls").delete().eq("id", roll_id).execute()
-
-    LocalCache.delete_roll(roll_id)
 
 
 def add_pending(
@@ -1412,6 +962,58 @@ def kill_pending(
     LocalCache.delete_rolls_by_ids(ids)
 
 
+# === OBJECTIVES ===
+
+
+def dump_objective(objective: CEObjective):
+    # Delete all previous requirements for this objective to prevent stale rows
+    supabase.table("objectiveRequirements").delete().eq(
+        "objective_ce_id", objective.ce_id
+    ).execute()
+
+    now_iso = _now_iso()
+
+    obj_data = {
+        "ce_id": objective.ce_id,
+        "game_ce_id": objective.game_ce_id,
+        "type": objective.type,
+        "name": objective.name,
+        "description": objective.description,
+        "points": objective.point_value,
+        "points_partial": objective.partial_points,
+        "updated_at_CE": now_iso,
+    }
+    supabase.table("objectives").upsert(obj_data).execute()
+    LocalCache.upsert_objectives_bulk([obj_data])
+
+    # Clear old requirements from cache and rebuild
+    LocalCache.delete_requirements_by_objectives([objective.ce_id])
+    reqs_payload = []
+
+    if objective.achievement_ce_ids:
+        for achievement_id in objective.achievement_ce_ids:
+            req_data = {
+                "objective_ce_id": objective.ce_id,
+                "requirement_type": "achievement",
+                "data": achievement_id,
+                "updated_at_CE": now_iso,
+            }
+            supabase.table("objectiveRequirements").upsert(req_data).execute()
+            reqs_payload.append(req_data)
+
+    if objective.requirements:
+        req_data = {
+            "objective_ce_id": objective.ce_id,
+            "requirement_type": "custom",
+            "data": objective.requirements,
+            "updated_at_CE": now_iso,
+        }
+        supabase.table("objectiveRequirements").upsert(req_data).execute()
+        reqs_payload.append(req_data)
+
+    LocalCache.upsert_requirements_bulk(reqs_payload)
+
+
 def delete_objectives_many(objs: list[str]):
     "Delete all objectives given in `objs`."
     supabase.table("objectives").delete().in_("ce_id", objs).execute()
@@ -1422,7 +1024,319 @@ def delete_objectives_many(objs: list[str]):
     LocalCache.delete_objectives_by_ids(objs)
 
 
+# === DATABASE TIER ===
+
+
+def get_database_tier(database_name: list[CEGame]) -> dict:
+    """
+    Gets database_tier from Supabase.
+    The output `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    - Note that multi-category games will be placed
+      in all category arrays that they belong to.
+    """
+    response = LocalCache.get_tier_all()
+
+    database_name_mapping: dict[str, CEGame] = {}
+    for game in database_name:
+        # neither of these conditions should ever happen
+        if game.is_t0:
+            continue
+        if game.platform != "steam":
+            continue
+        database_name_mapping[game.ce_id] = game
+
+    # separate out games by tier and category
+    database_tier: dict[str, dict[str, list[dict]]] = {}
+
+    for tier in range(1, 8):
+        database_tier[str(tier)] = {}
+        for category in typing.get_args(hm.CATEGORIES):
+            database_tier[str(tier)][category] = []
+
+    for tier_entry in response:
+        _game_object = database_name_mapping.get(tier_entry["ce_id"])
+        if _game_object is None:
+            logger.warning(
+                "Could not find game %s from database_name when generating database tier.",
+                tier_entry["ce_id"],
+            )
+            continue
+
+        for _cat in _game_object.categories:
+            database_tier[str(_game_object.tier_num)][_cat].append(tier_entry)
+
+    return database_tier
+
+
+def dump_database_tier(database_tier: dict):
+    """
+    Dumps database_tier back to Supabase.
+    The input `database_tier` will be formatted like this:
+    database_tier[str(tiernum)][category] = `entries`,
+    where `entries` is a list of dicts with keys:
+    'ce_id', 'price', 'sh_hours'
+    """
+
+    # sort out
+    all_entries: list[dict] = []
+
+    for tier in range(1, 8):
+        for category in list(typing.get_args(hm.CATEGORIES)):
+            all_entries.extend(database_tier[str(tier)][category])
+
+    # remove duplicates (multi-category)
+    all_entries = list({e["ce_id"]: e for e in all_entries}.values())
+
+    # dump 100 at a time
+    BATCH_SIZE = 100
+    for i in range(0, len(all_entries), BATCH_SIZE):
+        batch = all_entries[i : i + BATCH_SIZE]
+
+        payload = []
+
+        for entry in batch:
+            payload.append(entry)
+
+        if payload:
+            supabase.table("tier").upsert(payload).execute()
+            LocalCache.upsert_tier_bulk(payload)
+
+
+# === LOOP TRACKING ===
+
+
+def get_last_loop(offset=True) -> datetime.datetime:
+    data = (
+        supabase.table("loopruns")
+        .select("ran_at")
+        .order("ran_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+
+    dt = datetime.datetime.fromisoformat(data[0]["ran_at"])
+    if offset:
+        dt = dt - datetime.timedelta(hours=2, minutes=10)
+
+    return dt
+
+
+def dump_loop(dt: datetime.datetime):
+    supabase.table("loopruns").insert(
+        {
+            "ran_at": dt.isoformat(),
+            "start": False,
+        }
+    ).execute()
+
+
+def start_loop_run() -> str:
+    result = (
+        supabase.table("loopruns")
+        .insert(
+            {
+                "ran_at": _now_iso(),
+                "start": True,
+            }
+        )
+        .execute()
+    )
+    return result.data[0]["id"]
+
+
+def finish_loop_run(run_id: str) -> None:
+    supabase.table("loopruns").update(
+        {
+            "start": False,
+        }
+    ).eq("id", run_id).execute()
+
+
+def is_loop_running() -> bool:
+    data = (
+        supabase.table("loopruns")
+        .select("start")
+        .order("ran_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not data:
+        return False
+    return data[0]["start"] is True
+
+
+# === SCRAPER UPDATES ===
+
+
+def write_scraper_update(update: dict) -> None:
+    supabase.table("scraper_updates").insert(update).execute()
+
+
+def write_scraper_updates_bulk(updates: list[dict]) -> None:
+    if not updates:
+        return
+    supabase.table("scraper_updates").insert(updates).execute()
+
+
+def get_stable_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "stable")
+        .order("created_at", desc=False)
+        .execute()
+        .data
+    )
+
+
+def mark_updates_delivered(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "delivered"}).in_(
+        "id", ids
+    ).execute()
+
+
+def cleanup_delivered_updates(older_than_hours: int = 24) -> int:
+    return _cleanup_older_than(
+        "scraper_updates", "status", "delivered", older_than_hours
+    )
+
+
+def get_pending_game_updates() -> list[dict]:
+    return (
+        supabase.table("scraper_updates")
+        .select()
+        .eq("status", "pending")
+        .not_.is_("game_ce_id", "null")
+        .execute()
+        .data
+    )
+
+
+def promote_pending_to_stable(ids: list[str]) -> None:
+    if not ids:
+        return
+    supabase.table("scraper_updates").update({"status": "stable"}).in_(
+        "id", ids
+    ).execute()
+
+
+def upsert_pending_update(update: dict) -> None:
+    existing = (
+        supabase.table("scraper_updates")
+        .select("id")
+        .eq("status", "pending")
+        .eq("game_ce_id", update["game_ce_id"])
+        .execute()
+        .data
+    )
+    if existing:
+        supabase.table("scraper_updates").update(update).eq(
+            "id", existing[0]["id"]
+        ).execute()
+    else:
+        supabase.table("scraper_updates").insert(update).execute()
+
+
+# === SCRAPER COMMANDS ===
+
+
+def write_scraper_command(command: str) -> str:
+    result = (
+        supabase.table("scraper_commands")
+        .insert(
+            {
+                "command": command,
+                "status": "pending",
+            }
+        )
+        .execute()
+    )
+    return result.data[0]["id"]
+
+
+def get_pending_commands() -> list[dict]:
+    return (
+        supabase.table("scraper_commands")
+        .select()
+        .eq("status", "pending")
+        .order("created_at", desc=False)
+        .execute()
+        .data
+    )
+
+
+def acknowledge_command(command_id: str) -> None:
+    supabase.table("scraper_commands").update(
+        {
+            "status": "acknowledged",
+            "acknowledged_at": _now_iso(),
+        }
+    ).eq("id", command_id).execute()
+
+
+def complete_command(command_id: str) -> None:
+    supabase.table("scraper_commands").update(
+        {
+            "status": "completed",
+            "completed_at": _now_iso(),
+        }
+    ).eq("id", command_id).execute()
+
+
+def cleanup_completed_commands(older_than_hours: int = 24) -> int:
+    return _cleanup_older_than(
+        "scraper_commands", "status", "completed", older_than_hours
+    )
+
+
+# === DELETERS ===
+
+
+def delete_game(ce_id: str):
+    # Delete objectives first (foreign key constraint)
+    objectives = (
+        supabase.table("objectives")
+        .select("ce_id")
+        .eq("game_ce_id", ce_id)
+        .execute()
+        .data
+    )
+    for obj in objectives:
+        supabase.table("objectiveRequirements").delete().eq(
+            "objective_ce_id", obj["ce_id"]
+        ).execute()
+    supabase.table("objectives").delete().eq("game_ce_id", ce_id).execute()
+    supabase.table("categories").delete().eq("game_id", ce_id).execute()
+    supabase.table("games").delete().eq("ce_id", ce_id).execute()
+
+    LocalCache.delete_game_cascade(ce_id)
+
+
+def delete_user(ce_id: str):
+    supabase.table("userGames").delete().eq("user_ce_id", ce_id).execute()
+    supabase.table("userObjectives").delete().eq("user_ce_id", ce_id).execute()
+    supabase.table("users").delete().eq("ce_id", ce_id).execute()
+
+    LocalCache.delete_user_cascade(ce_id)
+
+
+def delete_roll(roll_id: str):
+    supabase.table("rollGames").delete().eq("roll_id", roll_id).execute()
+    supabase.table("rolls").delete().eq("id", roll_id).execute()
+
+    LocalCache.delete_roll(roll_id)
+
+
 # === MAINTENANCE ===
+
+
 def clean_db():
     """Cleans out the database. Any user games and user objectives with no corresponding
     real game or objective are deleted."""
@@ -1645,52 +1559,3 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
         tier_num=roll.get("chosen_tier"),
         tier_num_partner=roll.get("chosen_tier_partner"),
     )
-
-
-def dump_objective(objective: CEObjective):
-    # Delete all previous custom requirements for this objective to prevent duplicates
-    supabase.table("objectiveRequirements").delete().eq(
-        "objective_ce_id", objective.ce_id
-    ).eq("requirement_type", "custom").execute()
-
-    now_iso = datetime.datetime.now(datetime.UTC).isoformat()
-
-    obj_data = {
-        "ce_id": objective.ce_id,
-        "game_ce_id": objective.game_ce_id,
-        "type": objective.type,
-        "name": objective.name,
-        "description": objective.description,
-        "points": objective.point_value,
-        "points_partial": objective.partial_points,
-        "updated_at_CE": now_iso,
-    }
-    supabase.table("objectives").upsert(obj_data).execute()
-    LocalCache.upsert_objectives_bulk([obj_data])
-
-    # Clear old requirements from cache and rebuild
-    LocalCache.delete_requirements_by_objectives([objective.ce_id])
-    reqs_payload = []
-
-    if objective.achievement_ce_ids:
-        for achievement_id in objective.achievement_ce_ids:
-            req_data = {
-                "objective_ce_id": objective.ce_id,
-                "requirement_type": "achievement",
-                "data": achievement_id,
-                "updated_at_CE": now_iso,
-            }
-            supabase.table("objectiveRequirements").upsert(req_data).execute()
-            reqs_payload.append(req_data)
-
-    if objective.requirements:
-        req_data = {
-            "objective_ce_id": objective.ce_id,
-            "requirement_type": "custom",
-            "data": objective.requirements,
-            "updated_at_CE": now_iso,
-        }
-        supabase.table("objectiveRequirements").upsert(req_data).execute()
-        reqs_payload.append(req_data)
-
-    LocalCache.upsert_requirements_bulk(reqs_payload)

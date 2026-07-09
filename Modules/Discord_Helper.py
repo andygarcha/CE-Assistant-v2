@@ -284,16 +284,16 @@ async def get_user_embeds(
     )
     summary_embed.add_field(
         name="User",
-        value=f"<@{user.discord_id}> {hm.get_emoji(user.get_rank())}",  # type: ignore
+        value=f"<@{user.discord_id}> {hm.get_emoji(user.rank)}",  # type: ignore
         inline=True,
     )
     summary_embed.add_field(
         name="Current Values",
-        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
+        value=f"{user.total_points} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
         inline=True,
     )
     summary_embed.add_field(
-        name="CE Link", value=f"{user.display_name_with_link()}", inline=False
+        name="CE Link", value=f"{user.display_name_with_link}", inline=False
     )
     summary_embed.add_field(
         name="CR",

@@ -92,8 +92,8 @@ class TestCategoryThresholdCrossing:
         new_owned, new_db = _game_with_points(GAME_ID, 500)
         updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
         assert len(updates) == 1
-        assert user.mention() in updates[0].text
-        assert user.display_name_with_link() in updates[0].text
+        assert user.mention in updates[0].text
+        assert user.display_name_with_link in updates[0].text
 
     def test_category_role_message_is_not_embed(self):
         old_owned, old_db = _game_with_points(GAME_ID, 499)

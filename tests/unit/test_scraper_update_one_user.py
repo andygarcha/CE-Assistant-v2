@@ -80,7 +80,7 @@ class TestStateMutation:
         stale_time = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
         owned, db_game = _game_with_points(GAME_ID, 10)
         user = make_user(owned_games=[owned])
-        user.set_last_updated(stale_time)
+        user.last_updated = stale_time
         site_data = _api_user([owned])
         update_one_user(user, site_data, [db_game], [db_game])
         assert user.last_updated > stale_time

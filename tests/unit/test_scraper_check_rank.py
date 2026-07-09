@@ -53,7 +53,7 @@ class TestCheckRankPublicMessage:
         user = _regular_user()
         result = check_rank("B Rank", "A Rank", 400, 1000, user)
         assert result is not None
-        assert user.mention() in result.text
+        assert user.mention in result.text
 
     def test_public_message_contains_display_name(self):
         user = _regular_user("AwesomePlayer")
@@ -90,7 +90,7 @@ class TestCheckRankMutedMessage:
         user = _muted_user("SneakyUser")
         result = check_rank("B Rank", "A Rank", 400, 1000, user)
         assert result is not None
-        assert user.display_name_with_link() in result.text
+        assert user.display_name_with_link in result.text
 
     def test_muted_message_contains_old_and_new_rank(self):
         user = _muted_user()
