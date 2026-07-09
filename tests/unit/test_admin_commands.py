@@ -2,7 +2,10 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from commands.admin import fail_roll, loop
+import pytest
+
+from commands.admin import UnlinkView, fail_roll, force_unlink, loop
+from tests.conftest import make_user
 
 
 class TestAdminLoopCommand:
@@ -416,3 +419,114 @@ class TestHealthCheck:
         self._run(interaction, cheap_warnings=[])
         msg = interaction.followup.send.call_args[0][0]
         assert "no issues" in msg.lower()
+
+
+# ── force_unlink ──────────────────────────────────────────────────────────────
+
+
+class TestForceUnlink:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_member(self, member_id: int = 123) -> SimpleNamespace:
+        return SimpleNamespace(id=member_id, mention=f"<@{member_id}>")
+
+    def _run(self, interaction, member, user=None):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+        ):
+            asyncio.run(force_unlink(interaction, member))
+
+    def test_unknown_user_sends_not_found_message(self):
+        interaction = self._make_interaction()
+        self._run(interaction, self._make_member(), user=None)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "could not find" in msg.lower()
+
+    def test_unknown_user_does_not_attach_a_view(self):
+        interaction = self._make_interaction()
+        self._run(interaction, self._make_member(), user=None)
+        assert "view" not in interaction.followup.send.call_args.kwargs
+
+    def test_known_user_sends_confirmation_with_view(self):
+        interaction = self._make_interaction()
+        user = make_user(display_name="TestUser")
+        self._run(interaction, self._make_member(456), user=user)
+        args, kwargs = interaction.followup.send.call_args
+        assert "TestUser" in args[0]
+        assert isinstance(kwargs["view"], UnlinkView)
+
+    def test_confirmation_does_not_delete_yet(self):
+        interaction = self._make_interaction()
+        user = make_user()
+        with patch("commands.admin.SupabaseReader.delete_user") as mock_delete:
+            self._run(interaction, self._make_member(), user=user)
+        mock_delete.assert_not_called()
+
+
+class TestUnlinkViewYesButton:
+    async def _invoke(self, member_id: int, user):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(member_id)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.delete_user") as mock_delete,
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        return interaction, mock_delete
+
+    def _run(self, member_id: int, user):
+        return asyncio.run(self._invoke(member_id, user))
+
+    def test_deletes_the_user_by_ce_id(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        _, mock_delete = self._run(123, user)
+        mock_delete.assert_called_once_with("user-001-0000-0000-000000000000")
+
+    async def _invoke_no_rolls_check(self, member_id: int, user):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(member_id)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.delete_user"),
+            patch("commands.admin.SupabaseReader.delete_roll") as mock_delete_roll,
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        return mock_delete_roll
+
+    def test_does_not_touch_rolls(self):
+        user = make_user()
+        mock_delete_roll = asyncio.run(self._invoke_no_rolls_check(123, user))
+        mock_delete_roll.assert_not_called()
+
+    def test_edits_message_confirming_unlink(self):
+        user = make_user(display_name="GoneUser")
+        interaction, _ = self._run(123, user)
+        msg = interaction.response.edit_message.call_args.kwargs["content"]
+        assert "GoneUser" in msg
+        assert "unlink" in msg.lower()
+
+    async def _invoke_missing_user(self):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(999)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=None),
+            pytest.raises(Exception, match="Could not find user"),
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+
+    def test_missing_user_raises(self):
+        asyncio.run(self._invoke_missing_user())

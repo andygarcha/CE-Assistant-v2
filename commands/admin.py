@@ -581,12 +581,14 @@ class UnlinkView(discord.ui.View):
                 f"Could not find user with discord id {self._member_id} in Supabase."
             )
 
-        # user._discord_id = None
-        SupabaseReader.dump_user(user)
+        # Deletes the user row, owned games, and objectives. Rolls are
+        # intentionally left alone so roll/casino history survives an unlink.
+        SupabaseReader.delete_user(user.ce_id)
 
         self.clear_items()
         await interaction.response.edit_message(
-            content=f"{user.display_name} has been removed.", view=self
+            content=f"{user.display_name} has been unlinked. Their roll history was kept.",
+            view=self,
         )
 
     @discord.ui.button(label="No!", style=discord.ButtonStyle.red)
@@ -601,7 +603,8 @@ class UnlinkView(discord.ui.View):
 
 async def force_unlink(interaction: discord.Interaction, member: discord.User):
     """
-    Forcefully unlink a user from their CE ID.
+    Forcefully unlink a user from their CE ID. Deletes their user row, owned
+    games, and objectives. Roll/casino history is intentionally preserved.
 
     Parameters
     ---
@@ -617,8 +620,17 @@ async def force_unlink(interaction: discord.Interaction, member: discord.User):
         client, interaction, "force_unlink", True, member=member.mention
     )
 
+    user = SupabaseReader.get_user(member.id, use_discord_id=True)
+    if user is None:
+        return await interaction.followup.send(
+            f"Could not find a registered user for {member.mention}."
+        )
+
+    view = UnlinkView(member.id)
     return await interaction.followup.send(
-        "This does not currently work with the updated CE site. Please wait a while, or contact andy for manual unlinking!"
+        f"Are you sure you want to unlink {user.display_name} ({member.mention})? "
+        "This deletes their owned games and objectives, but their roll history is kept.",
+        view=view,
     )
 
 
