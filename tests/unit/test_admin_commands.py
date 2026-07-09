@@ -1,11 +1,12 @@
 import asyncio
+import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from commands.admin import UnlinkView, fail_roll, force_unlink, loop
-from tests.conftest import make_user
+from commands.admin import UnlinkView, clear_roll_portion, fail_roll, force_unlink, loop
+from tests.conftest import make_game, make_roll, make_user
 
 
 class TestAdminLoopCommand:
@@ -343,6 +344,120 @@ class TestFailRoll:
         _, channel, msg = mock_send.call_args[0]
         assert channel == "casino"
         assert "not found" in msg.lower()
+
+
+# ── clear_roll_portion ───────────────────────────────────────────────────────
+
+
+class TestClearRollPortion:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_member(self, member_id: int = 123) -> SimpleNamespace:
+        return SimpleNamespace(id=member_id, mention=f"<@{member_id}>")
+
+    def _run(self, interaction, member, user=None, roll_name="Two Week T2 Streak"):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.get_game", return_value=make_game()),
+            patch("commands.admin.SupabaseReader.dump_roll") as mock_dump,
+        ):
+            asyncio.run(
+                clear_roll_portion(interaction, member, roll_name)  # type: ignore[arg-type]
+            )
+        return mock_dump
+
+    def test_unregistered_user_raises_and_notifies(self):
+        interaction = self._make_interaction()
+        with pytest.raises(Exception, match="Could not find user"):
+            self._run(interaction, self._make_member(), user=None)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "could not find" in msg.lower()
+
+    def test_no_matching_current_roll_sends_message_and_does_not_persist(self):
+        interaction = self._make_interaction()
+        user = make_user(rolls=[])
+        mock_dump = self._run(interaction, self._make_member(), user=user)
+        mock_dump.assert_not_called()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "does not have roll" in msg.lower()
+
+    def test_matching_roll_persists_via_dump_roll(self):
+        """Regression: this used to call SupabaseReader.dump_user(user), which
+        never touches user.rolls, so the mutation was silently discarded."""
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll])
+        mock_dump = self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        mock_dump.assert_called_once_with(roll)
+
+    def test_matching_roll_sets_status_between_stages_and_clears_due_time(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        user = make_user(rolls=[roll])
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        assert roll.status == "between_stages"
+        assert roll.due_time is None
+
+    def test_matching_roll_removes_last_game(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll])
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        assert roll.games == ["game-001-0000-0000-000000000000"]
+
+    def test_success_message_names_removed_game_and_user(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll], display_name="TestUser")
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        msg = interaction.followup.send.call_args[0][0]
+        assert "TestUser" in msg
+        assert "between_stages" in msg
 
 
 # ── health_check ──────────────────────────────────────────────────────────────

@@ -103,7 +103,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         member: discord.Member,
         roll_name: hm.ALL_ROLL_EVENT_NAMES,
     ):
-        return await interaction.response.send_message("Not available.")
+        return await clear_roll_portion(interaction, member, roll_name)
 
     # -- /fail-roll {roll_id} {is_not_current} --------------------------------------------------
     @tree.command(
@@ -432,11 +432,7 @@ async def clear_roll_portion(
 
     logger.info("Roll (after changes): %s", roll.to_dict())
 
-    logger.debug("Printing all rolls in user.rolls.")
-    for roll in user.rolls:
-        logger.debug("%s", roll.to_dict())
-
-    SupabaseReader.dump_user(user)
+    SupabaseReader.dump_roll(roll)
     return await interaction.followup.send(
         f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. "
         + "Status set to 'between_stages'."
