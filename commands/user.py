@@ -105,8 +105,12 @@ async def register(
     users = SupabaseReader.get_database_user()
 
     # make sure they're not already registered
+    # (the target being registered is discord_user for force-register, or
+    # interaction.user for a normal self-register -- must match the id used
+    # everywhere else in this function, not always the command-caller's id)
+    target_id = discord_user.id if discord_user is not None else interaction.user.id
     for user in users:
-        if user.discord_id == interaction.user.id:
+        if user.discord_id == target_id:
             return await interaction.followup.send(
                 "This discord account is already registered in the CE Assistant database!"
             )
