@@ -162,7 +162,7 @@ async def register(
     await hm.send_message(
         client,
         "privatelog",
-        f":bust_in_silhouette: new user registered: <@{interaction.user.id}>: <https://cedb.me/user/{ce_id}>",
+        f":bust_in_silhouette: new user registered: <@{target_id}>: <https://cedb.me/user/{ce_id}>",
         True,
     )
 
