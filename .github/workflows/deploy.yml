@@ -1,0 +1,15 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to VM
+    runs-on: [self-hosted]
+    steps:
+      - name: Run deploy script
+        run: bash scripts/deploy.sh
+        working-directory: ${{ github.workspace }}
