@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import secrets
 from typing import TYPE_CHECKING, Literal, get_args
@@ -11,28 +10,6 @@ from utils.general_utils import get_item_from_list
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
-
-
-def get_banned_games() -> list[str] | None:
-    "Returns the list of CE IDs of banned rollable games."
-    # import Modules.SpreadsheetHandler as SpreadsheetHandler
-
-    # BANNED_GAMES = SpreadsheetHandler.get_sheet_data(
-    #     SpreadsheetHandler.CE_SHEET_BANNED_GAMES_RANGE, SpreadsheetHandler.CE_SHEET_ID
-    # )
-    # if BANNED_GAMES is None:
-    #     return None
-    # # Returns as [CE ID, Game Name, Reason]
-
-    # banned_games_ids = []
-
-    # for item in BANNED_GAMES:
-    #     banned_games_ids.append(item[0])
-
-    # return banned_game_ids
-
-    with open("./Assets/games_banned.json") as f:
-        return json.load(f)
 
 
 def get_rollable_game(
@@ -159,7 +136,9 @@ def get_rollable_game(
 
     # get banned games
     try:
-        banned_games = get_banned_games()
+        from Modules import SupabaseReader
+
+        banned_games = [g["game_id"] for g in SupabaseReader.get_banned_games()]
     except Exception as e:
         logging.exception(e)
         return None

@@ -99,6 +99,12 @@ CREATE TABLE IF NOT EXISTS tier (
     sh_hours REAL
 );
 
+CREATE TABLE IF NOT EXISTS banned_games (
+    game_id TEXT PRIMARY KEY,
+    reason TEXT NOT NULL DEFAULT '',
+    banned_by TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_objectives_game ON objectives(game_ce_id);
 CREATE INDEX IF NOT EXISTS idx_obj_reqs_objective ON objective_requirements(objective_ce_id);
 CREATE INDEX IF NOT EXISTS idx_categories_game ON categories(game_id);
@@ -824,6 +830,44 @@ def get_tier_all() -> list[dict]:
     return [_row_to_dict(r) for r in conn.execute("SELECT * FROM tier").fetchall()]
 
 
+# === BANNED GAMES ===
+
+
+def upsert_banned_games_bulk(rows: list[dict]) -> None:
+    if not rows:
+        return
+    conn = get_connection()
+    conn.executemany(
+        """INSERT INTO banned_games (game_id, reason, banned_by)
+           VALUES (:game_id, :reason, :banned_by)
+           ON CONFLICT(game_id) DO UPDATE SET
+           reason=excluded.reason, banned_by=excluded.banned_by""",
+        rows,
+    )
+    conn.commit()
+
+
+def get_banned_game(game_id: str) -> dict | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM banned_games WHERE game_id = ?", (game_id,)
+    ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_banned_games_all() -> list[dict]:
+    conn = get_connection()
+    return [
+        _row_to_dict(r) for r in conn.execute("SELECT * FROM banned_games").fetchall()
+    ]
+
+
+def delete_banned_game(game_id: str) -> None:
+    conn = get_connection()
+    conn.execute("DELETE FROM banned_games WHERE game_id = ?", (game_id,))
+    conn.commit()
+
+
 # === REBUILD ===
 
 _SUPABASE_PAGE_SIZE = 1000
@@ -843,6 +887,7 @@ _UPSERT_BULK_FUNCS: dict[str, typing.Callable[[list[dict]], None]] = {
     "rolls": upsert_rolls_bulk,
     "roll_games": upsert_roll_games_bulk,
     "tier": upsert_tier_bulk,
+    "banned_games": upsert_banned_games_bulk,
 }
 
 # Child tables to sync when new parent rows are inserted by the integrity check.
@@ -920,6 +965,7 @@ def rebuild_from_supabase() -> dict:
         ("rolls", "rolls"),
         ("rollGames", "roll_games"),
         ("tier", "tier"),
+        ("bannedGames", "banned_games"),
     ]
 
     conn = get_connection()
@@ -968,6 +1014,7 @@ def run_integrity_check() -> dict:
         ("users", "users", "ce_id"),
         ("objectives", "objectives", "ce_id"),
         ("rolls", "rolls", "id"),
+        ("bannedGames", "banned_games", "game_id"),
     ]
 
     conn = get_connection()
