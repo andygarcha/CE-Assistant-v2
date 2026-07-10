@@ -19,6 +19,9 @@ setup_stub_bin() {
 # Stub systemctl. Records calls to $STUB_LOG. "is-active" reads desired
 # state from $STUB_ACTIVE_SERVICES (space-separated list of active units).
 echo "$*" >> "$STUB_LOG"
+if [[ "$1" == "--user" ]]; then
+    shift
+fi
 if [[ "$1" == "is-active" ]]; then
     svc="$2"
     for active in $STUB_ACTIVE_SERVICES; do
@@ -133,10 +136,10 @@ test_rollback_resets_and_restarts() {
             fail "rollback: expected pip install -r requirements.txt to be called"
         fi
 
-        if grep -q "^restart ce-bot ce-scraper$" "$STUB_LOG"; then
+        if grep -q "^--user restart ce-bot ce-scraper$" "$STUB_LOG"; then
             pass "rollback: restarted services"
         else
-            fail "rollback: expected systemctl restart ce-bot ce-scraper to be called"
+            fail "rollback: expected systemctl --user restart ce-bot ce-scraper to be called"
         fi
     )
     rm -rf "$tmp"
