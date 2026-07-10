@@ -5,7 +5,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from commands.admin import UnlinkView, clear_roll_portion, fail_roll, force_unlink, loop
+from commands.admin import (
+    UnlinkView,
+    ban_game,
+    clear_roll_portion,
+    fail_roll,
+    force_unlink,
+    loop,
+)
 from tests.conftest import make_game, make_roll, make_user
 
 
@@ -458,6 +465,79 @@ class TestClearRollPortion:
         msg = interaction.followup.send.call_args[0][0]
         assert "TestUser" in msg
         assert "between_stages" in msg
+
+
+# ── ban_game ──────────────────────────────────────────────────────────────────
+
+
+class TestBanGame:
+    def _make_interaction(self, discord_id: int = 111) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+            user=SimpleNamespace(id=discord_id),
+        )
+
+    def _run(
+        self,
+        interaction,
+        game="game-001",
+        reason="Too easy.",
+        author=None,
+        game_exists=True,
+    ):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=author),
+            patch(
+                "commands.admin.SupabaseReader.get_game",
+                return_value=(make_game() if game_exists else None),
+            ),
+            patch("commands.admin.SupabaseReader.ban_game") as mock_ban,
+        ):
+            asyncio.run(ban_game(interaction, game, reason))
+        return mock_ban
+
+    def test_unregistered_user_does_not_ban(self):
+        interaction = self._make_interaction()
+        mock_ban = self._run(interaction, author=None)
+        mock_ban.assert_not_called()
+
+    def test_unregistered_user_sends_registration_message(self):
+        interaction = self._make_interaction()
+        self._run(interaction, author=None)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "registered" in msg.lower()
+
+    def test_nonexistent_game_does_not_ban(self):
+        interaction = self._make_interaction()
+        mock_ban = self._run(interaction, author=make_user(), game_exists=False)
+        mock_ban.assert_not_called()
+
+    def test_nonexistent_game_sends_error_message(self):
+        interaction = self._make_interaction()
+        self._run(interaction, author=make_user(), game_exists=False)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "not a real game" in msg.lower()
+
+    def test_registered_user_and_real_game_bans_with_ce_id(self):
+        interaction = self._make_interaction()
+        author = make_user(ce_id="banner-ce-id")
+        mock_ban = self._run(
+            interaction, game="game-001", reason="Too easy.", author=author
+        )
+        mock_ban.assert_called_once_with("game-001", "Too easy.", "banner-ce-id")
+
+    def test_success_message_names_game_and_reason(self):
+        interaction = self._make_interaction()
+        author = make_user(display_name="TestAdmin")
+        self._run(interaction, game="game-001", reason="Too easy.", author=author)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "game-001" in msg
+        assert "Too easy." in msg
 
 
 # ── health_check ──────────────────────────────────────────────────────────────

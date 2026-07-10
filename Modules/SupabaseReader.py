@@ -1563,6 +1563,14 @@ def __supabase_to_roll(roll: dict, rollGames: list[dict]) -> CERoll:
 
 # === BANNED GAMES ===
 
+# get_rollable_game() calls get_banned_games() on every candidate game it
+# considers -- up to 25 times in a single /solo-roll One Hell of a Month --
+# so the result is cached in-process rather than hit Supabase live every
+# time. Bans are rare and only ever written through ban_game() below, which
+# invalidates this cache, so staleness is limited to bans made by some other
+# process (e.g. a manual Supabase edit) until this process restarts.
+_banned_games_cache: list[dict] | None = None
+
 
 def get_banned_game(game_id: str) -> dict | None:
     """
@@ -1579,29 +1587,29 @@ def get_banned_game(game_id: str) -> dict | None:
         If the game is currently banned, this will return the row data associated with it.
         If it is not banned, this will return None.
     """
-
-    game = (
-        supabase.table("bannedGames").select("*").eq("game_id", game_id).execute().data
-    )
-
-    if not game:
-        return None
-
-    return game[0]
+    for game in get_banned_games():
+        if game["game_id"] == game_id:
+            return game
+    return None
 
 
 def get_banned_games() -> list[dict]:
     """
     Returns a list of all games that are banned from the casino.
+    Cached in-process; see `_banned_games_cache` above.
     """
-    return supabase.table("bannedGames").select("*").execute().data
+    global _banned_games_cache
+    if _banned_games_cache is None:
+        _banned_games_cache = supabase.table("bannedGames").select("*").execute().data
+    return _banned_games_cache
 
 
 def ban_game(game_id: str, reason: str, banned_by: str, append: bool = True):
     """
     Adds a game to the `bannedGames` table in Supabase.
 
-    If
+    If this game is already banned and `append` is true, the given `reason`
+    is appended onto the existing `reason` column instead of overwriting it.
 
     Parameters
     ---
@@ -1616,6 +1624,7 @@ def ban_game(game_id: str, reason: str, banned_by: str, append: bool = True):
         in the `bannedGames` table with `game_id`, this will
         append the `reason` to the existing entry.
     """
+    global _banned_games_cache
 
     previous_entry = get_banned_game(game_id)
     if previous_entry is not None and append:
@@ -1624,3 +1633,4 @@ def ban_game(game_id: str, reason: str, banned_by: str, append: bool = True):
     data = {"game_id": game_id, "reason": reason, "banned_by": banned_by}
 
     supabase.table("bannedGames").upsert(data).execute()
+    _banned_games_cache = None

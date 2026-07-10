@@ -79,16 +79,23 @@ def _run_ban_game(interaction, game: str, reason: str):
         asyncio.run(ban_game(interaction, game, reason))
 
 
+def _wipe_banned_row(game_id: str) -> None:
+    # Deletes directly via Supabase (not SupabaseReader.ban_game/delete
+    # helpers), so get_banned_games()'s in-process cache must be reset by
+    # hand -- otherwise a later ban_game() call in this file would read a
+    # stale cached row and incorrectly "append" instead of creating fresh.
+    SupabaseReader.supabase.table("bannedGames").delete().eq(
+        "game_id", game_id
+    ).execute()
+    SupabaseReader._banned_games_cache = None
+
+
 @pytest.fixture(autouse=True)
 def clean(game_id: str):
     """Wipe any leftover banned_games rows for our test game before and after every test."""
-    SupabaseReader.supabase.table("bannedGames").delete().eq(
-        "game_id", game_id
-    ).execute()
+    _wipe_banned_row(game_id)
     yield
-    SupabaseReader.supabase.table("bannedGames").delete().eq(
-        "game_id", game_id
-    ).execute()
+    _wipe_banned_row(game_id)
 
 
 # ── banning a game ───────────────────────────────────────────────────────────

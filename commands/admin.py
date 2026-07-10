@@ -162,7 +162,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def debug_command(interaction: discord.Interaction, user: discord.Member):
         return await debug(interaction, user)
 
-    # -- /ban-game {game_id} {reason}} ---------------------------------------------------------------
+    # -- /ban-game {game} {reason} -----------------------------------------------------------
     @tree.command(
         name="ban-game",
         description="Ban a game from being rolled in the casino.",
