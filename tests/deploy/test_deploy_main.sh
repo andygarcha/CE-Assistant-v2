@@ -32,7 +32,13 @@ setup_fixture() {
         echo "requests" > requirements.txt
         mkdir -p scripts
         echo '#!/usr/bin/env true' > scripts/smoke_test_imports.py
-        git add requirements.txt scripts/smoke_test_imports.py
+        # deploy.sh re-execs itself as "$REPO_DIR/scripts/deploy.sh" after
+        # pulling (see the DEPLOY_PREV_SHA re-exec in main()), so the fixture
+        # repo needs its own copy of the real script at that path for the
+        # re-exec'd process to find -- otherwise it'd only exist at
+        # $REPO_ROOT, not inside this synthetic $work checkout.
+        cp "$REPO_ROOT/scripts/deploy.sh" scripts/deploy.sh
+        git add requirements.txt scripts/smoke_test_imports.py scripts/deploy.sh
         git commit -q -m "v1 (good)"
         git push -q origin main 2>/dev/null || git push -q origin master
     )

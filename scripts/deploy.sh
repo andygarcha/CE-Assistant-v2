@@ -42,12 +42,30 @@ services_healthy() {
 }
 
 main() {
-    local prev_sha attempt
-    prev_sha="$(git rev-parse HEAD)"
+    # bash reads a small script file into memory up front, so a process
+    # already executing this file doesn't notice `git reset --hard`
+    # replacing scripts/deploy.sh on disk mid-run -- it keeps running
+    # whatever it already had buffered. Concretely: this bit (DEPLOY_PREV_SHA
+    # unset) only runs once, on the process the SSH forced command actually
+    # launched, which may be an *old* copy of this script. It does the pull,
+    # then hands off via `exec` to a brand-new bash process that re-reads
+    # the file fresh off disk -- so every line of orchestration logic after
+    # the pull always reflects the just-pulled version of this script, not
+    # whatever was on disk when the SSH connection first came in.
+    if [[ -z "${DEPLOY_PREV_SHA:-}" ]]; then
+        local prev_sha
+        prev_sha="$(git rev-parse HEAD)"
 
-    log "Fetching origin/main"
-    git fetch origin main
-    git reset --hard origin/main
+        log "Fetching origin/main"
+        git fetch origin main
+        git reset --hard origin/main
+
+        export DEPLOY_PREV_SHA="$prev_sha"
+        exec bash "$REPO_DIR/scripts/deploy.sh"
+    fi
+
+    local prev_sha="$DEPLOY_PREV_SHA"
+    unset DEPLOY_PREV_SHA
 
     log "Installing dependencies"
     "$PIP_BIN" install -r requirements.txt
@@ -76,8 +94,7 @@ main() {
     # checking immediately with no grace period would let that slip through
     # as a false positive. Success is determined only by whether the last
     # check in the window is healthy, not by the first "active" reading.
-    local healthy=0
-    attempt=0
+    local healthy=0 attempt=0
     while (( attempt < HEALTH_CHECK_RETRIES )); do
         sleep "$HEALTH_CHECK_INTERVAL"
         attempt=$((attempt + 1))
