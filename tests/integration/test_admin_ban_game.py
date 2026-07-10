@@ -24,7 +24,7 @@ import pytest
 
 import commands.admin as admin_mod
 from commands.admin import ban_game
-from Modules import SupabaseReader
+from Modules import LocalCache, SupabaseReader
 
 # A discord id that (almost certainly) does not belong to any registered user.
 _UNREGISTERED_DISCORD_ID = 1
@@ -80,14 +80,14 @@ def _run_ban_game(interaction, game: str, reason: str):
 
 
 def _wipe_banned_row(game_id: str) -> None:
-    # Deletes directly via Supabase (not SupabaseReader.ban_game/delete
-    # helpers), so get_banned_games()'s in-process cache must be reset by
-    # hand -- otherwise a later ban_game() call in this file would read a
-    # stale cached row and incorrectly "append" instead of creating fresh.
+    # Deletes directly via raw Supabase, bypassing SupabaseReader.ban_game()
+    # -- so LocalCache's mirror must be wiped by hand too, otherwise a
+    # later ban_game() call in this file would read a stale cached row via
+    # LocalCache and incorrectly "append" instead of creating fresh.
     SupabaseReader.supabase.table("bannedGames").delete().eq(
         "game_id", game_id
     ).execute()
-    SupabaseReader._banned_games_cache = None
+    LocalCache.delete_banned_game(game_id)
 
 
 @pytest.fixture(autouse=True)
