@@ -1,4 +1,13 @@
 # -------- discord imports -----------
+import os
+import sys
+
+# Must happen before any import that touches utils.channels (which computes
+# IN_CE-dependent constants once, at import time) -- `from Modules import hm`
+# below is that first import, via `from utils.channels import *`.
+if "--dev" in sys.argv:
+    os.environ["CE_DEV_MODE"] = "1"
+
 import logging
 
 from Modules import hm
@@ -11,8 +20,6 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-
-import os  # noqa: E402
 
 # -------- json imports ----------
 from typing import Literal  # noqa: E402
