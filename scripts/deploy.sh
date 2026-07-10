@@ -38,6 +38,50 @@ services_healthy() {
     return 0
 }
 
+main() {
+    local prev_sha attempt
+    prev_sha="$(git rev-parse HEAD)"
+
+    log "Fetching origin/main"
+    git fetch origin main
+    git reset --hard origin/main
+
+    log "Installing dependencies"
+    "$PIP_BIN" install -r requirements.txt
+
+    log "Running import smoke test"
+    if ! "$PYTHON_BIN" scripts/smoke_test_imports.py; then
+        log "Smoke test failed"
+        rollback "$prev_sha"
+        exit 1
+    fi
+
+    log "Running pytest"
+    if ! "$PYTEST_BIN" --ignore=tests/integration; then
+        log "pytest failed"
+        rollback "$prev_sha"
+        exit 1
+    fi
+
+    log "Restarting services: ${SERVICES[*]}"
+    systemctl restart "${SERVICES[@]}"
+
+    attempt=0
+    while (( attempt < HEALTH_CHECK_RETRIES )); do
+        if services_healthy; then
+            log "Deploy succeeded at $(git rev-parse HEAD)"
+            exit 0
+        fi
+        sleep "$HEALTH_CHECK_INTERVAL"
+        attempt=$((attempt + 1))
+    done
+
+    log "Services failed to become healthy after restart"
+    rollback "$prev_sha"
+    exit 1
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     cd "$REPO_DIR"
+    main "$@"
 fi
