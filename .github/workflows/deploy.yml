@@ -1,0 +1,19 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to VM
+    runs-on: [self-hosted]
+    steps:
+      - name: Run deploy script
+        run: bash scripts/deploy.sh
+        working-directory: ${{ github.workspace }}
+        env:
+          PIP_BIN: ${{ github.workspace }}/.venv/bin/pip
+          PYTHON_BIN: ${{ github.workspace }}/.venv/bin/python
+          PYTEST_BIN: ${{ github.workspace }}/.venv/bin/pytest
