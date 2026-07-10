@@ -38,7 +38,10 @@ async def _fetch_leaderboard() -> list[dict]:
                     "expected_skill": overall["skill"],
                 }
             )
-    rng = random.Random(_RANDOM_SEED)
+    # A fixed seed is required here for reproducible test sampling across runs --
+    # `secrets` has no seeding mechanism by design, so `random` is the correct
+    # tool for this non-cryptographic, deterministic use case.
+    rng = random.Random(_RANDOM_SEED)  # noqa: S311
     return rng.sample(entries, min(_SAMPLE_SIZE, len(entries)))
 
 
@@ -54,7 +57,7 @@ def fetched_users():
         users = await asyncio.gather(
             *[CEAPIReader.get_user(e["user_id"]) for e in sampled]
         )
-        return list(zip(sampled, users))
+        return list(zip(sampled, users, strict=False))
 
     return asyncio.run(_fetch_all())
 

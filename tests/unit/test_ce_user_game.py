@@ -50,7 +50,7 @@ def _uso(points: int, obj_id: str) -> CEUserObjective:
     )
 
 
-# ── get_user_points ───────────────────────────────────────────────────────────
+# ── user_points ───────────────────────────────────────────────────────────
 
 
 class TestGetUserPoints:
@@ -63,40 +63,17 @@ class TestGetUserPoints:
                 ),
             ]
         )
-        assert ug.get_user_points() == 30
+        assert ug.user_points == 30
 
     def test_empty_objectives_zero_points(self):
-        assert make_user_game(user_objectives=[]).get_user_points() == 0
+        assert make_user_game(user_objectives=[]).user_points == 0
 
     def test_single_objective(self):
         assert (
             make_user_game(
                 user_objectives=[make_user_objective(user_points=15)]
-            ).get_user_points()
+            ).user_points
             == 15
-        )
-
-
-# ── has_completed_objective ───────────────────────────────────────────────────
-
-
-class TestHasCompletedObjective:
-    def test_found_by_id_and_points(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective(OBJ_ID, 10) is True
-
-    def test_wrong_points_returns_false(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective(OBJ_ID, 5) is False
-
-    def test_wrong_id_returns_false(self):
-        ug = make_user_game(user_objectives=[_upo(10)])
-        assert ug.has_completed_objective("wrong-id", 10) is False
-
-    def test_empty_objectives_returns_false(self):
-        assert (
-            make_user_game(user_objectives=[]).has_completed_objective(OBJ_ID, 10)
-            is False
         )
 
 

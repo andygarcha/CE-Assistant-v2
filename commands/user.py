@@ -1,9 +1,13 @@
 """This module contains all the commands about users for the bot."""
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord import app_commands
 
-from Classes.CE_User import CEUser
+if TYPE_CHECKING:
+    from Classes.CE_User import CEUser
+
 from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
 
 
@@ -101,8 +105,12 @@ async def register(
     users = SupabaseReader.get_database_user()
 
     # make sure they're not already registered
+    # (the target being registered is discord_user for force-register, or
+    # interaction.user for a normal self-register -- must match the id used
+    # everywhere else in this function, not always the command-caller's id)
+    target_id = discord_user.id if discord_user is not None else interaction.user.id
     for user in users:
-        if user.discord_id == interaction.user.id:
+        if user.discord_id == target_id:
             return await interaction.followup.send(
                 "This discord account is already registered in the CE Assistant database!"
             )
@@ -154,7 +162,7 @@ async def register(
     await hm.send_message(
         client,
         "privatelog",
-        f":bust_in_silhouette: new user registered: <@{interaction.user.id}>: <https://cedb.me/user/{ce_id}>",
+        f":bust_in_silhouette: new user registered: <@{target_id}>: <https://cedb.me/user/{ce_id}>",
         True,
     )
 
@@ -206,10 +214,9 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
                 f"Sorry! <@{_user.id}> is not registered. Please have them run /register!",
                 allowed_mentions=discord.AllowedMentions.none(),
             )
-        else:
-            return await interaction.followup.send(
-                "Sorry! You are not registered. Please run /register and try again!"
-            )
+        return await interaction.followup.send(
+            "Sorry! You are not registered. Please run /register and try again!"
+        )
 
     # get the embed and the view
     returns = await Discord_Helper.get_user_embeds(
@@ -219,7 +226,12 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     view = returns[1]
 
     # and send
-    return await interaction.followup.send(view=view, embed=summary_embed)
+    og_message = await interaction.followup.send(
+        view=view, embed=summary_embed, wait=True
+    )
+    if isinstance(view, Discord_Helper.ProfileView):
+        view.message = og_message
+    return og_message
 
 
 async def set_color(interaction: discord.Interaction):
@@ -248,7 +260,7 @@ async def set_color(interaction: discord.Interaction):
             "Please run /register before you do any additional commands!"
         )
 
-    user_rank_num = user_ce.rank_num()
+    user_rank_num = user_ce.rank_num
 
     # the actual assigning role function
     async def assign_role(interaction: discord.Interaction, role: discord.Role):
@@ -281,7 +293,7 @@ async def set_color(interaction: discord.Interaction):
         await hm.send_message(
             client,
             "privatelog",
-            f":art: <@{interaction.user.id}> ({user_ce.get_rank()}) changed their color to **{role.name}**.",
+            f":art: <@{interaction.user.id}> ({user_ce.rank}) changed their color to **{role.name}**.",
             allowed_mentions=False,
         )
 
@@ -350,7 +362,7 @@ async def set_color(interaction: discord.Interaction):
     view.add_item(clear_button)
 
     # send the final message
-    await interaction.followup.send(
+    return await interaction.followup.send(
         view=view,
         ephemeral=True,
         content=(
@@ -387,10 +399,7 @@ async def show_summary(
         user=(None if user is None else user.mention),
     )
 
-    if user is None:
-        _user_local = interaction.user
-    else:
-        _user_local = user
+    _user_local = interaction.user if user is None else user
 
     user_ce = SupabaseReader.get_user(_user_local.id, use_discord_id=True)
     if user_ce is None:
@@ -405,7 +414,7 @@ async def show_summary(
         )
     join_year = int(user_api.join_date[0:4])
 
-    text = f"**CE Summary for user** {user_ce.display_name_with_link()}:\n\n"
+    text = f"**CE Summary for user** {user_ce.display_name_with_link}:\n\n"
     for year in range(join_year, hm.current_year_num() + 1):
         text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
 

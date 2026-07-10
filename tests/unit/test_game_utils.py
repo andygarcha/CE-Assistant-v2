@@ -4,7 +4,6 @@ import pytest
 
 from Classes.CE_Game import CEGame
 from Classes.CE_User import CEUser
-from utils.game_utils import achievements_are_equal, genre_id_to_name, get_rollable_game
 from tests.conftest import (
     make_game,
     make_objective,
@@ -12,7 +11,7 @@ from tests.conftest import (
     make_user_game,
     make_user_objective,
 )
-
+from utils.game_utils import achievements_are_equal, genre_id_to_name, get_rollable_game
 
 # ── achievements_are_equal ────────────────────────────────────────────────────
 

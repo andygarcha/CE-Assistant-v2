@@ -5,9 +5,9 @@ import pytest
 from Classes.CE_Roll import relative
 from tests.conftest import make_game, make_roll
 
-PAST = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
-FUTURE = datetime.datetime(2099, 1, 1, tzinfo=datetime.timezone.utc)
-INIT = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+PAST = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
+FUTURE = datetime.datetime(2099, 1, 1, tzinfo=datetime.UTC)
+INIT = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
 
 
 # ── module-level relative() ───────────────────────────────────────────────────
@@ -49,27 +49,10 @@ class TestIsCoop:
             "Destiny Alignment",
             "Soul Mates",
             "Teamwork Makes the Dream Work",
-            "Winner Takes All",
-            "Game Theory",
         ],
     )
     def test_coop_roll_names_are_coop(self, name):
         assert make_roll(roll_name=name).is_co_op is True
-
-
-# ── is_pvp ────────────────────────────────────────────────────────────────────
-
-
-class TestIsPvp:
-    @pytest.mark.parametrize("name", ["Winner Takes All", "Game Theory"])
-    def test_pvp_roll_names(self, name):
-        assert make_roll(roll_name=name).is_pvp is True
-
-    def test_non_pvp_roll(self):
-        assert make_roll(roll_name="Soul Mates").is_pvp is False
-
-    def test_solo_roll_not_pvp(self):
-        assert make_roll(roll_name="One Hell of a Day").is_pvp is False
 
 
 # ── is_expired ────────────────────────────────────────────────────────────────
@@ -124,12 +107,12 @@ class TestIsExpired:
 
     def test_naive_past_datetime_is_expired(self):
         roll = make_roll()
-        roll._due_time = datetime.datetime(2000, 1, 1)  # no tzinfo
+        roll._due_time = datetime.datetime(2000, 1, 1)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         assert roll.is_expired is True
 
     def test_naive_future_datetime_not_expired(self):
         roll = make_roll()
-        roll._due_time = datetime.datetime(2099, 1, 1)  # no tzinfo
+        roll._due_time = datetime.datetime(2099, 1, 1)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         assert roll.is_expired is False
 
 
@@ -320,7 +303,7 @@ class TestNormalizeDatetime:
         assert make_roll()._normalize_datetime(None) is None
 
     def test_naive_datetime_becomes_utc(self):
-        naive = datetime.datetime(2024, 6, 1, 12, 0, 0)
+        naive = datetime.datetime(2024, 6, 1, 12, 0, 0)  # noqa: DTZ001 -- intentionally naive, testing naive-input handling
         result = make_roll()._normalize_datetime(naive)
         assert isinstance(result, datetime.datetime)
         assert result.tzinfo is not None
@@ -458,7 +441,7 @@ class TestRolledCategories:
 
     def test_game_not_in_database_raises(self):
         roll = make_roll(games=[GAME_A])
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Could not find game"):
             roll.rolled_categories([])
 
     def test_extra_database_games_not_in_roll_ignored(self):

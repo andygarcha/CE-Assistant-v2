@@ -1,8 +1,9 @@
 from collections.abc import Mapping
 
+from Classes.CE_Game import CEGame
+
 # -- local --
 from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_Game import CEGame
 from utils.game_utils import CATEGORIES
 
 
@@ -14,14 +15,7 @@ class CEUserGame:
         self._user_objectives = user_objectives
         self._name = name
 
-    # ----------- getters -----------
-
-    def get_user_points(self):
-        """Returns the total number of points this user has in this game."""
-        total_points = 0
-        for objective in self.user_objectives:
-            total_points += objective.user_points
-        return total_points
+    # ==== core properties ====
 
     @property
     def ce_id(self):
@@ -29,11 +23,25 @@ class CEUserGame:
         return self._ce_id
 
     @property
+    def name(self):
+        """Returns the name of this game."""
+        return self._name
+
+    @property
     def user_objectives(self):
         """Returns all user Objectives in this game."""
         return self._user_objectives
 
-    def get_user_primary_objectives(self) -> list[CEUserObjective]:
+    @property
+    def user_points(self):
+        """Returns the total number of points this user has in this game."""
+        total_points = 0
+        for objective in self.user_objectives:
+            total_points += objective.user_points
+        return total_points
+
+    @property
+    def primary_objectives(self) -> list[CEUserObjective]:
         """Returns the array of Primary :class:`CEUserObjective`'s
         associated with this game. NOTE: Though this should never happen,
         this *will* include any 'Uncleared' POs that this user has."""
@@ -43,14 +51,16 @@ class CEUserGame:
                 p.append(obj)
         return p
 
-    def get_user_points_primary(self):
+    @property
+    def primary_points(self):
         "Returns the total number of points this user has from POs in this game... INCLUDING uncleared POs."
         total_points = 0
-        for objective in self.get_user_primary_objectives():
+        for objective in self.primary_objectives:
             total_points += objective.user_points
         return total_points
 
-    def get_user_secondary_objectives(self) -> list[CEUserObjective]:
+    @property
+    def secondary_objectives(self) -> list[CEUserObjective]:
         """
         Returns the array of Secondary CEUserObjectives associated
         with this game. NOTE: Though this should never happen,
@@ -62,48 +72,21 @@ class CEUserGame:
                 p.append(obj)
         return p
 
-    def get_user_points_secondary(self):
+    @property
+    def secondary_points(self):
         "Returns the total number of points this user has from SOs in this game... INCLUDING uncleared SOs."
         total_points = 0
-        for objective in self.get_user_secondary_objectives():
+        for objective in self.secondary_objectives:
             total_points += objective.user_points
         return total_points
 
-    def get_user_community_objectives(self) -> list[CEUserObjective]:
-        """Returns the array of Community :class:`CEUserObjective`'s
-        associated with this game."""
-        p = []
-        for obj in self.user_objectives:
-            if obj.type == "Community":
-                p.append(obj)
-        return p
-
-    def has_completed_objective(self, objective_id: str, points: int) -> bool:
-        "Returns true if this user has completed the specified objective."
-        for obj in self.user_objectives:
-            if obj.ce_id == objective_id and obj.user_points == points:
-                return True
-        return False
-
-    @property
-    def name(self):
-        """Returns the name of this game."""
-        return self._name
-
-    # --------- setters -----------
+    # ==== mutators ====
 
     def add_user_objective(self, objective: CEUserObjective):
         """Adds a user objective to the object's user_objective's array."""
         self._user_objectives.append(objective)
 
-    # ----------- other methods ------------
-
-    async def get_regular_game(self) -> CEGame | None:
-        """Returns the regular :class:`CEGame` object associated with this game.
-        \n**NOTE**: uses bad method"""
-        import Modules.CEAPIReader as CEAPIReader
-
-        return await CEAPIReader.get_game(self.ce_id)
+    # ==== completion checks ====
 
     def is_completed(
         self, database_name: list[CEGame] | Mapping[str, CEGame] | CEGame
@@ -170,29 +153,27 @@ class CEUserGame:
             Set this to true if you want a game with zero
             POs to be counted as 'completed'.
         """
-        user_pos = self.get_user_primary_objectives()
+        user_pos = self.primary_objectives
         game_pos = game.get_primary_objectives(include_uncleareds=True)
 
-        user_points = self.get_user_points_primary()
+        user_points = self.primary_points
         game_points = game.get_po_points(include_uncleareds=True)
 
         if len(user_pos) == 0 and not ignore_zero_pos:
             return False
         if len(user_pos) != len(game_pos):
             return False
-        if user_points != game_points:
-            return False
-        return True
+        return user_points == game_points
 
     def __is_overcompleted_helper(self, game: CEGame):
         """
         Both Primary Objectives and Secondary Objectives count towards overcompletion.
         Returns true if and only if the user has full points in all POs and SOs in the game.
         """
-        user_sos = self.get_user_secondary_objectives()
+        user_sos = self.secondary_objectives
         game_sos = game.get_secondary_objectives(include_uncleareds=True)
 
-        user_points = self.get_user_points_secondary()
+        user_points = self.secondary_points
         game_points = game.get_so_points(include_uncleareds=True)
 
         if len(user_sos) == 0:
@@ -203,12 +184,16 @@ class CEUserGame:
             return False
         return self.__is_completed_helper(game, ignore_zero_pos=True)
 
-    def get_category_v2(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
+    # ==== cross-referencing ====
+
+    def get_categories(self, database_name: list[CEGame]) -> list[CATEGORIES] | None:
         """Returns the category of this game."""
         for _game in database_name:
             if _game.ce_id == self.ce_id:
                 return _game.categories
         return None
+
+    # ==== serialization ====
 
     def to_dict_supabase(self, user_ce_id: str):
         return {

@@ -1,8 +1,12 @@
 import asyncio
+import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from commands.admin import fail_roll, loop
+import pytest
+
+from commands.admin import UnlinkView, clear_roll_portion, fail_roll, force_unlink, loop
+from tests.conftest import make_game, make_roll, make_user
 
 
 class TestAdminLoopCommand:
@@ -340,3 +344,304 @@ class TestFailRoll:
         _, channel, msg = mock_send.call_args[0]
         assert channel == "casino"
         assert "not found" in msg.lower()
+
+
+# ── clear_roll_portion ───────────────────────────────────────────────────────
+
+
+class TestClearRollPortion:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_member(self, member_id: int = 123) -> SimpleNamespace:
+        return SimpleNamespace(id=member_id, mention=f"<@{member_id}>")
+
+    def _run(self, interaction, member, user=None, roll_name="Two Week T2 Streak"):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.get_game", return_value=make_game()),
+            patch("commands.admin.SupabaseReader.dump_roll") as mock_dump,
+        ):
+            asyncio.run(
+                clear_roll_portion(interaction, member, roll_name)  # type: ignore[arg-type]
+            )
+        return mock_dump
+
+    def test_unregistered_user_raises_and_notifies(self):
+        interaction = self._make_interaction()
+        with pytest.raises(Exception, match="Could not find user"):
+            self._run(interaction, self._make_member(), user=None)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "could not find" in msg.lower()
+
+    def test_no_matching_current_roll_sends_message_and_does_not_persist(self):
+        interaction = self._make_interaction()
+        user = make_user(rolls=[])
+        mock_dump = self._run(interaction, self._make_member(), user=user)
+        mock_dump.assert_not_called()
+        msg = interaction.followup.send.call_args[0][0]
+        assert "does not have roll" in msg.lower()
+
+    def test_matching_roll_persists_via_dump_roll(self):
+        """Regression: this used to call SupabaseReader.dump_user(user), which
+        never touches user.rolls, so the mutation was silently discarded."""
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll])
+        mock_dump = self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        mock_dump.assert_called_once_with(roll)
+
+    def test_matching_roll_sets_status_between_stages_and_clears_due_time(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        user = make_user(rolls=[roll])
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        assert roll.status == "between_stages"
+        assert roll.due_time is None
+
+    def test_matching_roll_removes_last_game(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll])
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        assert roll.games == ["game-001-0000-0000-000000000000"]
+
+    def test_success_message_names_removed_game_and_user(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            roll_name="Two Week T2 Streak",
+            status="current",
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ],
+        )
+        user = make_user(rolls=[roll], display_name="TestUser")
+        self._run(
+            interaction, self._make_member(), user=user, roll_name="Two Week T2 Streak"
+        )
+        msg = interaction.followup.send.call_args[0][0]
+        assert "TestUser" in msg
+        assert "between_stages" in msg
+
+
+# ── health_check ──────────────────────────────────────────────────────────────
+
+
+class TestHealthCheck:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _run(
+        self,
+        interaction,
+        include_integrity: bool = False,
+        cheap_warnings=None,
+        integrity_report=None,
+    ):
+        import commands.admin as admin_mod
+        from commands.admin import health_check
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch(
+                "commands.admin.HealthCheck.run_cheap_checks",
+                return_value=cheap_warnings or [],
+            ),
+            patch(
+                "commands.admin.LocalCache.run_integrity_check",
+                return_value=integrity_report or {},
+            ) as mock_integrity,
+            patch(
+                "commands.admin.hm.send_message", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+            asyncio.run(health_check(interaction, include_integrity))
+            return mock_send, mock_integrity
+
+    def test_default_skips_integrity_check(self):
+        interaction = self._make_interaction()
+        _, mock_integrity = self._run(interaction, include_integrity=False)
+        mock_integrity.assert_not_called()
+
+    def test_include_integrity_runs_it(self):
+        interaction = self._make_interaction()
+        _, mock_integrity = self._run(
+            interaction,
+            include_integrity=True,
+            integrity_report={"synced": [], "removed": [], "schema": []},
+        )
+        mock_integrity.assert_called_once()
+
+    def test_sends_each_warning_to_privatelog(self):
+        interaction = self._make_interaction()
+        mock_send, _ = self._run(
+            interaction, cheap_warnings=[":hospital: a", ":hospital: b"]
+        )
+        assert mock_send.await_count == 2
+        for call in mock_send.call_args_list:
+            _, channel, msg = call[0]
+            assert channel == "privatelog"
+            assert msg in (":hospital: a", ":hospital: b")
+
+    def test_followup_reports_warning_count(self):
+        interaction = self._make_interaction()
+        self._run(interaction, cheap_warnings=[":hospital: a", ":hospital: b"])
+        msg = interaction.followup.send.call_args[0][0]
+        assert "2" in msg
+
+    def test_followup_reports_no_issues_when_clean(self):
+        interaction = self._make_interaction()
+        self._run(interaction, cheap_warnings=[])
+        msg = interaction.followup.send.call_args[0][0]
+        assert "no issues" in msg.lower()
+
+
+# ── force_unlink ──────────────────────────────────────────────────────────────
+
+
+class TestForceUnlink:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_member(self, member_id: int = 123) -> SimpleNamespace:
+        return SimpleNamespace(id=member_id, mention=f"<@{member_id}>")
+
+    def _run(self, interaction, member, user=None):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+        ):
+            asyncio.run(force_unlink(interaction, member))
+
+    def test_unknown_user_sends_not_found_message(self):
+        interaction = self._make_interaction()
+        self._run(interaction, self._make_member(), user=None)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "could not find" in msg.lower()
+
+    def test_unknown_user_does_not_attach_a_view(self):
+        interaction = self._make_interaction()
+        self._run(interaction, self._make_member(), user=None)
+        assert "view" not in interaction.followup.send.call_args.kwargs
+
+    def test_known_user_sends_confirmation_with_view(self):
+        interaction = self._make_interaction()
+        user = make_user(display_name="TestUser")
+        self._run(interaction, self._make_member(456), user=user)
+        args, kwargs = interaction.followup.send.call_args
+        assert "TestUser" in args[0]
+        assert isinstance(kwargs["view"], UnlinkView)
+
+    def test_confirmation_does_not_delete_yet(self):
+        interaction = self._make_interaction()
+        user = make_user()
+        with patch("commands.admin.SupabaseReader.delete_user") as mock_delete:
+            self._run(interaction, self._make_member(), user=user)
+        mock_delete.assert_not_called()
+
+
+class TestUnlinkViewYesButton:
+    async def _invoke(self, member_id: int, user):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(member_id)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.delete_user") as mock_delete,
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        return interaction, mock_delete
+
+    def _run(self, member_id: int, user):
+        return asyncio.run(self._invoke(member_id, user))
+
+    def test_deletes_the_user_by_ce_id(self):
+        user = make_user(ce_id="user-001-0000-0000-000000000000")
+        _, mock_delete = self._run(123, user)
+        mock_delete.assert_called_once_with("user-001-0000-0000-000000000000")
+
+    async def _invoke_no_rolls_check(self, member_id: int, user):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(member_id)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=user),
+            patch("commands.admin.SupabaseReader.delete_user"),
+            patch("commands.admin.SupabaseReader.delete_roll") as mock_delete_roll,
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        return mock_delete_roll
+
+    def test_does_not_touch_rolls(self):
+        user = make_user()
+        mock_delete_roll = asyncio.run(self._invoke_no_rolls_check(123, user))
+        mock_delete_roll.assert_not_called()
+
+    def test_edits_message_confirming_unlink(self):
+        user = make_user(display_name="GoneUser")
+        interaction, _ = self._run(123, user)
+        msg = interaction.response.edit_message.call_args.kwargs["content"]
+        assert "GoneUser" in msg
+        assert "unlink" in msg.lower()
+
+    async def _invoke_missing_user(self):
+        interaction = SimpleNamespace(
+            response=SimpleNamespace(edit_message=AsyncMock())
+        )
+        view = UnlinkView(999)
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=None),
+            pytest.raises(Exception, match="Could not find user"),
+        ):
+            await UnlinkView.yes_button(view, interaction, MagicMock())  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+
+    def test_missing_user_raises(self):
+        asyncio.run(self._invoke_missing_user())

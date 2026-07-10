@@ -1,16 +1,16 @@
 """This module contains all the admin commands for the bot."""
 
 import datetime
-import uuid
-import discord
 import logging
+import uuid
+
+import discord
 from discord import app_commands
+
 from Classes.CE_Roll import CERoll
 from commands.games import get_game_auto
 from commands.user import register
-from Modules import hm, SupabaseReader
-
-from Modules import http_session
+from Modules import HealthCheck, LocalCache, SupabaseReader, hm, http_session
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @tree.command(name="test", description="test", guild=guild)
     async def test_command(interaction: discord.Interaction):
         await test(interaction)
-        pass
 
     # -- /force-register {ce_link} {user} ---------------------------------------------------
     @tree.command(
@@ -105,7 +104,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         member: discord.Member,
         roll_name: hm.ALL_ROLL_EVENT_NAMES,
     ):
-        return await interaction.response.send_message("Not available.")
+        return await clear_roll_portion(interaction, member, roll_name)
 
     # -- /fail-roll {roll_id} {is_not_current} --------------------------------------------------
     @tree.command(
@@ -145,7 +144,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(member="The user who will be unlinked.")
     async def force_unlink_command(
-        interaction: discord.Interaction, member: discord.Member
+        interaction: discord.Interaction, member: discord.User
     ):
         await force_unlink(interaction, member)
 
@@ -162,20 +161,36 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(user="The user.")
     async def debug_command(interaction: discord.Interaction, user: discord.Member):
         return await debug(interaction, user)
-    
+
     # -- /ban-game {game_id} {reason}} ---------------------------------------------------------------
     @tree.command(
-        name="ban-game", description="Ban a game from being rolled in the casino.", guild=guild
+        name="ban-game",
+        description="Ban a game from being rolled in the casino.",
+        guild=guild,
     )
     @app_commands.describe(
         game="The game you want to ban from the casino.",
-        reason="Why do you want to ban this game from the casino?"
+        reason="Why do you want to ban this game from the casino?",
     )
     @app_commands.autocomplete(game=get_game_auto)
-    async def ban_game_command(interaction: discord.Interaction, game: str, reason: str):
+    async def ban_game_command(
+        interaction: discord.Interaction, game: str, reason: str
+    ):
         return await ban_game(interaction, game, reason)
 
-    pass
+    # -- /health-check {include_integrity} ---------------------------------------------------
+    @tree.command(
+        name="health-check",
+        description="Check the database for data-quality issues and report them to #privatelog.",
+        guild=guild,
+    )
+    @app_commands.describe(
+        include_integrity="Also run the LocalCache/Supabase integrity check (costs Supabase egress)."
+    )
+    async def health_check_command(
+        interaction: discord.Interaction, include_integrity: bool = False
+    ):
+        return await health_check(interaction, include_integrity)
 
 
 async def test(interaction: discord.Interaction):
@@ -300,7 +315,7 @@ async def add_notes(
     site_additions_channel = client.get_channel(hm.GAME_ADDITIONS_ID)
     if isinstance(
         site_additions_channel,
-        (discord.ForumChannel, discord.CategoryChannel, discord.abc.PrivateChannel),
+        discord.ForumChannel | discord.CategoryChannel | discord.abc.PrivateChannel,
     ):
         raise Exception(
             f"Cannot fetch messages from channel of type {type(site_additions_channel)}"
@@ -341,7 +356,7 @@ async def add_notes(
     await message.edit(embed=embed, attachments=[])
 
     # and send a response to the original interaction
-    await interaction.followup.send("Notes added!", ephemeral=True)
+    return await interaction.followup.send("Notes added!", ephemeral=True)
 
 
 async def clear_roll(interaction: discord.Interaction, roll_id: str):
@@ -434,11 +449,7 @@ async def clear_roll_portion(
 
     logger.info("Roll (after changes): %s", roll.to_dict())
 
-    logger.debug("Printing all rolls in user.rolls.")
-    for roll in user.rolls:
-        logger.debug("%s", roll.to_dict())
-
-    SupabaseReader.dump_user(user)
+    SupabaseReader.dump_roll(roll)
     return await interaction.followup.send(
         f"Removed {game_removed} from {user.display_name}'s {roll_name} roll. "
         + "Status set to 'between_stages'."
@@ -553,18 +564,17 @@ async def force_add(
         )
         raise Exception(f"Could not find user with discord id {member.id} in supabase.")
 
-    user.add_completed_roll(
+    SupabaseReader.dump_roll(
         CERoll(
             roll_name=roll_name,
             user_ce_id=user.ce_id,
             games=None,
             status="won",
-            completed_time=datetime.datetime.now(),
+            completed_time=datetime.datetime.now(datetime.UTC),
             _id=str(uuid.uuid4()),
         )
     )
 
-    SupabaseReader.dump_user(user)
     return await interaction.followup.send("Done!")
 
 
@@ -583,12 +593,14 @@ class UnlinkView(discord.ui.View):
                 f"Could not find user with discord id {self._member_id} in Supabase."
             )
 
-        # user._discord_id = None
-        SupabaseReader.dump_user(user)
+        # Deletes the user row, owned games, and objectives. Rolls are
+        # intentionally left alone so roll/casino history survives an unlink.
+        SupabaseReader.delete_user(user.ce_id)
 
         self.clear_items()
         await interaction.response.edit_message(
-            content=f"{user.display_name} has been removed.", view=self
+            content=f"{user.display_name} has been unlinked. Their roll history was kept.",
+            view=self,
         )
 
     @discord.ui.button(label="No!", style=discord.ButtonStyle.red)
@@ -601,9 +613,10 @@ class UnlinkView(discord.ui.View):
         )
 
 
-async def force_unlink(interaction: discord.Interaction, member: discord.Member):
+async def force_unlink(interaction: discord.Interaction, member: discord.User):
     """
-    Forcefully unlink a user from their CE ID.
+    Forcefully unlink a user from their CE ID. Deletes their user row, owned
+    games, and objectives. Roll/casino history is intentionally preserved.
 
     Parameters
     ---
@@ -619,8 +632,17 @@ async def force_unlink(interaction: discord.Interaction, member: discord.Member)
         client, interaction, "force_unlink", True, member=member.mention
     )
 
+    user = SupabaseReader.get_user(member.id, use_discord_id=True)
+    if user is None:
+        return await interaction.followup.send(
+            f"Could not find a registered user for {member.mention}."
+        )
+
+    view = UnlinkView(member.id)
     return await interaction.followup.send(
-        "This does not currently work with the updated CE site. Please wait a while, or contact andy for manual unlinking!"
+        f"Are you sure you want to unlink {user.display_name} ({member.mention})? "
+        "This deletes their owned games and objectives, but their roll history is kept.",
+        view=view,
     )
 
 
@@ -647,15 +669,13 @@ async def debug(interaction: discord.Interaction, user: discord.Member):
         return await interaction.followup.send("This user isn't registered.")
 
     return await interaction.followup.send(
-        (
-            f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
-            f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
-            f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
-        )
+        f"[ce link](https://cedb.me/user/{user_supa.ce_id})\n"
+        f"[rolls link](https://cebot.me/rolls/{user_supa.ce_id})\n"
+        f"[comparison link](https://cebot.me/users/{user_supa.ce_id}/check)"
     )
 
 
-async def ban_game(interaction: discord.Interaction, game: str, reason: str) :
+async def ban_game(interaction: discord.Interaction, game: str, reason: str):
     """
     Adds a game to the `banned_games` table in Supabase.
 
@@ -682,7 +702,7 @@ async def ban_game(interaction: discord.Interaction, game: str, reason: str) :
         "ban-game",
         True,
         game=game,
-        reason=reason
+        reason=reason,
     )
 
     author = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
@@ -690,15 +710,55 @@ async def ban_game(interaction: discord.Interaction, game: str, reason: str) :
         return await interaction.followup.send(
             "You must be registered in order to ban a game from the casino."
         )
-    
+
     # verify game exists
     if not SupabaseReader.get_game(game):
-        return await interaction.followup.send(
-            "This is not a real game."
-        )
-    
+        return await interaction.followup.send("This is not a real game.")
+
     SupabaseReader.ban_game(game, reason, author.ce_id)
 
     return await interaction.followup.send(
-        f"Game with ID {game} was banned by {author.mention()} for reason: '{reason}'."
+        f"Game with ID {game} was banned by {author.mention} for reason: '{reason}'."
     )
+
+
+async def health_check(
+    interaction: discord.Interaction, include_integrity: bool = False
+):
+    """
+    Runs the database health checks (uncategorized games, miscounted roll
+    games, orphaned objectives) and reports any warnings to #privatelog.
+
+    Parameters
+    ---
+    interaction: `discord.Interaction`
+        The discord interaction that initiated this command.
+    include_integrity: `bool` (default `False`)
+        If set to true, also runs the LocalCache/Supabase integrity check.
+        This costs Supabase egress, so it's off by default.
+    """
+    await interaction.response.defer(ephemeral=True)
+
+    await hm.log_command(
+        client, interaction, "health-check", True, include_integrity=include_integrity
+    )
+
+    warnings = HealthCheck.run_cheap_checks()
+
+    if include_integrity:
+        try:
+            integrity_report = LocalCache.run_integrity_check()
+        except Exception as e:
+            logger.exception("Integrity check failed.")
+            warnings.append(f":hospital: Integrity check failed: {e}")
+        else:
+            warnings.append(HealthCheck.format_integrity_report(integrity_report))
+
+    for warning in warnings:
+        await hm.send_message(client, "privatelog", warning, allowed_mentions=False)
+
+    if warnings:
+        return await interaction.followup.send(
+            f"Health check complete. {len(warnings)} warning(s) sent to #privatelog."
+        )
+    return await interaction.followup.send("Health check complete. No issues found.")

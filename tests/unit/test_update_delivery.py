@@ -10,7 +10,7 @@ from update_delivery import deliver_updates
 
 @pytest.fixture(autouse=True)
 def _mock_delivery_deps():
-    recent = datetime.datetime.now(datetime.timezone.utc)
+    recent = datetime.datetime.now(datetime.UTC)
     with (
         patch(
             "update_delivery.SupabaseReader.get_pending_game_updates",
@@ -141,9 +141,7 @@ class TestDeliverUpdates:
 
     def test_no_checking_message_when_recent(self):
         mock_client = MagicMock()
-        recent = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-            minutes=5
-        )
+        recent = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=5)
 
         with (
             patch("update_delivery.SupabaseReader.get_last_loop", return_value=recent),
@@ -160,9 +158,7 @@ class TestDeliverUpdates:
 
     def test_checking_message_warns_when_scraper_stale(self):
         mock_client = MagicMock()
-        stale = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-            hours=2
-        )
+        stale = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=2)
 
         with (
             patch("update_delivery.SupabaseReader.get_last_loop", return_value=stale),
@@ -408,29 +404,33 @@ class TestDeliverUpdatesExceptionRecovery:
                 new_callable=AsyncMock,
                 side_effect=discord.HTTPException(MagicMock(), "server error"),
             ),
+            pytest.raises(discord.HTTPException),
         ):
-            with __import__("pytest").raises(discord.HTTPException):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
     def test_get_stable_updates_exception_propagates(self):
         mock_client = MagicMock()
 
-        with patch(
-            "update_delivery.SupabaseReader.get_stable_updates",
-            side_effect=Exception("supabase down"),
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_stable_updates",
+                side_effect=Exception("supabase down"),
+            ),
+            pytest.raises(Exception, match="supabase down"),
         ):
-            with __import__("pytest").raises(Exception, match="supabase down"):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
     def test_get_last_loop_exception_propagates(self):
         mock_client = MagicMock()
 
-        with patch(
-            "update_delivery.SupabaseReader.get_last_loop",
-            side_effect=Exception("supabase down"),
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_last_loop",
+                side_effect=Exception("supabase down"),
+            ),
+            pytest.raises(Exception, match="supabase down"),
         ):
-            with __import__("pytest").raises(Exception, match="supabase down"):
-                asyncio.run(deliver_updates(mock_client))
+            asyncio.run(deliver_updates(mock_client))
 
 
 class TestDeliverUpdatesEmbedConstruction:

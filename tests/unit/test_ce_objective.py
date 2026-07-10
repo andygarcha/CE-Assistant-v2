@@ -3,7 +3,6 @@ import pytest
 from Classes.CE_Objective import CEObjective
 from tests.conftest import make_objective
 
-
 # ── constructor normalization ─────────────────────────────────────────────────
 
 
@@ -77,15 +76,15 @@ class TestHasPartial:
 class TestUnclearedName:
     def test_strips_uncleared_suffix(self):
         obj = make_objective(name="Beat the game (UNCLEARED)")
-        assert obj.uncleared_name() == "Beat the game"
+        assert obj.name_uncleared == "Beat the game"
 
     def test_strips_unvalued_suffix(self):
         obj = make_objective(name="Beat the game (UNVALUED)")
-        assert obj.uncleared_name() == "Beat the game"
+        assert obj.name_uncleared == "Beat the game"
 
     def test_normal_name_returned_unchanged(self):
         obj = make_objective(name="Beat the game", point_value=10)
-        assert obj.uncleared_name() == "Beat the game"
+        assert obj.name_uncleared == "Beat the game"
 
 
 # ── get_type_short ────────────────────────────────────────────────────────────

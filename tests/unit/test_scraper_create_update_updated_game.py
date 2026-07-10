@@ -1,12 +1,11 @@
+from Classes.CE_Game import CEAPIGame, CEGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_Game import CEGame, CEAPIGame
 from Modules import hm
+from tests.conftest import make_api_game, make_game, make_objective
 from web_scraper.scraper import (
-    create_update_updated_game,
     UpdateMessageForScraperProcess,
+    create_update_updated_game,
 )
-from tests.conftest import make_game, make_api_game, make_objective
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -608,6 +607,28 @@ class TestCreateUpdateUpdatedGameObjectiveMetaChanges:
         update, _ = create_update_updated_game(old, new)
         assert update is not None
 
+    def test_unchanged_name_on_cleared_objective_not_mentioned(self):
+        # Name identical, only points changed, neither copy is UNCLEARED/UNVALUED.
+        # The "Name changed" note must not fire just because the objective
+        # wasn't in an uncleared state.
+        old = _old(
+            [
+                make_objective(
+                    ce_id=OBJ_A, obj_type="Primary", point_value=10, name="Same Name"
+                )
+            ]
+        )
+        new = _new(
+            [
+                make_objective(
+                    ce_id=OBJ_A, obj_type="Primary", point_value=20, name="Same Name"
+                )
+            ]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Name changed" not in update.description
+
     def test_co_description_change_triggers_update(self):
         old_co = make_objective(
             ce_id=OBJ_C, obj_type="Community", point_value=0, name="Solid Gold"
@@ -809,7 +830,7 @@ class TestCreateUpdateUpdatedGameTierChanges:
         )
 
     def test_point_change_without_tier_change_does_not_mention_tier(self):
-        # Both old and new are T2 (20–39 PO points); no tier transition.
+        # Both old and new are T2 (20-39 PO points); no tier transition.
         update, _ = create_update_updated_game(
             _old([_po(points=20)]), _new([_po(points=25)])
         )
@@ -957,3 +978,95 @@ class TestCreateUpdateUpdatedGameComplex:
         )
         assert update is not None
         assert "Hollow Knight" in update.title
+
+
+# ── Category changes ─────────────────────────────────────────────────────────
+
+
+class TestCreateUpdateUpdatedGameCategoryChanges:
+    def test_category_change_triggers_update(self):
+        old = make_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        new = make_api_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Arcade"]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+
+    def test_category_change_shows_old_categories_in_description(self):
+        old = make_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        new = make_api_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Arcade"]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Action" in update.description
+
+    def test_category_change_shows_new_categories_in_description(self):
+        old = make_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        new = make_api_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Arcade"]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Arcade" in update.description
+
+    def test_identical_categories_do_not_trigger_update(self):
+        old = make_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        new = make_api_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is None
+
+    def test_added_second_category_triggers_update(self):
+        old = make_game(
+            ce_id=GAME_ID, objectives=[_po(points=10)], categories=["Action"]
+        )
+        new = make_api_game(
+            ce_id=GAME_ID,
+            objectives=[_po(points=10)],
+            categories=["Action", "Arcade"],
+        )
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+
+
+# ── Objective type changes ────────────────────────────────────────────────────
+
+
+class TestCreateUpdateUpdatedGameObjectiveTypeChanges:
+    def test_type_change_triggers_update(self):
+        old = _old([_po(points=10, ce_id=OBJ_A)])
+        new = _new([_so(points=10, ce_id=OBJ_A)])
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+
+    def test_type_change_mentions_type_changed_in_description(self):
+        old = _old([_po(points=10, ce_id=OBJ_A)])
+        new = _new([_so(points=10, ce_id=OBJ_A)])
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Type changed" in update.description
+
+    def test_type_change_shows_old_and_new_type(self):
+        old = _old([_po(points=10, ce_id=OBJ_A)])
+        new = _new([_so(points=10, ce_id=OBJ_A)])
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Primary" in update.description
+        assert "Secondary" in update.description
+
+    def test_unchanged_type_does_not_mention_type_changed(self):
+        old = _old([_po(points=10, ce_id=OBJ_A)])
+        new = _new([_po(points=20, ce_id=OBJ_A)])
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert "Type changed" not in update.description

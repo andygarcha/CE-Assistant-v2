@@ -1,5 +1,6 @@
 import logging
 from typing import Literal
+
 import aiohttp
 import discord
 
@@ -69,7 +70,7 @@ def get_channel(client: discord.Client | None, channel: CHANNEL_NAMES):
 
     if isinstance(
         _channel,
-        (discord.ForumChannel, discord.CategoryChannel, discord.abc.PrivateChannel),
+        discord.ForumChannel | discord.CategoryChannel | discord.abc.PrivateChannel,
     ):
         return None
 
@@ -154,7 +155,7 @@ async def log_command(
 
         ce_user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
         display = (
-            ce_user.display_name_with_link()
+            ce_user.display_name_with_link
             if ce_user is not None
             else interaction.user.name
         )

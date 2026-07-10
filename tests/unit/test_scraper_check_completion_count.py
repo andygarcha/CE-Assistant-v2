@@ -89,7 +89,7 @@ class TestCheckCompletionCountMutedMessage:
         user = _muted_user("SneakyPlayer")
         result = check_completion_count(24, 25, user)
         assert result is not None
-        assert user.display_name_with_link() in result.text
+        assert user.display_name_with_link in result.text
 
     def test_muted_message_contains_milestone_number(self):
         result = check_completion_count(24, 25, _muted_user())

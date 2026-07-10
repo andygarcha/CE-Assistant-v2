@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from typing import get_args
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 from Classes.CE_User import CEUser
 from commands.casino import (
     RollResult,
@@ -18,12 +17,18 @@ from commands.casino import (
     roll_soulmates,
     roll_teamworkmakesthedreamwork,
     roll_triplethreat,
-    roll_twoweekt2streak,
     roll_twotwoweekt2streakstreak,
+    roll_twoweekt2streak,
     solo_roll,
 )
 from Modules import hm
-from tests.conftest import make_game, make_roll, make_user
+from tests.conftest import (
+    make_game,
+    make_roll,
+    make_user,
+    make_user_game,
+    make_user_objective,
+)
 
 # ── shared constants ──────────────────────────────────────────────────────────
 
@@ -39,6 +44,16 @@ def _user_with_completed(roll_name: str) -> CEUser:
     u = make_user()
     u.add_completed_roll(make_roll(roll_name=roll_name))
     return u
+
+
+def _user_with_points(ce_id: str, points: int) -> CEUser:
+    """A user whose `total_points` (and therefore `rank`/`rank_num`) is
+    exactly `points`, via a single owned game worth that many points."""
+    uobj = make_user_objective(
+        ce_id="obj-points", game_ce_id="game-points", user_points=points
+    )
+    ug = make_user_game(ce_id="game-points", user_objectives=[uobj])
+    return make_user(ce_id=ce_id, owned_games=[ug])
 
 
 def _user_with_waiting(roll_name: str, games: list[str]) -> CEUser:
@@ -225,7 +240,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -243,7 +258,7 @@ class TestRollOnehellofamonth:
         ]
         with (
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS[:5]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS[:5]),
         ):
             result = roll_onehellofamonth(db, EMPTY_DT, user, True, True)
         assert result.error is None
@@ -255,12 +270,13 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         # "Action" (first pick) fails immediately; the remaining 5 categories succeed
         choice_seq = ALL_CATS  # Action first, then the other 5
-        game_seq = [None] + GAME_IDS[
-            :25
+        game_seq = [
+            None,
+            *GAME_IDS[:25],
         ]  # None for Action's first call, then 25 successes
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -272,10 +288,10 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         # both "Action" and "Arcade" fail immediately
         choice_seq = ALL_CATS
-        game_seq = [None, None] + GAME_IDS  # first two category attempts fail
+        game_seq = [None, None, *GAME_IDS]  # first two category attempts fail
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None
@@ -284,10 +300,10 @@ class TestRollOnehellofamonth:
     def test_error_message_names_failed_categories(self):
         user = _user_with_completed("One Hell of a Week")
         choice_seq = ALL_CATS
-        game_seq = [None, None] + GAME_IDS
+        game_seq = [None, None, *GAME_IDS]
         with (
             patch("Modules.hm.get_rollable_game", side_effect=game_seq),
-            patch("commands.casino.random.choice", side_effect=choice_seq),
+            patch("commands.casino.secrets.choice", side_effect=choice_seq),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is not None
@@ -303,8 +319,8 @@ class TestRollOnehellofamonth:
 
         # one failure: should recover
         with (
-            patch("Modules.hm.get_rollable_game", side_effect=[None] + GAME_IDS[:25]),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("Modules.hm.get_rollable_game", side_effect=[None, *GAME_IDS[:25]]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.error is None
@@ -312,8 +328,8 @@ class TestRollOnehellofamonth:
         # two failures: should error
         user2 = _user_with_completed("One Hell of a Week")
         with (
-            patch("Modules.hm.get_rollable_game", side_effect=[None, None] + GAME_IDS),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("Modules.hm.get_rollable_game", side_effect=[None, None, *GAME_IDS]),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user2, True, True)
         assert result.games is None
@@ -323,7 +339,7 @@ class TestRollOnehellofamonth:
         user = _user_with_completed("One Hell of a Week")
         with (
             patch("Modules.hm.get_rollable_game", return_value=None),
-            patch("commands.casino.random.choice", side_effect=ALL_CATS),
+            patch("commands.casino.secrets.choice", side_effect=ALL_CATS),
         ):
             result = roll_onehellofamonth([], EMPTY_DT, user, True, True)
         assert result.games is None
@@ -891,9 +907,9 @@ class TestCoOpRoll:
 
     def test_user_pending_sends_error(self):
         interaction = _make_interaction_coop()
-        user = make_user(discord_id=123)
+        pending = make_roll(roll_name="Soul Mates", status="pending")
+        user = make_user(discord_id=123, rolls=[pending])
         partner = make_user(discord_id=456)
-        user.add_pending("Soul Mates")
         with patch(
             "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
@@ -903,9 +919,9 @@ class TestCoOpRoll:
 
     def test_partner_pending_sends_error(self):
         interaction = _make_interaction_coop()
+        pending = make_roll(roll_name="Soul Mates", status="pending")
         user = make_user(discord_id=123)
-        partner = make_user(discord_id=456)
-        partner.add_pending("Soul Mates")
+        partner = make_user(discord_id=456, rolls=[pending])
         with patch(
             "commands.casino.SupabaseReader.get_user",
             side_effect=[user, partner],
@@ -945,20 +961,6 @@ class TestCoOpRoll:
         mock_add_pending.assert_called_once_with(
             "Soul Mates", user.ce_id, partner.ce_id
         )
-
-    # ── retired / invalid events ──────────────────────────────────────────────
-
-    def test_retired_event_winner_takes_all_sends_error(self):
-        interaction = _make_interaction_coop()
-        _run_coop(interaction, _make_partner_member(), "Winner Takes All")
-        msg = interaction.followup.send.call_args[0][0]
-        assert "retired" in msg.lower()
-
-    def test_retired_event_game_theory_sends_error(self):
-        interaction = _make_interaction_coop()
-        _run_coop(interaction, _make_partner_member(), "Game Theory")
-        msg = interaction.followup.send.call_args[0][0]
-        assert "retired" in msg.lower()
 
 
 # ── roll_destinyalignment ─────────────────────────────────────────────────────
@@ -1032,49 +1034,33 @@ class TestRollDestinyalignment:
     # ── rank requirement ──────────────────────────────────────────────────────
 
     def test_different_rank_players_get_error(self):
-        user = make_user(ce_id="user-001-0000-0000-000000000000")
-        partner = make_user(ce_id="user-002-0000-0000-000000000000")
-        with (
-            patch.object(user, "rank_num", return_value=1),  # D Rank
-            patch.object(partner, "rank_num", return_value=3),  # B Rank
-            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
-        ):
+        user = _user_with_points("user-001-0000-0000-000000000000", 50)  # D Rank
+        partner = _user_with_points("user-002-0000-0000-000000000000", 500)  # B Rank
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
             result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
         assert result.games is None
         assert result.error is not None
 
     def test_same_rank_players_are_allowed(self):
-        user = make_user(ce_id="user-001-0000-0000-000000000000")
-        partner = make_user(ce_id="user-002-0000-0000-000000000000")
-        with (
-            patch.object(user, "rank_num", return_value=3),
-            patch.object(partner, "rank_num", return_value=3),
-            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
-        ):
+        user = _user_with_points("user-001-0000-0000-000000000000", 500)  # B Rank
+        partner = _user_with_points("user-002-0000-0000-000000000000", 500)  # B Rank
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
             result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
         assert result.error is None
 
     def test_ss_rank_and_sss_rank_are_allowed_together(self):
         """Both players ≥ SS (rank_num ≥ 6) may pair regardless of exact rank."""
-        user = make_user(ce_id="user-001-0000-0000-000000000000")
-        partner = make_user(ce_id="user-002-0000-0000-000000000000")
-        with (
-            patch.object(user, "rank_num", return_value=6),  # SS
-            patch.object(partner, "rank_num", return_value=7),  # SSS
-            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
-        ):
+        user = _user_with_points("user-001-0000-0000-000000000000", 5000)  # SS
+        partner = _user_with_points("user-002-0000-0000-000000000000", 7500)  # SSS
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
             result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
         assert result.error is None
 
     def test_ss_and_a_rank_are_not_allowed(self):
         """SS (6) + A (4) — partner is below SS, so the exception doesn't apply."""
-        user = make_user(ce_id="user-001-0000-0000-000000000000")
-        partner = make_user(ce_id="user-002-0000-0000-000000000000")
-        with (
-            patch.object(user, "rank_num", return_value=6),  # SS
-            patch.object(partner, "rank_num", return_value=4),  # A
-            patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]),
-        ):
+        user = _user_with_points("user-001-0000-0000-000000000000", 5000)  # SS
+        partner = _user_with_points("user-002-0000-0000-000000000000", 1000)  # A
+        with patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]):
             result = roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
         assert result.games is None
         assert result.error is not None
@@ -1116,8 +1102,8 @@ class TestRollDestinyalignment:
         user_pool = [make_game(ce_id=GAME_IDS[0])]
         partner_pool = [make_game(ce_id=GAME_IDS[1])]
         with (
-            patch.object(user, "get_completed_games_2", return_value=user_pool),
-            patch.object(partner, "get_completed_games_2", return_value=partner_pool),
+            patch.object(user, "get_completed_games", return_value=user_pool),
+            patch.object(partner, "get_completed_games", return_value=partner_pool),
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock,
         ):
             roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
@@ -1131,8 +1117,8 @@ class TestRollDestinyalignment:
         user_pool = [make_game(ce_id=GAME_IDS[0])]
         partner_pool = [make_game(ce_id=GAME_IDS[1])]
         with (
-            patch.object(user, "get_completed_games_2", return_value=user_pool),
-            patch.object(partner, "get_completed_games_2", return_value=partner_pool),
+            patch.object(user, "get_completed_games", return_value=user_pool),
+            patch.object(partner, "get_completed_games", return_value=partner_pool),
             patch("Modules.hm.get_rollable_game", side_effect=GAME_IDS[:2]) as mock,
         ):
             roll_destinyalignment([], EMPTY_DT, user, partner, True, True)
@@ -1146,7 +1132,7 @@ class TestRollDestinyalignment:
 # describe the required behaviour and will fail until the body is written.
 #
 # HOUR_LIMITS (per tier): [15, 40, 80, 160, None, None]
-# Tier 6 rolls from T5–T7.
+# Tier 6 rolls from T5-T7.
 
 
 _SOUL_MATES_HOUR_LIMITS = {1: 15, 2: 40, 3: 80, 4: 160, 5: None, 6: None}
@@ -1217,7 +1203,7 @@ class TestRollSoulmates:
         assert mock.call_args.kwargs["completion_limit"] == expected_hours
 
     def test_tier_6_passes_tier_number_6_to_get_rollable_game(self):
-        """Tier 6 in Soul Mates means 'T5–T7', which get_rollable_game handles
+        """Tier 6 in Soul Mates means 'T5-T7', which get_rollable_game handles
         when tier_number=6 is passed."""
         user = make_user(ce_id="user-001-0000-0000-000000000000")
         partner = make_user(ce_id="user-002-0000-0000-000000000000")

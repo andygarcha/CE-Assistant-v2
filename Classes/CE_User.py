@@ -1,14 +1,16 @@
 import datetime
-from typing import Sequence, cast, get_args
-import uuid
+import logging
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast
+
 import aiohttp
-from Classes.CE_Roll import CERoll
-from Classes.CE_Game import CEGame
-from Classes.CE_User_Game import CEUserGame
+
 import Modules.hm as hm
+from Classes.CE_Game import CEGame
+from Classes.CE_Roll import CERoll
+from Classes.CE_User_Game import CEUserGame
 from Classes.OtherClasses import CRData
 from Modules import http_session
-import logging
 
 MUTELIST_CEIDS = ["e790e8f0-f67e-4646-8fa9-de436b2c8d5e"]  # athenavenny
 
@@ -49,30 +51,7 @@ class CEUser:
         self._last_updated: datetime.datetime = last_updated
         self._steam_id: str = steam_id
 
-    # ------------ getters -------------
-
-    @property
-    def display_name(self):
-        "Returns the display name of this user."
-        return self._display_name
-
-    def display_name_with_link(self):
-        return f"[{self.display_name}](<https://cedb.me/user/{self.ce_id}>)"
-
-    def set_display_name(self, display_name: str):
-        "Setter for display name."
-        self._display_name = display_name
-        pass
-
-    @property
-    def avatar(self):
-        "Returns the avatar of this user."
-        return self._avatar
-
-    def set_avatar(self, avatar: str):
-        "Setter."
-        self._avatar = avatar
-        pass
+    # ==== core properties ====
 
     @property
     def ce_id(self):
@@ -84,19 +63,48 @@ class CEUser:
         """Returns the Discord ID associated with this user."""
         return self._discord_id
 
-    def mention(self):
-        "Returns the Discord ID with brackets (Example: '<@1234>')."
-        return f"<@{self.discord_id}>"
+    @discord_id.setter
+    def discord_id(self, input: int) -> None:
+        """Sets this object's Discord ID according to `input`."""
+        self._discord_id = input
+
+    @property
+    def display_name(self):
+        "Returns the display name of this user."
+        return self._display_name
+
+    @property
+    def avatar(self):
+        "Returns the avatar of this user."
+        return self._avatar
 
     @property
     def last_updated(self) -> datetime.datetime:
         "Returns the last updated time."
         return self._last_updated
 
-    def set_last_updated(self, last_updated: datetime.datetime):
+    @last_updated.setter
+    def last_updated(self, last_updated: datetime.datetime) -> None:
         "Setter for last updated."
-        self._last_updated: datetime.datetime = last_updated
-        pass
+        self._last_updated = last_updated
+
+    # ==== identity / formatting ====
+
+    @property
+    def mention(self):
+        "Returns the Discord ID with brackets (Example: '<@1234>')."
+        return f"<@{self.discord_id}>"
+
+    @property
+    def display_name_with_link(self):
+        return f"[{self.display_name}](<https://cedb.me/user/{self.ce_id}>)"
+
+    @property
+    def ce_link(self) -> str:
+        "Returns the link to this user's Challenge Enthusiasts page."
+        return f"https://cedb.me/user/{self.ce_id}"
+
+    # ==== scoring ====
 
     def casino_score(self, rolls: list[CERoll]):
         """Returns the casino score associated with this user."""
@@ -108,18 +116,21 @@ class CEUser:
                 _casino_score += roll.casino_increase()
         return _casino_score
 
-    def get_total_points(self):
+    @property
+    def total_points(self):
         """Returns the total amount of points this user has."""
         total_points: int = 0
         for game in self._owned_games:
-            total_points += game.get_user_points()
+            total_points += game.user_points
         return total_points
 
-    def get_rank(self) -> str:
+    @property
+    def rank(self) -> str:
         """Returns the current rank for this user."""
         ranks = ["E", "D", "C", "B", "A", "S", "SS", "SSS", "EX"]
-        return f"{ranks[self.rank_num()]} Rank"
+        return f"{ranks[self.rank_num]} Rank"
 
+    @property
     def rank_num(self) -> int:
         """
         Returns the rank as an int.
@@ -133,16 +144,23 @@ class CEUser:
         - SSS Rank is 7
         - EX Rank is 8
         """
-        points = self.get_total_points()
+        points = self.total_points
         for threshold, rank in RANK_THRESHOLDS:
             if points >= threshold:
                 return rank
         return 0
 
+    # ==== owned games ====
+
     @property
     def owned_games(self):
         """Returns a list of :class:`CEUserGame`s that this user owns."""
         return self._owned_games
+
+    @owned_games.setter
+    def owned_games(self, games):
+        """Sets the 'owned games' to `games`."""
+        self._owned_games = games
 
     def get_owned_game(self, ce_id: str) -> CEUserGame | None:
         """Returns the :class:`CEUserGame` object associated
@@ -175,7 +193,7 @@ class CEUser:
                     o.append(game)
         return o
 
-    def get_completed_games_2(self, database_name: Sequence[CEGame]) -> list[CEGame]:
+    def get_completed_games(self, database_name: Sequence[CEGame]) -> list[CEGame]:
         """Returns a list of :class:`CEGame`'s that this user has completed."""
         if database_name is None:
             raise ValueError("Argument 'database_name' is None.")
@@ -237,6 +255,77 @@ class CEUser:
         "Returns the CR class."
         return CRData(owned_games=self.owned_games, database_name=database_name)
 
+    def has_completed_game(self, game_id: str, database_name: list[CEGame]):
+        "Returns true if this user has completed this game, returns false otherwise."
+        for user_game in self.owned_games:
+            if user_game.ce_id == game_id:
+                return user_game.is_completed(database_name)
+        return False
+
+    def owns_game(self, game_id: str) -> bool:
+        """Returns true if this user owns the game with
+        Challenge Enthusiast ID `game_id`."""
+        return any(game.ce_id == game_id for game in self.owned_games)
+
+    def has_points(self, game_id: str) -> bool:
+        """Returns true if this user has points in this game."""
+        for game in self.owned_games:
+            if game.ce_id == game_id:
+                return game.user_points != 0
+        return False
+
+    def has_po_points(self, game_id: str) -> bool:
+        """Returns true if this user has points in Primary Objectives in this game."""
+        for game in self.owned_games:
+            if game.ce_id == game_id:
+                return game.primary_points != 0
+        return False
+
+    def completions(self, database_name: list[CEGame]) -> int:
+        "Returns the number of completions this user has."
+        games_by_ce_id: dict[str, CEGame] = {}
+        for game in database_name:
+            games_by_ce_id.setdefault(game.ce_id, game)
+        completions = 0
+        for owned_game in self.owned_games:
+            if owned_game.is_completed(database_name=games_by_ce_id):
+                completions += 1
+        return completions
+
+    # ==== moderation ====
+
+    @property
+    def is_muted(self) -> bool:
+        """Returns true if the user is on the mutelist. Messages about this user should not
+        be sent in #user-log or #casino-log."""
+        return self.ce_id in MUTELIST_CEIDS
+
+    # ==== network ====
+
+    async def get_api_user(self) -> "CEAPIUser | None":
+        "Returns the CEAPIUser."
+        session = await http_session.get_session()
+        async with session.get(f"https://cedb.me/api/user/{self.ce_id}/") as response:
+            if response.status != 200:
+                return None
+            try:
+                data = await response.json()
+            except aiohttp.ContentTypeError:
+                return None
+
+            return CEAPIUser(
+                discord_id=self.discord_id,
+                ce_id=self.ce_id,
+                owned_games=self.owned_games,
+                rolls=self.rolls,
+                full_data=data,
+                display_name=self.display_name,
+                avatar=self.avatar,
+                last_updated=self.last_updated,
+            )
+
+    # ======== rolls ======== #
+
     @property
     def rolls(self) -> list[CERoll]:
         "Returns an array of `CERoll`s."
@@ -250,25 +339,6 @@ class CEUser:
             if (roll.status == "won" or roll.status == "failed")
         ]
 
-    def on_mutelist(self) -> bool:
-        """Returns true if the user is on the mutelist. Messages about this user should not
-        be sent in #user-log or #casino-log."""
-        return self.ce_id in MUTELIST_CEIDS
-
-    # ----------- setters -----------
-
-    @discord_id.setter
-    def discord_id(self, input: int) -> None:
-        """Sets this object's Discord ID according to `input`."""
-        self._discord_id = input
-
-    @owned_games.setter
-    def owned_games(self, games):
-        """Sets the 'owned games' to `games`."""
-        self._owned_games = games
-
-    # ======== rolls ======== #
-
     # ==== current rolls ==== #
 
     @property
@@ -277,76 +347,9 @@ class CEUser:
         that this user is currently participating in."""
         return [roll for roll in self.rolls if roll.status == "current"]
 
-    def add_current_roll(self, roll: CERoll) -> None:
-        """Adds `roll` to this user's Current Rolls section."""
-        roll.set_status("current")
-        self._rolls.append(roll)
-        pass
-
-    def fail_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
-        "Fails a current roll associated with `roll_name`."
-        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES):
-            raise ValueError(
-                f"Argument 'roll_name' in fail_current_roll is {roll_name}. User: {self.ce_id}"
-            )
-
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "current":
-                self._rolls[i].status = "failed"
-                return
-
-        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
-
-    def win_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
-        "Wins a current roll associated with `roll_name`. Also sets completion time."
-        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES):
-            raise ValueError(
-                f"Argument 'roll_name' in win_current_roll is {roll_name}. User: {self.ce_id}"
-            )
-
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "current":
-                self._rolls[i].status = "won"
-                self._rolls[i].completed_time = hm.get_datetime("now")
-                return
-
-        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
-
-    def remove_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> None:
-        "Removes `roll_name` from this user."
-        if roll_name not in get_args(hm.ALL_ROLL_EVENT_NAMES):
-            raise ValueError(
-                f"Argument 'roll_name' in remove_current_roll is {roll_name}. User: {self.ce_id}"
-            )
-
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "current":
-                self._rolls[i].status = "removed"
-                return
-
-        raise ValueError(f"User {self.ce_id} has no current roll {roll_name}.")
-
-    def update_current_roll(self, roll: CERoll) -> bool:
-        "Replaces the user's roll with a new one. Returns true if it works, false if not."
-        if type(roll) is not CERoll:
-            raise TypeError(
-                f"Argument 'roll' is of type {type(roll)}. User: {self.ce_id}"
-            )
-        for i, event in enumerate(self.rolls):
-            if event.roll_name == roll.roll_name and event.status == "current":
-                self._rolls[i] = roll
-                return True
-
-        raise ValueError(
-            f"No current roll was found with name {roll.roll_name} to be replaced."
-        )
-
     def has_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently working on `roll_name`."""
-        for event in self.current_rolls:
-            if event.roll_name == roll_name:
-                return True
-        return False
+        return any(event.roll_name == roll_name for event in self.current_rolls)
 
     def get_current_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
         "REturns the `CERoll` associated with `roll_name`."
@@ -390,30 +393,10 @@ class CEUser:
         """Adds `roll` to this user's Completed Rolls section."""
         roll.status = "won"
         self._rolls.append(roll)
-        pass
-
-    def remove_completed_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
-        "Removes all completed rolls associated with roll_name."
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "won":
-                self._rolls[i].set_status("removed")
-        pass
 
     def has_completed_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user has completed `roll_name`."""
-        for event in self.completed_rolls:
-            if event.roll_name == roll_name:
-                return True
-        return False
-
-    def get_completed_rolls(
-        self, roll_name: hm.ALL_ROLL_EVENT_NAMES
-    ) -> list[CERoll] | None:
-        """Returns the `CERoll` associated with `roll_name`."""
-        r = [event for event in self.completed_rolls if event.roll_name == roll_name]
-        if len(r) != 0:
-            return r
-        return None
+        return any(event.roll_name == roll_name for event in self.completed_rolls)
 
     # ==== pending rolls ==== #
 
@@ -423,54 +406,15 @@ class CEUser:
         that this user stores in their Pending Rolls section."""
         return [roll for roll in self.rolls if roll.status == "pending"]
 
-    def add_pending(self, event_name: hm.ALL_ROLL_EVENT_NAMES) -> None:
-        """Adds `pending` to this user's Pending section."""
-        self._rolls.append(
-            CERoll(
-                roll_name=event_name,
-                user_ce_id=self.ce_id,
-                games=None,
-                status="pending",
-                init_time=hm.get_datetime("now"),
-                due_time=hm.get_datetime(minutes=10),
-                _id=str(uuid.uuid4()),
-            )
-        )
-        pass
-
-    def remove_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES):
-        "Removes the pending from this user."
-        for i, p in enumerate(self.rolls):
-            if p.roll_name == pending and p.status == "pending":
-                del self._rolls[i]
-                break
-        pass
-
-    def get_pending(self, pending: hm.ALL_ROLL_EVENT_NAMES) -> CERoll | None:
-        for p in self.rolls:
-            if p.roll_name == pending and p.status == "pending":
-                return p
-        return None
-
     def has_pending(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> bool:
         """Returns true if this user is currently on pending for `roll_name`."""
-        for pending in self.pending_rolls:
-            if pending.roll_name == roll_name:
-                return True
-        return False
+        return any(pending.roll_name == roll_name for pending in self.pending_rolls)
 
     # ==== failed rolls ==== #
 
     @property
     def failed_rolls(self) -> list[CERoll]:
         return [roll for roll in self.rolls if roll.status == "failed"]
-
-    def remove_failed_rolls(self, roll_name: hm.ALL_ROLL_EVENT_NAMES):
-        "removes all failed rolls associated with roll_name."
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "failed":
-                del self._rolls[i]
-        pass
 
     # ==== waiting rolls ==== #
 
@@ -487,28 +431,6 @@ class CEUser:
             if roll.roll_name == roll_name and roll.status == "between_stages":
                 return roll
         return None
-
-    def update_waiting_roll(self, roll: CERoll) -> None:
-        "Updates a waiting roll."
-        for i, self_roll in enumerate(self.rolls):
-            if (
-                roll.roll_name == self_roll.roll_name
-                and self_roll.status == "between_stages"
-            ):
-                self._rolls[i] = roll
-                return
-
-        roll.set_status("between_stages")
-        self._rolls.append(roll)
-
-    def unwait_waiting_roll(self, roll_name: hm.ALL_ROLL_EVENT_NAMES) -> None:
-        "Sets the waiting roll to current."
-        for i, roll in enumerate(self.rolls):
-            if roll.roll_name == roll_name and roll.status == "between_stages":
-                self._rolls[i].status = "current"
-                return
-
-        raise ValueError(f"No waiting roll of name {roll_name} was found.")
 
     # ==== cooldowns ==== #
 
@@ -547,87 +469,7 @@ class CEUser:
             return None
         return int(cooldown.timestamp())
 
-    def had_cooldown(
-        self, roll_name: hm.ALL_ROLL_EVENT_NAMES, old_time: datetime.datetime
-    ) -> bool:
-        """Returns true if this user was on cooldown for `roll_name` at `old_time`."""
-        cooldown_time = self.get_cooldown_time(roll_name)
-        return cooldown_time is not None and cooldown_time > old_time
-
-    def clear_cooldowns(self):
-        "Removes all cooldowns."
-        raise NotImplementedError("There is no way to clear cooldowns anymore.")
-
-    # ----------- other methods ------------
-    # -- game ownership and completion --
-
-    def has_completed_game(self, game_id: str, database_name: list[CEGame]):
-        "Returns true if this user has completed this game, returns false otherwise."
-        for user_game in self.owned_games:
-            if user_game.ce_id == game_id:
-                return user_game.is_completed(database_name)
-        return False
-
-    def owns_game(self, game_id: str) -> bool:
-        """Returns true if this user owns the game with
-        Challenge Enthusiast ID `game_id`."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return True
-        return False
-
-    def has_points(self, game_id: str) -> bool:
-        """Returns true if this user has points in this game."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return game.get_user_points() != 0
-        return False
-
-    def has_po_points(self, game_id: str) -> bool:
-        """Returns true if this user has points in Primary Objectives in this game."""
-        for game in self.owned_games:
-            if game.ce_id == game_id:
-                return game.get_user_points_primary() != 0
-        return False
-
-    # -- other --
-
-    def get_ce_link(self) -> str:
-        "Returns the link to this user's Challenge Enthusiasts page."
-        return f"https://cedb.me/user/{self.ce_id}"
-
-    async def get_api_user(self) -> "CEAPIUser | None":
-        "Returns the CEAPIUser."
-        session = await http_session.get_session()
-        async with session.get(f"https://cedb.me/api/user/{self.ce_id}/") as response:
-            if response.status != 200:
-                return None
-            try:
-                data = await response.json()
-            except aiohttp.ContentTypeError:
-                return None
-
-            return CEAPIUser(
-                discord_id=self.discord_id,
-                ce_id=self.ce_id,
-                owned_games=self.owned_games,
-                rolls=self.rolls,
-                full_data=data,
-                display_name=self.display_name,
-                avatar=self.avatar,
-                last_updated=self.last_updated,
-            )
-
-    def completions(self, database_name: list[CEGame]) -> int:
-        "Returns the number of completions this user has."
-        games_by_ce_id: dict[str, CEGame] = {}
-        for game in database_name:
-            games_by_ce_id.setdefault(game.ce_id, game)
-        completions = 0
-        for owned_game in self.owned_games:
-            if owned_game.is_completed(database_name=games_by_ce_id):
-                completions += 1
-        return completions
+    # ==== serialization ====
 
     def to_dict_supabase(self) -> dict:
         return {
@@ -656,7 +498,7 @@ class CEUser:
             owned_games_array.append(game.to_dict())
         rolls_array = [roll.to_dict() for roll in self.rolls]
 
-        user_dict = {
+        return {
             "ce_id": self.ce_id,
             "discord_id": self.discord_id,
             "owned_games": owned_games_array,
@@ -666,8 +508,6 @@ class CEUser:
             "last_updated": self.last_updated,
             "steam_id": self._steam_id,
         }
-
-        return user_dict
 
     def __str__(self):
         "Returns the string representation about this CEUser."
@@ -758,13 +598,6 @@ class CEAPIUser(CEUser):
     def api_tier_summary(self) -> list:
         return self.full_data["userTierSummaries"]
 
-    def unfinished_games(self) -> list[str]:
-        unfinished = []
-        for game in self.full_data["userGames"]:
-            if not game["game"]["isFinished"]:
-                unfinished.append(game["gameId"])
-        return unfinished
-
     def most_recent_objectives(self):
         "Returns a list of `CEObjective`s."
 
@@ -772,7 +605,8 @@ class CEAPIUser(CEUser):
         NUM_OF_OBJECTIVES = 3
 
         # imports
-        from Classes.CE_User_Objective import CEUserObjective
+        if TYPE_CHECKING:
+            from Classes.CE_User_Objective import CEUserObjective
 
         # grab all the data
         ce_ids: list[str] = []
@@ -784,13 +618,13 @@ class CEAPIUser(CEUser):
             game_names.append(objective["objective"]["game"]["name"])
 
         # make sure they didn't request too much
-        if NUM_OF_OBJECTIVES > len(ce_ids):
+        if len(ce_ids) < NUM_OF_OBJECTIVES:
             return None
 
         # sort and shear them to the number requested
-        ordered_pairs = sorted(zip(completion_dates, ce_ids, game_names), reverse=True)[
-            0:NUM_OF_OBJECTIVES
-        ]
+        ordered_pairs = sorted(
+            zip(completion_dates, ce_ids, game_names, strict=False), reverse=True
+        )[0:NUM_OF_OBJECTIVES]
 
         # now get the objects and zip them with the completion dates
         objective_tuples: list[
@@ -844,14 +678,15 @@ class CEAPIUser(CEUser):
         curr_month_points = 0
         prev_month_points = 0
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         current_month_datetime = datetime.datetime(
-            year=now.year, month=now.month, day=1
+            year=now.year, month=now.month, day=1, tzinfo=datetime.UTC
         )
         previous_month_datetime = datetime.datetime(
             year=(now.year if now.month != 1 else now.year - 1),
             month=(now.month - 1 if now.month != 1 else 12),
             day=1,
+            tzinfo=datetime.UTC,
         )
 
         for api_objective in self.api_user_objectives:
@@ -914,7 +749,7 @@ class CEAPIUser(CEUser):
                 return_str += "\n"
 
             # add the actual emoji and value
-            return_str += f"{hm.get_emoji(cast(hm.CATEGORIES, genre_name))}: {genre_dict[genre_name]}\t"
+            return_str += f"{hm.get_emoji(cast('hm.CATEGORIES', genre_name))}: {genre_dict[genre_name]}\t"
 
         # set up tiers
         return_str += "\n"

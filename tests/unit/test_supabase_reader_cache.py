@@ -11,11 +11,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from Modules import LocalCache, SupabaseReader
 from Classes.CE_Game import CEGame
-from Classes.CE_User import CEUser
 from Classes.CE_Roll import CERoll
-
+from Classes.CE_User import CEUser
+from Modules import LocalCache, SupabaseReader
 
 # === Fixtures ===
 
@@ -240,9 +239,11 @@ class TestGetListFromCache:
     def test_get_list_invalid_raises(self):
         tmpdir = _init_cache()
         try:
-            with patch.object(SupabaseReader, "supabase"):
-                with pytest.raises(Exception):
-                    SupabaseReader.get_list("invalid")  # type: ignore[arg-type]
+            with (
+                patch.object(SupabaseReader, "supabase"),
+                pytest.raises(ValueError, match="Invalid get_list argument"),
+            ):
+                SupabaseReader.get_list("invalid")  # type: ignore[arg-type]
         finally:
             _teardown_cache(tmpdir)
 
@@ -697,8 +698,9 @@ class TestDumpRollDualWrite:
         should be replaced."""
         tmpdir = _init_cache()
         try:
-            from tests.conftest import make_roll
             import uuid
+
+            from tests.conftest import make_roll
 
             roll_id = str(uuid.uuid4())
 

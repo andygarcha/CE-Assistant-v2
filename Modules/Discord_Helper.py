@@ -8,16 +8,16 @@ It will:
 from __future__ import annotations
 
 import datetime
-import discord
 import logging
-
-# -- local --
-from Classes.CE_Roll import CERoll
-import Modules.hm as hm
 from typing import TYPE_CHECKING
+
+import discord
+
+import Modules.hm as hm
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
+    from Classes.CE_Roll import CERoll
     from Classes.CE_User import CEUser
 
 
@@ -36,11 +36,13 @@ async def get_roll_embeds(
     # -- set up the intro embed --
     embeds.append(
         discord.Embed(
-            title=roll.roll_name, timestamp=datetime.datetime.now(), color=0x000000
+            title=roll.roll_name,
+            timestamp=datetime.datetime.now(datetime.UTC),
+            color=0x000000,
         )
     )
     embeds[0].set_footer(
-        text=f"Page 1 of {str(len(roll.games) + 1)}", icon_url=hm.FINAL_CE_ICON
+        text=f"Page 1 of {len(roll.games) + 1!s}", icon_url=hm.FINAL_CE_ICON
     )
     embeds[0].set_author(name="Challenge Enthusiasts")
 
@@ -106,7 +108,7 @@ async def get_game_embed(
         url=f"https://cedb.me/game/{game_id}",
         description="To be determined.",
         color=0x000000,
-        timestamp=datetime.datetime.now(),
+        timestamp=datetime.datetime.now(datetime.UTC),
     )
     embed.set_author(name="Challenge Enthusiasts", icon_url=hm.CE_MOUNTAIN_ICON)
 
@@ -194,9 +196,29 @@ async def get_buttons(view: discord.ui.View, embeds: list[discord.Embed]):
 # set up the view
 class ProfileView(discord.ui.View):
     def __init__(self, summary_embed: discord.Embed, recent_embed: discord.Embed):
-        super().__init__(timeout=None)
+        super().__init__(timeout=120)
         self.__summary_embed = summary_embed
         self.__recent_embed = recent_embed
+        self.message: discord.Message | None = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+        if self.message is None:
+            return
+
+        try:
+            await self.message.edit(
+                content=(
+                    "-# To save on memory, these buttons disable after 120 seconds "
+                    "of inactivity. Please run this command again to view both embeds."
+                ),
+                view=self,
+            )
+        except discord.HTTPException:
+            logger.debug("Could not edit profile message on timeout.", exc_info=True)
 
     @discord.ui.button(label="Summary", style=discord.ButtonStyle.gray, disabled=True)
     async def summary_button(
@@ -258,20 +280,20 @@ async def get_user_embeds(
     # -- two embeds: summary, completions --
     # summary
     summary_embed = discord.Embed(
-        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now()
+        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now(datetime.UTC)
     )
     summary_embed.add_field(
         name="User",
-        value=f"<@{user.discord_id}> {hm.get_emoji(user.get_rank())}",  # type: ignore
+        value=f"<@{user.discord_id}> {hm.get_emoji(user.rank)}",  # type: ignore
         inline=True,
     )
     summary_embed.add_field(
         name="Current Values",
-        value=f"{user.get_total_points()} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
+        value=f"{user.total_points} {hm.get_emoji('Points')} - Casino Score: {user.casino_score(user.rolls)}",
         inline=True,
     )
     summary_embed.add_field(
-        name="CE Link", value=f"{user.display_name_with_link()}", inline=False
+        name="CE Link", value=f"{user.display_name_with_link}", inline=False
     )
     summary_embed.add_field(
         name="CR",
@@ -284,7 +306,7 @@ async def get_user_embeds(
 
     # recent
     recent_embed = discord.Embed(
-        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now()
+        title="Profile", color=0xFF9494, timestamp=datetime.datetime.now(datetime.UTC)
     )
     recent_embed.add_field(
         name="Recent Completions", value=api_user.most_recent_objectives_str()

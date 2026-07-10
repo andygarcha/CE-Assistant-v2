@@ -1,5 +1,6 @@
 # -------- discord imports -----------
 import logging
+
 from Modules import hm
 
 logging.basicConfig(
@@ -11,23 +12,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+import os  # noqa: E402
+
+# -------- json imports ----------
+from typing import Literal  # noqa: E402
+
 import discord  # noqa: E402
 from discord import app_commands  # noqa: E402
 
-# -------- json imports ----------
-import json  # noqa: E402
-from typing import Literal  # noqa: E402
-
-# --------- local class imports --------
-
-# from Modules.WebInteractor import master_loop
-from update_delivery import deliver_updates  # noqa: E402
-from Modules import SupabaseReader  # noqa: E402
-from commands import load_commands  # noqa: E402
-from commands.games import get_game_auto  # noqa: E402
-
 # ----------- to-be-sorted imports -------------
 from discord.ext import tasks  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+
+from commands import load_commands  # noqa: E402
+from commands.games import get_game_auto  # noqa: E402
+from Modules import SupabaseReader  # noqa: E402
+
+# --------- local class imports --------
+# from Modules.WebInteractor import master_loop
+from update_delivery import deliver_updates  # noqa: E402
 
 # ----------- selenium and beautiful soup stuff -----------
 
@@ -42,19 +45,19 @@ intents.guilds = True
 intents.message_content = True
 
 
-# open secret_info.json
-with open("secret_info.json") as f:
-    local_json_data = json.load(f)
-    if hm.IN_CE:
-        discord_token = local_json_data["discord_token"]
-        guild_id = local_json_data["ce_guild_ID"]
-    else:
-        RUNNING_LOCALLY = False
-        if RUNNING_LOCALLY:
-            discord_token = local_json_data["other_discord_token"]
-        else:
-            discord_token = local_json_data["third_discord_token"]
-        guild_id = local_json_data["test_guild_ID"]
+# open .env
+load_dotenv()
+if hm.IN_CE:
+    discord_token = os.getenv("DISCORD_BOT_TOKEN")
+    guild_id = os.getenv("DISCORD_GUILD_ID")
+else:
+    discord_token = os.getenv("DISCORD_BOT_TOKEN_TERTIARY")
+    guild_id = os.getenv("DISCORD_TEST_GUILD_ID")
+
+if discord_token is None:
+    raise ValueError("discord_token env variable not found!")
+if guild_id is None:
+    raise ValueError("guild_id env variable not found!")
 
 # set up client
 client = discord.Client(intents=intents)
@@ -139,8 +142,7 @@ async def get_game_data(interaction: discord.Interaction, ce_id: str):
     game = SupabaseReader.get_game(ce_id)
     if game is None:
         return await interaction.followup.send("game not found")
-    else:
-        return await interaction.followup.send(f"{game.to_dict()}")
+    return await interaction.followup.send(f"{game.to_dict()}")
 
 
 INPUT_MESSAGES_ARE_EPHEMERAL: bool = True
@@ -192,9 +194,8 @@ async def on_ready():
     # asyncio.create_task(start_webhook_server())
 
     # delivery loop — polls scraper_updates table for messages to send
-    if hm.IN_CE:
-        if not delivery_loop.is_running():
-            delivery_loop.start()
+    if hm.IN_CE and not delivery_loop.is_running():
+        delivery_loop.start()
 
 
 # @client.event

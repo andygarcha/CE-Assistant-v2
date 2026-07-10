@@ -21,18 +21,17 @@ Users
 
 import asyncio
 import datetime
-from typing import Literal, cast
 import logging
-
-from Modules import hm, http_session
+from typing import Literal, cast
 
 # -- local --
 from Classes.CE_Game import CEAPIGame
 from Classes.CE_Objective import CEObjective
-from Classes.CE_User_Objective import CEUserObjective
-from Classes.CE_User import CEUser, CEAPIUser
+from Classes.CE_User import CEAPIUser, CEUser
 from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEUserObjective
 from Exceptions.FailedScrapeException import FailedScrapeException
+from Modules import hm, http_session
 
 # -- other --
 
@@ -71,7 +70,7 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         _type: str = str(objective["type"]).capitalize()
         ce_objective = CEObjective(
             ce_id=objective["id"],
-            objective_type=cast(hm.OBJECTIVE_TYPES, _type),
+            objective_type=cast("hm.OBJECTIVE_TYPES", _type),
             description=objective["description"],
             point_value=objective["points"],
             name=objective["name"],
@@ -129,20 +128,17 @@ def _ce_to_game(json_response: dict) -> CEAPIGame | None:
         if "" in _categories:
             raise Exception(f"Could not convert categories correctly. {_categories}")
 
-    ce_game = CEAPIGame(
+    return CEAPIGame(
         ce_id=json_response["id"],
         game_name=json_response["name"],
         platform=json_response["platform"],
         platform_id=json_response["platformId"],
-        categories=cast(list[hm.CATEGORIES], _categories),
+        categories=cast("list[hm.CATEGORIES]", _categories),
         objectives=all_objectives,
         last_updated=None,
         full_data=json_response,
         banner=json_response["header"],
     )
-
-    # ... and return it.
-    return ce_game
 
 
 async def get_game(ce_id: str) -> CEAPIGame | None:
@@ -235,7 +231,7 @@ async def get_objective_ids() -> list[str]:
 async def post_users_query(ids: list[str]) -> list[CEAPIUser]:
     raise NotImplementedError
     if len(ids) > 100:
-        print(f"post_users_query() called with {len(ids)=}")
+        logger.warning("post_users_query() called with %d ids", len(ids))
         return []
 
     session = await http_session.get_session()
@@ -370,10 +366,10 @@ async def get_api_users_all(
     if database_user is not None and len(database_user) > 0:
         registered_ids: list[str] = []
         if isinstance(database_user[0], CEUser):
-            _db_user_casted = cast(list[CEUser], database_user)
+            _db_user_casted = cast("list[CEUser]", database_user)
             registered_ids = [user.ce_id for user in _db_user_casted]
         elif isinstance(database_user[0], str):
-            _db_user_casted = cast(list[str], database_user)
+            _db_user_casted = cast("list[str]", database_user)
             registered_ids = _db_user_casted
         else:
             database_user = None
@@ -428,7 +424,7 @@ async def get_api_users_all(
         raise FailedScrapeException(
             "Failed scraping from api/users/all/ "
             + f"on users {(i - 1) * PULL_LIMIT} through {i * PULL_LIMIT - 1}"
-        )
+        ) from e
     logger.info("done fetching users! total users: %d", len(total_response))
 
     # convert to objects
@@ -487,7 +483,7 @@ def _ce_to_user(json_response: dict) -> CEAPIUser | None:
         new_objective = CEUserObjective(
             ce_id=objective["objective"]["id"],
             game_ce_id=objective["objective"]["gameId"],
-            type=cast(hm.OBJECTIVE_TYPES, _type),
+            type=cast("hm.OBJECTIVE_TYPES", _type),
             user_points=user_points,
             name=objective["objective"]["name"],
         )
@@ -506,7 +502,7 @@ def _ce_to_user(json_response: dict) -> CEAPIUser | None:
         rolls=[],
         display_name=json_response["displayName"],
         avatar=json_response["avatar"],
-        last_updated=datetime.datetime.now(),
+        last_updated=datetime.datetime.now(datetime.UTC),
         steam_id=steam_id,
         full_data=json_response,
     )
@@ -532,3 +528,5 @@ async def get_api_page_data(
             if len(json_response) == 0:
                 return None
             return _ce_to_game(json_response=json_response)
+
+    raise ValueError(f"Invalid `type` passed into get_api_page_data: {type}")

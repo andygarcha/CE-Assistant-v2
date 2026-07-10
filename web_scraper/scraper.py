@@ -2,24 +2,33 @@
 THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 """
 
+import os
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-import sys
-import os
 
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import datetime
 import json
-import typing
-import requests
-from Classes.CE_Game import CEGame, CEAPIGame
-from Classes.CE_Roll import CERoll
-from Classes.CE_User import CEUser, CEAPIUser
-from Classes.CE_User_Game import CEUserGame
-from Modules import CEAPIReader, LocalCache, SupabaseReader, http_session, hm
 import logging
+import typing
+
+import requests
+
+from Classes.CE_Game import CEAPIGame, CEGame
+from Classes.CE_Roll import CERoll
+from Classes.CE_User import CEAPIUser, CEUser
+from Classes.CE_User_Game import CEUserGame
+from Modules import (
+    CEAPIReader,
+    HealthCheck,
+    LocalCache,
+    SupabaseReader,
+    hm,
+    http_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +58,11 @@ class UpdateMessageForScraperProcess:
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
         if self.is_embed:
-            string += f"{repr(self.title)} ----- {repr(self.description)}\n"
+            string += f"{self.title!r} ----- {self.description!r}\n"
         else:
-            string += f"{repr(self.text)}\n"
+            string += f"{self.text!r}\n"
 
-        print(string)
+        print(string)  # noqa: T201 -- intentional console output for dry-run/silent scrapes, in addition to logging below
 
         if full and info:
             logger.info(string)
@@ -123,11 +132,10 @@ async def process_loop(
 
     full_scrape = (
         (  # Noon/1PM EST (based on daylight savings)
-            datetime.datetime.now(datetime.timezone.utc).hour == 17
+            datetime.datetime.now(datetime.UTC).hour == 17
         )
-        and (datetime.datetime.now(datetime.timezone.utc).minute == 0)
-        or full_scrape
-    )
+        and (datetime.datetime.now(datetime.UTC).minute == 0)
+    ) or full_scrape
 
     logger.info("full_scrape=%s (second try)", full_scrape)
 
@@ -140,7 +148,7 @@ async def process_loop(
     logger.debug(
         "FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES
     )
-    time_current: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
+    time_current: datetime.datetime = datetime.datetime.now(datetime.UTC)
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -250,23 +258,33 @@ async def process_loop(
 
     logger.info("process_loop() complete at time=%s", hm.get_datetime("now"))
 
+    try:
+        health_warnings = HealthCheck.run_cheap_checks()
+        if health_warnings:
+            SupabaseReader.write_scraper_updates_bulk(
+                [
+                    {
+                        "is_embed": False,
+                        "channel": "privatelog",
+                        "text": warning,
+                        "title": "",
+                        "description": "",
+                        "image": "",
+                        "url": "",
+                        "color": 0,
+                        "status": "stable",
+                        "game_ce_id": None,
+                    }
+                    for warning in health_warnings
+                ]
+            )
+    except Exception:
+        logger.exception("Health check failed.")
+
     if full_scrape:
         try:
             integrity_report = LocalCache.run_integrity_check()
-            synced = ", ".join(integrity_report.get("synced", []))
-            removed = ", ".join(integrity_report.get("removed", []))
-            schema = ", ".join(integrity_report.get("schema", []))
-            parts = []
-            if synced:
-                parts.append(f"synced [{synced}]")
-            if removed:
-                parts.append(f"removed [{removed}]")
-            if schema:
-                parts.append(f"schema [{schema}]")
-            if parts:
-                summary = "Integrity check: " + ", ".join(parts)
-            else:
-                summary = "Integrity check passed — local cache in sync with Supabase"
+            summary = HealthCheck.format_integrity_report(integrity_report)
             logger.info(summary)
             SupabaseReader.write_scraper_update(
                 {
@@ -282,8 +300,8 @@ async def process_loop(
                     "game_ce_id": None,
                 }
             )
-        except Exception as e:
-            logger.error("Integrity check failed: %s", e)
+        except Exception:
+            logger.exception("Integrity check failed.")
 
     if SAVEDATA and not full_scrape:
         try:
@@ -325,7 +343,7 @@ async def update_games(
 
     updates: list[UpdateMessageForScraperProcess] = []
     objectives_removed: list[str] = []
-    last_run: datetime.datetime = datetime.datetime(2000, 1, 1)
+    last_run: datetime.datetime = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
     _updated_game_ids: set = set()
 
     # Step 0: Determine the last time the loop ran
@@ -404,14 +422,14 @@ async def update_games(
     if full_scrape:
         logger.info("Full scraping: pulling from /api/games/full.")
         games = await CEAPIReader.get_api_games_full()
-        notIsFinished = set([g.ce_id for g in games if not g.is_finished])
+        notIsFinished = {g.ce_id for g in games if not g.is_finished}
         games = [g for g in games if g.is_finished]
     else:
         logger.info(
             "Pulling %d games one at a time using /api/game/[id].",
             len(_updated_game_ids),
         )
-        for i, gameId in enumerate(_updated_game_ids.copy()):
+        for gameId in _updated_game_ids.copy():
             _game = await CEAPIReader.get_game(gameId)
             if _game is None:
                 logger.warning("Game with ID %s was not found in CEAPIReader.", gameId)
@@ -490,7 +508,7 @@ async def update_users(
     games_old: list[CEGame],
     games_new: list[CEGame],
     full_scrape=False,
-    notIsFinished: set = set(),
+    notIsFinished: set | None = None,
 ) -> tuple[list[UpdateMessageForScraperProcess], list[CEAPIUser], list[str]]:
     """
     Updates all users. This version began April 9, 2026 for Supabase.
@@ -512,6 +530,9 @@ async def update_users(
         so that we don't run updates on userGames corresponding
         to these 'unfinished' games.
     """
+
+    if notIsFinished is None:
+        notIsFinished = set()
 
     # Step 0: Determine the last time the loop ran.
     last_run = SupabaseReader.get_last_loop()
@@ -797,7 +818,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
     steam_ids: list[int] = []
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue
 
         steam_ids.append(int(game.platform_id))
@@ -830,6 +851,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                 "cc": "US",
                 "filters": "price_overview",
             },
+            timeout=15,
         )
 
         response_prices_json: dict[str, dict] = json.loads(response_prices.text)
@@ -870,6 +892,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
                     1:-1
                 ]  # appIds=220,480,730
             },
+            timeout=15,
         )
 
         response_hours_json: list[dict[str, int]] = json.loads(response_hours.text)
@@ -883,7 +906,7 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
             hours[str(item["appId"])] = item["medianCompletionTime"]
 
     for game in database_name:
-        if not game.platform == "steam":
+        if game.platform != "steam":
             continue  # non steam game
         if game.tier_num == 0:
             continue  # t0
@@ -916,7 +939,7 @@ def update_one_game(
         return create_update_new_game(game_new), []
 
     # REMOVED GAME
-    elif game_new is None and game_old is not None:
+    if game_new is None and game_old is not None:
         return create_update_removed_game(game_old), []
 
     # by this point neither should be none but they could both be...?
@@ -962,22 +985,22 @@ def update_one_user(
     updates: list[UpdateMessageForScraperProcess] = []
 
     # gather old info
-    points_original = user.get_total_points()
+    points_original = user.total_points
     completed_games_original, overcompleted_games_original = (
         user.get_completed_games_all(database_name_old)
     )
-    rank_original = user.get_rank()
+    rank_original = user.rank
     games_original = user.owned_games.copy()
 
     # update the user!
     user.owned_games = site_data.owned_games
 
     # gather new info
-    points_new = user.get_total_points()
+    points_new = user.total_points
     completed_games_new, overcompleted_games_new = user.get_completed_games_all(
         database_name_new
     )
-    rank_new = user.get_rank()
+    rank_new = user.rank
     games_new = user.owned_games.copy()
 
     # -- CHECK ROLES --
@@ -1012,7 +1035,7 @@ def update_one_user(
     if _result is not None:
         updates.append(_result)
 
-    user.set_last_updated(hm.get_datetime("now"))
+    user.last_updated = hm.get_datetime("now")
     return updates
 
 
@@ -1060,10 +1083,10 @@ def update_one_roll(
         update.is_embed = False
         _user2_text = ""
         if user2 is not None:
-            _user2_text = f" and {user2.mention()}"
+            _user2_text = f" and {user2.mention}"
 
         update.text = (
-            f"{user1.mention()}{_user2_text}, you rolled a game that has now been removed"
+            f"{user1.mention}{_user2_text}, you rolled a game that has now been removed"
             + " from the site. This will not impact your casino score. Apologies for the inconvenience."
             + " Please feel free to reach out to Andy for more information or reroll. No cooldown has"
             + " been applied."
@@ -1085,9 +1108,9 @@ def update_one_roll(
             update.location = "casino"
             _user2_text = ""
             if user2 is not None:
-                _user2_text = f"and {user2.mention()}"
+                _user2_text = f"and {user2.mention}"
             update.text = (
-                f"{user1.mention()} {_user2_text}, you may now re-initiate {roll.roll_name}. "
+                f"{user1.mention} {_user2_text}, you may now re-initiate {roll.roll_name}. "
                 + "Any button presses to the previous message will do nothing."
             )
             return update, None, True
@@ -1101,7 +1124,7 @@ def update_one_roll(
         update.location = "casino"
         update.is_embed = False
         update.text = (
-            f"{user1.mention()}, you've finished the current stage in {roll.roll_name}. "
+            f"{user1.mention}, you've finished the current stage in {roll.roll_name}. "
             + f"To roll your next stage, type /solo-roll {roll.roll_name} in <#{hm.CASINO_ID}> at any time."
         )
 
@@ -1109,25 +1132,14 @@ def update_one_roll(
         roll.due_time = None
         return update, roll, False
 
-    # Case 2: The roll is won.
-    #  -- case 2a) the roll is single-player
-    #  -- case 2b) the roll is co-op
-    #  -- case 2c) the roll is pvp (currently none... hallelujah.)
-
+    # Case 2: The roll is won (single-player or co-op).
     if won:
         update.location = "casinolog"
         update.is_embed = False
         update.text = roll.get_win_message(games, user1, user2)
         roll.completed_time = hm.get_datetime("now")
         roll.set_status("won")
-
-        # Case 2A (singleplayer) and 2B (co-op)
-        if not roll.is_pvp:
-            return update, roll, False
-
-        # Case 2C (pvp)
-        # -- not dealing with this.
-        raise NotImplementedError
+        return update, roll, False
 
     if roll.is_expired:
         update.location = "casino"
@@ -1401,16 +1413,17 @@ def create_update_updated_game(
                 )
 
             # if the name was changed
-            if old_objective.name != new_objective.name:
-                # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
-                if (
+            # if the objective was cleared, we don't need to make a whole note about the name change unless the name was changed
+            if old_objective.name != new_objective.name and (
+                (
                     old_objective.is_uncleared()
                     and not new_objective.is_uncleared()
-                    and (old_objective.uncleared_name() != new_objective.name)
-                ):
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
-                elif not old_objective.is_uncleared() or new_objective.is_uncleared():
-                    update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
+                    and (old_objective.name_uncleared != new_objective.name)
+                )
+                or not old_objective.is_uncleared()
+                or new_objective.is_uncleared()
+            ):
+                update.description += f"\n  - Name changed from '{old_objective.name}' to '{new_objective.name}'"
 
     for old_objective_ce_id in old_objective_ce_ids:
         old_objective = game_old.get_objective(old_objective_ce_id)
@@ -1458,7 +1471,7 @@ def check_roles(
     updates: list[UpdateMessageForScraperProcess] = []
 
     for game_old in games_old:
-        points = game_old.get_user_points()
+        points = game_old.user_points
         game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
@@ -1473,7 +1486,7 @@ def check_roles(
             old_categories[c_num - 1] += points
 
     for game_new in games_new:
-        points = game_new.get_user_points()
+        points = game_new.user_points
         game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:
@@ -1498,7 +1511,7 @@ def check_roles(
                 update = UpdateMessageForScraperProcess()
                 update.is_embed = False
                 update.text = (
-                    f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
+                    f"Congratulations to {user.mention} ({user.display_name_with_link})! "
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
@@ -1510,7 +1523,7 @@ def check_roles(
             update = UpdateMessageForScraperProcess()
             update.is_embed = False
             update.text = (
-                f"Congratulations to {user.mention()} ({user.display_name_with_link()})! "
+                f"Congratulations to {user.mention} ({user.display_name_with_link})! "
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
@@ -1530,7 +1543,7 @@ def check_roles(
             update.is_embed = False
 
             update.text = (
-                f"Woah. {user.mention()} ({user.display_name_with_link()}) just unlocked "
+                f"Woah. {user.mention} ({user.display_name_with_link}) just unlocked "
                 f"{'Grandm' if i == 1000 else 'M'}aster of All ({i} points in every category). Congratulations!"
             )
             update.location = "userlog"
@@ -1541,7 +1554,7 @@ def check_roles(
         update.is_embed = False
 
         update.text = (
-            f"Everyone listen up. {user.mention()} ({user.display_name_with_link()}) has just unlocked "
+            f"Everyone listen up. {user.mention} ({user.display_name_with_link}) has just unlocked "
             "Overpowered, by having 3000 points in a single category. Well done!"
         )
         update.location = "userlog"
@@ -1609,17 +1622,17 @@ def check_newly_completed_games(
         update = UpdateMessageForScraperProcess()
 
         # check mutelist
-        if user.on_mutelist():
+        if user.is_muted:
             update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+            update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
 
         update.is_embed = False
         update.text += (
             "Wow {} ({})! You've completed {}, a {} worth {} points {}".format(
-                user.mention(),
-                user.display_name_with_link(),
+                user.mention,
+                user.display_name_with_link,
                 game.name_with_link,
                 game.tier_emoji,
                 game.get_po_points(),
@@ -1657,23 +1670,16 @@ def check_newly_completed_games(
         update = UpdateMessageForScraperProcess()
 
         # check mutelist
-        if user.on_mutelist():
+        if user.is_muted:
             update.location = "privatelog"
-            update.text = f"⚪ Muted user {user.display_name_with_link()} update:\n"
+            update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
 
         update.is_embed = False
         update.text += (
-            "Holy moly {} ({})! You've now *over*completed {}, a {} worth {} points, with an additional {} points "
+            f"Holy moly {user.mention} ({user.display_name_with_link})! You've now *over*completed {game.name_with_link}, a {game.tier_emoji} worth {game.get_po_points()} points, with an additional {game.get_so_points()} points "
             "worth of SOs."
-        ).format(
-            user.mention(),
-            user.display_name_with_link(),
-            game.name_with_link,
-            game.tier_emoji,
-            game.get_po_points(),
-            game.get_so_points(),
         )
         updates.append(update)
 
@@ -1711,19 +1717,19 @@ def check_rank(
     if rank_new == rank_old or points_new <= points_old:
         return None
 
-    if not user.on_mutelist():
+    if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Congrats to {user.mention()} ({user.display_name_with_link()}) for ranking up from Rank "
+            f"Congrats to {user.mention} ({user.display_name_with_link}) for ranking up from Rank "
             + f"{hm.get_emoji(rank_old)} to Rank {hm.get_emoji(rank_new)}!"  # type: ignore
         )
     else:
         update = UpdateMessageForScraperProcess()
         update.location = "privatelog"
         update.is_embed = False
-        update.text = f"🤫 Muted user {user.display_name_with_link()} ranked up from {rank_old} to {rank_new}."
+        update.text = f"🤫 Muted user {user.display_name_with_link} ranked up from {rank_old} to {rank_new}."
     return update
 
 
@@ -1740,12 +1746,12 @@ def check_completion_count(
         num_completions_new / COMPLETION_INCREMENT
     ):
         return None
-    if not user.on_mutelist():
+    if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
         update.is_embed = False
         update.text = (
-            f"Amazing! {user.mention()} ({user.display_name_with_link()}) has passed the milestone of "
+            f"Amazing! {user.mention} ({user.display_name_with_link}) has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games!"
         )
     else:
@@ -1753,7 +1759,7 @@ def check_completion_count(
         update.location = "privatelog"
         update.is_embed = False
         update.text = (
-            f"🤫 Muted user {user.display_name_with_link()} has passed the milestone of "
+            f"🤫 Muted user {user.display_name_with_link} has passed the milestone of "
             + f"{int(num_completions_new / COMPLETION_INCREMENT) * COMPLETION_INCREMENT} completed games."
         )
     return update

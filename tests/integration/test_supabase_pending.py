@@ -89,7 +89,7 @@ class TestAddPending:
             r for r in rolls if r.roll_name == _EVENT and r.status == "pending"
         )
         assert pending.due_time is not None
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         delta = pending.due_time - now
         assert datetime.timedelta(minutes=8) < delta < datetime.timedelta(minutes=12)
 

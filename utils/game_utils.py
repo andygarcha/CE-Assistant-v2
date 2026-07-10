@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
-import random
-from typing import Literal, get_args, TYPE_CHECKING
-from utils.general_utils import get_item_from_list
-from Modules import http_session
 import logging
+import secrets
+from typing import TYPE_CHECKING, Literal, get_args
+
+from Modules import http_session
+from utils.general_utils import get_item_from_list
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
@@ -132,7 +132,7 @@ def get_rollable_game(
             for c in get_args(CATEGORIES):
                 database_tier_games.extend(database_tier[str(tn)][c])
 
-    random.shuffle(database_tier_games)
+    secrets.SystemRandom().shuffle(database_tier_games)
 
     # get banned games
     try:
@@ -190,20 +190,26 @@ def get_rollable_game(
                 continue
 
         # too pricey
-        if price_restriction and price_limit is not None:
-            if not game["price"] <= (price_limit * 100):
-                fails = False
-                for _user in user:
-                    if not _user.owns_game(game["ce_id"]):
-                        fails = True
-                        break
-                if fails:
-                    continue
+        if (
+            price_restriction
+            and price_limit is not None
+            and game["price"] > (price_limit * 100)
+        ):
+            fails = False
+            for _user in user:
+                if not _user.owns_game(game["ce_id"]):
+                    fails = True
+                    break
+            if fails:
+                continue
 
         # too many hours
-        if hours_restriction and completion_limit is not None:
-            if game["sh_hours"] > (completion_limit * 60):
-                continue
+        if (
+            hours_restriction
+            and completion_limit is not None
+            and game["sh_hours"] > (completion_limit * 60)
+        ):
+            continue
 
         # already completed
         fails = False
@@ -276,8 +282,6 @@ ALL_ROLL_EVENT_NAMES = Literal[
     "Destiny Alignment",
     "Soul Mates",
     "Teamwork Makes the Dream Work",
-    "Winner Takes All",
-    "Game Theory",
 ]
 ALL_ROLL_EVENT_NAMES_TUPLE = get_args(ALL_ROLL_EVENT_NAMES)
 SOLO_ROLL_EVENT_NAMES = Literal[
@@ -296,16 +300,12 @@ COOP_ROLL_EVENT_NAMES = Literal[
     "Destiny Alignment",
     "Soul Mates",
     "Teamwork Makes the Dream Work",
-    "Winner Takes All",
-    "Game Theory",
 ]
 COOP_ROLL_EVENT_NAMES_TUPLE = get_args(COOP_ROLL_EVENT_NAMES)
 MULTI_STAGE_ROLLS = Literal[
     "Two Week T2 Streak", 'Two "Two Week T2 Streak" Streak', "Fourward Thinking"
 ]
 MULTI_STAGE_ROLLS_TUPLE = get_args(MULTI_STAGE_ROLLS)
-PVP_ROLL_EVENT_NAMES = Literal["Winner Takes All", "Game Theory"]
-PVP_ROLL_EVENT_NAMES_TUPLE = get_args(PVP_ROLL_EVENT_NAMES)
 
 
 OBJECTIVE_TYPES = Literal["Primary", "Secondary", "Badge", "Community"]
