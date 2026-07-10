@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, cast
 
 import aiohttp
 
-from Classes.CE_User_Objective import CEUserObjective
 import Modules.hm as hm
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
 from Classes.CE_User_Game import CEUserGame
+from Classes.CE_User_Objective import CEUserObjective
 from Classes.OtherClasses import CRData
 from Modules import http_session
 
@@ -599,7 +599,9 @@ class CEAPIUser(CEUser):
     def api_tier_summary(self) -> list:
         return self.full_data["userTierSummaries"]
 
-    def most_recent_objectives(self) -> None | list[tuple[CEUserObjective | str, datetime.datetime, str]]:
+    def most_recent_objectives(
+        self,
+    ) -> None | list[tuple[CEUserObjective | str, datetime.datetime, str]]:
         """
         Grabs a list of the user's NUM_OF_OBJECTIVES's most recently completed `CEUserObjectives`s.
 
@@ -662,7 +664,7 @@ class CEAPIUser(CEUser):
         # pull the data
         objective_tuples = self.most_recent_objectives()
         if objective_tuples is None:
-            return f"Complete more objectives to unlock this screen!"
+            return "Complete more objectives to unlock this screen!"
 
         # set up return
         return_str: str = ""
@@ -675,9 +677,7 @@ class CEAPIUser(CEUser):
             completed_at_ts = int(completed_at.timestamp())
 
             if isinstance(objective, str):
-                return_str += (
-                    f"Please wait for next DB sync - {game_name} - <t:{completed_at_ts}>\n"
-                )
+                return_str += f"Please wait for next DB sync - {game_name} - <t:{completed_at_ts}>\n"
                 continue
 
             # add to the return string
