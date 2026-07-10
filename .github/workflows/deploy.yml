@@ -17,23 +17,20 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          ( umask 077; printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key )
+          ( umask 077; printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts )
 
       - name: Run deploy script on VM
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
+          # The VM's authorized_keys entry for this key sets a forced
+          # command (see deploy/SETUP.md) that always runs
+          # scripts/deploy.sh with the correct venv paths, regardless of
+          # what's requested here — this connection just needs to
+          # authenticate, not specify a command.
           ssh -i ~/.ssh/deploy_key \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               -o StrictHostKeyChecking=yes \
-              "$DEPLOY_USER@$DEPLOY_HOST" \
-              "cd $DEPLOY_PATH && \
-               PIP_BIN=$DEPLOY_PATH/.venv/bin/pip \
-               PYTHON_BIN=$DEPLOY_PATH/.venv/bin/python \
-               PYTEST_BIN=$DEPLOY_PATH/.venv/bin/pytest \
-               bash scripts/deploy.sh"
+              "$DEPLOY_USER@$DEPLOY_HOST"
