@@ -44,6 +44,11 @@ class CEUserObjective:
     def type(self) -> hm.OBJECTIVE_TYPES:
         """Returns the type of this Objective (e.g. Community, Primary)."""
         return self._type
+    
+    @property
+    def type_short(self) -> str:
+        """Returns this as a short type (e.g. PO, SO)"""
+        return f"{self._type[0]}O"
 
     @property
     def game_ce_id(self) -> str:
