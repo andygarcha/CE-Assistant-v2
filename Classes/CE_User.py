@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 import aiohttp
 
+from Classes.CE_User_Objective import CEUserObjective
 import Modules.hm as hm
 from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
@@ -598,8 +599,21 @@ class CEAPIUser(CEUser):
     def api_tier_summary(self) -> list:
         return self.full_data["userTierSummaries"]
 
-    def most_recent_objectives(self):
-        "Returns a list of `CEObjective`s."
+    def most_recent_objectives(self) -> None | list[tuple[CEUserObjective | str, datetime.datetime, str]]:
+        """
+        Grabs a list of the user's NUM_OF_OBJECTIVES's most recently completed `CEUserObjectives`s.
+
+        If the user has completed less than that, this will return `None`.
+
+        Returns
+        ---
+        objective: `CEUserObjective`
+            The actual original CEUserObjective object
+        completed_at: `datetime.datetime`
+            The most recent `updatedAt` value for this userObjective.
+        game_name: `str`
+            The name of the game the objective is associated with.
+        """
 
         # make a constant
         NUM_OF_OBJECTIVES = 3
@@ -648,7 +662,7 @@ class CEAPIUser(CEUser):
         # pull the data
         objective_tuples = self.most_recent_objectives()
         if objective_tuples is None:
-            return "Database out of sync! if this continues ping andy"
+            return f"Complete more objectives to unlock this screen!"
 
         # set up return
         return_str: str = ""
@@ -656,19 +670,21 @@ class CEAPIUser(CEUser):
         # loop!
         for item in objective_tuples:
             # pull the actual items from the tuple
-            objective = item[0]
-            game_name = item[2]
+            objective, completed_at, game_name = item
+
+            completed_at_ts = int(completed_at.timestamp())
 
             if isinstance(objective, str):
                 return_str += (
-                    f"Error, please ping andy. obj: {objective} game: {game_name}\n"
+                    f"Please wait for next DB sync - {game_name} - <t:{completed_at_ts}>\n"
                 )
                 continue
 
             # add to the return string
             return_str += (
-                f"{objective.name} ({objective.user_points} {hm.get_emoji('Points')}) "
-                + f"- [{game_name}](https://cedb.me/game/{objective.game_ce_id}/)\n"
+                f"[{game_name}](https://cedb.me/game/{objective.game_ce_id})\n"
+                f"- {objective.type_short} {objective.name} ({objective.user_points} {hm.get_emoji('Points')})\n"
+                f"- <t:{completed_at_ts}>\n"
             )
 
         return return_str
