@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Deploys main.py and scraper_main.py on the VM: pulls main, reinstalls
-# deps, runs a safety check, restarts the systemd services, and rolls back
-# automatically if the new code fails to import or fails to become healthy.
+# deps, runs a safety check, restarts the systemd --user services, and
+# rolls back automatically if the new code fails to import or fails to
+# become healthy.
 #
-# Invoked by .github/workflows/deploy.yml on a self-hosted GitHub Actions
-# runner registered on the VM. See docs/superpowers/specs (local, gitignored)
-# for the full design rationale, and deploy/SETUP.md for one-time VM setup.
+# Invoked over SSH by .github/workflows/deploy.yml (GitHub-hosted runner),
+# via a forced-command deploy key that never needs sudo -- ce-bot/ce-scraper
+# are systemd --user units for exactly this reason. See docs/superpowers/specs
+# (local, gitignored) for the full design rationale, and deploy/SETUP.md for
+# one-time VM setup.
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -25,13 +28,13 @@ rollback() {
     log "Rolling back to $prev_sha"
     git reset --hard "$prev_sha"
     "$PIP_BIN" install -r requirements.txt
-    systemctl restart "${SERVICES[@]}"
+    systemctl --user restart "${SERVICES[@]}"
 }
 
 services_healthy() {
     local svc
     for svc in "${SERVICES[@]}"; do
-        if [[ "$(systemctl is-active "$svc")" != "active" ]]; then
+        if [[ "$(systemctl --user is-active "$svc")" != "active" ]]; then
             return 1
         fi
     done
@@ -64,7 +67,7 @@ main() {
     fi
 
     log "Restarting services: ${SERVICES[*]}"
-    systemctl restart "${SERVICES[@]}"
+    systemctl --user restart "${SERVICES[@]}"
 
     # Poll HEALTH_CHECK_RETRIES times, sleeping HEALTH_CHECK_INTERVAL seconds
     # before *each* check (including the first). A Type=simple systemd unit

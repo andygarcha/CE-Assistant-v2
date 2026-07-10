@@ -76,19 +76,35 @@ cd <repo-path-on-vm>
 git checkout main
 ```
 
-## 2. Fill in and install the systemd unit files
+## 2. Fill in and install the systemd **user** unit files
 
-`deploy/ce-bot.service` and `deploy/ce-scraper.service` have three
-placeholders each: `<deploy-user>`, `<repo-path-on-vm>` (appears multiple
-times per file). Replace them with the actual Linux user the bot should run
-as and the absolute path to this repo's clone on the VM (the same path used
-in step 1's forced command), then:
+`deploy/ce-bot.service` and `deploy/ce-scraper.service` are **user** units
+(no `User=` directive, `WantedBy=default.target`), not system units. This is
+deliberate: `scripts/deploy.sh` restarts them via `systemctl --user`, which
+the deploy key can do without any `sudo`/root access at all — the forced
+command from step 1 never needs privilege escalation for anything, which is
+the whole point of restricting it there. Fill in the one placeholder,
+`<repo-path-on-vm>` (appears multiple times per file), with the absolute
+path to this repo's clone on the VM (the same path used in step 1's forced
+command), then, **as the deploy user, no sudo**:
 
 ```bash
-sudo cp deploy/ce-bot.service deploy/ce-scraper.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now ce-bot ce-scraper
-sudo systemctl status ce-bot ce-scraper   # confirm both show "active (running)"
+mkdir -p ~/.config/systemd/user
+cp deploy/ce-bot.service deploy/ce-scraper.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now ce-bot ce-scraper
+systemctl --user status ce-bot ce-scraper   # confirm both show "active (running)"
+```
+
+User units normally only run while that user has an active login session.
+Since this bot must survive reboots and SSH disconnects with nobody logged
+in, enable lingering **once**, as root (this is the one step in this whole
+setup that touches root, and it's a one-time bootstrap action — not
+something the recurring deploy key ever needs to do):
+
+```bash
+sudo loginctl enable-linger <deploy-user>
+loginctl show-user <deploy-user> -p Linger   # confirm "Linger=yes"
 ```
 
 Step 1's forced command already sets `PIP_BIN`/`PYTHON_BIN`/`PYTEST_BIN` to
@@ -121,13 +137,14 @@ Push a trivial commit to `main` (e.g. a comment change) from your dev
 machine and confirm:
 
 - The `Deploy` workflow run appears and goes green in the repo's Actions tab.
-- `sudo systemctl status ce-bot ce-scraper` on the VM shows both `active`
-  and started recently (`systemctl show -p ActiveEnterTimestamp ce-bot`).
+- `systemctl --user status ce-bot ce-scraper` (run as the deploy user, no
+  sudo) on the VM shows both `active` and started recently
+  (`systemctl --user show -p ActiveEnterTimestamp ce-bot`).
 - `git -C <repo-path-on-vm> rev-parse HEAD` on the VM matches the new
   commit's SHA.
 
 Then push one deliberately broken commit (e.g. an unmatched parenthesis in
 `main.py`) to confirm the rollback path: the `Deploy` run should go red,
-but `systemctl status ce-bot ce-scraper` should still show the *previous*
-commit's SHA and both services still `active`. Revert the broken commit
-afterward.
+but `systemctl --user status ce-bot ce-scraper` should still show the
+*previous* commit's SHA and both services still `active`. Revert the broken
+commit afterward.

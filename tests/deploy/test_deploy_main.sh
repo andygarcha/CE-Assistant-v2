@@ -64,6 +64,9 @@ setup_fixture() {
     cat > "$bin/systemctl" <<EOF
 #!/usr/bin/env bash
 echo "\$*" >> "$tmp/log"
+if [[ "\$1" == "--user" ]]; then
+    shift
+fi
 if [[ "\$1" == "restart" ]]; then
     exit 0
 fi
@@ -167,7 +170,7 @@ test_smoke_test_failure_rolls_back() {
     # here -- it's the rollback's restart, not a restart with broken v2 code.
     # main()'s own success-path restart never fires because it returns via
     # `rollback; exit 1` before reaching `systemctl restart` for the deploy.
-    restart_count="$(grep -c "^restart ce-bot ce-scraper$" "$tmp/log" || true)"
+    restart_count="$(grep -c "^--user restart ce-bot ce-scraper$" "$tmp/log" || true)"
     if [[ "$restart_count" -eq 1 ]]; then
         pass "smoke failure: services only restarted once, by rollback with reverted code"
     else
@@ -218,6 +221,9 @@ test_crashes_shortly_after_start_rolls_back() {
     cat > "$tmp/bin/systemctl" <<EOF
 #!/usr/bin/env bash
 echo "\$*" >> "$tmp/log"
+if [[ "\$1" == "--user" ]]; then
+    shift
+fi
 if [[ "\$1" == "restart" ]]; then
     exit 0
 fi

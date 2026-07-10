@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=<deploy-user>
 WorkingDirectory=<repo-path-on-vm>
 EnvironmentFile=<repo-path-on-vm>/.env
 ExecStart=<repo-path-on-vm>/.venv/bin/python <repo-path-on-vm>/scraper_main.py
@@ -13,4 +12,4 @@ Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
