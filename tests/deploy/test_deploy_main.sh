@@ -197,9 +197,74 @@ test_unhealthy_after_restart_rolls_back() {
     rm -rf "$tmp"
 }
 
+test_crashes_shortly_after_start_rolls_back() {
+    # Regression test for the health-check race: a Type=simple systemd unit
+    # reports "active" the instant the process is forked, before it has had
+    # any chance to crash on startup. This fixture simulates ce-scraper
+    # doing exactly that -- `systemctl is-active ce-scraper` answers "active"
+    # on its *first* call (mimicking the immediate post-fork state) and
+    # "inactive" on every call after that (mimicking a crash moments later).
+    # The old deploy.sh checked health once with no initial sleep and would
+    # declare success on that first "active" reading -- a false positive.
+    # The fixed loop must not be fooled by this and should roll back.
+    local tmp work
+    tmp="$(mktemp -d)"
+    work="$(setup_fixture "$tmp" 0 0 "ce-bot ce-scraper")"
+    PREV_SHA_FIXTURE="$(cat "$tmp/prev_sha")"
+
+    # Overwrite the fixture's systemctl stub: ce-bot always reports active;
+    # ce-scraper reports active only on its first is-active call, then flips
+    # to inactive for every subsequent call, using a per-service counter file.
+    cat > "$tmp/bin/systemctl" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >> "$tmp/log"
+if [[ "\$1" == "restart" ]]; then
+    exit 0
+fi
+if [[ "\$1" == "is-active" ]]; then
+    svc="\$2"
+    if [[ "\$svc" == "ce-bot" ]]; then
+        echo "active"
+        exit 0
+    fi
+    if [[ "\$svc" == "ce-scraper" ]]; then
+        count_file="$tmp/ce-scraper-calls"
+        count="\$(cat "\$count_file" 2>/dev/null || echo 0)"
+        count=\$((count + 1))
+        echo "\$count" > "\$count_file"
+        if [[ "\$count" -eq 1 ]]; then
+            echo "active"
+            exit 0
+        fi
+        echo "inactive"
+        exit 3
+    fi
+    echo "inactive"
+    exit 3
+fi
+exit 0
+EOF
+    chmod +x "$tmp/bin/systemctl"
+
+    if run_deploy "$tmp" "$work"; then
+        fail "crash-after-start: expected deploy.sh to exit non-zero"
+    else
+        pass "crash-after-start: deploy.sh exits non-zero"
+    fi
+
+    final_sha="$(cd "$work" && git rev-parse HEAD)"
+    if [[ "$final_sha" == "$PREV_SHA_FIXTURE" ]]; then
+        pass "crash-after-start: HEAD rolled back to prev_sha despite first is-active reading being 'active'"
+    else
+        fail "crash-after-start: expected HEAD=$PREV_SHA_FIXTURE, got $final_sha"
+    fi
+    rm -rf "$tmp"
+}
+
 test_success_path
 test_smoke_test_failure_rolls_back
 test_unhealthy_after_restart_rolls_back
+test_crashes_shortly_after_start_rolls_back
 
 echo ""
 echo "---"

@@ -39,6 +39,18 @@ sudo systemctl enable --now ce-bot ce-scraper
 sudo systemctl status ce-bot ce-scraper   # confirm both show "active (running)"
 ```
 
+The deploy workflow (`.github/workflows/deploy.yml`) points `PIP_BIN`/`PYTHON_BIN`/
+`PYTEST_BIN` at `<repo-path-on-vm>/.venv/bin/{pip,python,pytest}` — the same
+venv the systemd units above run the services from (their `ExecStart` uses
+`<repo-path-on-vm>/.venv/bin/python`). This venv must already exist inside the
+runner's workspace before the first deploy runs; if it doesn't, create it
+(`python3 -m venv <repo-path-on-vm>/.venv && <repo-path-on-vm>/.venv/bin/pip
+install -r requirements.txt`) and confirm with:
+
+```bash
+ls <repo-path-on-vm>/.venv/bin/python
+```
+
 ## 3. Retire the tmux sessions
 
 Once `systemctl status` confirms both services are up and the bot is

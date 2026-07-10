@@ -13,3 +13,7 @@ jobs:
       - name: Run deploy script
         run: bash scripts/deploy.sh
         working-directory: ${{ github.workspace }}
+        env:
+          PIP_BIN: ${{ github.workspace }}/.venv/bin/pip
+          PYTHON_BIN: ${{ github.workspace }}/.venv/bin/python
+          PYTEST_BIN: ${{ github.workspace }}/.venv/bin/pytest

@@ -66,15 +66,29 @@ main() {
     log "Restarting services: ${SERVICES[*]}"
     systemctl restart "${SERVICES[@]}"
 
+    # Poll HEALTH_CHECK_RETRIES times, sleeping HEALTH_CHECK_INTERVAL seconds
+    # before *each* check (including the first). A Type=simple systemd unit
+    # reports "active" the instant the process is forked, before it has had
+    # any chance to crash on startup (e.g. failing to connect to Discord), so
+    # checking immediately with no grace period would let that slip through
+    # as a false positive. Success is determined only by whether the last
+    # check in the window is healthy, not by the first "active" reading.
+    local healthy=0
     attempt=0
     while (( attempt < HEALTH_CHECK_RETRIES )); do
-        if services_healthy; then
-            log "Deploy succeeded at $(git rev-parse HEAD)"
-            exit 0
-        fi
         sleep "$HEALTH_CHECK_INTERVAL"
         attempt=$((attempt + 1))
+        if services_healthy; then
+            healthy=1
+        else
+            healthy=0
+        fi
     done
+
+    if (( healthy == 1 )); then
+        log "Deploy succeeded at $(git rev-parse HEAD)"
+        exit 0
+    fi
 
     log "Services failed to become healthy after restart"
     rollback "$prev_sha"
