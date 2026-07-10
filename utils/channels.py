@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Literal
 
 import aiohttp
@@ -6,7 +7,10 @@ import discord
 
 logger = logging.getLogger(__name__)
 
-IN_CE = True
+# main.py sets CE_DEV_MODE=1 (before importing anything that depends on
+# IN_CE) when run with `--dev`, to run against the test guild/channels
+# instead of the real CE server.
+IN_CE = os.environ.get("CE_DEV_MODE") != "1"
 
 CE_CHANNELS = {
     "gameadditions": 949482536726298666,
