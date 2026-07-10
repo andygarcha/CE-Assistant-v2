@@ -8,12 +8,29 @@ on:
 jobs:
   deploy:
     name: Deploy to VM
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     steps:
-      - name: Run deploy script
-        run: bash scripts/deploy.sh
-        working-directory: ${{ github.workspace }}
+      - name: Configure SSH
         env:
-          PIP_BIN: ${{ github.workspace }}/.venv/bin/pip
-          PYTHON_BIN: ${{ github.workspace }}/.venv/bin/python
-          PYTEST_BIN: ${{ github.workspace }}/.venv/bin/pytest
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ( umask 077; printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key )
+          ( umask 077; printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts )
+
+      - name: Run deploy script on VM
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          # The VM's authorized_keys entry for this key sets a forced
+          # command (see deploy/SETUP.md) that always runs
+          # scripts/deploy.sh with the correct venv paths, regardless of
+          # what's requested here — this connection just needs to
+          # authenticate, not specify a command.
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              -o StrictHostKeyChecking=yes \
+              "$DEPLOY_USER@$DEPLOY_HOST"
