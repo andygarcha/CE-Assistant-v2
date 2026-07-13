@@ -1181,6 +1181,8 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     ---
     GAMENAME added to the site:
     - Tier4Emoji, ActionEmoji
+    - Genre tags: Tower Defense, Traditional Fighter (+3 more)
+    - Informational tags: Animal Protagonist, Curated (+18 more)
     - 3 Primary Objectives worth 25 points (+2 Uncleareds)
     - 5 Secondary Objectives worth 100 points (+1 Uncleared)
     - 1 Community Objective
@@ -1193,6 +1195,26 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
+
+    # genre tags
+    NUM_GENRE_TAGS = 2
+    genre_tag_names = game_new.genre_tag_names
+    if len(genre_tag_names) != 0:
+        update.description += (
+            f"\n- Genre tags: {', '.join(genre_tag_names[:NUM_GENRE_TAGS])}"
+        )
+        if len(genre_tag_names) > NUM_GENRE_TAGS:
+            update.description += f" (+{len(genre_tag_names) - NUM_GENRE_TAGS} more)"
+
+    # informational tags
+    NUM_INFO_TAGS = 2
+    info_tag_names = game_new.informational_tag_exclusive_names
+    if len(info_tag_names) != 0:
+        update.description += (
+            f"\n- Informational tags: {', '.join(info_tag_names[:NUM_INFO_TAGS])}"
+        )
+        if len(info_tag_names) > NUM_INFO_TAGS:
+            update.description += f" (+{len(info_tag_names) - NUM_INFO_TAGS} more)"
 
     # primary
     num_pos = len(game_new.get_primary_objectives())

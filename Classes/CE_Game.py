@@ -491,3 +491,86 @@ class CEAPIGame(CEGame):
     def header(self) -> str:
         "The header for this game."
         return self.full_data["header"]
+
+    @property
+    def genre_tags(self) -> list[dict]:
+        """
+        The genre tags.
+        If this game does not have `gameTags` as a key, this will return [].
+        """
+        if "gameTags" not in self.full_data:
+            return []
+        return self.__filter_tags(self.full_data["gameTags"], "genre")
+
+    @property
+    def informational_tags(self) -> list[dict]:
+        """
+        The informational tags.
+        If this game does not have `gameTags` as a key, this will return [].
+        """
+        if "gameTags" not in self.full_data:
+            return []
+        return self.__filter_tags(self.full_data["gameTags"], "informational")
+
+    @property
+    def informational_tags_exclusive(self) -> list[dict]:
+        """
+        The informational tags, exclusive of some 'excluded' tags.
+        If this game does not have `gameTags` as a key, this will return [].
+        """
+        tags = self.informational_tags
+
+        HAS_COMMUNITY_OBJECTIVES_ID = "0dd4a264-dfe6-4d85-8d24-fae23ca5250d"
+        HAS_SECONDARY_OBJECTIVES_ID = "23c84973-a07e-48db-96b1-97170cd0b759"
+        UNCLEARED_ID = "2b186758-b7c4-4888-abea-a94de550e311"
+        EXCLUDE = [
+            HAS_COMMUNITY_OBJECTIVES_ID,
+            HAS_SECONDARY_OBJECTIVES_ID,
+            UNCLEARED_ID,
+        ]
+
+        return [tag for tag in tags if tag["tagId"] not in EXCLUDE]
+
+    @property
+    def genre_tag_names(self) -> list[str]:
+        """
+        Returns the names of the genre tags associated with this game.
+        If this game has no genre tags, this will return [].
+        """
+        return [tag["tag"]["name"] for tag in self.genre_tags]
+
+    @property
+    def informational_tag_exclusive_names(self) -> list[str]:
+        """
+        Returns the names of the informational tags associated with this game.
+        If this game has no informational tags, this will return [].
+        """
+        return [tag["tag"]["name"] for tag in self.informational_tags_exclusive]
+
+    @staticmethod
+    def __filter_tags(tags: list[dict], tag_type: str):
+        """
+        Filters tags based on `type`.
+        This deduplicates logic from `self.genre_tags` and `self.informational_tags`, and any
+        future potential type addition.
+
+        Current layout of tags (13 July 2026):
+        ```
+        {
+            "gameId": "1e866995-6fec-452e-81ba-1e8f8594f4ea",
+            "tagId": "71d62012-2ca3-4514-8fa7-e9d0cc4128b5",
+            "createdAt": "2026-05-20T16:01:15.000Z",
+            "updatedAt": "2026-05-20T16:01:15.000Z",
+            "tag": {
+                "id": "71d62012-2ca3-4514-8fa7-e9d0cc4128b5",
+                "name": "Curated",
+                "icon": "",
+                "type": "informational",
+                "createdAt": "2026-04-01T16:09:16.000Z",
+                "updatedAt": "2026-04-01T16:09:16.000Z"
+            }
+        }
+        ```
+
+        """
+        return [tag for tag in tags if tag["tag"]["type"] == tag_type]
