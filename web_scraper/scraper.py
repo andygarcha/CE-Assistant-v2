@@ -107,6 +107,15 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
         logger.info("Flushed %d immediate updates.", len(immediate_rows))
 
 
+def compute_changed_game_ids(
+    updates: list[UpdateMessageForScraperProcess], removed_games: set[str]
+) -> set[str]:
+    """Games that actually produced an UpdateMessageForScraperProcess this loop,
+    plus removed games. A game whose updatedAt ticked without producing a real
+    diff (a "ghost update") is not included."""
+    return {u.game_ce_id for u in updates if u.game_ce_id is not None} | removed_games
+
+
 def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     pending = SupabaseReader.get_pending_game_updates()
     if not pending:
@@ -165,7 +174,7 @@ async def process_loop(
     updates.extend(_updates)
 
     # Promote pending game updates that had no further changes since last loop
-    changed_game_ids = {g.ce_id for g in games_new} | removed_games
+    changed_game_ids = compute_changed_game_ids(_updates, removed_games)
     stabilize_pending_updates(changed_game_ids)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
