@@ -1502,7 +1502,7 @@ def check_roles(
         # category roles don't care about completion
         # PO points only?
         for c_num in game_database.categories_num:
-            new_categories[c_num - 1] += game_new.primary_points
+            new_categories[c_num - 1] += game_new.user_points
 
     # CATEGORIES
     CATEGORY_ROLE_NAMES = ["Expert", "Master", "Grandmaster"]
