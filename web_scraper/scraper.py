@@ -1497,7 +1497,7 @@ def check_roles(
         if game_new.is_overcompleted(game_database):
             new_tiers[game_database.tier_num_include_so - 1] += game_new.user_points
         elif game_new.is_completed(game_database):
-            new_tiers[game_database.tier_num - 1] += game_new.user_points
+            new_tiers[game_database.tier_num - 1] += game_new.primary_points
 
         # category roles don't care about completion
         # PO points only?
