@@ -1471,34 +1471,38 @@ def check_roles(
     updates: list[UpdateMessageForScraperProcess] = []
 
     for game_old in games_old:
-        points = game_old.user_points
         game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
 
         if game_database is None:
             continue
 
         # if the game is completed
+        if game_old.is_overcompleted(game_database):
+            old_tiers[game_database.tier_num_include_so - 1] += game_old.user_points
         if game_old.is_completed(game_database):
-            old_tiers[game_database.tier_num - 1] += points
+            old_tiers[game_database.tier_num - 1] += game_old.primary_points
 
         # category roles don't care about completion
+        # PO points only?
         for c_num in game_database.categories_num:
-            old_categories[c_num - 1] += points
+            old_categories[c_num - 1] += game_old.primary_points
 
     for game_new in games_new:
-        points = game_new.user_points
         game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
 
         if game_database is None:
             continue
 
         # if the game is completed
-        if game_new.is_completed(game_database):
-            new_tiers[game_database.tier_num - 1] += points
+        if game_new.is_overcompleted(game_database):
+            new_tiers[game_database.tier_num_include_so - 1] += game_new.user_points
+        elif game_new.is_completed(game_database):
+            new_tiers[game_database.tier_num - 1] += game_new.primary_points
 
         # category roles don't care about completion
+        # PO points only?
         for c_num in game_database.categories_num:
-            new_categories[c_num - 1] += points
+            new_categories[c_num - 1] += game_new.primary_points
 
     # CATEGORIES
     CATEGORY_ROLE_NAMES = ["Expert", "Master", "Grandmaster"]
