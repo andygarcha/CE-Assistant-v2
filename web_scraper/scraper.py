@@ -1270,10 +1270,12 @@ def create_update_updated_game(
     ---
     game_old: `CEGame`
         The previous data for this game.
-    game_new: `CEAPIGame`
-        The new data for this game.
-        Comes with the added bonus of having
-        additional site information.
+    game_new: `CEGame` or `CEAPIGame`
+        The new data for this game. If a `CEAPIGame` is passed, it comes
+        with the added bonus of having additional site information, and
+        the update image uses its `.header`. If a plain `CEGame` is passed
+        instead (e.g. data read back from storage), the update image falls
+        back to its `._banner`.
 
     Returns
     -------
