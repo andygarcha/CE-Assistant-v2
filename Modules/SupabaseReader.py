@@ -703,7 +703,7 @@ def dump_user(user: CEUser):
             obj_data = {
                 "user_ce_id": user.ce_id,
                 "objective_ce_id": objective.ce_id,
-                "user_points": objective.user_points,
+                "partial": objective.partial,
                 "updated_at_CE": _now_iso(),
             }
             supabase.table("userObjectives").upsert(obj_data).execute()
@@ -795,7 +795,7 @@ def bulk_dump_users(
                         {
                             "user_ce_id": user.ce_id,
                             "objective_ce_id": objective.ce_id,
-                            "user_points": objective.user_points,
+                            "partial": objective.partial,
                             "updated_at_CE": now_iso,
                         }
                     )

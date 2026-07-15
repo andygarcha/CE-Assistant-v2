@@ -1291,7 +1291,10 @@ class TestBulkDumpUsersDualWrite:
                         ce_id="game-001",
                         user_objectives=[
                             make_user_objective(
-                                ce_id="obj-001", game_ce_id="game-001", user_points=25
+                                ce_id="obj-001",
+                                game_ce_id="game-001",
+                                user_points=25,
+                                partial=True,
                             ),
                         ],
                     ),
@@ -1323,7 +1326,7 @@ class TestBulkDumpUsersDualWrite:
             cached_objs = LocalCache.get_user_objectives("user-new")
             assert len(cached_objs) == 1
             assert cached_objs[0]["objective_ce_id"] == "obj-001"
-            assert cached_objs[0]["user_points"] == 25
+            assert cached_objs[0]["partial"] == 1
         finally:
             _teardown_cache(tmpdir)
 
@@ -1538,7 +1541,10 @@ class TestDumpUserDualWrite:
                         ce_id="game-001",
                         user_objectives=[
                             make_user_objective(
-                                ce_id="obj-001", game_ce_id="game-001", user_points=15
+                                ce_id="obj-001",
+                                game_ce_id="game-001",
+                                user_points=15,
+                                partial=True,
                             ),
                         ],
                     ),
@@ -1563,7 +1569,44 @@ class TestDumpUserDualWrite:
 
             cached_objs = LocalCache.get_user_objectives("user-new")
             assert len(cached_objs) == 1
-            assert cached_objs[0]["user_points"] == 15
+            assert cached_objs[0]["partial"] == 1
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_writes_partial_to_supabase_payload(self):
+        tmpdir = _init_cache()
+        try:
+            from tests.conftest import make_user, make_user_game, make_user_objective
+
+            user = make_user(
+                ce_id="user-new2",
+                owned_games=[
+                    make_user_game(
+                        ce_id="game-001",
+                        user_objectives=[
+                            make_user_objective(
+                                ce_id="obj-001", game_ce_id="game-001", partial=True
+                            ),
+                        ],
+                    ),
+                ],
+            )
+
+            with patch.object(SupabaseReader, "supabase") as mock_sb:
+                mock_table = MagicMock()
+                mock_sb.table.return_value = mock_table
+                mock_table.upsert.return_value = mock_table
+                mock_table.execute.return_value = MagicMock(data=[])
+
+                SupabaseReader.dump_user(user)
+
+            upsert_calls = [
+                c for c in mock_sb.table.call_args_list if c.args == ("userObjectives",)
+            ]
+            assert len(upsert_calls) >= 1
+            payload = mock_table.upsert.call_args_list[-1].args[0]
+            assert payload["partial"] is True
+            assert "user_points" not in payload
         finally:
             _teardown_cache(tmpdir)
 
