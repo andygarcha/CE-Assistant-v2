@@ -8,6 +8,13 @@ from Modules import SupabaseReader, hm
 logger = logging.getLogger(__name__)
 
 
+def _format_not_ready_list(not_ready_updates: list[dict]) -> str:
+    suffix = ""
+    for _update in not_ready_updates:
+        suffix += f"\n- [{_update['title']}]({_update['url']})"
+    return suffix
+
+
 async def deliver_updates(client: discord.Client) -> int:
     last_run = SupabaseReader.get_last_loop(offset=False)
     ts = int(last_run.timestamp())
@@ -23,7 +30,10 @@ async def deliver_updates(client: discord.Client) -> int:
 
     if not updates:
         if not_ready:
-            msg = f":information_source: Nothing stable to send yet ({not_ready} not ready yet)."
+            msg = (
+                f":information_source: Nothing stable to send yet ({not_ready} not ready yet)."
+                f"{_format_not_ready_list(not_ready_updates)}"
+            )
             logger.info(msg)
             await hm.send_message(client, "privatelog", msg, False)
         return 0
@@ -31,9 +41,8 @@ async def deliver_updates(client: discord.Client) -> int:
     msg = (
         f":information_source: Sending {len(updates)} "
         f"message{'' if len(updates) == 1 else 's'} ({not_ready} not ready yet)."
+        f"{_format_not_ready_list(not_ready_updates)}"
     )
-    for _update in not_ready_updates:
-        msg += f"- [{_update['title']}]({_update['url']})"
     logger.info(msg)
     await hm.send_message(client, "privatelog", msg, False)
 

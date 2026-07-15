@@ -198,7 +198,10 @@ class TestDeliverUpdates:
             ),
             patch(
                 "update_delivery.SupabaseReader.get_pending_game_updates",
-                return_value=[{"id": "p1"}, {"id": "p2"}],
+                return_value=[
+                    {"id": "p1", "title": "Game A", "url": "https://cedb.me/game/a"},
+                    {"id": "p2", "title": "Game B", "url": "https://cedb.me/game/b"},
+                ],
             ),
             patch("update_delivery.SupabaseReader.mark_updates_delivered"),
             patch(
@@ -210,7 +213,11 @@ class TestDeliverUpdates:
         ):
             asyncio.run(deliver_updates(mock_client))
 
-        expected = ":information_source: Sending 1 message (2 not ready yet)."
+        expected = (
+            ":information_source: Sending 1 message (2 not ready yet)."
+            "\n- [Game A](https://cedb.me/game/a)"
+            "\n- [Game B](https://cedb.me/game/b)"
+        )
         assert expected in caplog.text
         privatelog_call = _find_privatelog_call(mock_send, "Sending 1 message")
         assert privatelog_call.args[2] == expected
@@ -223,7 +230,9 @@ class TestDeliverUpdates:
             patch("update_delivery.SupabaseReader.get_stable_updates", return_value=[]),
             patch(
                 "update_delivery.SupabaseReader.get_pending_game_updates",
-                return_value=[{"id": "p1"}],
+                return_value=[
+                    {"id": "p1", "title": "Game A", "url": "https://cedb.me/game/a"}
+                ],
             ),
             patch("update_delivery.SupabaseReader.mark_updates_delivered"),
             patch(
@@ -236,7 +245,10 @@ class TestDeliverUpdates:
             count = asyncio.run(deliver_updates(mock_client))
 
         assert count == 0
-        expected = ":information_source: Nothing stable to send yet (1 not ready yet)."
+        expected = (
+            ":information_source: Nothing stable to send yet (1 not ready yet)."
+            "\n- [Game A](https://cedb.me/game/a)"
+        )
         assert expected in caplog.text
         nothing_stable_call = _find_privatelog_call(mock_send, "Nothing stable")
         assert nothing_stable_call.args[2] == expected
