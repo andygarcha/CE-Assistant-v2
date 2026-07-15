@@ -144,6 +144,32 @@ def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
     SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
 
 
+async def announce_new_game(game_new: CEAPIGame) -> None:
+    """
+    Sends a new game's "added to the site" announcement immediately, rather
+    than routing it through the pending/stabilize debounce used for edits to
+    existing games. A game is only ever "new" (no prior row in the `game`
+    table) for the single loop it's first detected -- any further edits
+    afterward are picked up as normal updates to an existing game, so
+    there's nothing to wait for here, just a fresh, guaranteed-complete
+    fetch: `game_new` may have come from the daily full_scrape hit
+    (`/api/games/full`), which omits `gameTags`, unlike `/api/game/{id}`.
+    """
+    current_api_game = await CEAPIReader.get_game(game_new.ce_id)
+    if current_api_game is None:
+        logger.info(
+            "New game %s vanished before it could be announced.", game_new.ce_id
+        )
+        return
+    if not current_api_game.is_finished:
+        logger.info(
+            "New game %s is hidden/unfinished; skipping announcement.",
+            game_new.ce_id,
+        )
+        return
+    _write_stable_update(create_update_new_game(current_api_game))
+
+
 async def finalize_stabilized_game_update(game_ce_id: str) -> None:
     """
     Once a game stops changing, regenerate its diff message from the
@@ -154,28 +180,17 @@ async def finalize_stabilized_game_update(game_ce_id: str) -> None:
     version of the game exists in Supabase at this point.
     """
 
-    # No snapshot means this was a new game (existing games are always
-    # snapshotted -- see should_snapshot_pending_game). New games have no
-    # "old" state to diff against, so instead of promoting whatever
-    # create_update_new_game produced on the loop it was first seen
-    # (which may have come from a full_scrape hit missing gameTags),
-    # re-fetch it fresh and rebuild the message from current data.
+    # New games are announced immediately (see announce_new_game) and never
+    # produce a pending row, so every row reaching this function should
+    # belong to an existing game and have a snapshot (see
+    # should_snapshot_pending_game). A missing snapshot here means that
+    # invariant broke somewhere -- log and bail rather than guessing.
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
-        current_api_game = await CEAPIReader.get_game(game_ce_id)
-        if current_api_game is None:
-            logger.info(
-                "New game %s vanished before stabilizing; dropping announcement.",
-                game_ce_id,
-            )
-        elif not current_api_game.is_finished:
-            logger.info(
-                "New game %s is hidden/unfinished at stabilization time; "
-                "dropping announcement.",
-                game_ce_id,
-            )
-        else:
-            _write_stable_update(create_update_new_game(current_api_game))
+        logger.warning(
+            "No pending snapshot found for game %s at stabilization; skipping.",
+            game_ce_id,
+        )
         return
 
     current = SupabaseReader.get_game(game_ce_id)
@@ -563,10 +578,14 @@ async def update_games(
                 logger.debug("Updating game %d.", i)
 
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
+            if game_old is None:
+                await announce_new_game(game_new)
+                continue
+
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
-                if game_old is not None and should_snapshot_pending_game(
+                if should_snapshot_pending_game(
                     game_new.ce_id, _update, existing_snapshot_ids
                 ):
                     SupabaseReader.upsert_pending_game_snapshot(game_old)
@@ -1039,22 +1058,16 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
 
 
 def update_one_game(
-    game_old: CEGame | None, game_new: CEAPIGame | None
+    game_old: CEGame, game_new: CEAPIGame | None
 ) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
     """
-    Generates an update for a game.
+    Generates an update for an existing game -- either it was removed
+    (`game_new` is None) or it changed (`game_new` is present). New games
+    are announced separately via `announce_new_game`, since they have no
+    prior state to diff against.
     """
-    # NEW GAME
-    if game_old is None and game_new is not None:
-        return create_update_new_game(game_new), []
-
-    # REMOVED GAME
-    if game_new is None and game_old is not None:
+    if game_new is None:
         return create_update_removed_game(game_old), []
-
-    # by this point neither should be none but they could both be...?
-    if game_new is None or game_old is None:
-        return None, None
 
     return create_update_updated_game(game_old, game_new)
 

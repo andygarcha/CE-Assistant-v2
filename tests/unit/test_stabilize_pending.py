@@ -1,7 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
 
-from tests.conftest import make_api_game, make_game, make_objective
+from tests.conftest import make_game, make_objective
 from web_scraper.scraper import (
     finalize_stabilized_game_update,
     stabilize_pending_updates,
@@ -17,11 +17,6 @@ def _run(pending: list[dict], changed: set[str]) -> list | None:
         ),
         patch(
             "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
-            return_value=None,
-        ),
-        patch(
-            "web_scraper.scraper.CEAPIReader.get_game",
-            new_callable=AsyncMock,
             return_value=None,
         ),
         patch(
@@ -139,84 +134,28 @@ class TestStabilizeEmptyInputs:
 
 
 class TestFinalizeStabilizedGameUpdate:
-    def test_no_snapshot_and_game_gone_writes_nothing(self):
-        """No snapshot (new game) and the game is no longer on the site --
-        nothing to send."""
+    def test_no_snapshot_found_logs_and_writes_nothing(self):
+        """New games are announced immediately (see announce_new_game) and
+        never produce a pending_game_snapshot row, so every row reaching
+        this function should belong to an existing game and have a
+        snapshot. A missing snapshot means that invariant broke somewhere;
+        this should be a no-op (logged elsewhere), not a crash."""
         with (
             patch(
                 "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
                 return_value=None,
             ),
             patch(
-                "web_scraper.scraper.CEAPIReader.get_game",
-                new_callable=AsyncMock,
-                return_value=None,
-            ),
-            patch(
                 "web_scraper.scraper.SupabaseReader.write_scraper_update"
             ) as mock_write,
+            patch(
+                "web_scraper.scraper.SupabaseReader.delete_pending_game_snapshot"
+            ) as mock_delete,
         ):
             asyncio.run(finalize_stabilized_game_update("game-001"))
 
         mock_write.assert_not_called()
-
-    def test_no_snapshot_regenerates_new_game_message_from_fresh_data(self):
-        """No snapshot means this was a new game. Its message should be
-        rebuilt from a fresh CEAPIGame fetch (which has gameTags), not
-        whatever was captured on the loop it was first detected (which may
-        have come from a full_scrape hit, where /api/games/full omits
-        gameTags entirely)."""
-        fresh_game = make_api_game(
-            ce_id="game-001",
-            game_tags=[
-                {"tagId": "t1", "tag": {"name": "Tower Defense", "type": "genre"}}
-            ],
-        )
-        with (
-            patch(
-                "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
-                return_value=None,
-            ),
-            patch(
-                "web_scraper.scraper.CEAPIReader.get_game",
-                new_callable=AsyncMock,
-                return_value=fresh_game,
-            ) as mock_get_game,
-            patch(
-                "web_scraper.scraper.SupabaseReader.write_scraper_update"
-            ) as mock_write,
-        ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
-
-        mock_get_game.assert_called_once_with("game-001")
-        mock_write.assert_called_once()
-        written_row = mock_write.call_args[0][0]
-        assert written_row["game_ce_id"] == "game-001"
-        assert written_row["status"] == "stable"
-        assert "Genre tags: Tower Defense" in written_row["description"]
-
-    def test_no_snapshot_hidden_game_writes_nothing(self):
-        """No snapshot (new game), but the game is hidden/unfinished by the
-        time we re-fetch it -- must not bypass the is_finished filter that
-        every other new-game path in the file enforces."""
-        hidden_game = make_api_game(ce_id="game-001", is_finished=False)
-        with (
-            patch(
-                "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
-                return_value=None,
-            ),
-            patch(
-                "web_scraper.scraper.CEAPIReader.get_game",
-                new_callable=AsyncMock,
-                return_value=hidden_game,
-            ),
-            patch(
-                "web_scraper.scraper.SupabaseReader.write_scraper_update"
-            ) as mock_write,
-        ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
-
-        mock_write.assert_not_called()
+        mock_delete.assert_not_called()
 
     def test_real_diff_writes_stable_row_and_deletes_snapshot(self):
         snapshot = make_game(
