@@ -18,7 +18,8 @@ async def deliver_updates(client: discord.Client) -> int:
         await hm.send_message(client, "privatelog", check_msg, False)
 
     updates = SupabaseReader.get_stable_updates()
-    not_ready = len(SupabaseReader.get_pending_game_updates())
+    not_ready_updates = SupabaseReader.get_pending_game_updates()
+    not_ready = len(not_ready_updates)
 
     if not updates:
         if not_ready:
@@ -31,6 +32,8 @@ async def deliver_updates(client: discord.Client) -> int:
         f":information_source: Sending {len(updates)} "
         f"message{'' if len(updates) == 1 else 's'} ({not_ready} not ready yet)."
     )
+    for _update in not_ready_updates:
+        msg += f"- [{_update['title']}]({_update['url']})"
     logger.info(msg)
     await hm.send_message(client, "privatelog", msg, False)
 
