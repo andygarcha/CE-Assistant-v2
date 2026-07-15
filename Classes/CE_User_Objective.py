@@ -9,13 +9,17 @@ class CEUserObjective:
         ce_id: str,
         game_ce_id: str,
         type: hm.OBJECTIVE_TYPES,
-        user_points: int,
+        partial: bool,
+        point_value: int,
+        point_value_partial: int,
         name: str = "",
     ):
         self._type: hm.OBJECTIVE_TYPES = type
         self._ce_id = ce_id
         self._game_ce_id = game_ce_id
-        self._user_points = user_points
+        self._partial = partial
+        self._point_value = point_value
+        self._point_value_partial = point_value_partial
         self._name = name
 
     def __str__(self) -> str:
@@ -32,8 +36,14 @@ class CEUserObjective:
 
     @property
     def user_points(self) -> int:
-        """Returns the number of points this user has for this objective."""
-        return self._user_points
+        """Returns the number of points this user has for this objective,
+        derived live from the objective's current point value."""
+        return self._point_value_partial if self._partial else self._point_value
+
+    @property
+    def partial(self) -> bool:
+        """Returns whether this user's completion of this objective is partial."""
+        return self._partial
 
     @property
     def ce_id(self) -> str:
@@ -65,7 +75,7 @@ class CEUserObjective:
         return {
             "user_ce_id": user_ce_id,
             "objective_ce_id": self.ce_id,
-            "user_points": self.user_points,
+            "partial": self.partial,
             "updated_at_CE": None,
         }
 
