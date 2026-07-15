@@ -84,3 +84,25 @@ class TestUpsertPendingGameSnapshot:
             tables_written = [c.args[0] for c in mock_sb.table.call_args_list]
             assert "pendingObjective" not in tables_written
             assert "pendingObjectiveRequirement" not in tables_written
+
+    def test_objective_with_no_requirements_skips_requirement_write(self):
+        mock_table = MagicMock()
+        with patch.object(SupabaseReader, "supabase") as mock_sb:
+            mock_sb.table.return_value = mock_table
+            mock_table.upsert.return_value = mock_table
+            mock_table.delete.return_value = mock_table
+            mock_table.in_.return_value = mock_table
+            mock_table.execute.return_value = MagicMock(data=[])
+
+            objective = make_objective(
+                ce_id="obj-aaaa-0000-0000-000000000000",
+                achievement_ce_ids=None,
+                requirements=None,
+            )
+            game = make_game(objectives=[objective])
+            SupabaseReader.upsert_pending_game_snapshot(game)
+
+            tables_written = [c.args[0] for c in mock_sb.table.call_args_list]
+            assert "pendingObjective" in tables_written  # objective row still written
+            # only the pre-write delete touches pendingObjectiveRequirement; no upsert
+            assert tables_written.count("pendingObjectiveRequirement") == 1
