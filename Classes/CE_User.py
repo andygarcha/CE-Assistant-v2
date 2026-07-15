@@ -682,7 +682,7 @@ class CEAPIUser(CEUser):
 
             # add to the return string
             return_str += (
-                f"{objective.type_short} {objective.name} ({objective.user_points} {hm.get_emoji('Points')})\n"
+                f"{objective.type_short} '{objective.name}' ({objective.user_points} {hm.get_emoji('Points')})\n"
                 f"- [{game_name}](https://cedb.me/game/{objective.game_ce_id})\n"
                 f"- <t:{completed_at_ts}>\n"
             )
