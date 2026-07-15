@@ -1436,6 +1436,22 @@ def delete_game(ce_id: str):
     LocalCache.delete_game_cascade(ce_id)
 
 
+def delete_pending_game_snapshot(ce_id: str) -> None:
+    objectives = (
+        supabase.table("pendingObjective")
+        .select("ce_id")
+        .eq("game_ce_id", ce_id)
+        .execute()
+        .data
+    )
+    for obj in objectives:
+        supabase.table("pendingObjectiveRequirement").delete().eq(
+            "objective_ce_id", obj["ce_id"]
+        ).execute()
+    supabase.table("pendingObjective").delete().eq("game_ce_id", ce_id).execute()
+    supabase.table("pendingGame").delete().eq("ce_id", ce_id).execute()
+
+
 def delete_user(ce_id: str):
     supabase.table("userGames").delete().eq("user_ce_id", ce_id).execute()
     supabase.table("userObjectives").delete().eq("user_ce_id", ce_id).execute()

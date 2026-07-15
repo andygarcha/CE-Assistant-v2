@@ -195,3 +195,40 @@ class TestGetPendingGameSnapshot:
             assert result.categories == ["Action"]
             assert len(result.all_objectives) == 1
             assert result.all_objectives[0].ce_id == "obj-aaaa"
+
+
+class TestDeletePendingGameSnapshot:
+    def test_deletes_in_fk_safe_order(self):
+        mock_table = MagicMock()
+        with patch.object(SupabaseReader, "supabase") as mock_sb:
+            mock_sb.table.return_value = mock_table
+            mock_table.select.return_value = mock_table
+            mock_table.delete.return_value = mock_table
+            mock_table.eq.return_value = mock_table
+            mock_table.execute.return_value = MagicMock(
+                data=[{"ce_id": "obj-aaaa"}]
+            )
+
+            SupabaseReader.delete_pending_game_snapshot("game-001")
+
+            tables_touched = [c.args[0] for c in mock_sb.table.call_args_list]
+            assert tables_touched == [
+                "pendingObjective",
+                "pendingObjectiveRequirement",
+                "pendingObjective",
+                "pendingGame",
+            ]
+
+    def test_no_objectives_still_deletes_game_row(self):
+        mock_table = MagicMock()
+        with patch.object(SupabaseReader, "supabase") as mock_sb:
+            mock_sb.table.return_value = mock_table
+            mock_table.select.return_value = mock_table
+            mock_table.delete.return_value = mock_table
+            mock_table.eq.return_value = mock_table
+            mock_table.execute.return_value = MagicMock(data=[])
+
+            SupabaseReader.delete_pending_game_snapshot("game-001")
+
+            tables_touched = [c.args[0] for c in mock_sb.table.call_args_list]
+            assert "pendingGame" in tables_touched
