@@ -1262,7 +1262,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
 
 
 def create_update_updated_game(
-    game_old: CEGame, game_new: CEAPIGame
+    game_old: CEGame, game_new: CEGame | CEAPIGame
 ) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
     """Creates the `UpdateMessageForScraperProcess` for an updated game.
 
@@ -1307,7 +1307,7 @@ def create_update_updated_game(
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
-    update.image = game_new.header
+    update.image = game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
 
     # POINT/TIER CHANGE
     if game_old.get_total_points() == game_new.get_total_points():
