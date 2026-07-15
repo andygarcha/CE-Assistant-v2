@@ -83,24 +83,10 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
             )
             continue
 
-        row = {
-            "is_embed": update.is_embed,
-            "channel": update.location,
-            "text": update.text,
-            "title": update.title,
-            "description": update.description,
-            "image": update.image,
-            "url": update.url,
-            "color": update.color,
-            "game_ce_id": update.game_ce_id,
-        }
-
-        if row["game_ce_id"] is not None:
-            row["status"] = "pending"
-            SupabaseReader.upsert_pending_update(row)
+        if update.game_ce_id is not None:
+            SupabaseReader.upsert_pending_update(_update_to_row(update, "pending"))
         else:
-            row["status"] = "stable"
-            immediate_rows.append(row)
+            immediate_rows.append(_update_to_row(update, "stable"))
 
     if immediate_rows:
         SupabaseReader.write_scraper_updates_bulk(immediate_rows)
@@ -139,8 +125,8 @@ def should_snapshot_pending_game(
     return game_ce_id not in existing_snapshot_ids
 
 
-def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
-    row = {
+def _update_to_row(update: UpdateMessageForScraperProcess, status: str) -> dict:
+    return {
         "is_embed": update.is_embed,
         "channel": update.location,
         "text": update.text,
@@ -150,9 +136,12 @@ def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
         "url": update.url,
         "color": update.color,
         "game_ce_id": update.game_ce_id,
-        "status": "stable",
+        "status": status,
     }
-    SupabaseReader.write_scraper_update(row)
+
+
+def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
+    SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
 
 
 async def finalize_stabilized_game_update(game_ce_id: str) -> None:
@@ -174,7 +163,18 @@ async def finalize_stabilized_game_update(game_ce_id: str) -> None:
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
         current_api_game = await CEAPIReader.get_game(game_ce_id)
-        if current_api_game is not None:
+        if current_api_game is None:
+            logger.info(
+                "New game %s vanished before stabilizing; dropping announcement.",
+                game_ce_id,
+            )
+        elif not current_api_game.is_finished:
+            logger.info(
+                "New game %s is hidden/unfinished at stabilization time; "
+                "dropping announcement.",
+                game_ce_id,
+            )
+        else:
             _write_stable_update(create_update_new_game(current_api_game))
         return
 
@@ -205,11 +205,24 @@ async def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     if not to_promote:
         return
 
+    stabilized = 0
     for row in to_promote:
-        await finalize_stabilized_game_update(row["game_ce_id"])
+        try:
+            await finalize_stabilized_game_update(row["game_ce_id"])
+        except Exception:
+            # Isolate one row's failure (e.g. a transient CE API error while
+            # re-fetching a new game) from the rest of the batch -- leave
+            # this row pending so it's retried next loop instead of aborting
+            # everyone else still in to_promote.
+            logger.exception(
+                "Failed to finalize pending update for game %s; will retry next loop.",
+                row["game_ce_id"],
+            )
+            continue
         SupabaseReader.delete_stale_pending_update(row["id"])
+        stabilized += 1
 
-    logger.info("Stabilized %d pending game updates.", len(to_promote))
+    logger.info("Stabilized %d pending game updates.", stabilized)
 
 
 """ TOP LEVEL FUNCTION """

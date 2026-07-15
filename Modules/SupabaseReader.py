@@ -1334,14 +1334,6 @@ def get_pending_game_updates() -> list[dict]:
     )
 
 
-def promote_pending_to_stable(ids: list[str]) -> None:
-    if not ids:
-        return
-    supabase.table("scraper_updates").update({"status": "stable"}).in_(
-        "id", ids
-    ).execute()
-
-
 def delete_stale_pending_update(id: str) -> None:
     supabase.table("scraper_updates").delete().eq("id", id).execute()
 

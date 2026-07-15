@@ -195,6 +195,29 @@ class TestFinalizeStabilizedGameUpdate:
         assert written_row["status"] == "stable"
         assert "Genre tags: Tower Defense" in written_row["description"]
 
+    def test_no_snapshot_hidden_game_writes_nothing(self):
+        """No snapshot (new game), but the game is hidden/unfinished by the
+        time we re-fetch it -- must not bypass the is_finished filter that
+        every other new-game path in the file enforces."""
+        hidden_game = make_api_game(ce_id="game-001", is_finished=False)
+        with (
+            patch(
+                "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
+                return_value=None,
+            ),
+            patch(
+                "web_scraper.scraper.CEAPIReader.get_game",
+                new_callable=AsyncMock,
+                return_value=hidden_game,
+            ),
+            patch(
+                "web_scraper.scraper.SupabaseReader.write_scraper_update"
+            ) as mock_write,
+        ):
+            asyncio.run(finalize_stabilized_game_update("game-001"))
+
+        mock_write.assert_not_called()
+
     def test_real_diff_writes_stable_row_and_deletes_snapshot(self):
         snapshot = make_game(
             ce_id="game-001",
@@ -303,3 +326,77 @@ class TestStabilizeUsesFinalize:
 
         mock_finalize.assert_called_once_with("game-001")
         mock_delete_stale.assert_called_once_with("p1")
+
+    def test_preserves_row_order(self):
+        pending = [
+            {"id": "z9", "game_ce_id": "game-z"},
+            {"id": "a1", "game_ce_id": "game-a"},
+            {"id": "m5", "game_ce_id": "game-m"},
+        ]
+
+        finalized = _run(pending=pending, changed=set())
+        assert finalized == ["z9", "a1", "m5"]
+
+    def test_large_changed_set_with_one_matching(self):
+        large_changed = {f"game-{i:04d}" for i in range(500)}
+        large_changed.add("game-match")
+        finalized = _run(
+            pending=[
+                {"id": "p1", "game_ce_id": "game-match"},
+                {"id": "p2", "game_ce_id": "game-safe"},
+            ],
+            changed=large_changed,
+        )
+        assert finalized == ["p2"]
+
+
+class TestStabilizeErrorIsolation:
+    """A single row's finalize failure (e.g. a transient CE API error while
+    re-fetching a new game) must not abort the rest of the batch, and the
+    failing row must stay pending so it's retried next loop."""
+
+    def test_failing_row_is_not_deleted_but_others_still_are(self):
+        pending = [
+            {"id": "p1", "game_ce_id": "game-fails"},
+            {"id": "p2", "game_ce_id": "game-ok"},
+        ]
+
+        async def _finalize(game_ce_id: str) -> None:
+            if game_ce_id == "game-fails":
+                raise RuntimeError("transient CE API error")
+
+        with (
+            patch(
+                "web_scraper.scraper.SupabaseReader.get_pending_game_updates",
+                return_value=pending,
+            ),
+            patch(
+                "web_scraper.scraper.finalize_stabilized_game_update",
+                side_effect=_finalize,
+            ),
+            patch(
+                "web_scraper.scraper.SupabaseReader.delete_stale_pending_update"
+            ) as mock_delete,
+        ):
+            asyncio.run(stabilize_pending_updates(set()))
+
+        mock_delete.assert_called_once_with("p2")
+
+    def test_failing_row_does_not_raise_out_of_stabilize(self):
+        pending = [{"id": "p1", "game_ce_id": "game-fails"}]
+
+        async def _finalize(game_ce_id: str) -> None:
+            raise RuntimeError("boom")
+
+        with (
+            patch(
+                "web_scraper.scraper.SupabaseReader.get_pending_game_updates",
+                return_value=pending,
+            ),
+            patch(
+                "web_scraper.scraper.finalize_stabilized_game_update",
+                side_effect=_finalize,
+            ),
+            patch("web_scraper.scraper.SupabaseReader.delete_stale_pending_update"),
+        ):
+            asyncio.run(stabilize_pending_updates(set()))  # must not raise
