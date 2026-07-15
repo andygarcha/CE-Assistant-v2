@@ -179,6 +179,15 @@ def finalize_stabilized_game_update(game_ce_id: str) -> bool:
 
 
 def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+    """
+    This function accepts `changed_game_ids`, which is a list of
+    game IDs that we can guarantee changed in between the previous two
+    scraper loops (rather than just blindly checking the `lastUpdated`
+    values).
+
+    If the game has not changed in between the last two loops, it will
+    not be in this array, and we can promote it.
+    """
     pending = SupabaseReader.get_pending_game_updates()
     if not pending:
         return
