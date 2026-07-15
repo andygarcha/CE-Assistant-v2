@@ -439,6 +439,121 @@ def bulk_dump_games(
             time.sleep(pause_seconds)
 
 
+def upsert_pending_game_snapshot(game: CEGame) -> None:
+    """Writes a full snapshot of a CEGame (game row + its objectives + their requirements)
+    into the three new pending tables.
+
+    Modeled on bulk_dump_games but singular, targeting the pending* tables, and skipping
+    all LocalCache.* calls per the Global Constraints.
+    """
+    now_iso = _now_iso()
+
+    game_row = {
+        "ce_id": game.ce_id,
+        "name": game.game_name,
+        "platform": game.platform,
+        "platform_id": game.platform_id,
+        "category_primary": None,
+        "image_header": game._banner,
+        "image_icon": "",
+        "categories": game.categories,
+        "updated_at_CE": now_iso,
+    }
+    supabase.table("pendingGame").upsert(game_row).execute()
+
+    objective_ids = [o.ce_id for o in game.all_objectives]
+    if not objective_ids:
+        return
+
+    supabase.table("pendingObjectiveRequirement").delete().in_(
+        "objective_ce_id", objective_ids
+    ).execute()
+
+    objectives_payload = []
+    requirements_payload = []
+    for objective in game.all_objectives:
+        objectives_payload.append(
+            {
+                "ce_id": objective.ce_id,
+                "game_ce_id": objective.game_ce_id,
+                "type": objective.type,
+                "name": objective.name,
+                "description": objective.description,
+                "points": objective.point_value,
+                "points_partial": objective.partial_points,
+                "updated_at_CE": now_iso,
+            }
+        )
+        for achievement_id in objective.achievement_ce_ids or []:
+            requirements_payload.append(
+                {
+                    "objective_ce_id": objective.ce_id,
+                    "requirement_type": "achievement",
+                    "data": achievement_id,
+                    "updated_at_CE": now_iso,
+                }
+            )
+        if objective.requirements:
+            requirements_payload.append(
+                {
+                    "objective_ce_id": objective.ce_id,
+                    "requirement_type": "custom",
+                    "data": objective.requirements,
+                    "updated_at_CE": now_iso,
+                }
+            )
+
+    supabase.table("pendingObjective").upsert(objectives_payload).execute()
+    if requirements_payload:
+        supabase.table("pendingObjectiveRequirement").upsert(
+            requirements_payload
+        ).execute()
+
+
+def get_pending_game_snapshot_ids() -> set[str]:
+    """Returns the set of ce_ids for all pending games (existence check).
+
+    Used once per scraper loop to avoid re-snapshotting a game that's already mid-cycle.
+    """
+    rows = supabase.table("pendingGame").select("ce_id").execute().data
+    return {r["ce_id"] for r in rows}
+
+
+def get_pending_game_snapshot(ce_id: str) -> CEGame | None:
+    """Reconstructs a full CEGame from the pending snapshot tables.
+
+    Used later to build a cumulative diff. Returns None if the game is not found.
+    """
+    game_rows = supabase.table("pendingGame").select().eq("ce_id", ce_id).execute().data
+    if not game_rows:
+        return None
+    game_row = game_rows[0]
+
+    objective_rows = (
+        supabase.table("pendingObjective")
+        .select()
+        .eq("game_ce_id", ce_id)
+        .execute()
+        .data
+    )
+    objective_ids = [o["ce_id"] for o in objective_rows]
+    requirement_rows = []
+    if objective_ids:
+        requirement_rows = (
+            supabase.table("pendingObjectiveRequirement")
+            .select()
+            .in_("objective_ce_id", objective_ids)
+            .execute()
+            .data
+        )
+
+    cats = [
+        {"category": c, "index": i}
+        for i, c in enumerate(game_row.get("categories") or [])
+    ]
+    return __supabase_to_game(game_row, objective_rows, requirement_rows, cats)
+
+
 # === USERS ===
 
 
@@ -1227,6 +1342,10 @@ def promote_pending_to_stable(ids: list[str]) -> None:
     ).execute()
 
 
+def delete_stale_pending_update(id: str) -> None:
+    supabase.table("scraper_updates").delete().eq("id", id).execute()
+
+
 def upsert_pending_update(update: dict) -> None:
     existing = (
         supabase.table("scraper_updates")
@@ -1317,6 +1436,22 @@ def delete_game(ce_id: str):
     supabase.table("games").delete().eq("ce_id", ce_id).execute()
 
     LocalCache.delete_game_cascade(ce_id)
+
+
+def delete_pending_game_snapshot(ce_id: str) -> None:
+    objectives = (
+        supabase.table("pendingObjective")
+        .select("ce_id")
+        .eq("game_ce_id", ce_id)
+        .execute()
+        .data
+    )
+    for obj in objectives:
+        supabase.table("pendingObjectiveRequirement").delete().eq(
+            "objective_ce_id", obj["ce_id"]
+        ).execute()
+    supabase.table("pendingObjective").delete().eq("game_ce_id", ce_id).execute()
+    supabase.table("pendingGame").delete().eq("ce_id", ce_id).execute()
 
 
 def delete_user(ce_id: str):

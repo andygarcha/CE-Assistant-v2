@@ -116,18 +116,105 @@ def compute_changed_game_ids(
     return {u.game_ce_id for u in updates if u.game_ce_id is not None} | removed_games
 
 
+def should_snapshot_pending_game(
+    game_ce_id: str,
+    update: UpdateMessageForScraperProcess | None,
+    existing_snapshot_ids: set[str],
+) -> bool:
+    """
+    This function checks that a game *should* be snapshotted out of
+    the regular `game` / `objective` / `objectiveRequirement` table
+    and into the `pending*` tables with the following logic:
+    - the game was actually updated since the
+      last scrape (non-empty update was generated)
+    - the game isn't a new game (checked outside of this function)
+    - the game isn't already in the `pending*` tables
+
+    Remember that the point of the `pending*` tables is to preserve
+    the **original** version of the game, to diff for the final update
+    that will be sent out.
+    """
+    if update is None:
+        return False
+    return game_ce_id not in existing_snapshot_ids
+
+
+def finalize_stabilized_game_update(game_ce_id: str) -> bool:
+    """
+    Once a game stops changing, regenerate its diff message from the
+    pre-update snapshot vs. the now-final state, instead of relying on
+    whatever partial diff was generated on the last loop it changed.
+
+    Returns True if a snapshot existed and was handled (message written or
+    net-zero/missing-game cleanup), False if there was no snapshot at all
+    (caller should fall back to promoting the stale per-loop row as-is).
+
+    Note that this is run **after** the scraper loop has finished. So, the final
+    version of the game exists in Supabase at this point.
+    """
+
+    # this gate will trigger for new games
+    snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
+    if snapshot is None:
+        return False
+
+    current = SupabaseReader.get_game(game_ce_id)
+    if current is not None:
+        update, _ = create_update_updated_game(snapshot, current)
+        if update is not None:
+            row = {
+                "is_embed": update.is_embed,
+                "channel": update.location,
+                "text": update.text,
+                "title": update.title,
+                "description": update.description,
+                "image": update.image,
+                "url": update.url,
+                "color": update.color,
+                "game_ce_id": update.game_ce_id,
+                "status": "stable",
+            }
+            SupabaseReader.write_scraper_update(row)
+
+    SupabaseReader.delete_pending_game_snapshot(game_ce_id)
+    return True
+
+
 def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+    """
+    This function accepts `changed_game_ids`, which is a list of
+    game IDs that we can guarantee changed in between the previous two
+    scraper loops (rather than just blindly checking the `lastUpdated`
+    values).
+
+    If the game has not changed in between the last two loops, it will
+    not be in this array, and we can promote it.
+    """
     pending = SupabaseReader.get_pending_game_updates()
     if not pending:
         return
 
-    to_promote = [
-        row["id"] for row in pending if row["game_ce_id"] not in changed_game_ids
-    ]
+    to_promote = [row for row in pending if row["game_ce_id"] not in changed_game_ids]
+    if not to_promote:
+        return
 
-    if to_promote:
-        SupabaseReader.promote_pending_to_stable(to_promote)
-        logger.info("Promoted %d pending updates to stable.", len(to_promote))
+    fallback_ids = []
+    for row in to_promote:
+        handled = finalize_stabilized_game_update(row["game_ce_id"])
+        if handled:
+            SupabaseReader.delete_stale_pending_update(row["id"])
+        else:
+            fallback_ids.append(row["id"])
+
+    if fallback_ids:
+        SupabaseReader.promote_pending_to_stable(fallback_ids)
+
+    logger.info(
+        "Stabilized %d pending game updates (%d regenerated, %d promoted as-is).",
+        len(to_promote),
+        len(to_promote) - len(fallback_ids),
+        len(fallback_ids),
+    )
 
 
 """ TOP LEVEL FUNCTION """
@@ -460,6 +547,7 @@ async def update_games(
     else:
         _ids = [g.ce_id for g in games]
         games_old = SupabaseReader.get_games_bulk(_ids)
+        existing_snapshot_ids = SupabaseReader.get_pending_game_snapshot_ids()
 
         logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
@@ -470,6 +558,11 @@ async def update_games(
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
+                if game_old is not None and should_snapshot_pending_game(
+                    game_new.ce_id, _update, existing_snapshot_ids
+                ):
+                    SupabaseReader.upsert_pending_game_snapshot(game_old)
+                    existing_snapshot_ids.add(game_new.ce_id)
             if _or is not None:
                 objectives_removed.extend(_or)
 
@@ -1262,7 +1355,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
 
 
 def create_update_updated_game(
-    game_old: CEGame, game_new: CEAPIGame
+    game_old: CEGame, game_new: CEGame | CEAPIGame
 ) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
     """Creates the `UpdateMessageForScraperProcess` for an updated game.
 
@@ -1270,10 +1363,12 @@ def create_update_updated_game(
     ---
     game_old: `CEGame`
         The previous data for this game.
-    game_new: `CEAPIGame`
-        The new data for this game.
-        Comes with the added bonus of having
-        additional site information.
+    game_new: `CEGame` or `CEAPIGame`
+        The new data for this game. If a `CEAPIGame` is passed, it comes
+        with the added bonus of having additional site information, and
+        the update image uses its `.header`. If a plain `CEGame` is passed
+        instead (e.g. data read back from storage), the update image falls
+        back to its `._banner`.
 
     Returns
     -------
@@ -1307,7 +1402,9 @@ def create_update_updated_game(
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
-    update.image = game_new.header
+    update.image = (
+        game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
+    )
 
     # POINT/TIER CHANGE
     if game_old.get_total_points() == game_new.get_total_points():

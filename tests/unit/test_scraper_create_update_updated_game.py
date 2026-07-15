@@ -1070,3 +1070,17 @@ class TestCreateUpdateUpdatedGameObjectiveTypeChanges:
         update, _ = create_update_updated_game(old, new)
         assert update is not None
         assert "Type changed" not in update.description
+
+
+# ── Plain CEGame support ────────────────────────────────────────────────────────
+
+
+class TestCreateUpdateUpdatedGamePlainCEGameSupport:
+    def test_accepts_plain_cegame_for_game_new_and_falls_back_to_banner_image(self):
+        game_old = make_game(objectives=[_po(points=10)])
+        game_new = make_game(objectives=[_po(points=20)])  # plain CEGame, not CEAPIGame
+
+        update, _ = create_update_updated_game(game_old, game_new)
+
+        assert update is not None
+        assert update.image == game_new._banner
