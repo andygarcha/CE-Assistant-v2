@@ -126,18 +126,67 @@ def should_snapshot_pending_game(
     return game_ce_id not in existing_snapshot_ids
 
 
+def finalize_stabilized_game_update(game_ce_id: str) -> bool:
+    """Once a game stops changing, regenerate its diff message from the
+    pre-update snapshot vs. the now-final state, instead of relying on
+    whatever partial diff was generated on the last loop it changed.
+
+    Returns True if a snapshot existed and was handled (message written or
+    net-zero/missing-game cleanup), False if there was no snapshot at all
+    (caller should fall back to promoting the stale per-loop row as-is).
+    """
+    snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
+    if snapshot is None:
+        return False
+
+    current = SupabaseReader.get_game(game_ce_id)
+    if current is not None:
+        update, _ = create_update_updated_game(snapshot, current)
+        if update is not None:
+            row = {
+                "is_embed": update.is_embed,
+                "channel": update.location,
+                "text": update.text,
+                "title": update.title,
+                "description": update.description,
+                "image": update.image,
+                "url": update.url,
+                "color": update.color,
+                "game_ce_id": update.game_ce_id,
+                "status": "stable",
+            }
+            SupabaseReader.write_scraper_update(row)
+
+    SupabaseReader.delete_pending_game_snapshot(game_ce_id)
+    return True
+
+
 def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     pending = SupabaseReader.get_pending_game_updates()
     if not pending:
         return
 
-    to_promote = [
-        row["id"] for row in pending if row["game_ce_id"] not in changed_game_ids
-    ]
+    to_promote = [row for row in pending if row["game_ce_id"] not in changed_game_ids]
+    if not to_promote:
+        return
 
-    if to_promote:
-        SupabaseReader.promote_pending_to_stable(to_promote)
-        logger.info("Promoted %d pending updates to stable.", len(to_promote))
+    fallback_ids = []
+    for row in to_promote:
+        handled = finalize_stabilized_game_update(row["game_ce_id"])
+        if handled:
+            SupabaseReader.delete_stale_pending_update(row["id"])
+        else:
+            fallback_ids.append(row["id"])
+
+    if fallback_ids:
+        SupabaseReader.promote_pending_to_stable(fallback_ids)
+
+    logger.info(
+        "Stabilized %d pending game updates (%d regenerated, %d promoted as-is).",
+        len(to_promote),
+        len(to_promote) - len(fallback_ids),
+        len(fallback_ids),
+    )
 
 
 """ TOP LEVEL FUNCTION """

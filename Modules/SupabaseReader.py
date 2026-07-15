@@ -1344,6 +1344,10 @@ def promote_pending_to_stable(ids: list[str]) -> None:
     ).execute()
 
 
+def delete_stale_pending_update(id: str) -> None:
+    supabase.table("scraper_updates").delete().eq("id", id).execute()
+
+
 def upsert_pending_update(update: dict) -> None:
     existing = (
         supabase.table("scraper_updates")
