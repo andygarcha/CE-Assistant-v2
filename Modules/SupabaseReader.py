@@ -1633,9 +1633,11 @@ def __supabase_to_user(
 
         enriched_objective = {
             "objective_ce_id": obj_u["objective_ce_id"],
-            "user_points": obj_u["user_points"],
+            "partial": bool(obj_u["partial"]),
             "type": found_objective["type"],
             "name": found_objective["name"],
+            "points": found_objective["points"],
+            "points_partial": found_objective["points_partial"] or 0,
         }
 
         if found_objective["game_ce_id"] not in mapping:
@@ -1673,7 +1675,9 @@ def __supabase_to_user_objective(objective: dict, game_ce_id: str) -> CEUserObje
     return CEUserObjective(
         ce_id=objective["objective_ce_id"],
         game_ce_id=game_ce_id,
-        user_points=objective["user_points"],
+        partial=objective["partial"],
+        point_value=objective["points"],
+        point_value_partial=objective["points_partial"],
         type=objective.get("type", "Badge"),
         name=objective.get("name", "missing"),
     )

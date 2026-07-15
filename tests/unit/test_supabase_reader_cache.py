@@ -107,7 +107,7 @@ def _seed_game():
     LocalCache.upsert_categories_bulk(CATEGORY_DB_ROWS)
 
 
-def _seed_user():
+def _seed_user(partial: bool = False):
     LocalCache.upsert_user(USER_DB_ROW)
     LocalCache.upsert_user_games_bulk(
         [
@@ -119,7 +119,7 @@ def _seed_user():
             {
                 "user_ce_id": "user-001",
                 "objective_ce_id": "obj-001",
-                "user_points": 25,
+                "partial": partial,
                 "updated_at_CE": "",
             },
         ]
@@ -307,6 +307,54 @@ class TestGetDatabaseNameFromCache:
             with patch.object(SupabaseReader, "supabase") as mock_sb:
                 SupabaseReader.get_database_name()
             mock_sb.table.assert_not_called()
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestGetUserPointsDerivedLive:
+    def test_full_completion_uses_current_objective_points(self):
+        tmpdir = _init_cache()
+        try:
+            _seed_game()  # OBJECTIVE_DB_ROW has points=25
+            _seed_user(partial=False)
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            obj = result.owned_games[0].user_objectives[0]
+            assert obj.user_points == 25
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_partial_completion_uses_current_partial_points(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_game(GAME_DB_ROW)
+            LocalCache.upsert_objectives_bulk(
+                [{**OBJECTIVE_DB_ROW, "points_partial": 5}]
+            )
+            _seed_user(partial=True)
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            obj = result.owned_games[0].user_objectives[0]
+            assert obj.user_points == 5
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_reflects_a_point_value_that_changed_after_completion(self):
+        # The whole point of this migration: no snapshot to go stale.
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_game(GAME_DB_ROW)
+            LocalCache.upsert_objectives_bulk(
+                [{**OBJECTIVE_DB_ROW, "points": 999}]
+            )
+            _seed_user(partial=False)
+            with patch.object(SupabaseReader, "supabase"):
+                result = SupabaseReader.get_user("user-001")
+            assert result is not None
+            obj = result.owned_games[0].user_objectives[0]
+            assert obj.user_points == 999
         finally:
             _teardown_cache(tmpdir)
 
@@ -1644,13 +1692,13 @@ class TestGetUserMultipleGames:
                     {
                         "user_ce_id": "user-001",
                         "objective_ce_id": "obj-001",
-                        "user_points": 25,
+                        "partial": False,
                         "updated_at_CE": "",
                     },
                     {
                         "user_ce_id": "user-001",
                         "objective_ce_id": "obj-002",
-                        "user_points": 100,
+                        "partial": False,
                         "updated_at_CE": "",
                     },
                 ]
@@ -1757,7 +1805,7 @@ class TestBulkDumpUsersDeletesViaLocalCache:
                     {
                         "user_ce_id": "user-lock",
                         "objective_ce_id": "obj-stale",
-                        "user_points": 5,
+                        "partial": False,
                         "updated_at_CE": "",
                     }
                 ]
@@ -1817,7 +1865,7 @@ class TestCleanDbUsesLocalCacheDeleteFunctions:
                     {
                         "user_ce_id": "user-001",
                         "objective_ce_id": "orphan-obj",
-                        "user_points": 5,
+                        "partial": False,
                         "updated_at_CE": "",
                     },
                 ]
