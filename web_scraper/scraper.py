@@ -140,13 +140,17 @@ def should_snapshot_pending_game(
 
 
 def finalize_stabilized_game_update(game_ce_id: str) -> bool:
-    """Once a game stops changing, regenerate its diff message from the
+    """
+    Once a game stops changing, regenerate its diff message from the
     pre-update snapshot vs. the now-final state, instead of relying on
     whatever partial diff was generated on the last loop it changed.
 
     Returns True if a snapshot existed and was handled (message written or
     net-zero/missing-game cleanup), False if there was no snapshot at all
     (caller should fall back to promoting the stale per-loop row as-is).
+
+    Note that this is run **after** the scraper loop has finished. So, the final
+    version of the game exists in Supabase at this point.
     """
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
