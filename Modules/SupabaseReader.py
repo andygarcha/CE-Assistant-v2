@@ -510,6 +510,52 @@ def upsert_pending_game_snapshot(game: CEGame) -> None:
         ).execute()
 
 
+def get_pending_game_snapshot_ids() -> set[str]:
+    """Returns the set of ce_ids for all pending games (existence check).
+
+    Used once per scraper loop to avoid re-snapshotting a game that's already mid-cycle.
+    """
+    rows = supabase.table("pendingGame").select("ce_id").execute().data
+    return {r["ce_id"] for r in rows}
+
+
+def get_pending_game_snapshot(ce_id: str) -> CEGame | None:
+    """Reconstructs a full CEGame from the pending snapshot tables.
+
+    Used later to build a cumulative diff. Returns None if the game is not found.
+    """
+    game_rows = (
+        supabase.table("pendingGame").select().eq("ce_id", ce_id).execute().data
+    )
+    if not game_rows:
+        return None
+    game_row = game_rows[0]
+
+    objective_rows = (
+        supabase.table("pendingObjective")
+        .select()
+        .eq("game_ce_id", ce_id)
+        .execute()
+        .data
+    )
+    objective_ids = [o["ce_id"] for o in objective_rows]
+    requirement_rows = []
+    if objective_ids:
+        requirement_rows = (
+            supabase.table("pendingObjectiveRequirement")
+            .select()
+            .in_("objective_ce_id", objective_ids)
+            .execute()
+            .data
+        )
+
+    cats = [
+        {"category": c, "index": i}
+        for i, c in enumerate(game_row.get("categories") or [])
+    ]
+    return __supabase_to_game(game_row, objective_rows, requirement_rows, cats)
+
+
 # === USERS ===
 
 
