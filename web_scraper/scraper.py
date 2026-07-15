@@ -113,8 +113,11 @@ def should_snapshot_pending_game(
     and into the `pending*` tables with the following logic:
     - the game was actually updated since the
       last scrape (non-empty update was generated)
-    - the game isn't a new game (checked outside of this function)
     - the game isn't already in the `pending*` tables
+
+    New games never reach this call site at all -- `update_games` routes
+    them to `announce_new_game` instead, before `update_one_game` (and thus
+    this function) is ever invoked for them.
 
     Remember that the point of the `pending*` tables is to preserve
     the **original** version of the game, to diff for the final update
@@ -144,16 +147,38 @@ def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
     SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
 
 
-async def announce_new_game(game_new: CEAPIGame) -> None:
+async def announce_new_game(
+    game_new: CEAPIGame,
+    notIsFinished: set[str],
+    send_updates: bool = True,
+) -> None:
     """
-    Sends a new game's "added to the site" announcement immediately, rather
-    than routing it through the pending/stabilize debounce used for edits to
-    existing games. A game is only ever "new" (no prior row in the `game`
-    table) for the single loop it's first detected -- any further edits
-    afterward are picked up as normal updates to an existing game, so
-    there's nothing to wait for here, just a fresh, guaranteed-complete
-    fetch: `game_new` may have come from the daily full_scrape hit
-    (`/api/games/full`), which omits `gameTags`, unlike `/api/game/{id}`.
+    Announces and persists a new game immediately, rather than routing it
+    through the pending/stabilize debounce used for edits to existing
+    games, and rather than waiting for this loop's batched end-of-loop game
+    dump. A game is only ever "new" (no prior row in the `game` table) for
+    the single loop it's first detected -- any further edits afterward are
+    picked up as normal updates to an existing game, so there's nothing to
+    wait for here: just a fresh, guaranteed-complete fetch (`game_new` may
+    have come from the daily full_scrape hit, `/api/games/full`, which
+    omits `gameTags`, unlike `/api/game/{id}`).
+
+    Persisting here -- rather than leaving it to the caller's later batched
+    dump -- closes the window where a failure elsewhere in this loop (after
+    the announcement went out but before the batched dump runs) would leave
+    the game still looking "new" next loop and get it announced a second
+    time.
+
+    A game found hidden/unfinished on this fresh fetch is added to
+    `notIsFinished` (mirroring how update_games already tracks other
+    hidden games) instead of being persisted, so it's picked back up and
+    properly announced once it's actually published, rather than silently
+    graduating to "existing" without ever having been announced.
+
+    Raises whatever `CEAPIReader.get_game` or the Supabase writes raise;
+    the caller is expected to catch this per-game so one failure doesn't
+    abort the rest of the batch, and to exclude this game from its own
+    batched dump so it's retried as "new" again next loop.
     """
     current_api_game = await CEAPIReader.get_game(game_new.ce_id)
     if current_api_game is None:
@@ -166,8 +191,16 @@ async def announce_new_game(game_new: CEAPIGame) -> None:
             "New game %s is hidden/unfinished; skipping announcement.",
             game_new.ce_id,
         )
+        notIsFinished.add(game_new.ce_id)
         return
-    _write_stable_update(create_update_new_game(current_api_game))
+
+    SupabaseReader.bulk_dump_games([current_api_game])
+
+    update = create_update_new_game(current_api_game)
+    if send_updates:
+        _write_stable_update(update)
+    else:
+        update.print(full=True)
 
 
 async def finalize_stabilized_game_update(game_ce_id: str) -> None:
@@ -279,7 +312,7 @@ async def process_loop(
         removed_games,
         removed_objectives,
         notIsFinished,
-    ) = await update_games(full_scrape)
+    ) = await update_games(full_scrape, send_updates)
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
@@ -441,6 +474,7 @@ async def process_loop(
 
 async def update_games(
     full_scrape=False,
+    send_updates: bool = True,
 ) -> tuple[
     list[UpdateMessageForScraperProcess],  # updates
     list[CEAPIGame],  # games_new
@@ -450,6 +484,13 @@ async def update_games(
 ]:
     """
     Updates all games. This version began April 9, 2026 for Supabase.
+
+    `send_updates` controls whether new-game announcements actually get
+    written for delivery (vs. just printed/logged) -- new games are
+    announced immediately inside this function rather than through the
+    `flush_updates`/`send_updates` gate the rest of `process_loop` uses, so
+    it has to be threaded in here directly instead.
+
     Returns
     ---
     - updates: a list of updates to be sent
@@ -573,13 +614,30 @@ async def update_games(
         existing_snapshot_ids = SupabaseReader.get_pending_game_snapshot_ids()
 
         logger.info("Generating updates for games.")
+        # New games are announced (and persisted) immediately inside the loop
+        # below, rather than through this function's own batched dump of
+        # `games` at the end of the loop -- track their ids here so they're
+        # excluded from that batch (whether because they're already
+        # persisted, turned out hidden, or failed and need a retry next
+        # loop as still-"new").
+        new_game_ids: set[str] = set()
         for i, game_new in enumerate(games):
             if i % 10 == 0:
                 logger.debug("Updating game %d.", i)
 
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
             if game_old is None:
-                await announce_new_game(game_new)
+                new_game_ids.add(game_new.ce_id)
+                try:
+                    await announce_new_game(game_new, notIsFinished, send_updates)
+                except Exception:
+                    # Isolate one game's failure (e.g. a transient CE API
+                    # error) from the rest of the batch -- it stays
+                    # unpersisted, so it's still "new" and retried next loop.
+                    logger.exception(
+                        "Failed to announce new game %s; will retry next loop.",
+                        game_new.ce_id,
+                    )
                 continue
 
             _update, _or = update_one_game(game_old, game_new)
@@ -592,6 +650,9 @@ async def update_games(
                     existing_snapshot_ids.add(game_new.ce_id)
             if _or is not None:
                 objectives_removed.extend(_or)
+
+        if new_game_ids:
+            games = [g for g in games if g.ce_id not in new_game_ids]
 
         logger.info("Game updates completed.")
 
