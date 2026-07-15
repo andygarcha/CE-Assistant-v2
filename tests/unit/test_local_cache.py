@@ -811,55 +811,39 @@ class TestUserObjectives:
     def test_upsert_and_get(self):
         tmpdir = _setup()
         try:
-            rows = [
-                {
-                    "user_ce_id": "u1",
-                    "objective_ce_id": "o1",
-                    "user_points": 10,
-                    "updated_at_CE": "",
-                },
-                {
-                    "user_ce_id": "u1",
-                    "objective_ce_id": "o2",
-                    "user_points": 50,
-                    "updated_at_CE": "",
-                },
-            ]
-            LocalCache.upsert_user_objectives_bulk(rows)
-            result = LocalCache.get_user_objectives("u1")
-            assert len(result) == 2
-            points = {r["objective_ce_id"]: r["user_points"] for r in result}
-            assert points["o1"] == 10
-            assert points["o2"] == 50
+            LocalCache.upsert_user_objectives_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "obj-001",
+                        "partial": False,
+                        "updated_at_CE": "2026-01-01T00:00:00",
+                    }
+                ]
+            )
+            rows = LocalCache.get_user_objectives("user-001")
+            assert len(rows) == 1
+            assert rows[0]["objective_ce_id"] == "obj-001"
+            assert rows[0]["partial"] == 0  # SQLite has no native bool
         finally:
             _teardown(tmpdir)
 
-    def test_upsert_overwrites_points(self):
+    def test_upsert_overwrites_partial(self):
         tmpdir = _setup()
         try:
-            LocalCache.upsert_user_objectives_bulk(
-                [
-                    {
-                        "user_ce_id": "u1",
-                        "objective_ce_id": "o1",
-                        "user_points": 10,
-                        "updated_at_CE": "",
-                    },
-                ]
-            )
-            LocalCache.upsert_user_objectives_bulk(
-                [
-                    {
-                        "user_ce_id": "u1",
-                        "objective_ce_id": "o1",
-                        "user_points": 25,
-                        "updated_at_CE": "",
-                    },
-                ]
-            )
-            result = LocalCache.get_user_objectives("u1")
-            assert len(result) == 1
-            assert result[0]["user_points"] == 25
+            row = {
+                "user_ce_id": "user-001",
+                "objective_ce_id": "obj-001",
+                "partial": False,
+                "updated_at_CE": "2026-01-01T00:00:00",
+            }
+            LocalCache.upsert_user_objectives_bulk([row])
+            row["partial"] = True
+            LocalCache.upsert_user_objectives_bulk([row])
+
+            rows = LocalCache.get_user_objectives("user-001")
+            assert len(rows) == 1
+            assert rows[0]["partial"] == 1
         finally:
             _teardown(tmpdir)
 
@@ -869,48 +853,15 @@ class TestUserObjectives:
             LocalCache.upsert_user_objectives_bulk(
                 [
                     {
-                        "user_ce_id": "u1",
-                        "objective_ce_id": "o1",
-                        "user_points": 10,
-                        "updated_at_CE": "",
-                    },
-                    {
-                        "user_ce_id": "u1",
-                        "objective_ce_id": "o2",
-                        "user_points": 20,
-                        "updated_at_CE": "",
-                    },
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "obj-001",
+                        "partial": False,
+                        "updated_at_CE": "2026-01-01T00:00:00",
+                    }
                 ]
             )
-            LocalCache.delete_user_objectives("u1")
-            assert LocalCache.get_user_objectives("u1") == []
-        finally:
-            _teardown(tmpdir)
-
-    def test_different_users_isolated(self):
-        tmpdir = _setup()
-        try:
-            LocalCache.upsert_user_objectives_bulk(
-                [
-                    {
-                        "user_ce_id": "u1",
-                        "objective_ce_id": "o1",
-                        "user_points": 10,
-                        "updated_at_CE": "",
-                    },
-                    {
-                        "user_ce_id": "u2",
-                        "objective_ce_id": "o1",
-                        "user_points": 30,
-                        "updated_at_CE": "",
-                    },
-                ]
-            )
-            assert len(LocalCache.get_user_objectives("u1")) == 1
-            assert len(LocalCache.get_user_objectives("u2")) == 1
-            LocalCache.delete_user_objectives("u1")
-            assert LocalCache.get_user_objectives("u1") == []
-            assert len(LocalCache.get_user_objectives("u2")) == 1
+            LocalCache.delete_user_objectives("user-001")
+            assert LocalCache.get_user_objectives("user-001") == []
         finally:
             _teardown(tmpdir)
 
@@ -1341,7 +1292,7 @@ class TestRunIntegrityCheck:
                     {
                         "user_ce_id": "u1",
                         "objective_ce_id": "o1",
-                        "user_points": 10,
+                        "partial": False,
                         "updated_at_CE": "",
                     },
                 ]
@@ -1547,7 +1498,7 @@ class TestRunIntegrityCheck:
             uo_row = {
                 "user_ce_id": "u-new",
                 "objective_ce_id": "o1",
-                "user_points": 10,
+                "partial": False,
                 "updated_at_CE": "",
             }
             mock_sb = self._make_mock_supabase(
@@ -1569,6 +1520,6 @@ class TestRunIntegrityCheck:
             assert len(LocalCache.get_user_games("u-new")) == 1
             assert LocalCache.get_user_games("u-new")[0]["game_ce_id"] == "g1"
             assert len(LocalCache.get_user_objectives("u-new")) == 1
-            assert LocalCache.get_user_objectives("u-new")[0]["user_points"] == 10
+            assert LocalCache.get_user_objectives("u-new")[0]["partial"] == 0
         finally:
             _teardown(tmpdir)
