@@ -121,6 +121,19 @@ def should_snapshot_pending_game(
     update: UpdateMessageForScraperProcess | None,
     existing_snapshot_ids: set[str],
 ) -> bool:
+    """
+    This function checks that a game *should* be snapshotted out of
+    the regular `game` / `objective` / `objectiveRequirement` table
+    and into the `pending*` tables with the following logic:
+    - the game was actually updated since the
+      last scrape (non-empty update was generated)
+    - the game isn't a new game (checked outside of this function)
+    - the game isn't already in the `pending*` tables
+
+    Remember that the point of the `pending*` tables is to preserve
+    the **original** version of the game, to diff for the final update
+    that will be sent out.
+    """
     if update is None:
         return False
     return game_ce_id not in existing_snapshot_ids
