@@ -117,3 +117,15 @@ class TestCEUserObjectiveToDict:
         assert d["game_ce_id"] == GAME_ID
         assert d["type"] == "Badge"
         assert d["user_points"] == 25
+
+
+class TestMakeUserObjectiveFixture:
+    def test_user_points_matches_regardless_of_partial_flag(self):
+        assert make_user_objective(user_points=42, partial=False).user_points == 42
+        assert make_user_objective(user_points=42, partial=True).user_points == 42
+
+    def test_partial_defaults_to_false(self):
+        assert make_user_objective().partial is False
+
+    def test_partial_can_be_set_true(self):
+        assert make_user_objective(partial=True).partial is True
