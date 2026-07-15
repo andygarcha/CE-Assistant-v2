@@ -152,6 +152,8 @@ def finalize_stabilized_game_update(game_ce_id: str) -> bool:
     Note that this is run **after** the scraper loop has finished. So, the final
     version of the game exists in Supabase at this point.
     """
+
+    # this gate will trigger for new games
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
         return False
