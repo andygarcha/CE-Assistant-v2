@@ -139,48 +139,55 @@ def should_snapshot_pending_game(
     return game_ce_id not in existing_snapshot_ids
 
 
-def finalize_stabilized_game_update(game_ce_id: str) -> bool:
+def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
+    row = {
+        "is_embed": update.is_embed,
+        "channel": update.location,
+        "text": update.text,
+        "title": update.title,
+        "description": update.description,
+        "image": update.image,
+        "url": update.url,
+        "color": update.color,
+        "game_ce_id": update.game_ce_id,
+        "status": "stable",
+    }
+    SupabaseReader.write_scraper_update(row)
+
+
+async def finalize_stabilized_game_update(game_ce_id: str) -> None:
     """
     Once a game stops changing, regenerate its diff message from the
     pre-update snapshot vs. the now-final state, instead of relying on
     whatever partial diff was generated on the last loop it changed.
 
-    Returns True if a snapshot existed and was handled (message written or
-    net-zero/missing-game cleanup), False if there was no snapshot at all
-    (caller should fall back to promoting the stale per-loop row as-is).
-
     Note that this is run **after** the scraper loop has finished. So, the final
     version of the game exists in Supabase at this point.
     """
 
-    # this gate will trigger for new games
+    # No snapshot means this was a new game (existing games are always
+    # snapshotted -- see should_snapshot_pending_game). New games have no
+    # "old" state to diff against, so instead of promoting whatever
+    # create_update_new_game produced on the loop it was first seen
+    # (which may have come from a full_scrape hit missing gameTags),
+    # re-fetch it fresh and rebuild the message from current data.
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
-        return False
+        current_api_game = await CEAPIReader.get_game(game_ce_id)
+        if current_api_game is not None:
+            _write_stable_update(create_update_new_game(current_api_game))
+        return
 
     current = SupabaseReader.get_game(game_ce_id)
     if current is not None:
         update, _ = create_update_updated_game(snapshot, current)
         if update is not None:
-            row = {
-                "is_embed": update.is_embed,
-                "channel": update.location,
-                "text": update.text,
-                "title": update.title,
-                "description": update.description,
-                "image": update.image,
-                "url": update.url,
-                "color": update.color,
-                "game_ce_id": update.game_ce_id,
-                "status": "stable",
-            }
-            SupabaseReader.write_scraper_update(row)
+            _write_stable_update(update)
 
     SupabaseReader.delete_pending_game_snapshot(game_ce_id)
-    return True
 
 
-def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+async def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     """
     This function accepts `changed_game_ids`, which is a list of
     game IDs that we can guarantee changed in between the previous two
@@ -198,23 +205,11 @@ def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     if not to_promote:
         return
 
-    fallback_ids = []
     for row in to_promote:
-        handled = finalize_stabilized_game_update(row["game_ce_id"])
-        if handled:
-            SupabaseReader.delete_stale_pending_update(row["id"])
-        else:
-            fallback_ids.append(row["id"])
+        await finalize_stabilized_game_update(row["game_ce_id"])
+        SupabaseReader.delete_stale_pending_update(row["id"])
 
-    if fallback_ids:
-        SupabaseReader.promote_pending_to_stable(fallback_ids)
-
-    logger.info(
-        "Stabilized %d pending game updates (%d regenerated, %d promoted as-is).",
-        len(to_promote),
-        len(to_promote) - len(fallback_ids),
-        len(fallback_ids),
-    )
+    logger.info("Stabilized %d pending game updates.", len(to_promote))
 
 
 """ TOP LEVEL FUNCTION """
@@ -262,7 +257,7 @@ async def process_loop(
 
     # Promote pending game updates that had no further changes since last loop
     changed_game_ids = compute_changed_game_ids(_updates, removed_games)
-    stabilize_pending_updates(changed_game_ids)
+    await stabilize_pending_updates(changed_game_ids)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
