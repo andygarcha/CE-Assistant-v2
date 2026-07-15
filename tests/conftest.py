@@ -94,6 +94,12 @@ def make_user_game(
     )
 
 
+def make_game_tag(name: str, tag_type: str) -> dict:
+    """Builds a single `gameTags` entry as returned by the CE API."""
+    tag_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{tag_type}:{name}"))
+    return {"tagId": tag_id, "tag": {"name": name, "type": tag_type}}
+
+
 def make_api_game(
     ce_id: str = "game-001-0000-0000-000000000000",
     game_name: str = "Test Game",
@@ -104,6 +110,7 @@ def make_api_game(
     icon: str = "https://example.com/icon.jpg",
     is_finished: bool = True,
     information: str = "",
+    game_tags: list[dict] | None = None,
 ) -> CEAPIGame:
     full_data = {
         "header": header,
@@ -111,6 +118,8 @@ def make_api_game(
         "isFinished": is_finished,
         "information": information,
     }
+    if game_tags is not None:
+        full_data["gameTags"] = game_tags
     return CEAPIGame(
         ce_id=ce_id,
         game_name=game_name,
