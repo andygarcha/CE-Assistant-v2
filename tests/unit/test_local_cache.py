@@ -865,6 +865,36 @@ class TestUserObjectives:
         finally:
             _teardown(tmpdir)
 
+    def test_different_users_isolated(self):
+        tmpdir = _setup()
+        try:
+            LocalCache.upsert_user_objectives_bulk(
+                [
+                    {
+                        "user_ce_id": "user-001",
+                        "objective_ce_id": "obj-001",
+                        "partial": False,
+                        "updated_at_CE": "2026-01-01T00:00:00",
+                    },
+                    {
+                        "user_ce_id": "user-002",
+                        "objective_ce_id": "obj-001",
+                        "partial": True,
+                        "updated_at_CE": "2026-01-01T00:00:00",
+                    },
+                ]
+            )
+            LocalCache.delete_user_objectives("user-001")
+
+            assert LocalCache.get_user_objectives("user-001") == []
+
+            rows = LocalCache.get_user_objectives("user-002")
+            assert len(rows) == 1
+            assert rows[0]["objective_ce_id"] == "obj-001"
+            assert rows[0]["partial"] == 1
+        finally:
+            _teardown(tmpdir)
+
 
 # === BULK UPSERT EDGE CASES ===
 
