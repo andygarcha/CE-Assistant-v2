@@ -215,8 +215,8 @@ class TestDeliverUpdates:
 
         expected = (
             ":information_source: Sending 1 message (2 not ready yet)."
-            "\n- [Game A](https://cedb.me/game/a)"
-            "\n- [Game B](https://cedb.me/game/b)"
+            "\n- [Game A](<https://cedb.me/game/a>)"
+            "\n- [Game B](<https://cedb.me/game/b>)"
         )
         assert expected in caplog.text
         privatelog_call = _find_privatelog_call(mock_send, "Sending 1 message")
@@ -247,7 +247,7 @@ class TestDeliverUpdates:
         assert count == 0
         expected = (
             ":information_source: Nothing stable to send yet (1 not ready yet)."
-            "\n- [Game A](https://cedb.me/game/a)"
+            "\n- [Game A](<https://cedb.me/game/a>)"
         )
         assert expected in caplog.text
         nothing_stable_call = _find_privatelog_call(mock_send, "Nothing stable")

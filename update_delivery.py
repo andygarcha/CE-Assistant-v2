@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def _format_not_ready_list(not_ready_updates: list[dict]) -> str:
     suffix = ""
     for _update in not_ready_updates:
-        suffix += f"\n- [{_update['title']}]({_update['url']})"
+        suffix += f"\n- [{_update['title']}](<{_update['url']}>)"
     return suffix
 
 
