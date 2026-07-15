@@ -1,5 +1,5 @@
 from Classes.CE_Objective import CEObjective
-from tests.conftest import make_api_game, make_objective
+from tests.conftest import make_api_game, make_game_tag, make_objective
 from web_scraper.scraper import create_update_new_game
 
 
@@ -142,3 +142,121 @@ class TestCreateUpdateNewGameObjectiveSummary:
         assert "Primary" in update.description
         assert "Secondary" in update.description
         assert "Community" in update.description
+
+
+def _genre_tag(name: str) -> dict:
+    return make_game_tag(name, "genre")
+
+
+def _info_tag(name: str) -> dict:
+    return make_game_tag(name, "informational")
+
+
+class TestCreateUpdateNewGameTags:
+    """
+    Tests for the genre/informational tag lines shown in the docstring:
+
+        - Genre tags: Tower Defense, Traditional Fighter (+3 more)
+        - Informational tags: Animal Protagonist, Curated (+18 more)
+    """
+
+    def test_no_genre_tags_line_when_no_genre_tags(self):
+        game = make_api_game(game_tags=[])
+        update = create_update_new_game(game)
+        assert "Genre tags" not in update.description
+
+    def test_no_informational_tags_line_when_no_informational_tags(self):
+        game = make_api_game(game_tags=[])
+        update = create_update_new_game(game)
+        assert "Informational tags" not in update.description
+
+    def test_genre_tags_line_shown_when_present(self):
+        game = make_api_game(game_tags=[_genre_tag("Tower Defense")])
+        update = create_update_new_game(game)
+        assert "Genre tags:" in update.description
+
+    def test_genre_tags_line_is_bullet(self):
+        game = make_api_game(game_tags=[_genre_tag("Tower Defense")])
+        update = create_update_new_game(game)
+        assert "\n- Genre tags:" in update.description
+
+    def test_genre_tag_names_appear_in_description(self):
+        game = make_api_game(
+            game_tags=[_genre_tag("Tower Defense"), _genre_tag("Traditional Fighter")]
+        )
+        update = create_update_new_game(game)
+        assert "Tower Defense" in update.description
+        assert "Traditional Fighter" in update.description
+
+    def test_genre_tags_no_more_suffix_when_two_or_fewer(self):
+        game = make_api_game(
+            game_tags=[_genre_tag("Tower Defense"), _genre_tag("Traditional Fighter")]
+        )
+        update = create_update_new_game(game)
+        assert "more" not in update.description
+
+    def test_genre_tags_more_suffix_matches_remaining_count(self):
+        game = make_api_game(
+            game_tags=[
+                _genre_tag("Tower Defense"),
+                _genre_tag("Traditional Fighter"),
+                _genre_tag("Roguelike"),
+                _genre_tag("Metroidvania"),
+                _genre_tag("Puzzle"),
+            ]
+        )
+        update = create_update_new_game(game)
+        assert "(+3 more)" in update.description
+
+    def test_informational_tags_line_shown_when_present(self):
+        game = make_api_game(game_tags=[_info_tag("Curated")])
+        update = create_update_new_game(game)
+        assert "Informational tags:" in update.description
+
+    def test_informational_tags_line_is_bullet(self):
+        game = make_api_game(game_tags=[_info_tag("Curated")])
+        update = create_update_new_game(game)
+        assert "\n- Informational tags:" in update.description
+
+    def test_informational_tag_names_appear_in_description(self):
+        game = make_api_game(
+            game_tags=[_info_tag("Animal Protagonist"), _info_tag("Curated")]
+        )
+        update = create_update_new_game(game)
+        assert "Animal Protagonist" in update.description
+        assert "Curated" in update.description
+
+    def test_informational_tags_no_more_suffix_when_two_or_fewer(self):
+        game = make_api_game(
+            game_tags=[_info_tag("Animal Protagonist"), _info_tag("Curated")]
+        )
+        update = create_update_new_game(game)
+        assert "more" not in update.description
+
+    def test_informational_tags_more_suffix_matches_remaining_count(self):
+        game = make_api_game(
+            game_tags=[_info_tag(f"Tag {i}") for i in range(20)],
+        )
+        update = create_update_new_game(game)
+        assert "(+18 more)" in update.description
+
+    def test_genre_and_informational_tags_appear_together(self):
+        game = make_api_game(
+            game_tags=[
+                _genre_tag("Tower Defense"),
+                _info_tag("Curated"),
+            ]
+        )
+        update = create_update_new_game(game)
+        assert "Genre tags:" in update.description
+        assert "Informational tags:" in update.description
+
+    def test_genre_tags_do_not_leak_into_informational_line(self):
+        game = make_api_game(game_tags=[_genre_tag("Tower Defense")])
+        update = create_update_new_game(game)
+        assert "Informational tags" not in update.description
+
+    def test_informational_tags_do_not_leak_into_genre_line(self):
+        game = make_api_game(game_tags=[_info_tag("Curated")])
+        update = create_update_new_game(game)
+        assert "Genre tags" not in update.description
