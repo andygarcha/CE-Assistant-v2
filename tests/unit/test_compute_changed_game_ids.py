@@ -17,8 +17,9 @@ class TestComputeChangedGameIds:
         assert changed == {"game-001"}
 
     def test_ghost_update_does_not_count_as_changed(self):
-        """A game whose updatedAt ticked but produced no real diff (update_one_game
-        returned None) must NOT block its pending row from being promoted."""
+        """A game whose updatedAt ticked but produced no real diff
+        (create_update_updated_game returned None) must NOT block its
+        pending row from being promoted."""
         changed = compute_changed_game_ids(
             updates=[],
             removed_games=set(),

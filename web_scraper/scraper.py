@@ -116,8 +116,9 @@ def should_snapshot_pending_game(
     - the game isn't already in the `pending*` tables
 
     New games never reach this call site at all -- `update_games` routes
-    them to `announce_new_game` instead, before `update_one_game` (and thus
-    this function) is ever invoked for them.
+    them to `announce_new_game` instead. Removed games don't reach it
+    either -- those go to `announce_removed_game`. Only edits to existing
+    games (via `create_update_updated_game`) end up here.
 
     Remember that the point of the `pending*` tables is to preserve
     the **original** version of the game, to diff for the final update
@@ -197,6 +198,38 @@ async def announce_new_game(
     SupabaseReader.bulk_dump_games([current_api_game])
 
     update = create_update_new_game(current_api_game)
+    if send_updates:
+        _write_stable_update(update)
+    else:
+        update.print(full=True)
+
+
+async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> None:
+    """
+    Announces and deletes a removed game immediately, mirroring
+    announce_new_game. Removal, like addition, is a one-shot event with
+    nothing to debounce -- there's no "after" state to wait for or diff
+    against, so routing it through the pending/stabilize system (built for
+    edits, which snapshot a "before" state to diff once things settle)
+    doesn't apply here and previously meant these announcements were
+    silently dropped: finalize_stabilized_game_update would find no
+    snapshot for a removed game (nothing ever snapshots one) and treat that
+    as an unrecoverable invariant violation.
+
+    Deleting here -- rather than leaving it to the caller's later batched
+    cleanup -- closes the same kind of window as announce_new_game: a
+    failure elsewhere in this loop between the announcement and the
+    batched delete would otherwise leave the game still present in
+    Supabase next loop, still getting detected as removed, and announced a
+    second time.
+
+    Raises whatever the Supabase delete raises; the caller is expected to
+    catch this per-game so one failure doesn't abort the rest of the
+    batch, and so this game is retried as "removed" again next loop.
+    """
+    SupabaseReader.delete_game(game_old.ce_id)
+
+    update = create_update_removed_game(game_old)
     if send_updates:
         _write_stable_update(update)
     else:
@@ -376,9 +409,9 @@ async def process_loop(
             logger.debug("len(games_new)=%d", len(games_new))
             SupabaseReader.bulk_dump_games(games_new)
 
-            logger.debug("len(removed_games)=%d", len(removed_games))
-            for _game_id in removed_games:
-                SupabaseReader.delete_game(_game_id)
+            # removed_games are already deleted immediately by
+            # announce_removed_game inside update_games -- no batched
+            # cleanup needed here.
 
             logger.debug("len(removed_objectives)=%d", len(removed_objectives))
             SupabaseReader.delete_objectives_many(removed_objectives)
@@ -640,7 +673,7 @@ async def update_games(
                     )
                 continue
 
-            _update, _or = update_one_game(game_old, game_new)
+            _update, _or = create_update_updated_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
                 if should_snapshot_pending_game(
@@ -672,11 +705,16 @@ async def update_games(
             game_list_removed.remove(_game)
             notIsFinished.add(_game)
 
-    # Step 4: Generate updates for those removed games.
+    # Step 4: Announce and delete removed games immediately -- see
+    # announce_removed_game for why this can't route through the normal
+    # pending/stabilize debounce (there's no "after" state to diff against
+    # for a removal, so nothing ever snapshots it, and it would otherwise
+    # be silently dropped at stabilization).
     if SKIPUPDATES:
         logger.warning("Skipping updates (again...)")
     elif len(game_list_removed) != 0:
         logger.debug("Generating updates for %d removed games.", len(game_list_removed))
+        removal_failures: set[str] = set()
         for game_removed in game_list_removed:
             _game = SupabaseReader.get_game(game_removed)
             if _game is None:
@@ -685,11 +723,21 @@ async def update_games(
                     game_removed,
                 )
                 continue
-            _update, _or = update_one_game(_game, None)
-            if _update is not None:
-                updates.append(_update)
-            if _or is not None:
-                objectives_removed.extend(_or)
+            try:
+                await announce_removed_game(_game, send_updates)
+            except Exception:
+                # Isolate one game's failure from the rest of the batch --
+                # leave it out of game_list_removed so it's retried next
+                # loop (it's still present in Supabase, so it'll still be
+                # detected as removed then).
+                logger.exception(
+                    "Failed to announce removed game %s; will retry next loop.",
+                    game_removed,
+                )
+                removal_failures.add(game_removed)
+
+        if removal_failures:
+            game_list_removed -= removal_failures
 
     return updates, games, game_list_removed, objectives_removed, notIsFinished
 
@@ -1116,21 +1164,6 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
 
 
 """ BOTTOM LEVEL FUNCTIONS """
-
-
-def update_one_game(
-    game_old: CEGame, game_new: CEAPIGame | None
-) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
-    """
-    Generates an update for an existing game -- either it was removed
-    (`game_new` is None) or it changed (`game_new` is present). New games
-    are announced separately via `announce_new_game`, since they have no
-    prior state to diff against.
-    """
-    if game_new is None:
-        return create_update_removed_game(game_old), []
-
-    return create_update_updated_game(game_old, game_new)
 
 
 def update_one_user(
