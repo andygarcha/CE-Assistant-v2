@@ -116,6 +116,16 @@ def compute_changed_game_ids(
     return {u.game_ce_id for u in updates if u.game_ce_id is not None} | removed_games
 
 
+def should_snapshot_pending_game(
+    game_ce_id: str,
+    update: UpdateMessageForScraperProcess | None,
+    existing_snapshot_ids: set[str],
+) -> bool:
+    if update is None:
+        return False
+    return game_ce_id not in existing_snapshot_ids
+
+
 def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     pending = SupabaseReader.get_pending_game_updates()
     if not pending:
@@ -460,6 +470,7 @@ async def update_games(
     else:
         _ids = [g.ce_id for g in games]
         games_old = SupabaseReader.get_games_bulk(_ids)
+        existing_snapshot_ids = SupabaseReader.get_pending_game_snapshot_ids()
 
         logger.info("Generating updates for games.")
         for i, game_new in enumerate(games):
@@ -470,6 +481,11 @@ async def update_games(
             _update, _or = update_one_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
+                if game_old is not None and should_snapshot_pending_game(
+                    game_new.ce_id, _update, existing_snapshot_ids
+                ):
+                    SupabaseReader.upsert_pending_game_snapshot(game_old)
+                    existing_snapshot_ids.add(game_new.ce_id)
             if _or is not None:
                 objectives_removed.extend(_or)
 
