@@ -46,6 +46,11 @@ class CEUserObjective:
         return self._type
 
     @property
+    def type_short(self) -> str:
+        """Returns this as a short type (e.g. PO, SO)"""
+        return f"{self._type[0]}O"
+
+    @property
     def game_ce_id(self) -> str:
         """Returns the Challenge Enthusiast ID related to the game this objective belongs to."""
         return self._game_ce_id
