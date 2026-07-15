@@ -439,6 +439,77 @@ def bulk_dump_games(
             time.sleep(pause_seconds)
 
 
+def upsert_pending_game_snapshot(game: CEGame) -> None:
+    """Writes a full snapshot of a CEGame (game row + its objectives + their requirements)
+    into the three new pending tables.
+
+    Modeled on bulk_dump_games but singular, targeting the pending* tables, and skipping
+    all LocalCache.* calls per the Global Constraints.
+    """
+    now_iso = _now_iso()
+
+    game_row = {
+        "ce_id": game.ce_id,
+        "name": game.game_name,
+        "platform": game.platform,
+        "platform_id": game.platform_id,
+        "category_primary": None,
+        "image_header": game._banner,
+        "image_icon": "",
+        "categories": game.categories,
+        "updated_at_CE": now_iso,
+    }
+    supabase.table("pendingGame").upsert(game_row).execute()
+
+    objective_ids = [o.ce_id for o in game.all_objectives]
+    if not objective_ids:
+        return
+
+    supabase.table("pendingObjectiveRequirement").delete().in_(
+        "objective_ce_id", objective_ids
+    ).execute()
+
+    objectives_payload = []
+    requirements_payload = []
+    for objective in game.all_objectives:
+        objectives_payload.append(
+            {
+                "ce_id": objective.ce_id,
+                "game_ce_id": objective.game_ce_id,
+                "type": objective.type,
+                "name": objective.name,
+                "description": objective.description,
+                "points": objective.point_value,
+                "points_partial": objective.partial_points,
+                "updated_at_CE": now_iso,
+            }
+        )
+        for achievement_id in objective.achievement_ce_ids or []:
+            requirements_payload.append(
+                {
+                    "objective_ce_id": objective.ce_id,
+                    "requirement_type": "achievement",
+                    "data": achievement_id,
+                    "updated_at_CE": now_iso,
+                }
+            )
+        if objective.requirements:
+            requirements_payload.append(
+                {
+                    "objective_ce_id": objective.ce_id,
+                    "requirement_type": "custom",
+                    "data": objective.requirements,
+                    "updated_at_CE": now_iso,
+                }
+            )
+
+    supabase.table("pendingObjective").upsert(objectives_payload).execute()
+    if requirements_payload:
+        supabase.table("pendingObjectiveRequirement").upsert(
+            requirements_payload
+        ).execute()
+
+
 # === USERS ===
 
 
