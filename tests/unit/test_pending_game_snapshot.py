@@ -205,9 +205,7 @@ class TestDeletePendingGameSnapshot:
             mock_table.select.return_value = mock_table
             mock_table.delete.return_value = mock_table
             mock_table.eq.return_value = mock_table
-            mock_table.execute.return_value = MagicMock(
-                data=[{"ce_id": "obj-aaaa"}]
-            )
+            mock_table.execute.return_value = MagicMock(data=[{"ce_id": "obj-aaaa"}])
 
             SupabaseReader.delete_pending_game_snapshot("game-001")
 

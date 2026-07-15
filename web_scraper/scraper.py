@@ -1374,7 +1374,9 @@ def create_update_updated_game(
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
-    update.image = game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
+    update.image = (
+        game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
+    )
 
     # POINT/TIER CHANGE
     if game_old.get_total_points() == game_new.get_total_points():

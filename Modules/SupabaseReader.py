@@ -524,9 +524,7 @@ def get_pending_game_snapshot(ce_id: str) -> CEGame | None:
 
     Used later to build a cumulative diff. Returns None if the game is not found.
     """
-    game_rows = (
-        supabase.table("pendingGame").select().eq("ce_id", ce_id).execute().data
-    )
+    game_rows = supabase.table("pendingGame").select().eq("ce_id", ce_id).execute().data
     if not game_rows:
         return None
     game_row = game_rows[0]

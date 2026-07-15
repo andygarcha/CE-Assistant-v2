@@ -1,8 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from tests.conftest import make_game, make_objective
 from web_scraper.scraper import (
-    UpdateMessageForScraperProcess,
     finalize_stabilized_game_update,
     stabilize_pending_updates,
 )
@@ -264,9 +263,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.SupabaseReader.get_pending_game_snapshot",
                 return_value=snapshot,
             ),
-            patch(
-                "web_scraper.scraper.SupabaseReader.get_game", return_value=current
-            ),
+            patch("web_scraper.scraper.SupabaseReader.get_game", return_value=current),
             patch(
                 "web_scraper.scraper.SupabaseReader.write_scraper_update"
             ) as mock_write,

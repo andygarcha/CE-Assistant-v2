@@ -1,4 +1,7 @@
-from web_scraper.scraper import UpdateMessageForScraperProcess, should_snapshot_pending_game
+from web_scraper.scraper import (
+    UpdateMessageForScraperProcess,
+    should_snapshot_pending_game,
+)
 
 
 class TestShouldSnapshotPendingGame:
@@ -8,9 +11,7 @@ class TestShouldSnapshotPendingGame:
 
     def test_real_update_with_existing_snapshot_should_not_resnapshot(self):
         update = UpdateMessageForScraperProcess(game_ce_id="game-001")
-        assert (
-            should_snapshot_pending_game("game-001", update, {"game-001"}) is False
-        )
+        assert should_snapshot_pending_game("game-001", update, {"game-001"}) is False
 
     def test_ghost_update_should_not_snapshot(self):
         """update_one_game returned None (no real diff) -- nothing changed,
