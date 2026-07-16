@@ -23,6 +23,9 @@ def _one_iteration_patches(**overrides):
         "get_commands": patch.object(
             scraper_main.SupabaseReader, "get_pending_commands", return_value=[]
         ),
+        "recent_full_scrape": patch.object(
+            scraper_main.SupabaseReader, "recent_full_scrape", return_value=True
+        ),
         "ack_command": patch.object(scraper_main.SupabaseReader, "acknowledge_command"),
         "complete_command": patch.object(
             scraper_main.SupabaseReader, "complete_command"
@@ -152,7 +155,7 @@ class TestLoopLocking:
     def test_lock_acquired_before_process_loop(self):
         call_order = []
 
-        def _track_start(*a):
+        def _track_start(*a, **kw):
             call_order.append("start_loop_run")
             return "run-1"
 
@@ -160,7 +163,7 @@ class TestLoopLocking:
             call_order.append("process_loop")
             scraper_main._shutdown = True
 
-        def _track_finish(*a):
+        def _track_finish(*a, **kw):
             call_order.append("finish_loop_run")
 
         patches = _one_iteration_patches(
@@ -359,6 +362,105 @@ class TestCommandProcessing:
 
         assert received["full_scrape"] is True
 
+    def test_auto_triggers_full_scrape_when_none_recent(self):
+        """No command requested a full scrape, but none has run in the last
+        24 hours -- process_loop should still get full_scrape=True."""
+        received = {}
+
+        async def _capture(**kw):
+            received.update(kw)
+            scraper_main._shutdown = True
+
+        patches = _one_iteration_patches(
+            recent_full_scrape=patch.object(
+                scraper_main.SupabaseReader, "recent_full_scrape", return_value=False
+            ),
+            process_loop=patch.object(
+                scraper_main, "process_loop", side_effect=_capture
+            ),
+        )
+        with contextmanager_from_patches(patches):
+            _run_main()
+
+        assert received["full_scrape"] is True
+
+    def test_no_auto_trigger_when_full_scrape_ran_recently(self):
+        received = {}
+
+        async def _capture(**kw):
+            received.update(kw)
+            scraper_main._shutdown = True
+
+        patches = _one_iteration_patches(
+            recent_full_scrape=patch.object(
+                scraper_main.SupabaseReader, "recent_full_scrape", return_value=True
+            ),
+            process_loop=patch.object(
+                scraper_main, "process_loop", side_effect=_capture
+            ),
+        )
+        with contextmanager_from_patches(patches):
+            _run_main()
+
+        assert received["full_scrape"] is False
+
+    def test_command_full_scrape_skips_recent_full_scrape_lookup(self):
+        """If a command already forced full_scrape=True, there's no need to
+        query recent_full_scrape at all."""
+        patches = _one_iteration_patches(
+            get_commands=patch.object(
+                scraper_main.SupabaseReader,
+                "get_pending_commands",
+                return_value=[{"id": "cmd-1", "command": "full_scrape"}],
+            ),
+        )
+        with contextmanager_from_patches(patches) as mocks:
+            _run_main()
+
+        mocks["recent_full_scrape"].assert_not_called()
+
+    def test_start_loop_run_receives_full_scrape_decision(self):
+        patches = _one_iteration_patches(
+            recent_full_scrape=patch.object(
+                scraper_main.SupabaseReader, "recent_full_scrape", return_value=False
+            ),
+        )
+        with contextmanager_from_patches(patches) as mocks:
+            _run_main()
+
+        mocks["start_run"].assert_called_once_with(full_scrape=True)
+
+    def test_recovery_pass_does_not_check_recent_full_scrape(self):
+        async def _return_counts(**kw):
+            scraper_main._shutdown = True
+            return {
+                "games_updated": 0,
+                "users_updated": 0,
+                "rolls_updated": 0,
+                "updates_generated": 0,
+            }
+
+        with (
+            patch.object(
+                scraper_main.SupabaseReader, "is_loop_running", return_value=True
+            ),
+            patch.object(scraper_main.SupabaseReader, "cleanup_delivered_updates"),
+            patch.object(scraper_main.SupabaseReader, "cleanup_completed_commands"),
+            patch.object(
+                scraper_main.SupabaseReader, "recent_full_scrape"
+            ) as mock_recent,
+            patch.object(
+                scraper_main.SupabaseReader, "start_loop_run", return_value="run-r"
+            ),
+            patch.object(scraper_main.SupabaseReader, "finish_loop_run"),
+            patch.object(scraper_main.SupabaseReader, "write_scraper_update"),
+            patch.object(scraper_main, "process_loop", side_effect=_return_counts),
+            patch("scraper_main.http_session.close_session", new_callable=AsyncMock),
+        ):
+            _run_main()
+
+        mock_recent.assert_not_called()
+
     def test_unknown_command_does_not_set_full_scrape(self):
         received = {}
 
@@ -551,6 +653,9 @@ class TestLifecycleOrdering:
             ),
             patch.object(scraper_main.SupabaseReader, "acknowledge_command"),
             patch.object(scraper_main.SupabaseReader, "complete_command"),
+            patch.object(
+                scraper_main.SupabaseReader, "recent_full_scrape", return_value=True
+            ),
             patch.object(
                 scraper_main.SupabaseReader,
                 "start_loop_run",
