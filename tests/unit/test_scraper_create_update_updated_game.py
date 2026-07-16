@@ -204,6 +204,12 @@ class TestCreateUpdateUpdatedGameStructure:
         assert update is not None
         assert update.location == "gameadditions"
 
+    def test_game_update_type_is_edit(self):
+        old, new = self._changed_pair()
+        update, _ = create_update_updated_game(old, new)
+        assert update is not None
+        assert update.game_update_type == "edit"
+
     def test_title_contains_game_name(self):
         update, _ = create_update_updated_game(
             _old([_po(points=10)], game_name="Celeste"),

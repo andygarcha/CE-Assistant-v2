@@ -31,3 +31,7 @@ class TestCreateUpdateRemovedGame:
     def test_game_ce_id_is_set(self):
         update = create_update_removed_game(make_game(ce_id=GAME_ID))
         assert update.game_ce_id == GAME_ID
+
+    def test_game_update_type_is_remove(self):
+        update = create_update_removed_game(make_game(ce_id=GAME_ID))
+        assert update.game_update_type == "remove"

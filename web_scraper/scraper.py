@@ -54,6 +54,16 @@ class UpdateMessageForScraperProcess:
 
     game_ce_id: str | None = None
 
+    # Explicit tag for what kind of game change this is, so routing
+    # decisions (flush_updates: pending-vs-stable; the debounce system:
+    # new/removed-vs-edited) don't have to be inferred from unrelated state
+    # (game_ce_id presence, snapshot presence). Only "edit" is debounced --
+    # "add"/"remove" are one-shot events with nothing to wait for, and are
+    # sent immediately by announce_new_game/announce_removed_game rather
+    # than ever flowing through flush_updates at all. None means this isn't
+    # a game-related update (e.g. a user/roll message).
+    game_update_type: typing.Literal["add", "edit", "remove"] | None = None
+
     def print(self, full=False, info=False):
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
@@ -75,6 +85,13 @@ class UpdateMessageForScraperProcess:
 
 
 def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
+    """
+    Only "edit" updates (existing games being changed) get debounced through
+    the pending table -- everything else (user/roll messages with no
+    game_update_type, and any stray "add"/"remove" message that ends up
+    here instead of going through announce_new_game/announce_removed_game)
+    is flushed immediately as stable.
+    """
     immediate_rows = []
     for update in updates:
         if update.location is None:
@@ -83,7 +100,7 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
             )
             continue
 
-        if update.game_ce_id is not None:
+        if update.game_update_type == "edit":
             SupabaseReader.upsert_pending_update(_update_to_row(update, "pending"))
         else:
             immediate_rows.append(_update_to_row(update, "stable"))
@@ -148,6 +165,16 @@ def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
     SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
 
 
+def _deliver_immediately(update: UpdateMessageForScraperProcess, send_updates: bool) -> None:
+    """Shared by announce_new_game/announce_removed_game: send the "add"/
+    "remove" message right now (never through the pending debounce), or
+    just print/log it during a silent/recovery scrape."""
+    if send_updates:
+        _write_stable_update(update)
+    else:
+        update.print(full=True)
+
+
 async def announce_new_game(
     game_new: CEAPIGame,
     notIsFinished: set[str],
@@ -196,12 +223,7 @@ async def announce_new_game(
         return
 
     SupabaseReader.bulk_dump_games([current_api_game])
-
-    update = create_update_new_game(current_api_game)
-    if send_updates:
-        _write_stable_update(update)
-    else:
-        update.print(full=True)
+    _deliver_immediately(create_update_new_game(current_api_game), send_updates)
 
 
 async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> None:
@@ -228,12 +250,7 @@ async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> 
     batch, and so this game is retried as "removed" again next loop.
     """
     SupabaseReader.delete_game(game_old.ce_id)
-
-    update = create_update_removed_game(game_old)
-    if send_updates:
-        _write_stable_update(update)
-    else:
-        update.print(full=True)
+    _deliver_immediately(create_update_removed_game(game_old), send_updates)
 
 
 async def finalize_stabilized_game_update(game_ce_id: str) -> None:
@@ -1412,6 +1429,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
+    update.game_update_type = "add"
 
     # genre tags
     NUM_GENRE_TAGS = 2
@@ -1487,6 +1505,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
     update.game_ce_id = game_old.ce_id
+    update.game_update_type = "remove"
 
     return update
 
@@ -1539,6 +1558,7 @@ def create_update_updated_game(
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
+    update.game_update_type = "edit"
     update.image = (
         game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
     )

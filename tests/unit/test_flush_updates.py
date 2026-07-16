@@ -31,12 +31,13 @@ class TestFlushUpdatesRouting:
         assert rows[0]["channel"] == "casino"
         assert rows[0]["text"] == "You won!"
 
-    def test_game_update_goes_to_pending(self):
+    def test_edit_update_goes_to_pending(self):
         update = _make_update(
             is_embed=True,
             location="gameadditions",
-            title="New Game!",
+            title="Game changed!",
             game_ce_id="game-001",
+            game_update_type="edit",
         )
 
         with (
@@ -56,12 +57,47 @@ class TestFlushUpdatesRouting:
         assert row["game_ce_id"] == "game-001"
         assert row["channel"] == "gameadditions"
 
+    def test_add_and_remove_types_go_to_stable_not_pending(self):
+        """Only "edit" is debounced -- "add"/"remove" have nothing to wait
+        for and must never be routed to pending, even though they carry a
+        game_ce_id (this is the exact routing rule whose absence caused
+        new-game and removed-game announcements to be silently dropped)."""
+        add_update = _make_update(
+            location="gameadditions",
+            title="New game!",
+            game_ce_id="game-add",
+            game_update_type="add",
+        )
+        remove_update = _make_update(
+            location="gameadditions",
+            title="Removed game!",
+            game_ce_id="game-remove",
+            game_update_type="remove",
+        )
+
+        with (
+            patch(
+                "web_scraper.scraper.SupabaseReader.write_scraper_updates_bulk"
+            ) as mock_bulk,
+            patch(
+                "web_scraper.scraper.SupabaseReader.upsert_pending_update"
+            ) as mock_upsert,
+        ):
+            flush_updates([add_update, remove_update])
+
+        mock_upsert.assert_not_called()
+        mock_bulk.assert_called_once()
+        rows = mock_bulk.call_args[0][0]
+        assert len(rows) == 2
+        assert all(r["status"] == "stable" for r in rows)
+
     def test_mixed_updates_routed_correctly(self):
         game_update = _make_update(
             is_embed=True,
             location="gameadditions",
             title="Updated!",
             game_ce_id="game-002",
+            game_update_type="edit",
         )
         roll_update = _make_update(
             is_embed=False, location="casino", text="Roll won!", game_ce_id=None
@@ -130,6 +166,7 @@ class TestFlushUpdatesRouting:
             url="https://cedb.me/game/abc",
             color=0xEFD839,
             game_ce_id="abc",
+            game_update_type="edit",
         )
 
         with (
@@ -154,11 +191,26 @@ class TestFlushUpdatesRouting:
 
 
 class TestFlushUpdatesMultipleGameUpdates:
-    def test_each_game_update_upserted_individually(self):
+    def test_each_edit_upserted_individually(self):
         updates = [
-            _make_update(location="gameadditions", title="Game A", game_ce_id="game-a"),
-            _make_update(location="gameadditions", title="Game B", game_ce_id="game-b"),
-            _make_update(location="gameadditions", title="Game C", game_ce_id="game-c"),
+            _make_update(
+                location="gameadditions",
+                title="Game A",
+                game_ce_id="game-a",
+                game_update_type="edit",
+            ),
+            _make_update(
+                location="gameadditions",
+                title="Game B",
+                game_ce_id="game-b",
+                game_update_type="edit",
+            ),
+            _make_update(
+                location="gameadditions",
+                title="Game C",
+                game_ce_id="game-c",
+                game_update_type="edit",
+            ),
         ]
 
         with (
@@ -179,10 +231,16 @@ class TestFlushUpdatesMultipleGameUpdates:
     def test_duplicate_game_ids_each_upserted(self):
         updates = [
             _make_update(
-                location="gameadditions", title="First change", game_ce_id="game-x"
+                location="gameadditions",
+                title="First change",
+                game_ce_id="game-x",
+                game_update_type="edit",
             ),
             _make_update(
-                location="gameadditions", title="Second change", game_ce_id="game-x"
+                location="gameadditions",
+                title="Second change",
+                game_ce_id="game-x",
+                game_update_type="edit",
             ),
         ]
 
@@ -204,7 +262,12 @@ class TestFlushUpdatesNullLocationMixed:
         updates = [
             _make_update(location="casino", text="valid", game_ce_id=None),
             _make_update(location=None, text="orphan"),
-            _make_update(location="gameadditions", title="game", game_ce_id="g1"),
+            _make_update(
+                location="gameadditions",
+                title="game",
+                game_ce_id="g1",
+                game_update_type="edit",
+            ),
         ]
 
         with (
@@ -337,9 +400,12 @@ class TestFlushUpdatesChannelVariety:
         mock_bulk.assert_called_once()
         assert mock_bulk.call_args[0][0][0]["status"] == "stable"
 
-    def test_non_gameadditions_channel_with_game_ce_id_goes_pending(self):
+    def test_non_gameadditions_channel_with_edit_type_goes_pending(self):
         update = _make_update(
-            location="casino", text="roll for game", game_ce_id="game-123"
+            location="casino",
+            text="roll for game",
+            game_ce_id="game-123",
+            game_update_type="edit",
         )
 
         with (
@@ -355,3 +421,24 @@ class TestFlushUpdatesChannelVariety:
         mock_upsert.assert_called_once()
         assert mock_upsert.call_args[0][0]["status"] == "pending"
         mock_bulk.assert_not_called()
+
+    def test_game_ce_id_without_edit_type_goes_stable(self):
+        """Routing depends solely on game_update_type now, not on whether
+        game_ce_id happens to be set."""
+        update = _make_update(
+            location="casino", text="roll for game", game_ce_id="game-123"
+        )
+
+        with (
+            patch(
+                "web_scraper.scraper.SupabaseReader.write_scraper_updates_bulk"
+            ) as mock_bulk,
+            patch(
+                "web_scraper.scraper.SupabaseReader.upsert_pending_update"
+            ) as mock_upsert,
+        ):
+            flush_updates([update])
+
+        mock_upsert.assert_not_called()
+        mock_bulk.assert_called_once()
+        assert mock_bulk.call_args[0][0][0]["status"] == "stable"

@@ -54,6 +54,10 @@ class TestCreateUpdateNewGameStructure:
         update = create_update_new_game(make_api_game(ce_id="aaaa-1111-bbbb-2222"))
         assert update.url == "https://cedb.me/game/aaaa-1111-bbbb-2222"
 
+    def test_game_update_type_is_add(self):
+        update = create_update_new_game(make_api_game())
+        assert update.game_update_type == "add"
+
     def test_description_contains_emojis(self):
         game = make_api_game(categories=["Action"])
         update = create_update_new_game(game)
