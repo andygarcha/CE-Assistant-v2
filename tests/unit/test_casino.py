@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from Classes.CE_User import CEUser
 from commands.casino import (
+    ConfirmCancelView,
+    CoOpConfirmView,
     RollResult,
     co_op_roll,
     roll_destinyalignment,
@@ -1429,3 +1431,111 @@ class TestRollTeamworkmakesthedreamwork:
             roll_teamworkmakesthedreamwork([], EMPTY_DT, user, partner, True, True)
         for i, call in enumerate(mock.call_args_list):
             assert len(call.kwargs["user"]) >= 2, f"call {i} has fewer than 2 users"
+
+
+# ── confirmation view buttons ─────────────────────────────────────────────────
+
+
+def _make_button_interaction(user_id: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        user=SimpleNamespace(id=user_id),
+        response=SimpleNamespace(send_message=AsyncMock(), defer=AsyncMock()),
+    )
+
+
+class TestCoOpConfirmView:
+    OWNER_ID = 456
+    OTHER_ID = 999
+
+    def test_accept_from_non_partner_sends_ephemeral_warning(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(CoOpConfirmView.accept(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        interaction.response.send_message.assert_awaited_once_with(
+            "Hey! Don't touch that.", ephemeral=True
+        )
+
+    def test_accept_from_non_partner_does_not_confirm(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(CoOpConfirmView.accept(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is None
+
+    def test_accept_from_partner_confirms_and_defers(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OWNER_ID)
+        asyncio.run(CoOpConfirmView.accept(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is True
+        interaction.response.defer.assert_awaited_once()
+        interaction.response.send_message.assert_not_awaited()
+
+    def test_decline_from_non_partner_sends_ephemeral_warning(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(CoOpConfirmView.decline(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        interaction.response.send_message.assert_awaited_once_with(
+            "Hey! Don't touch that.", ephemeral=True
+        )
+
+    def test_decline_from_non_partner_does_not_set_confirmed(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(CoOpConfirmView.decline(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is None
+
+    def test_decline_from_partner_declines_and_defers(self):
+        view = CoOpConfirmView(partner_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OWNER_ID)
+        asyncio.run(CoOpConfirmView.decline(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is False
+        interaction.response.defer.assert_awaited_once()
+        interaction.response.send_message.assert_not_awaited()
+
+
+class TestConfirmCancelView:
+    OWNER_ID = 456
+    OTHER_ID = 999
+
+    def test_confirm_from_non_owner_sends_ephemeral_warning(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(ConfirmCancelView.confirm(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        interaction.response.send_message.assert_awaited_once_with(
+            "Hey! Don't touch that.", ephemeral=True
+        )
+
+    def test_confirm_from_non_owner_does_not_set_confirmed(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(ConfirmCancelView.confirm(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is None
+
+    def test_confirm_from_owner_confirms_and_defers(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OWNER_ID)
+        asyncio.run(ConfirmCancelView.confirm(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is True
+        interaction.response.defer.assert_awaited_once()
+        interaction.response.send_message.assert_not_awaited()
+
+    def test_cancel_from_non_owner_sends_ephemeral_warning(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(ConfirmCancelView.cancel(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        interaction.response.send_message.assert_awaited_once_with(
+            "Hey! Don't touch that.", ephemeral=True
+        )
+
+    def test_cancel_from_non_owner_does_not_set_confirmed(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OTHER_ID)
+        asyncio.run(ConfirmCancelView.cancel(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is None
+
+    def test_cancel_from_owner_cancels_and_defers(self):
+        view = ConfirmCancelView(user_discord_id=self.OWNER_ID)
+        interaction = _make_button_interaction(self.OWNER_ID)
+        asyncio.run(ConfirmCancelView.cancel(view, interaction, MagicMock()))  # type: ignore[reportCallIssue] -- class-level access is the undecorated function at runtime
+        assert view.confirmed is False
+        interaction.response.defer.assert_awaited_once()
+        interaction.response.send_message.assert_not_awaited()
