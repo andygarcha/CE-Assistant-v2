@@ -199,6 +199,8 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     )
     @app_commands.describe(roll_id="The ID of the roll you'd like to change.")
     async def roll_management_command(interaction: discord.Interaction, roll_id: str):
+        return await interaction.response.send_message("Under construction.")
+
         return await roll_management(interaction, roll_id)
 
 
