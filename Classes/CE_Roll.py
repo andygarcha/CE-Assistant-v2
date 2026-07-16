@@ -556,6 +556,16 @@ class CERoll:
         elif self.roll_name == "Fourward Thinking":
             self.due_time = len(self.games) * 7
 
+    def replace_game(self, original_id: str, replacement_id: str) -> bool:
+        """
+        Replaces a game in-place in this roll instance.
+        Returns false if `original_id` is not in this game.
+        """
+        if original_id not in self.games:
+            return False
+        self.games[self.games.index(original_id)] = replacement_id
+        return True
+
     # ==== complex logic ====
 
     def rolled_categories(self, database_name: list[CEGame]) -> list[CATEGORIES]:

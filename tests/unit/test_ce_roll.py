@@ -249,6 +249,98 @@ class TestGameMutation:
         assert roll.games == ["g1"]
 
 
+# ── replace_game ──────────────────────────────────────────────────────────────
+
+
+class TestReplaceGame:
+    def test_present_game_is_replaced(self):
+        roll = make_roll(games=["g1"])
+        roll.replace_game("g1", "g2")
+        assert roll.games == ["g2"]
+
+    def test_present_game_replacement_returns_true(self):
+        roll = make_roll(games=["g1"])
+        result = roll.replace_game("g1", "g2")
+        assert result is True
+
+    def test_absent_game_returns_false(self):
+        roll = make_roll(games=["g1"])
+        result = roll.replace_game("does-not-exist", "g2")
+        assert result is False
+
+    def test_absent_game_leaves_games_untouched(self):
+        roll = make_roll(games=["g1", "g2"])
+        roll.replace_game("does-not-exist", "g3")
+        assert roll.games == ["g1", "g2"]
+
+    def test_replaces_only_the_matching_slot_among_several(self):
+        roll = make_roll(games=["g1", "g2", "g3"])
+        roll.replace_game("g2", "g9")
+        assert roll.games == ["g1", "g9", "g3"]
+
+    def test_replaces_first_occurrence_only_when_duplicated(self):
+        """`list.index` finds the first match; only that slot should change."""
+        roll = make_roll(games=["g1", "g1", "g2"])
+        roll.replace_game("g1", "g9")
+        assert roll.games == ["g9", "g1", "g2"]
+
+    def test_replacement_id_can_duplicate_an_existing_game(self):
+        """No dedup is enforced -- the roll can end up with the same game twice."""
+        roll = make_roll(games=["g1", "g2"])
+        roll.replace_game("g1", "g2")
+        assert roll.games == ["g2", "g2"]
+
+    def test_replacing_with_the_same_id_is_a_no_op_value_but_still_true(self):
+        roll = make_roll(games=["g1", "g2"])
+        result = roll.replace_game("g1", "g1")
+        assert result is True
+        assert roll.games == ["g1", "g2"]
+
+    def test_empty_string_original_id_not_present_returns_false(self):
+        roll = make_roll(games=["g1", "g2"])
+        result = roll.replace_game("", "g9")
+        assert result is False
+        assert roll.games == ["g1", "g2"]
+
+    def test_empty_string_original_id_present_is_replaced(self):
+        roll = make_roll(games=["", "g2"])
+        result = roll.replace_game("", "g9")
+        assert result is True
+        assert roll.games == ["g9", "g2"]
+
+    def test_match_is_case_sensitive(self):
+        roll = make_roll(games=["Game-001"])
+        result = roll.replace_game("game-001", "g9")
+        assert result is False
+        assert roll.games == ["Game-001"]
+
+    def test_mutates_the_same_list_object_in_place(self):
+        """Callers (e.g. admin.py's RollManagementModal) rely on in-place
+        mutation of the underlying list, not a new list being assigned."""
+        roll = make_roll(games=["g1"])
+        games_ref = roll.games
+        roll.replace_game("g1", "g2")
+        assert games_ref is roll.games
+        assert games_ref == ["g2"]
+
+    def test_replace_game_on_single_game_roll(self):
+        roll = make_roll(games=["g1"])
+        result = roll.replace_game("g1", "g2")
+        assert result is True
+        assert roll.games == ["g2"]
+
+    def test_replacement_id_is_stored_verbatim(self):
+        roll = make_roll(games=["g1"])
+        roll.replace_game("g1", "  weird-but-valid-id  ")
+        assert roll.games == ["  weird-but-valid-id  "]
+
+    def test_empty_games_list_returns_false(self):
+        roll = make_roll(games=[])
+        result = roll.replace_game("g1", "g2")
+        assert result is False
+        assert roll.games == []
+
+
 # ── increase_rerolls ──────────────────────────────────────────────────────────
 
 
