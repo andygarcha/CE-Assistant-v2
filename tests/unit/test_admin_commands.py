@@ -1,17 +1,21 @@
 import asyncio
 import datetime
+import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import discord
 import pytest
 
 from commands.admin import (
+    RollManagementModal,
     UnlinkView,
     ban_game,
     clear_roll_portion,
     fail_roll,
     force_unlink,
     loop,
+    roll_management,
 )
 from tests.conftest import make_game, make_roll, make_user
 
@@ -725,3 +729,359 @@ class TestUnlinkViewYesButton:
 
     def test_missing_user_raises(self):
         asyncio.run(self._invoke_missing_user())
+
+
+# ── roll_management ──────────────────────────────────────────────────────────
+
+
+class TestRollManagement:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(send_message=AsyncMock(), send_modal=AsyncMock()),
+        )
+
+    def _run(
+        self,
+        interaction,
+        roll_id: str = "roll-001",
+        get_roll_return=None,
+        get_games_bulk_return=None,
+    ):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch(
+                "commands.admin.SupabaseReader.get_roll", return_value=get_roll_return
+            ),
+            patch(
+                "commands.admin.SupabaseReader.get_games_bulk",
+                return_value=get_games_bulk_return or [],
+            ) as mock_bulk,
+        ):
+            asyncio.run(roll_management(interaction, roll_id))
+        return mock_bulk
+
+    # ── roll not found ────────────────────────────────────────────────────────
+
+    def test_roll_not_found_sends_error_message(self):
+        interaction = self._make_interaction()
+        self._run(interaction, roll_id="bad-id", get_roll_return=None)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert "bad-id" in msg
+
+    def test_roll_not_found_does_not_open_modal(self):
+        interaction = self._make_interaction()
+        self._run(interaction, roll_id="bad-id", get_roll_return=None)
+        interaction.response.send_modal.assert_not_called()
+
+    def test_roll_not_found_error_is_ephemeral(self):
+        interaction = self._make_interaction()
+        self._run(interaction, roll_id="bad-id", get_roll_return=None)
+        assert interaction.response.send_message.call_args.kwargs["ephemeral"] is True
+
+    # ── any roll status opens the modal (status guard intentionally removed) ──
+
+    @pytest.mark.parametrize(
+        "status", ["current", "won", "failed", "between_stages", "removed"]
+    )
+    def test_any_roll_status_opens_modal(self, status):
+        interaction = self._make_interaction()
+        roll = make_roll(status=status)
+        self._run(interaction, get_roll_return=roll)
+        interaction.response.send_modal.assert_called_once()
+
+    def test_opening_modal_does_not_send_a_plain_message(self):
+        interaction = self._make_interaction()
+        roll = make_roll(status="current")
+        self._run(interaction, get_roll_return=roll)
+        interaction.response.send_message.assert_not_called()
+
+    # ── games are looked up in bulk from the roll's game IDs ──────────────────
+
+    def test_looks_up_games_by_the_rolls_game_ids(self):
+        interaction = self._make_interaction()
+        roll = make_roll(
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ]
+        )
+        mock_bulk = self._run(interaction, get_roll_return=roll)
+        mock_bulk.assert_called_once_with(roll.games)
+
+    def test_modal_is_populated_with_the_looked_up_games(self):
+        interaction = self._make_interaction()
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        games = [
+            make_game(ce_id="game-001-0000-0000-000000000000", game_name="Game One")
+        ]
+        self._run(interaction, get_roll_return=roll, get_games_bulk_return=games)
+        modal = interaction.response.send_modal.call_args[0][0]
+        assert isinstance(modal, RollManagementModal)
+        assert [opt.value for opt in modal.game_select.options] == [
+            "game-001-0000-0000-000000000000"
+        ]
+        assert [opt.label for opt in modal.game_select.options] == ["Game One"]
+
+    def test_modal_carries_a_reference_to_the_roll(self):
+        interaction = self._make_interaction()
+        roll = make_roll(status="current")
+        self._run(interaction, get_roll_return=roll)
+        modal = interaction.response.send_modal.call_args[0][0]
+        assert modal.roll is roll
+
+
+class TestRollManagementModal:
+    def test_game_select_has_one_option_per_game(self):
+        roll = make_roll()
+        games = [
+            make_game(ce_id="game-001-0000-0000-000000000000"),
+            make_game(ce_id="game-002-0000-0000-000000000000"),
+            make_game(ce_id="game-003-0000-0000-000000000000"),
+        ]
+        modal = RollManagementModal(roll, games)
+        assert len(modal.game_select.options) == 3
+
+    def test_game_select_options_use_game_name_and_ce_id(self):
+        roll = make_roll()
+        games = [make_game(ce_id="game-001-0000-0000-000000000000", game_name="Foo")]
+        modal = RollManagementModal(roll, games)
+        [option] = modal.game_select.options
+        assert option.label == "Foo"
+        assert option.value == "game-001-0000-0000-000000000000"
+
+    def test_no_games_means_no_select_options(self):
+        roll = make_roll()
+        modal = RollManagementModal(roll, [])
+        assert modal.game_select.options == []
+
+    def test_has_a_text_input_for_the_replacement_ceid(self):
+        roll = make_roll()
+        modal = RollManagementModal(roll, [])
+        assert isinstance(modal.new_game_id, discord.ui.TextInput)
+        assert modal.new_game_id.required is True
+
+    def test_has_an_optional_text_input_for_extending_due_time(self):
+        roll = make_roll()
+        modal = RollManagementModal(roll, [])
+        assert isinstance(modal.hours_extend, discord.ui.TextInput)
+        assert modal.hours_extend.required is False
+
+
+# ── RollManagementModal.on_submit ───────────────────────────────────────────
+
+
+class TestRollManagementModalOnSubmit:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(response=SimpleNamespace(send_message=AsyncMock()))
+
+    def _make_modal(
+        self,
+        roll,
+        selected_game_id: str = "game-001-0000-0000-000000000000",
+        new_game_id_value: str = "game-999-0000-0000-000000000000",
+        hours_extend_value: str = "1",
+    ) -> RollManagementModal:
+        games = [make_game(ce_id=gid) for gid in roll.games]
+        modal = RollManagementModal(roll, games)
+        modal.game_select._values = [selected_game_id]
+        modal.new_game_id._value = new_game_id_value
+        modal.hours_extend._value = hours_extend_value
+        return modal
+
+    def _submit(self, modal, interaction, new_game=None):
+        with (
+            patch(
+                "commands.admin.SupabaseReader.get_game", return_value=new_game
+            ) as mock_get_game,
+            patch("commands.admin.SupabaseReader.dump_roll") as mock_dump,
+        ):
+            asyncio.run(modal.on_submit(interaction))
+        return mock_get_game, mock_dump
+
+    # ── replacement CEID does not exist ───────────────────────────────────────
+
+    def test_unknown_replacement_ceid_sends_error(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        modal = self._make_modal(roll, new_game_id_value="bogus-id")
+        self._submit(modal, interaction, new_game=None)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert "bogus-id" in msg
+
+    def test_unknown_replacement_ceid_error_is_ephemeral(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        modal = self._make_modal(roll, new_game_id_value="bogus-id")
+        self._submit(modal, interaction, new_game=None)
+        assert interaction.response.send_message.call_args.kwargs["ephemeral"] is True
+
+    def test_unknown_replacement_ceid_does_not_mutate_roll(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        modal = self._make_modal(roll, new_game_id_value="bogus-id")
+        self._submit(modal, interaction, new_game=None)
+        assert roll.games == ["game-001-0000-0000-000000000000"]
+
+    def test_unknown_replacement_ceid_does_not_persist(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        modal = self._make_modal(roll, new_game_id_value="bogus-id")
+        _, mock_dump = self._submit(modal, interaction, new_game=None)
+        mock_dump.assert_not_called()
+
+    # ── valid replacement ─────────────────────────────────────────────────────
+
+    def test_valid_replacement_swaps_the_selected_game(self):
+        roll = make_roll(
+            games=[
+                "game-001-0000-0000-000000000000",
+                "game-002-0000-0000-000000000000",
+            ]
+        )
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000", game_name="New")
+        modal = self._make_modal(
+            roll,
+            selected_game_id="game-002-0000-0000-000000000000",
+            new_game_id_value="game-999-0000-0000-000000000000",
+        )
+        self._submit(modal, interaction, new_game=new_game)
+        assert roll.games == [
+            "game-001-0000-0000-000000000000",
+            "game-999-0000-0000-000000000000",
+        ]
+
+    def test_valid_replacement_looks_up_the_typed_ceid(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(
+            roll, new_game_id_value="game-999-0000-0000-000000000000"
+        )
+        mock_get_game, _ = self._submit(modal, interaction, new_game=new_game)
+        mock_get_game.assert_called_once_with("game-999-0000-0000-000000000000")
+
+    def test_valid_replacement_persists_the_roll(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll)
+        _, mock_dump = self._submit(modal, interaction, new_game=new_game)
+        mock_dump.assert_called_once_with(roll)
+
+    def test_valid_replacement_extends_due_time_by_hours(self):
+        roll = make_roll(
+            games=["game-001-0000-0000-000000000000"],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="5")
+        self._submit(modal, interaction, new_game=new_game)
+        assert roll.due_time == datetime.datetime(
+            2030, 1, 1, 5, 0, 0, tzinfo=datetime.UTC
+        )
+
+    def test_valid_replacement_with_no_due_time_stays_none(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"], due_time=None)
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="5")
+        self._submit(modal, interaction, new_game=new_game)
+        assert roll.due_time is None
+
+    def test_success_message_names_old_and_new_game(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(
+            ce_id="game-999-0000-0000-000000000000", game_name="Brand New Game"
+        )
+        modal = self._make_modal(
+            roll,
+            selected_game_id="game-001-0000-0000-000000000000",
+            new_game_id_value="game-999-0000-0000-000000000000",
+        )
+        self._submit(modal, interaction, new_game=new_game)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert "game-001-0000-0000-000000000000" in msg
+        assert "Brand New Game" in msg
+
+    # ── blank optional hours_extend ────────────────────────────────────────────
+
+    def test_blank_hours_extend_does_not_crash(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="")
+        self._submit(modal, interaction, new_game=new_game)
+
+    def test_blank_hours_extend_leaves_due_time_untouched(self):
+        roll = make_roll(
+            games=["game-001-0000-0000-000000000000"],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="")
+        self._submit(modal, interaction, new_game=new_game)
+        assert roll.due_time == datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC)
+
+    def test_blank_hours_extend_still_persists_the_roll(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="")
+        _, mock_dump = self._submit(modal, interaction, new_game=new_game)
+        mock_dump.assert_called_once_with(roll)
+
+    def test_blank_hours_extend_omits_the_extension_clause_from_the_message(self):
+        roll = make_roll(games=["game-001-0000-0000-000000000000"])
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="")
+        self._submit(modal, interaction, new_game=new_game)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert "Extended due time" not in msg
+
+    # ── hour_message reports the real due-time change ─────────────────────────
+
+    def test_hour_message_reports_the_discord_timestamp_after_extension(self):
+        roll = make_roll(
+            games=["game-001-0000-0000-000000000000"],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="5")
+        self._submit(modal, interaction, new_game=new_game)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert roll.due_discord_timestamp in msg
+
+    def test_hour_message_before_and_after_differ(self):
+        roll = make_roll(
+            games=["game-001-0000-0000-000000000000"],
+            due_time=datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC),
+        )
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="5")
+        self._submit(modal, interaction, new_game=new_game)
+        msg = interaction.response.send_message.call_args[0][0]
+        match = re.search(r"from (<t:\d+>) to (<t:\d+>)", msg)
+        assert match is not None, f"Expected a 'from X to Y' clause in: {msg!r}"
+        assert match.group(1) != match.group(2)
+
+    def test_hour_message_reflects_a_due_time_that_was_previously_none(self):
+        """increase_due_time() is a no-op when due_time started as None (see
+        TestIncreaseDueTime in test_ce_roll.py), so before/after should both
+        render as the same '<t:None>' string -- not crash."""
+        roll = make_roll(games=["game-001-0000-0000-000000000000"], due_time=None)
+        interaction = self._make_interaction()
+        new_game = make_game(ce_id="game-999-0000-0000-000000000000")
+        modal = self._make_modal(roll, hours_extend_value="5")
+        self._submit(modal, interaction, new_game=new_game)
+        msg = interaction.response.send_message.call_args[0][0]
+        assert "Extended due time from <t:None> to <t:None>." in msg

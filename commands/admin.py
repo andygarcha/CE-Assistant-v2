@@ -7,6 +7,7 @@ import uuid
 import discord
 from discord import app_commands
 
+from Classes.CE_Game import CEGame
 from Classes.CE_Roll import CERoll
 from commands.games import get_game_auto
 from commands.user import register
@@ -191,6 +192,14 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         interaction: discord.Interaction, include_integrity: bool = False
     ):
         return await health_check(interaction, include_integrity)
+
+    # -- /roll-management {roll_id} ------------------------------------------------------------
+    @tree.command(
+        name="roll-management", description="Change out a game in a roll.", guild=guild
+    )
+    @app_commands.describe(roll_id="The ID of the roll you'd like to change.")
+    async def roll_management_command(interaction: discord.Interaction, roll_id: str):
+        return await roll_management(interaction, roll_id)
 
 
 async def test(interaction: discord.Interaction):
@@ -762,3 +771,87 @@ async def health_check(
             f"Health check complete. {len(warnings)} warning(s) sent to #privatelog."
         )
     return await interaction.followup.send("Health check complete. No issues found.")
+
+
+class RollManagementModal(discord.ui.Modal):
+    """Modal for replacing a game in a roll and optionally extending its due time.
+
+    TODO: `on_submit` still needs to validate the replacement CEID, swap the
+    selected game in `roll.games`, apply `hours_extend` to `roll.due_time`,
+    persist via `SupabaseReader.dump_roll`, and send a confirmation message.
+    """
+
+    def __init__(self, roll: CERoll, games: list[CEGame]):
+        super().__init__(title="Roll Management")
+        self.roll = roll
+
+        game_options = [
+            discord.SelectOption(label=game.game_name, value=game.ce_id)
+            for game in games
+        ]
+        self.game_select = discord.ui.Select(options=game_options)
+        self.add_item(
+            discord.ui.Label(text="Game to replace", component=self.game_select)
+        )
+
+        self.new_game_id = discord.ui.TextInput(required=True)
+        self.add_item(
+            discord.ui.Label(text="Replacement game CEID", component=self.new_game_id)
+        )
+
+        self.hours_extend = discord.ui.TextInput(required=False)
+        self.add_item(
+            discord.ui.Label(
+                text="Hours to extend due time", component=self.hours_extend
+            )
+        )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        new_game = SupabaseReader.get_game(self.new_game_id.value)
+        if new_game is None:
+            await interaction.response.send_message(
+                f"Could not find game with ID {self.new_game_id.value}.", ephemeral=True
+            )
+            return
+
+        self.roll.replace_game(self.game_select.values[0], new_game.ce_id)
+
+        hour_message = ""
+        if self.hours_extend.value != "":
+            original_due_time = self.roll.due_discord_timestamp
+            self.roll.increase_due_time(int(self.hours_extend.value) * 60 * 60)
+            hour_message = f" Extended due time from {original_due_time} to {self.roll.due_discord_timestamp}."
+        SupabaseReader.dump_roll(self.roll)
+
+        await interaction.response.send_message(
+            f"Replaced https://cedb.me/game/{self.game_select.values[0]} with {new_game.name_with_link}."
+            f"{hour_message}"
+        )
+
+
+async def roll_management(interaction: discord.Interaction, roll_id: str):
+    """
+    This command does the following:
+    - Allows you to select one of the corresponding rollGames for replacement
+    - Allows a TextInput for the CEID of the game you're replacing it with
+    - Allows a TextInput (number) for how many hours you'd like to extend the user's due time.
+
+    This will be sent in the form of a Modal. Once input is sent back, the data
+    will be validated (valid game ID) and saved, and then sends a confirmation message.
+
+    Because a Modal must be the interaction's initial response, this command
+    cannot `defer()` first: guard-clause failures use `response.send_message`,
+    and the success path uses `response.send_modal`.
+    """
+    await hm.log_command(client, interaction, "roll_management", True, roll_id=roll_id)
+
+    roll = SupabaseReader.get_roll(roll_id)
+    if roll is None:
+        return await interaction.response.send_message(
+            f"No roll with ID {roll_id} was found.", ephemeral=True
+        )
+
+    games = SupabaseReader.get_games_bulk(roll.games)
+
+    modal = RollManagementModal(roll, games)
+    return await interaction.response.send_modal(modal)
