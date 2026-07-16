@@ -255,7 +255,9 @@ async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> 
     _deliver_immediately(create_update_removed_game(game_old), send_updates)
 
 
-async def finalize_stabilized_game_update(game_ce_id: str) -> None:
+async def finalize_stabilized_game_update(
+    game_ce_id: str, send_updates: bool = True
+) -> None:
     """
     Once a game stops changing, regenerate its diff message from the
     pre-update snapshot vs. the now-final state, instead of relying on
@@ -282,12 +284,14 @@ async def finalize_stabilized_game_update(game_ce_id: str) -> None:
     if current is not None:
         update, _ = create_update_updated_game(snapshot, current)
         if update is not None:
-            _write_stable_update(update)
+            _deliver_immediately(update, send_updates)
 
     SupabaseReader.delete_pending_game_snapshot(game_ce_id)
 
 
-async def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+async def stabilize_pending_updates(
+    changed_game_ids: set[str], send_updates: bool = True
+) -> None:
     """
     This function accepts `changed_game_ids`, which is a list of
     game IDs that we can guarantee changed in between the previous two
@@ -308,7 +312,7 @@ async def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     stabilized = 0
     for row in to_promote:
         try:
-            await finalize_stabilized_game_update(row["game_ce_id"])
+            await finalize_stabilized_game_update(row["game_ce_id"], send_updates)
         except Exception:
             # Isolate one row's failure (e.g. a transient CE API error while
             # re-fetching a new game) from the rest of the batch -- leave
@@ -370,7 +374,7 @@ async def process_loop(
 
     # Promote pending game updates that had no further changes since last loop
     changed_game_ids = compute_changed_game_ids(_updates, removed_games)
-    await stabilize_pending_updates(changed_game_ids)
+    await stabilize_pending_updates(changed_game_ids, send_updates)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
