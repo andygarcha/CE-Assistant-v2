@@ -66,8 +66,11 @@ async def main():
                         full_scrape = True
                     SupabaseReader.complete_command(cmd["id"])
 
+                if not full_scrape:
+                    full_scrape = not SupabaseReader.recent_full_scrape(hours=24)
+
             # Acquire loop lock
-            run_id = SupabaseReader.start_loop_run()
+            run_id = SupabaseReader.start_loop_run(full_scrape=full_scrape)
             try:
                 result = await process_loop(
                     full_scrape=full_scrape,

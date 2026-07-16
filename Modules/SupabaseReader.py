@@ -1249,18 +1249,36 @@ def dump_loop(dt: datetime.datetime):
     ).execute()
 
 
-def start_loop_run() -> str:
+def start_loop_run(full_scrape: bool = False) -> str:
     result = (
         supabase.table("loopruns")
         .insert(
             {
                 "ran_at": _now_iso(),
                 "start": True,
+                "fullscrape": full_scrape,
             }
         )
         .execute()
     )
     return result.data[0]["id"]
+
+
+def recent_full_scrape(hours: int = 24) -> bool:
+    "Whether a full scrape has completed within the last `hours` hours."
+    cutoff = (
+        datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=hours)
+    ).isoformat()
+    data = (
+        supabase.table("loopruns")
+        .select("id")
+        .eq("fullscrape", True)
+        .gte("ran_at", cutoff)
+        .limit(1)
+        .execute()
+        .data
+    )
+    return bool(data)
 
 
 def finish_loop_run(run_id: str) -> None:

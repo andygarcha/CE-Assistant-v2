@@ -334,16 +334,7 @@ async def process_loop(
     full_scrape: bool = False,
     send_updates: bool = True,
 ):
-    logger.info("process_loop() invoked with full_scrape=%s (initially).", full_scrape)
-
-    full_scrape = (
-        (  # Noon/1PM EST (based on daylight savings)
-            datetime.datetime.now(datetime.UTC).hour == 17
-        )
-        and (datetime.datetime.now(datetime.UTC).minute == 0)
-    ) or full_scrape
-
-    logger.info("full_scrape=%s (second try)", full_scrape)
+    logger.info("process_loop() invoked with full_scrape=%s.", full_scrape)
 
     logger.info(
         "Scraper loop started at %s%s",
