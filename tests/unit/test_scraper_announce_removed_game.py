@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import patch
 
 from tests.conftest import make_game
@@ -13,7 +12,7 @@ def _run(send_updates: bool = True):
         patch("web_scraper.scraper.SupabaseReader.delete_game") as mock_delete,
         patch("web_scraper.scraper.SupabaseReader.write_scraper_update") as mock_write,
     ):
-        asyncio.run(announce_removed_game(game, send_updates))
+        announce_removed_game(game, send_updates)
     return mock_delete, mock_write
 
 
@@ -54,9 +53,7 @@ class TestAnnounceRemovedGame:
                 side_effect=lambda row: call_order.append("write"),
             ),
         ):
-            asyncio.run(
-                announce_removed_game(make_game(ce_id=GAME_ID), send_updates=True)
-            )
+            announce_removed_game(make_game(ce_id=GAME_ID), send_updates=True)
         assert call_order == ["delete", "write"]
 
     def test_send_updates_false_does_not_write_but_still_deletes(self):
@@ -76,9 +73,7 @@ class TestAnnounceRemovedGame:
             patch("web_scraper.scraper.SupabaseReader.write_scraper_update"),
         ):
             try:
-                asyncio.run(
-                    announce_removed_game(make_game(ce_id=GAME_ID), send_updates=True)
-                )
+                announce_removed_game(make_game(ce_id=GAME_ID), send_updates=True)
                 raised = False
             except RuntimeError:
                 raised = True

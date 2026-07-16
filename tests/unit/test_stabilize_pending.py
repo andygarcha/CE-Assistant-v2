@@ -1,5 +1,4 @@
-import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from tests.conftest import make_game, make_objective
 from web_scraper.scraper import (
@@ -23,7 +22,7 @@ def _run(pending: list[dict], changed: set[str]) -> list | None:
             "web_scraper.scraper.SupabaseReader.delete_stale_pending_update"
         ) as mock_delete,
     ):
-        asyncio.run(stabilize_pending_updates(changed))
+        stabilize_pending_updates(changed)
 
     if mock_delete.called:
         return [call.args[0] for call in mock_delete.call_args_list]
@@ -152,7 +151,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.SupabaseReader.delete_pending_game_snapshot"
             ) as mock_delete,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
+            finalize_stabilized_game_update("game-001")
 
         mock_write.assert_not_called()
         mock_delete.assert_not_called()
@@ -180,7 +179,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.SupabaseReader.delete_pending_game_snapshot"
             ) as mock_delete,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
+            finalize_stabilized_game_update("game-001")
 
         mock_write.assert_called_once()
         written_row = mock_write.call_args[0][0]
@@ -216,7 +215,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.SupabaseReader.delete_pending_game_snapshot"
             ) as mock_delete,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
+            finalize_stabilized_game_update("game-001")
 
         mock_write.assert_not_called()
         mock_delete.assert_called_once_with("game-001")
@@ -238,7 +237,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.SupabaseReader.delete_pending_game_snapshot"
             ) as mock_delete,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001"))
+            finalize_stabilized_game_update("game-001")
 
         mock_write.assert_not_called()
         mock_delete.assert_called_once_with("game-001")
@@ -272,7 +271,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.UpdateMessageForScraperProcess.print"
             ) as mock_print,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001", send_updates=False))
+            finalize_stabilized_game_update("game-001", send_updates=False)
 
         mock_write.assert_not_called()
         mock_print.assert_called_once()
@@ -304,7 +303,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.UpdateMessageForScraperProcess.print"
             ) as mock_print,
         ):
-            asyncio.run(finalize_stabilized_game_update("game-001", send_updates=True))
+            finalize_stabilized_game_update("game-001", send_updates=True)
 
         mock_write.assert_called_once()
         mock_print.assert_not_called()
@@ -320,14 +319,13 @@ class TestStabilizeUsesFinalize:
                 return_value=pending,
             ),
             patch(
-                "web_scraper.scraper.finalize_stabilized_game_update",
-                new_callable=AsyncMock,
+                "web_scraper.scraper.finalize_stabilized_game_update"
             ) as mock_finalize,
             patch(
                 "web_scraper.scraper.SupabaseReader.delete_stale_pending_update"
             ) as mock_delete_stale,
         ):
-            asyncio.run(stabilize_pending_updates(set()))
+            stabilize_pending_updates(set())
 
         mock_finalize.assert_called_once_with("game-001", True)
         mock_delete_stale.assert_called_once_with("p1")
@@ -344,12 +342,11 @@ class TestStabilizeUsesFinalize:
                 return_value=pending,
             ),
             patch(
-                "web_scraper.scraper.finalize_stabilized_game_update",
-                new_callable=AsyncMock,
+                "web_scraper.scraper.finalize_stabilized_game_update"
             ) as mock_finalize,
             patch("web_scraper.scraper.SupabaseReader.delete_stale_pending_update"),
         ):
-            asyncio.run(stabilize_pending_updates(set(), send_updates=False))
+            stabilize_pending_updates(set(), send_updates=False)
 
         mock_finalize.assert_called_once_with("game-001", False)
 
@@ -377,9 +374,9 @@ class TestStabilizeUsesFinalize:
 
 
 class TestStabilizeErrorIsolation:
-    """A single row's finalize failure (e.g. a transient CE API error while
-    re-fetching a new game) must not abort the rest of the batch, and the
-    failing row must stay pending so it's retried next loop."""
+    """A single row's finalize failure (e.g. a transient Supabase error)
+    must not abort the rest of the batch, and the failing row must stay
+    pending so it's retried next loop."""
 
     def test_failing_row_is_not_deleted_but_others_still_are(self):
         pending = [
@@ -387,9 +384,9 @@ class TestStabilizeErrorIsolation:
             {"id": "p2", "game_ce_id": "game-ok"},
         ]
 
-        async def _finalize(game_ce_id: str, send_updates: bool = True) -> None:
+        def _finalize(game_ce_id: str, send_updates: bool = True) -> None:
             if game_ce_id == "game-fails":
-                raise RuntimeError("transient CE API error")
+                raise RuntimeError("transient Supabase error")
 
         with (
             patch(
@@ -404,14 +401,14 @@ class TestStabilizeErrorIsolation:
                 "web_scraper.scraper.SupabaseReader.delete_stale_pending_update"
             ) as mock_delete,
         ):
-            asyncio.run(stabilize_pending_updates(set()))
+            stabilize_pending_updates(set())
 
         mock_delete.assert_called_once_with("p2")
 
     def test_failing_row_does_not_raise_out_of_stabilize(self):
         pending = [{"id": "p1", "game_ce_id": "game-fails"}]
 
-        async def _finalize(game_ce_id: str, send_updates: bool = True) -> None:
+        def _finalize(game_ce_id: str, send_updates: bool = True) -> None:
             raise RuntimeError("boom")
 
         with (
@@ -425,4 +422,4 @@ class TestStabilizeErrorIsolation:
             ),
             patch("web_scraper.scraper.SupabaseReader.delete_stale_pending_update"),
         ):
-            asyncio.run(stabilize_pending_updates(set()))  # must not raise
+            stabilize_pending_updates(set())  # must not raise

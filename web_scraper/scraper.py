@@ -228,7 +228,7 @@ async def announce_new_game(
     _deliver_immediately(create_update_new_game(current_api_game), send_updates)
 
 
-async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> None:
+def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> None:
     """
     Announces and deletes a removed game immediately, mirroring
     announce_new_game. Removal, like addition, is a one-shot event with
@@ -255,9 +255,7 @@ async def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> 
     _deliver_immediately(create_update_removed_game(game_old), send_updates)
 
 
-async def finalize_stabilized_game_update(
-    game_ce_id: str, send_updates: bool = True
-) -> None:
+def finalize_stabilized_game_update(game_ce_id: str, send_updates: bool = True) -> None:
     """
     Once a game stops changing, regenerate its diff message from the
     pre-update snapshot vs. the now-final state, instead of relying on
@@ -289,7 +287,7 @@ async def finalize_stabilized_game_update(
     SupabaseReader.delete_pending_game_snapshot(game_ce_id)
 
 
-async def stabilize_pending_updates(
+def stabilize_pending_updates(
     changed_game_ids: set[str], send_updates: bool = True
 ) -> None:
     """
@@ -312,11 +310,11 @@ async def stabilize_pending_updates(
     stabilized = 0
     for row in to_promote:
         try:
-            await finalize_stabilized_game_update(row["game_ce_id"], send_updates)
+            finalize_stabilized_game_update(row["game_ce_id"], send_updates)
         except Exception:
-            # Isolate one row's failure (e.g. a transient CE API error while
-            # re-fetching a new game) from the rest of the batch -- leave
-            # this row pending so it's retried next loop instead of aborting
+            # Isolate one row's failure (e.g. a transient Supabase error)
+            # from the rest of the batch -- leave this row pending so it's
+            # retried next loop instead of aborting
             # everyone else still in to_promote.
             logger.exception(
                 "Failed to finalize pending update for game %s; will retry next loop.",
@@ -374,7 +372,7 @@ async def process_loop(
 
     # Promote pending game updates that had no further changes since last loop
     changed_game_ids = compute_changed_game_ids(_updates, removed_games)
-    await stabilize_pending_updates(changed_game_ids, send_updates)
+    stabilize_pending_updates(changed_game_ids, send_updates)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
@@ -747,7 +745,7 @@ async def update_games(
                 )
                 continue
             try:
-                await announce_removed_game(_game, send_updates)
+                announce_removed_game(_game, send_updates)
             except Exception:
                 # Isolate one game's failure from the rest of the batch --
                 # leave it out of game_list_removed so it's retried next
