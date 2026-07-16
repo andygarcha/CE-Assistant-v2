@@ -346,9 +346,7 @@ class TestGetUserPointsDerivedLive:
         tmpdir = _init_cache()
         try:
             LocalCache.upsert_game(GAME_DB_ROW)
-            LocalCache.upsert_objectives_bulk(
-                [{**OBJECTIVE_DB_ROW, "points": 999}]
-            )
+            LocalCache.upsert_objectives_bulk([{**OBJECTIVE_DB_ROW, "points": 999}])
             _seed_user(partial=False)
             with patch.object(SupabaseReader, "supabase"):
                 result = SupabaseReader.get_user("user-001")
