@@ -165,7 +165,9 @@ def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
     SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
 
 
-def _deliver_immediately(update: UpdateMessageForScraperProcess, send_updates: bool) -> None:
+def _deliver_immediately(
+    update: UpdateMessageForScraperProcess, send_updates: bool
+) -> None:
     """Shared by announce_new_game/announce_removed_game: send the "add"/
     "remove" message right now (never through the pending debounce), or
     just print/log it during a silent/recovery scrape."""

@@ -69,7 +69,9 @@ class TestAnnounceNewGame:
     def test_writes_directly_as_stable_not_pending(self):
         """New-game announcements bypass the pending/stabilize debounce
         entirely -- they're written straight to stable."""
-        _mock_get_game, mock_write, _mock_dump, _notf = _run(make_api_game(ce_id=GAME_ID))
+        _mock_get_game, mock_write, _mock_dump, _notf = _run(
+            make_api_game(ce_id=GAME_ID)
+        )
         written_row = mock_write.call_args[0][0]
         assert written_row["status"] == "stable"
 
