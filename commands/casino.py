@@ -1263,7 +1263,9 @@ class CoOpConfirmView(discord.ui.View):
     @discord.ui.button(label="I'm in!", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user.id != self.partner_id:
-            return
+            return interaction.response.send_message(
+                "Hey! Don't touch that.", ephemeral=True
+            )
         self.confirmed = True
         self.stop()
         await interaction.response.defer()
@@ -1271,7 +1273,9 @@ class CoOpConfirmView(discord.ui.View):
     @discord.ui.button(label="Nah", style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user.id != self.partner_id:
-            return
+            return interaction.response.send_message(
+                "Hey! Don't touch that.", ephemeral=True
+            )
         self.confirmed = False
         self.stop()
         await interaction.response.defer()
@@ -1286,7 +1290,9 @@ class ConfirmCancelView(discord.ui.View):
     @discord.ui.button(label="Yes, fail my roll", style=discord.ButtonStyle.danger)
     async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            return
+            return interaction.response.send_message(
+                "Hey! Don't touch that.", ephemeral=True
+            )
         self.confirmed = True
         self.stop()
         await interaction.response.defer()
@@ -1294,7 +1300,9 @@ class ConfirmCancelView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            return
+            return interaction.response.send_message(
+                "Hey! Don't touch that.", ephemeral=True
+            )
         self.confirmed = False
         self.stop()
         await interaction.response.defer()
