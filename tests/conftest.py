@@ -71,13 +71,16 @@ def make_user_objective(
     game_ce_id: str = "game-001-0000-0000-000000000000",
     obj_type: str = "Primary",
     user_points: int = 10,
+    partial: bool = False,
     name: str = "",
 ) -> CEUserObjective:
     return CEUserObjective(
         ce_id=ce_id,
         game_ce_id=game_ce_id,
         type=cast("hm.OBJECTIVE_TYPES", obj_type),
-        user_points=user_points,
+        partial=partial,
+        point_value=user_points,
+        point_value_partial=user_points,
         name=name,
     )
 

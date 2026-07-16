@@ -473,18 +473,15 @@ def _ce_to_user(json_response: dict) -> CEAPIUser | None:
 
     # Now go through all their objectives and make CEUserObjective's out of them.
     for objective in json_response["userObjectives"]:
-        if not objective["partial"]:
-            user_points = objective["objective"]["points"]
-        else:
-            user_points = objective["objective"]["pointsPartial"]
-
         _type = str(objective["objective"]["type"]).capitalize()
 
         new_objective = CEUserObjective(
             ce_id=objective["objective"]["id"],
             game_ce_id=objective["objective"]["gameId"],
             type=cast("hm.OBJECTIVE_TYPES", _type),
-            user_points=user_points,
+            partial=objective["partial"],
+            point_value=objective["objective"]["points"],
+            point_value_partial=objective["objective"]["pointsPartial"],
             name=objective["objective"]["name"],
         )
 

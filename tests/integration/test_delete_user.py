@@ -94,7 +94,9 @@ def _make_fake_user(game_id: str, objective_id: str) -> CEUser:
     uobj = CEUserObjective(
         ce_id=objective_id,
         game_ce_id=game_id,
-        user_points=1,
+        partial=False,
+        point_value=1,
+        point_value_partial=1,
         type="Primary",
         name="__integration_test__",
     )

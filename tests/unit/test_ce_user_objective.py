@@ -28,13 +28,72 @@ class TestCEUserObjectiveProperties:
 
     def test_name_defaults_to_empty_string(self):
         obj = CEUserObjective(
-            ce_id=OBJ_ID, game_ce_id=GAME_ID, type="Primary", user_points=10
+            ce_id=OBJ_ID,
+            game_ce_id=GAME_ID,
+            type="Primary",
+            partial=False,
+            point_value=10,
+            point_value_partial=0,
         )
         assert obj.name == ""
 
     @pytest.mark.parametrize("obj_type", ["Primary", "Secondary", "Badge", "Community"])
     def test_all_objective_types(self, obj_type):
         assert make_user_objective(obj_type=obj_type).type == obj_type
+
+
+class TestCEUserObjectivePointDerivation:
+    def test_user_points_is_full_value_when_not_partial(self):
+        obj = CEUserObjective(
+            ce_id=OBJ_ID,
+            game_ce_id=GAME_ID,
+            type="Primary",
+            partial=False,
+            point_value=25,
+            point_value_partial=5,
+            name="",
+        )
+        assert obj.user_points == 25
+
+    def test_user_points_is_partial_value_when_partial(self):
+        obj = CEUserObjective(
+            ce_id=OBJ_ID,
+            game_ce_id=GAME_ID,
+            type="Primary",
+            partial=True,
+            point_value=25,
+            point_value_partial=5,
+            name="",
+        )
+        assert obj.user_points == 5
+
+    def test_partial_property_reflects_constructor_arg(self):
+        obj = CEUserObjective(
+            ce_id=OBJ_ID,
+            game_ce_id=GAME_ID,
+            type="Primary",
+            partial=True,
+            point_value=25,
+            point_value_partial=5,
+            name="",
+        )
+        assert obj.partial is True
+
+
+class TestCEUserObjectiveToDictSupabase:
+    def test_writes_partial_not_user_points(self):
+        obj = CEUserObjective(
+            ce_id=OBJ_ID,
+            game_ce_id=GAME_ID,
+            type="Primary",
+            partial=True,
+            point_value=25,
+            point_value_partial=5,
+            name="",
+        )
+        d = obj.to_dict_supabase("user-001")
+        assert d["partial"] is True
+        assert "user_points" not in d
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────
@@ -58,3 +117,15 @@ class TestCEUserObjectiveToDict:
         assert d["game_ce_id"] == GAME_ID
         assert d["type"] == "Badge"
         assert d["user_points"] == 25
+
+
+class TestMakeUserObjectiveFixture:
+    def test_user_points_matches_regardless_of_partial_flag(self):
+        assert make_user_objective(user_points=42, partial=False).user_points == 42
+        assert make_user_objective(user_points=42, partial=True).user_points == 42
+
+    def test_partial_defaults_to_false(self):
+        assert make_user_objective().partial is False
+
+    def test_partial_can_be_set_true(self):
+        assert make_user_objective(partial=True).partial is True

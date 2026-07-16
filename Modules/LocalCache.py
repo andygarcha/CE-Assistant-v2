@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS user_objectives (
     user_ce_id TEXT NOT NULL,
     objective_ce_id TEXT NOT NULL,
     user_points INTEGER,
+    partial INTEGER,
     updated_at_CE TEXT,
     PRIMARY KEY (user_ce_id, objective_ce_id)
 );
@@ -590,10 +591,10 @@ def upsert_user_objectives_bulk(rows: list[dict]) -> None:
         return
     conn = get_connection()
     conn.executemany(
-        """INSERT INTO user_objectives (user_ce_id, objective_ce_id, user_points, updated_at_CE)
-           VALUES (:user_ce_id, :objective_ce_id, :user_points, :updated_at_CE)
+        """INSERT INTO user_objectives (user_ce_id, objective_ce_id, partial, updated_at_CE)
+           VALUES (:user_ce_id, :objective_ce_id, :partial, :updated_at_CE)
            ON CONFLICT(user_ce_id, objective_ce_id) DO UPDATE SET
-           user_points=excluded.user_points, updated_at_CE=excluded.updated_at_CE""",
+           partial=excluded.partial, updated_at_CE=excluded.updated_at_CE""",
         rows,
     )
     conn.commit()
