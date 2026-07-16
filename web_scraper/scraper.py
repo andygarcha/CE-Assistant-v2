@@ -54,6 +54,16 @@ class UpdateMessageForScraperProcess:
 
     game_ce_id: str | None = None
 
+    # Explicit tag for what kind of game change this is, so routing
+    # decisions (flush_updates: pending-vs-stable; the debounce system:
+    # new/removed-vs-edited) don't have to be inferred from unrelated state
+    # (game_ce_id presence, snapshot presence). Only "edit" is debounced --
+    # "add"/"remove" are one-shot events with nothing to wait for, and are
+    # sent immediately by announce_new_game/announce_removed_game rather
+    # than ever flowing through flush_updates at all. None means this isn't
+    # a game-related update (e.g. a user/roll message).
+    game_update_type: typing.Literal["add", "edit", "remove"] | None = None
+
     def print(self, full=False, info=False):
         string: str = ""
         string += f"update ({'embed' if self.is_embed else 'text'}): "
@@ -75,6 +85,13 @@ class UpdateMessageForScraperProcess:
 
 
 def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
+    """
+    Only "edit" updates (existing games being changed) get debounced through
+    the pending table -- everything else (user/roll messages with no
+    game_update_type, and any stray "add"/"remove" message that ends up
+    here instead of going through announce_new_game/announce_removed_game)
+    is flushed immediately as stable.
+    """
     immediate_rows = []
     for update in updates:
         if update.location is None:
@@ -83,24 +100,10 @@ def flush_updates(updates: list[UpdateMessageForScraperProcess]) -> None:
             )
             continue
 
-        row = {
-            "is_embed": update.is_embed,
-            "channel": update.location,
-            "text": update.text,
-            "title": update.title,
-            "description": update.description,
-            "image": update.image,
-            "url": update.url,
-            "color": update.color,
-            "game_ce_id": update.game_ce_id,
-        }
-
-        if row["game_ce_id"] is not None:
-            row["status"] = "pending"
-            SupabaseReader.upsert_pending_update(row)
+        if update.game_update_type == "edit":
+            SupabaseReader.upsert_pending_update(_update_to_row(update, "pending"))
         else:
-            row["status"] = "stable"
-            immediate_rows.append(row)
+            immediate_rows.append(_update_to_row(update, "stable"))
 
     if immediate_rows:
         SupabaseReader.write_scraper_updates_bulk(immediate_rows)
@@ -127,8 +130,12 @@ def should_snapshot_pending_game(
     and into the `pending*` tables with the following logic:
     - the game was actually updated since the
       last scrape (non-empty update was generated)
-    - the game isn't a new game (checked outside of this function)
     - the game isn't already in the `pending*` tables
+
+    New games never reach this call site at all -- `update_games` routes
+    them to `announce_new_game` instead. Removed games don't reach it
+    either -- those go to `announce_removed_game`. Only edits to existing
+    games (via `create_update_updated_game`) end up here.
 
     Remember that the point of the `pending*` tables is to preserve
     the **original** version of the game, to diff for the final update
@@ -139,48 +146,150 @@ def should_snapshot_pending_game(
     return game_ce_id not in existing_snapshot_ids
 
 
-def finalize_stabilized_game_update(game_ce_id: str) -> bool:
+def _update_to_row(update: UpdateMessageForScraperProcess, status: str) -> dict:
+    return {
+        "is_embed": update.is_embed,
+        "channel": update.location,
+        "text": update.text,
+        "title": update.title,
+        "description": update.description,
+        "image": update.image,
+        "url": update.url,
+        "color": update.color,
+        "game_ce_id": update.game_ce_id,
+        "status": status,
+    }
+
+
+def _write_stable_update(update: UpdateMessageForScraperProcess) -> None:
+    SupabaseReader.write_scraper_update(_update_to_row(update, "stable"))
+
+
+def _deliver_immediately(
+    update: UpdateMessageForScraperProcess, send_updates: bool
+) -> None:
+    """Shared by announce_new_game/announce_removed_game: send the "add"/
+    "remove" message right now (never through the pending debounce), or
+    just print/log it during a silent/recovery scrape."""
+    if send_updates:
+        _write_stable_update(update)
+    else:
+        update.print(full=True)
+
+
+async def announce_new_game(
+    game_new: CEAPIGame,
+    notIsFinished: set[str],
+    send_updates: bool = True,
+) -> None:
+    """
+    Announces and persists a new game immediately, rather than routing it
+    through the pending/stabilize debounce used for edits to existing
+    games, and rather than waiting for this loop's batched end-of-loop game
+    dump. A game is only ever "new" (no prior row in the `game` table) for
+    the single loop it's first detected -- any further edits afterward are
+    picked up as normal updates to an existing game, so there's nothing to
+    wait for here: just a fresh, guaranteed-complete fetch (`game_new` may
+    have come from the daily full_scrape hit, `/api/games/full`, which
+    omits `gameTags`, unlike `/api/game/{id}`).
+
+    Persisting here -- rather than leaving it to the caller's later batched
+    dump -- closes the window where a failure elsewhere in this loop (after
+    the announcement went out but before the batched dump runs) would leave
+    the game still looking "new" next loop and get it announced a second
+    time.
+
+    A game found hidden/unfinished on this fresh fetch is added to
+    `notIsFinished` (mirroring how update_games already tracks other
+    hidden games) instead of being persisted, so it's picked back up and
+    properly announced once it's actually published, rather than silently
+    graduating to "existing" without ever having been announced.
+
+    Raises whatever `CEAPIReader.get_game` or the Supabase writes raise;
+    the caller is expected to catch this per-game so one failure doesn't
+    abort the rest of the batch, and to exclude this game from its own
+    batched dump so it's retried as "new" again next loop.
+    """
+    current_api_game = await CEAPIReader.get_game(game_new.ce_id)
+    if current_api_game is None:
+        logger.info(
+            "New game %s vanished before it could be announced.", game_new.ce_id
+        )
+        return
+    if not current_api_game.is_finished:
+        logger.info(
+            "New game %s is hidden/unfinished; skipping announcement.",
+            game_new.ce_id,
+        )
+        notIsFinished.add(game_new.ce_id)
+        return
+
+    SupabaseReader.bulk_dump_games([current_api_game])
+    _deliver_immediately(create_update_new_game(current_api_game), send_updates)
+
+
+def announce_removed_game(game_old: CEGame, send_updates: bool = True) -> None:
+    """
+    Announces and deletes a removed game immediately, mirroring
+    announce_new_game. Removal, like addition, is a one-shot event with
+    nothing to debounce -- there's no "after" state to wait for or diff
+    against, so routing it through the pending/stabilize system (built for
+    edits, which snapshot a "before" state to diff once things settle)
+    doesn't apply here and previously meant these announcements were
+    silently dropped: finalize_stabilized_game_update would find no
+    snapshot for a removed game (nothing ever snapshots one) and treat that
+    as an unrecoverable invariant violation.
+
+    Deleting here -- rather than leaving it to the caller's later batched
+    cleanup -- closes the same kind of window as announce_new_game: a
+    failure elsewhere in this loop between the announcement and the
+    batched delete would otherwise leave the game still present in
+    Supabase next loop, still getting detected as removed, and announced a
+    second time.
+
+    Raises whatever the Supabase delete raises; the caller is expected to
+    catch this per-game so one failure doesn't abort the rest of the
+    batch, and so this game is retried as "removed" again next loop.
+    """
+    SupabaseReader.delete_game(game_old.ce_id)
+    _deliver_immediately(create_update_removed_game(game_old), send_updates)
+
+
+def finalize_stabilized_game_update(game_ce_id: str, send_updates: bool = True) -> None:
     """
     Once a game stops changing, regenerate its diff message from the
     pre-update snapshot vs. the now-final state, instead of relying on
     whatever partial diff was generated on the last loop it changed.
 
-    Returns True if a snapshot existed and was handled (message written or
-    net-zero/missing-game cleanup), False if there was no snapshot at all
-    (caller should fall back to promoting the stale per-loop row as-is).
-
     Note that this is run **after** the scraper loop has finished. So, the final
     version of the game exists in Supabase at this point.
     """
 
-    # this gate will trigger for new games
+    # New games are announced immediately (see announce_new_game) and never
+    # produce a pending row, so every row reaching this function should
+    # belong to an existing game and have a snapshot (see
+    # should_snapshot_pending_game). A missing snapshot here means that
+    # invariant broke somewhere -- log and bail rather than guessing.
     snapshot = SupabaseReader.get_pending_game_snapshot(game_ce_id)
     if snapshot is None:
-        return False
+        logger.warning(
+            "No pending snapshot found for game %s at stabilization; skipping.",
+            game_ce_id,
+        )
+        return
 
     current = SupabaseReader.get_game(game_ce_id)
     if current is not None:
         update, _ = create_update_updated_game(snapshot, current)
         if update is not None:
-            row = {
-                "is_embed": update.is_embed,
-                "channel": update.location,
-                "text": update.text,
-                "title": update.title,
-                "description": update.description,
-                "image": update.image,
-                "url": update.url,
-                "color": update.color,
-                "game_ce_id": update.game_ce_id,
-                "status": "stable",
-            }
-            SupabaseReader.write_scraper_update(row)
+            _deliver_immediately(update, send_updates)
 
     SupabaseReader.delete_pending_game_snapshot(game_ce_id)
-    return True
 
 
-def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
+def stabilize_pending_updates(
+    changed_game_ids: set[str], send_updates: bool = True
+) -> None:
     """
     This function accepts `changed_game_ids`, which is a list of
     game IDs that we can guarantee changed in between the previous two
@@ -198,23 +307,24 @@ def stabilize_pending_updates(changed_game_ids: set[str]) -> None:
     if not to_promote:
         return
 
-    fallback_ids = []
+    stabilized = 0
     for row in to_promote:
-        handled = finalize_stabilized_game_update(row["game_ce_id"])
-        if handled:
-            SupabaseReader.delete_stale_pending_update(row["id"])
-        else:
-            fallback_ids.append(row["id"])
+        try:
+            finalize_stabilized_game_update(row["game_ce_id"], send_updates)
+        except Exception:
+            # Isolate one row's failure (e.g. a transient Supabase error)
+            # from the rest of the batch -- leave this row pending so it's
+            # retried next loop instead of aborting
+            # everyone else still in to_promote.
+            logger.exception(
+                "Failed to finalize pending update for game %s; will retry next loop.",
+                row["game_ce_id"],
+            )
+            continue
+        SupabaseReader.delete_stale_pending_update(row["id"])
+        stabilized += 1
 
-    if fallback_ids:
-        SupabaseReader.promote_pending_to_stable(fallback_ids)
-
-    logger.info(
-        "Stabilized %d pending game updates (%d regenerated, %d promoted as-is).",
-        len(to_promote),
-        len(to_promote) - len(fallback_ids),
-        len(fallback_ids),
-    )
+    logger.info("Stabilized %d pending game updates.", stabilized)
 
 
 """ TOP LEVEL FUNCTION """
@@ -256,13 +366,13 @@ async def process_loop(
         removed_games,
         removed_objectives,
         notIsFinished,
-    ) = await update_games(full_scrape)
+    ) = await update_games(full_scrape, send_updates)
     logger.debug("UPDATE GAMES: done!")
     updates.extend(_updates)
 
     # Promote pending game updates that had no further changes since last loop
     changed_game_ids = compute_changed_game_ids(_updates, removed_games)
-    stabilize_pending_updates(changed_game_ids)
+    stabilize_pending_updates(changed_game_ids, send_updates)
 
     logger.info("len(updates)=%d (games only!)", len(updates))
     for update in updates:
@@ -320,9 +430,9 @@ async def process_loop(
             logger.debug("len(games_new)=%d", len(games_new))
             SupabaseReader.bulk_dump_games(games_new)
 
-            logger.debug("len(removed_games)=%d", len(removed_games))
-            for _game_id in removed_games:
-                SupabaseReader.delete_game(_game_id)
+            # removed_games are already deleted immediately by
+            # announce_removed_game inside update_games -- no batched
+            # cleanup needed here.
 
             logger.debug("len(removed_objectives)=%d", len(removed_objectives))
             SupabaseReader.delete_objectives_many(removed_objectives)
@@ -418,6 +528,7 @@ async def process_loop(
 
 async def update_games(
     full_scrape=False,
+    send_updates: bool = True,
 ) -> tuple[
     list[UpdateMessageForScraperProcess],  # updates
     list[CEAPIGame],  # games_new
@@ -427,6 +538,13 @@ async def update_games(
 ]:
     """
     Updates all games. This version began April 9, 2026 for Supabase.
+
+    `send_updates` controls whether new-game announcements actually get
+    written for delivery (vs. just printed/logged) -- new games are
+    announced immediately inside this function rather than through the
+    `flush_updates`/`send_updates` gate the rest of `process_loop` uses, so
+    it has to be threaded in here directly instead.
+
     Returns
     ---
     - updates: a list of updates to be sent
@@ -550,21 +668,45 @@ async def update_games(
         existing_snapshot_ids = SupabaseReader.get_pending_game_snapshot_ids()
 
         logger.info("Generating updates for games.")
+        # New games are announced (and persisted) immediately inside the loop
+        # below, rather than through this function's own batched dump of
+        # `games` at the end of the loop -- track their ids here so they're
+        # excluded from that batch (whether because they're already
+        # persisted, turned out hidden, or failed and need a retry next
+        # loop as still-"new").
+        new_game_ids: set[str] = set()
         for i, game_new in enumerate(games):
             if i % 10 == 0:
                 logger.debug("Updating game %d.", i)
 
             game_old = hm.get_item_from_list(game_new.ce_id, games_old)
-            _update, _or = update_one_game(game_old, game_new)
+            if game_old is None:
+                new_game_ids.add(game_new.ce_id)
+                try:
+                    await announce_new_game(game_new, notIsFinished, send_updates)
+                except Exception:
+                    # Isolate one game's failure (e.g. a transient CE API
+                    # error) from the rest of the batch -- it stays
+                    # unpersisted, so it's still "new" and retried next loop.
+                    logger.exception(
+                        "Failed to announce new game %s; will retry next loop.",
+                        game_new.ce_id,
+                    )
+                continue
+
+            _update, _or = create_update_updated_game(game_old, game_new)
             if _update is not None:
                 updates.append(_update)
-                if game_old is not None and should_snapshot_pending_game(
+                if should_snapshot_pending_game(
                     game_new.ce_id, _update, existing_snapshot_ids
                 ):
                     SupabaseReader.upsert_pending_game_snapshot(game_old)
                     existing_snapshot_ids.add(game_new.ce_id)
             if _or is not None:
                 objectives_removed.extend(_or)
+
+        if new_game_ids:
+            games = [g for g in games if g.ce_id not in new_game_ids]
 
         logger.info("Game updates completed.")
 
@@ -584,11 +726,16 @@ async def update_games(
             game_list_removed.remove(_game)
             notIsFinished.add(_game)
 
-    # Step 4: Generate updates for those removed games.
+    # Step 4: Announce and delete removed games immediately -- see
+    # announce_removed_game for why this can't route through the normal
+    # pending/stabilize debounce (there's no "after" state to diff against
+    # for a removal, so nothing ever snapshots it, and it would otherwise
+    # be silently dropped at stabilization).
     if SKIPUPDATES:
         logger.warning("Skipping updates (again...)")
     elif len(game_list_removed) != 0:
         logger.debug("Generating updates for %d removed games.", len(game_list_removed))
+        removal_failures: set[str] = set()
         for game_removed in game_list_removed:
             _game = SupabaseReader.get_game(game_removed)
             if _game is None:
@@ -597,11 +744,21 @@ async def update_games(
                     game_removed,
                 )
                 continue
-            _update, _or = update_one_game(_game, None)
-            if _update is not None:
-                updates.append(_update)
-            if _or is not None:
-                objectives_removed.extend(_or)
+            try:
+                announce_removed_game(_game, send_updates)
+            except Exception:
+                # Isolate one game's failure from the rest of the batch --
+                # leave it out of game_list_removed so it's retried next
+                # loop (it's still present in Supabase, so it'll still be
+                # detected as removed then).
+                logger.exception(
+                    "Failed to announce removed game %s; will retry next loop.",
+                    game_removed,
+                )
+                removal_failures.add(game_removed)
+
+        if removal_failures:
+            game_list_removed -= removal_failures
 
     return updates, games, game_list_removed, objectives_removed, notIsFinished
 
@@ -1030,27 +1187,6 @@ def generate_database_tier(database_name: Sequence[CEGame]) -> dict | None:
 """ BOTTOM LEVEL FUNCTIONS """
 
 
-def update_one_game(
-    game_old: CEGame | None, game_new: CEAPIGame | None
-) -> tuple[UpdateMessageForScraperProcess | None, list[str] | None]:
-    """
-    Generates an update for a game.
-    """
-    # NEW GAME
-    if game_old is None and game_new is not None:
-        return create_update_new_game(game_new), []
-
-    # REMOVED GAME
-    if game_new is None and game_old is not None:
-        return create_update_removed_game(game_old), []
-
-    # by this point neither should be none but they could both be...?
-    if game_new is None or game_old is None:
-        return None, None
-
-    return create_update_updated_game(game_old, game_new)
-
-
 def update_one_user(
     user: CEUser,
     site_data: CEAPIUser,
@@ -1297,6 +1433,7 @@ def create_update_new_game(game_new: CEAPIGame) -> UpdateMessageForScraperProces
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
+    update.game_update_type = "add"
 
     # genre tags
     NUM_GENRE_TAGS = 2
@@ -1372,6 +1509,7 @@ def create_update_removed_game(game_old: CEGame) -> UpdateMessageForScraperProce
     update.image = hm.GAME_REMOVED_IMAGE
     update.location = "gameadditions"
     update.game_ce_id = game_old.ce_id
+    update.game_update_type = "remove"
 
     return update
 
@@ -1424,6 +1562,7 @@ def create_update_updated_game(
     update.url = f"https://cedb.me/game/{game_new.ce_id}"
     update.location = "gameadditions"
     update.game_ce_id = game_new.ce_id
+    update.game_update_type = "edit"
     update.image = (
         game_new.header if isinstance(game_new, CEAPIGame) else game_new._banner
     )
