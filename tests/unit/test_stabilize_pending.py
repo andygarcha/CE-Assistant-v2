@@ -272,9 +272,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.UpdateMessageForScraperProcess.print"
             ) as mock_print,
         ):
-            asyncio.run(
-                finalize_stabilized_game_update("game-001", send_updates=False)
-            )
+            asyncio.run(finalize_stabilized_game_update("game-001", send_updates=False))
 
         mock_write.assert_not_called()
         mock_print.assert_called_once()
@@ -306,9 +304,7 @@ class TestFinalizeStabilizedGameUpdate:
                 "web_scraper.scraper.UpdateMessageForScraperProcess.print"
             ) as mock_print,
         ):
-            asyncio.run(
-                finalize_stabilized_game_update("game-001", send_updates=True)
-            )
+            asyncio.run(finalize_stabilized_game_update("game-001", send_updates=True))
 
         mock_write.assert_called_once()
         mock_print.assert_not_called()
