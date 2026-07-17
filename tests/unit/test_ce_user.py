@@ -198,6 +198,48 @@ class TestMention:
         assert user.mention == "<@123456789>"
 
 
+# ── pingable_ids ──────────────────────────────────────────────────────────────
+
+
+class TestPingableIds:
+    def test_casino_fail_pingable_ids_when_opted_in(self):
+        user = make_user(discord_id=123, ping_casino_fail=True)
+        assert user.casino_fail_pingable_ids == [123]
+
+    def test_casino_fail_pingable_ids_when_opted_out(self):
+        user = make_user(discord_id=123, ping_casino_fail=False)
+        assert user.casino_fail_pingable_ids == []
+
+    def test_casino_win_pingable_ids_when_opted_in(self):
+        user = make_user(discord_id=123, ping_casino_win=True)
+        assert user.casino_win_pingable_ids == [123]
+
+    def test_casino_win_pingable_ids_when_opted_out(self):
+        user = make_user(discord_id=123, ping_casino_win=False)
+        assert user.casino_win_pingable_ids == []
+
+    def test_user_log_pingable_ids_when_opted_in(self):
+        user = make_user(discord_id=123, ping_user_log=True)
+        assert user.user_log_pingable_ids == [123]
+
+    def test_user_log_pingable_ids_when_opted_out(self):
+        user = make_user(discord_id=123, ping_user_log=False)
+        assert user.user_log_pingable_ids == []
+
+    def test_preferences_are_independent(self):
+        """Opting into one ping category shouldn't affect the others."""
+        user = make_user(discord_id=123, ping_casino_win=True)
+        assert user.casino_win_pingable_ids == [123]
+        assert user.casino_fail_pingable_ids == []
+        assert user.user_log_pingable_ids == []
+
+    def test_defaults_are_all_opted_out(self):
+        user = make_user(discord_id=123)
+        assert user.casino_fail_pingable_ids == []
+        assert user.casino_win_pingable_ids == []
+        assert user.user_log_pingable_ids == []
+
+
 # ── completions ───────────────────────────────────────────────────────────────
 
 

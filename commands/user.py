@@ -49,7 +49,7 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def set_color_command(interaction: discord.Interaction):
         return await set_color(interaction)
 
-    # -- /show-summary {user} -----------------------------------------------------------------
+    # -- /show-summary {user} ----------------------------------------------------------------
     @tree.command(
         name="show-summary",
         description="Show the CE Summary links for all available years of a user",
@@ -62,6 +62,15 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         interaction: discord.Interaction, user: discord.User | None = None
     ):
         return await show_summary(interaction, user)
+
+    # -- /ping-preference --------------------------------------------------------------------
+    @tree.command(
+        name="ping-preference",
+        description="Set your preferences for different types of pinging.",
+        guild=guild,
+    )
+    async def ping_preference_command(interaction: discord.Interaction):
+        return await ping_preference(interaction)
 
 
 async def register(
@@ -419,3 +428,88 @@ async def show_summary(
         text += f"[{year} Recap](https://cesummary.vercel.app/summary/{year}/{user_ce.ce_id})\n"
 
     return await interaction.followup.send(text, suppress_embeds=True)
+
+
+def _yes_no_options(current: bool) -> list[discord.SelectOption]:
+    "Builds a fresh pair of Yes/No options per dropdown, pre-selected to `current`."
+    return [
+        discord.SelectOption(label="Yes", value="true", emoji="✅", default=current),
+        discord.SelectOption(
+            label="No", value="false", emoji="❌", default=not current
+        ),
+    ]
+
+
+class PingPreferenceModal(discord.ui.Modal):
+    """Modal for setting a user's opt-in ping preferences."""
+
+    def __init__(self, user: "CEUser"):
+        super().__init__(title="Ping Preferences")
+        self.ce_id = user.ce_id
+
+        self.casino_fail_select = discord.ui.Select(
+            options=_yes_no_options(user.ping_casino_fail)
+        )
+        self.add_item(
+            discord.ui.Label(
+                text="Ping when you fail a casino event?",
+                component=self.casino_fail_select,
+            )
+        )
+
+        self.casino_win_select = discord.ui.Select(
+            options=_yes_no_options(user.ping_casino_win)
+        )
+        self.add_item(
+            discord.ui.Label(
+                text="Ping when you win a casino event?",
+                component=self.casino_win_select,
+            )
+        )
+
+        self.user_log_select = discord.ui.Select(
+            options=_yes_no_options(user.ping_user_log)
+        )
+        self.add_item(
+            discord.ui.Label(
+                text="Ping for #user-log accomplishments?",
+                component=self.user_log_select,
+            )
+        )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        ping_casino_fail = self.casino_fail_select.values[0] == "true"
+        ping_casino_win = self.casino_win_select.values[0] == "true"
+        ping_user_log = self.user_log_select.values[0] == "true"
+
+        SupabaseReader.update_ping_preferences(
+            self.ce_id, ping_casino_fail, ping_casino_win, ping_user_log
+        )
+
+        await interaction.response.send_message(
+            "Your ping preferences have been updated:\n"
+            f"- Ping on casino fail: {'Yes' if ping_casino_fail else 'No'}\n"
+            f"- Ping on casino win: {'Yes' if ping_casino_win else 'No'}\n"
+            f"- Ping for #user-log: {'Yes' if ping_user_log else 'No'}",
+            ephemeral=True,
+        )
+
+
+async def ping_preference(interaction: discord.Interaction):
+    """
+    Opens a modal that lets the user set different ping preferences.
+
+    Because a Modal must be the interaction's initial response, this command
+    cannot `defer()` first: the guard-clause failure uses `response.send_message`,
+    and the success path uses `response.send_modal`.
+    """
+    await hm.log_command(client, interaction, "ping-preference", True)
+
+    user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
+    if user is None:
+        return await interaction.response.send_message(
+            "You are not registered with the bot! Please run /register.", ephemeral=True
+        )
+
+    modal = PingPreferenceModal(user)
+    return await interaction.response.send_modal(modal)

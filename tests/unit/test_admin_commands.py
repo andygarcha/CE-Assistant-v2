@@ -356,6 +356,116 @@ class TestFailRoll:
         assert channel == "casino"
         assert "not found" in msg.lower()
 
+    # ── allowed_mentions gating (ping_casino_fail) ────────────────────────────
+
+    def _make_pref_user(self, discord_id: int, ping_casino_fail: bool) -> MagicMock:
+        user = MagicMock()
+        user.discord_id = discord_id
+        user.ping_casino_fail = ping_casino_fail
+        user.casino_fail_pingable_ids = [discord_id] if ping_casino_fail else []
+        return user
+
+    def test_solo_roll_pings_when_opted_in(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=True)
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=lambda _: user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == [111]
+
+    def test_solo_roll_does_not_ping_when_opted_out(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=False)
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=lambda _: user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == []
+
+    def test_co_op_roll_pings_both_when_both_opted_in(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current", partner_ce_id="partner-001")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=True)
+        partner = self._make_pref_user(discord_id=222, ping_casino_fail=True)
+
+        def get_user(ce_id):
+            return partner if ce_id == "partner-001" else user
+
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=get_user
+        )
+        assert set(mock_send.call_args.kwargs["allowed_mentions"]) == {111, 222}
+
+    def test_co_op_roll_pings_only_user_when_only_user_opted_in(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current", partner_ce_id="partner-001")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=True)
+        partner = self._make_pref_user(discord_id=222, ping_casino_fail=False)
+
+        def get_user(ce_id):
+            return partner if ce_id == "partner-001" else user
+
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=get_user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == [111]
+
+    def test_co_op_roll_pings_only_partner_when_only_partner_opted_in(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current", partner_ce_id="partner-001")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=False)
+        partner = self._make_pref_user(discord_id=222, ping_casino_fail=True)
+
+        def get_user(ce_id):
+            return partner if ce_id == "partner-001" else user
+
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=get_user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == [222]
+
+    def test_co_op_roll_pings_neither_when_neither_opted_in(self):
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current", partner_ce_id="partner-001")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=False)
+        partner = self._make_pref_user(discord_id=222, ping_casino_fail=False)
+
+        def get_user(ce_id):
+            return partner if ce_id == "partner-001" else user
+
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=get_user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == []
+
+    def test_partner_not_found_does_not_crash_and_pings_only_user(self):
+        """`partner` can end up `None` (not found in the DB) independently of
+        the main-user-not-found early-return branch tested above; the
+        `partner is not None` guard must keep this from raising."""
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current", partner_ce_id="partner-001")
+        user = self._make_pref_user(discord_id=111, ping_casino_fail=True)
+
+        def get_user(ce_id):
+            return None if ce_id == "partner-001" else user
+
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=get_user
+        )
+        assert mock_send.call_args.kwargs["allowed_mentions"] == [111]
+
+    def test_user_not_found_fallback_message_has_no_allowed_mentions_kwarg(self):
+        """The early-return fallback path (main user missing entirely) never
+        reaches the pingable-list logic at all -- it shouldn't pass
+        allowed_mentions (relies on send_message's own default)."""
+        interaction = self._make_interaction()
+        roll = self._make_roll(status="current")
+        mock_send = self._run(
+            interaction, get_roll_return=roll, get_user_side_effect=lambda _: None
+        )
+        assert "allowed_mentions" not in mock_send.call_args.kwargs
+
 
 # ── clear_roll_portion ───────────────────────────────────────────────────────
 

@@ -713,6 +713,21 @@ def dump_user(user: CEUser):
     LocalCache.upsert_user_objectives_bulk(user_objectives_payload)
 
 
+def update_ping_preferences(
+    ce_id: str, ping_casino_fail: bool, ping_casino_win: bool, ping_user_log: bool
+) -> None:
+    "Sets a user's opt-in ping preferences (e.g. from the /ping-preference modal)."
+    payload = {
+        "ping_casino_fail": ping_casino_fail,
+        "ping_casino_win": ping_casino_win,
+        "ping_user_log": ping_user_log,
+    }
+    supabase.table("users").update(payload).eq("ce_id", ce_id).execute()
+    LocalCache.set_user_ping_prefs(
+        ce_id, ping_casino_fail, ping_casino_win, ping_user_log
+    )
+
+
 def bulk_dump_users(
     users: Sequence[CEUser], batch_size: int = 50, pause_seconds: float = 0.1
 ):

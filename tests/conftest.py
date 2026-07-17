@@ -141,6 +141,9 @@ def make_user(
     owned_games: list[CEUserGame] | None = None,
     rolls: list | None = None,
     display_name: str = "TestUser",
+    ping_casino_fail: bool = False,
+    ping_casino_win: bool = False,
+    ping_user_log: bool = False,
 ) -> CEUser:
     return CEUser(
         discord_id=discord_id,
@@ -150,6 +153,9 @@ def make_user(
         display_name=display_name,
         avatar="",
         last_updated=datetime.datetime.now(datetime.UTC),
+        ping_casino_fail=ping_casino_fail,
+        ping_casino_win=ping_casino_win,
+        ping_user_log=ping_user_log,
     )
 
 

@@ -102,7 +102,9 @@ async def send_message(
         # each participant has their own ping opt-in), everyone else mentioned
         # in the message text is left unpinged
         mentions = discord.AllowedMentions(
-            users=[discord.Object(id=user_id) for user_id in allowed_mentions]
+            everyone=False,
+            roles=False,
+            users=[discord.Object(id=user_id) for user_id in allowed_mentions],
         )
     else:
         mentions = (
