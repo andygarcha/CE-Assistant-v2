@@ -503,7 +503,7 @@ async def ping_preference(interaction: discord.Interaction):
     cannot `defer()` first: the guard-clause failure uses `response.send_message`,
     and the success path uses `response.send_modal`.
     """
-    await hm.log_command(client, interaction, "ping-preference", True)
+    await hm.log_command(client, interaction, "ping-preference", False)
 
     user = SupabaseReader.get_user(interaction.user.id, use_discord_id=True)
     if user is None:
