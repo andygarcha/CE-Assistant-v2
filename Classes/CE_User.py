@@ -42,6 +42,9 @@ class CEUser:
         avatar: str,
         last_updated: datetime.datetime,
         steam_id: str = "a",
+        ping_casino_fail: bool = False,
+        ping_casino_win: bool = False,
+        ping_user_log: bool = False,
     ):
         self._discord_id: int = discord_id
         self._ce_id: str = ce_id
@@ -51,6 +54,9 @@ class CEUser:
         self._avatar: str = avatar
         self._last_updated: datetime.datetime = last_updated
         self._steam_id: str = steam_id
+        self._ping_casino_fail: bool = ping_casino_fail
+        self._ping_casino_win: bool = ping_casino_win
+        self._ping_user_log: bool = ping_user_log
 
     # ==== core properties ====
 
@@ -88,6 +94,36 @@ class CEUser:
     def last_updated(self, last_updated: datetime.datetime) -> None:
         "Setter for last updated."
         self._last_updated = last_updated
+
+    @property
+    def ping_casino_fail(self) -> bool:
+        "Whether or not this user wants to be pinged when they fail a casino event."
+        return self._ping_casino_fail
+
+    @property
+    def ping_casino_win(self) -> bool:
+        "Whether or not this user wants to be pinged when they win a casino event."
+        return self._ping_casino_win
+
+    @property
+    def ping_user_log(self) -> bool:
+        "Whether or not this user wants to be pinged when they accomplish something posted in #user-log."
+        return self._ping_user_log
+
+    @property
+    def casino_fail_pingable_ids(self) -> list[int]:
+        "Returns this user's Discord ID as a list if they opted into casino-fail pings, else empty."
+        return [self.discord_id] if self.ping_casino_fail else []
+
+    @property
+    def casino_win_pingable_ids(self) -> list[int]:
+        "Returns this user's Discord ID as a list if they opted into casino-win pings, else empty."
+        return [self.discord_id] if self.ping_casino_win else []
+
+    @property
+    def user_log_pingable_ids(self) -> list[int]:
+        "Returns this user's Discord ID as a list if they opted into user-log pings, else empty."
+        return [self.discord_id] if self.ping_user_log else []
 
     # ==== identity / formatting ====
 

@@ -532,7 +532,8 @@ async def fail_roll(
         client,
         "casino",
         roll.get_fail_message(database_name, user, partner),
-        allowed_mentions=True,
+        allowed_mentions=user.casino_fail_pingable_ids
+        + (partner.casino_fail_pingable_ids if partner is not None else []),
     )
 
 

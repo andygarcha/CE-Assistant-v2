@@ -89,7 +89,7 @@ async def send_message(
     client: discord.Client | None,
     channel: CHANNEL_NAMES,
     message: str = "",
-    allowed_mentions: bool = True,
+    allowed_mentions: bool | list[int] = True,
     embed: discord.Embed | None = None,
 ) -> bool:
     "Sends a message to a specified channel."
@@ -97,11 +97,21 @@ async def send_message(
     if _channel is None:
         return False
 
-    mentions = (
-        discord.AllowedMentions.all()
-        if allowed_mentions
-        else discord.AllowedMentions.none()
-    )
+    if isinstance(allowed_mentions, list):
+        # ping only the specific users in this list (e.g. co-op rolls where
+        # each participant has their own ping opt-in), everyone else mentioned
+        # in the message text is left unpinged
+        mentions = discord.AllowedMentions(
+            everyone=False,
+            roles=False,
+            users=[discord.Object(id=user_id) for user_id in allowed_mentions],
+        )
+    else:
+        mentions = (
+            discord.AllowedMentions.all()
+            if allowed_mentions
+            else discord.AllowedMentions.none()
+        )
 
     if embed is None:
         try:

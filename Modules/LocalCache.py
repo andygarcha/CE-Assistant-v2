@@ -51,7 +51,10 @@ CREATE TABLE IF NOT EXISTS users (
     image_avatar TEXT,
     steam_id TEXT,
     created_at_CE TEXT,
-    updated_at_CE TEXT
+    updated_at_CE TEXT,
+    ping_casino_fail INTEGER NOT NULL DEFAULT 0,
+    ping_casino_win INTEGER NOT NULL DEFAULT 0,
+    ping_user_log INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS user_games (
@@ -454,19 +457,30 @@ def get_categories_by_game(game_id: str) -> list[dict]:
 # === USERS ===
 
 
+_PING_COLUMNS = {"ping_casino_fail", "ping_casino_win", "ping_user_log"}
+
+_UPSERT_USER_SQL = """INSERT INTO users (ce_id, discord_id, display_name, image_avatar,
+   steam_id, created_at_CE, updated_at_CE, ping_casino_fail, ping_casino_win, ping_user_log)
+   VALUES (:ce_id, :discord_id, :display_name, :image_avatar,
+   :steam_id, :created_at_CE, :updated_at_CE, COALESCE(:ping_casino_fail, 0),
+   COALESCE(:ping_casino_win, 0), COALESCE(:ping_user_log, 0))
+   ON CONFLICT(ce_id) DO UPDATE SET
+   discord_id=excluded.discord_id, display_name=excluded.display_name,
+   image_avatar=excluded.image_avatar, steam_id=excluded.steam_id,
+   created_at_CE=excluded.created_at_CE, updated_at_CE=excluded.updated_at_CE,
+   ping_casino_fail=COALESCE(:ping_casino_fail, ping_casino_fail),
+   ping_casino_win=COALESCE(:ping_casino_win, ping_casino_win),
+   ping_user_log=COALESCE(:ping_user_log, ping_user_log)"""
+
+
 def upsert_user(row: dict) -> None:
     conn = get_connection()
-    conn.execute(
-        """INSERT INTO users (ce_id, discord_id, display_name, image_avatar,
-           steam_id, created_at_CE, updated_at_CE)
-           VALUES (:ce_id, :discord_id, :display_name, :image_avatar,
-           :steam_id, :created_at_CE, :updated_at_CE)
-           ON CONFLICT(ce_id) DO UPDATE SET
-           discord_id=excluded.discord_id, display_name=excluded.display_name,
-           image_avatar=excluded.image_avatar, steam_id=excluded.steam_id,
-           created_at_CE=excluded.created_at_CE, updated_at_CE=excluded.updated_at_CE""",
-        row,
-    )
+    # dump_user/bulk_dump_users intentionally omit the ping_* keys so they
+    # never clobber a preference set elsewhere -- _fill_missing_columns backs
+    # them with None so sqlite3's named-param binding doesn't ProgrammingError,
+    # and the SQL above's COALESCE(:param, existing_column) preserves whatever
+    # was already stored (or defaults to 0 on first insert).
+    conn.execute(_UPSERT_USER_SQL, _fill_missing_columns([row], _PING_COLUMNS)[0])
     conn.commit()
 
 
@@ -474,16 +488,23 @@ def upsert_users_bulk(rows: list[dict]) -> None:
     if not rows:
         return
     conn = get_connection()
-    conn.executemany(
-        """INSERT INTO users (ce_id, discord_id, display_name, image_avatar,
-           steam_id, created_at_CE, updated_at_CE)
-           VALUES (:ce_id, :discord_id, :display_name, :image_avatar,
-           :steam_id, :created_at_CE, :updated_at_CE)
-           ON CONFLICT(ce_id) DO UPDATE SET
-           discord_id=excluded.discord_id, display_name=excluded.display_name,
-           image_avatar=excluded.image_avatar, steam_id=excluded.steam_id,
-           created_at_CE=excluded.created_at_CE, updated_at_CE=excluded.updated_at_CE""",
-        rows,
+    conn.executemany(_UPSERT_USER_SQL, _fill_missing_columns(rows, _PING_COLUMNS))
+    conn.commit()
+
+
+def set_user_ping_prefs(
+    ce_id: str, ping_casino_fail: bool, ping_casino_win: bool, ping_user_log: bool
+) -> None:
+    """
+    Sets a user's ping preferences directly, unlike upsert_user/upsert_users_bulk
+    which always preserve them unless explicitly given -- this is the one write
+    path meant to actually change them (e.g. from the preferences modal).
+    """
+    conn = get_connection()
+    conn.execute(
+        "UPDATE users SET ping_casino_fail = ?, ping_casino_win = ?, ping_user_log = ? "
+        "WHERE ce_id = ?",
+        (ping_casino_fail, ping_casino_win, ping_user_log, ce_id),
     )
     conn.commit()
 
