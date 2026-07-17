@@ -528,11 +528,14 @@ async def fail_roll(
         partner = None
     else:
         partner = SupabaseReader.get_user(roll.partner_ce_id)
+    pingable = [user.discord_id] if user.ping_casino_fail else []
+    if partner is not None and partner.ping_casino_fail:
+        pingable.append(partner.discord_id)
     return await hm.send_message(
         client,
         "casino",
         roll.get_fail_message(database_name, user, partner),
-        allowed_mentions=True,
+        allowed_mentions=pingable,
     )
 
 

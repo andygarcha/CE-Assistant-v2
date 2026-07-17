@@ -52,7 +52,9 @@ async def deliver_updates(client: discord.Client) -> int:
         channel = update["channel"]
 
         if not update["is_embed"]:
-            sent = await hm.send_message(client, channel, update["text"], False)
+            sent = await hm.send_message(
+                client, channel, update["text"], update.get("allowed_mentions") or []
+            )
         else:
             embed = discord.Embed()
             embed.title = update["title"]

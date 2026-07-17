@@ -5,7 +5,7 @@ THIS FILE SHOULD BE RUN IN A DIFFERENT PROCESS
 import os
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Add parent directory to path for direct script execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -45,6 +45,11 @@ class UpdateMessageForScraperProcess:
     location: str | None = None
 
     text: str = ""
+
+    # discord IDs allowed to be @-mentioned when this update is delivered
+    # (e.g. only the participants who opted into ping_casino_win/fail/user_log
+    # for this specific outcome); empty means no one gets pinged
+    allowed_mentions: list[int] = field(default_factory=list)
 
     title: str = ""
     description: str = ""
@@ -158,6 +163,7 @@ def _update_to_row(update: UpdateMessageForScraperProcess, status: str) -> dict:
         "color": update.color,
         "game_ce_id": update.game_ce_id,
         "status": status,
+        "allowed_mentions": update.allowed_mentions,
     }
 
 
@@ -1366,6 +1372,9 @@ def update_one_roll(
         update.location = "casinolog"
         update.is_embed = False
         update.text = roll.get_win_message(games, user1, user2)
+        update.allowed_mentions = [
+            u.discord_id for u in (user1, user2) if u is not None and u.ping_casino_win
+        ]
         roll.completed_time = hm.get_datetime("now")
         roll.set_status("won")
         return update, roll, False
@@ -1374,6 +1383,9 @@ def update_one_roll(
         update.location = "casino"
         update.is_embed = False
         update.text = roll.get_fail_message(games, user1, user2)
+        update.allowed_mentions = [
+            u.discord_id for u in (user1, user2) if u is not None and u.ping_casino_fail
+        ]
         roll.set_status("failed")
 
         return update, roll, False
@@ -1777,6 +1789,7 @@ def check_roles(
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
+                update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
                 updates.append(update)
 
     # TIERS
@@ -1789,6 +1802,7 @@ def check_roles(
                 + f"You have unlocked Tier {i} Enthusiast ({i * 500} points in Tier {i} completed games)."
             )
             update.location = "userlog"
+            update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
             updates.append(update)
 
     # conglomerates
@@ -1809,6 +1823,7 @@ def check_roles(
                 f"{'Grandm' if i == 1000 else 'M'}aster of All ({i} points in every category). Congratulations!"
             )
             update.location = "userlog"
+            update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
             updates.append(update)
 
     if max(old_categories) < 3000 and max(new_categories) >= 3000:
@@ -1820,6 +1835,7 @@ def check_roles(
             "Overpowered, by having 3000 points in a single category. Well done!"
         )
         update.location = "userlog"
+        update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
         updates.append(update)
 
     # TODO: omnipotent roles
@@ -1889,6 +1905,7 @@ def check_newly_completed_games(
             update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
+            update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
 
         update.is_embed = False
         update.text += (
@@ -1937,6 +1954,7 @@ def check_newly_completed_games(
             update.text = f"⚪ Muted user {user.display_name_with_link} update:\n"
         else:
             update.location = "userlog"
+            update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
 
         update.is_embed = False
         update.text += (
@@ -1982,6 +2000,7 @@ def check_rank(
     if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
+        update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
         update.is_embed = False
         update.text = (
             f"Congrats to {user.mention} ({user.display_name_with_link}) for ranking up from Rank "
@@ -2011,6 +2030,7 @@ def check_completion_count(
     if not user.is_muted:
         update = UpdateMessageForScraperProcess()
         update.location = "userlog"
+        update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
         update.is_embed = False
         update.text = (
             f"Amazing! {user.mention} ({user.display_name_with_link}) has passed the milestone of "

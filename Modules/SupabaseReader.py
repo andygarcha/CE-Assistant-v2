@@ -1668,6 +1668,9 @@ def __supabase_to_user(
         avatar=user["image_avatar"],
         last_updated=user["updated_at_CE"],
         steam_id=user["steam_id"],
+        ping_casino_fail=bool(user["ping_casino_fail"]),
+        ping_casino_win=bool(user["ping_casino_win"]),
+        ping_user_log=bool(user["ping_user_log"]),
     )
 
 

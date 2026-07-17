@@ -191,6 +191,7 @@ async def solo_roll(
             "userlog",
             f"Congratulations {interaction.user.mention}! You've won Jarvis's super secret reward. "
             "Please DM him for your prize :)",
+            allowed_mentions=[user.discord_id] if user.ping_user_log else [],
         )
 
     # fetch game database (only done once all checks have passed)
@@ -452,11 +453,15 @@ async def co_op_roll(
     # -- make sure to not reroll this on every time they move forward
     if secrets.randbelow(100) == 0 and not user.has_waiting_roll(event_name):
         lucky = True
+        pingable = [user.discord_id] if user.ping_user_log else []
+        if partner.ping_user_log:
+            pingable.append(partner.discord_id)
         await hm.send_message(
             client,
             "userlog",
             f"Congratulations {user.mention} and {partner.mention}! You've won Jarvis's super secret reward. "
             "Please DM him for your prize :)",
+            allowed_mentions=pingable,
         )
 
     # -- pull from supabase -----
