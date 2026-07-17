@@ -44,7 +44,7 @@ class CEUser:
         steam_id: str = "a",
         ping_casino_fail: bool = False,
         ping_casino_win: bool = False,
-        ping_user_log: bool = False
+        ping_user_log: bool = False,
     ):
         self._discord_id: int = discord_id
         self._ce_id: str = ce_id
@@ -57,7 +57,6 @@ class CEUser:
         self._ping_casino_fail: bool = ping_casino_fail
         self._ping_casino_win: bool = ping_casino_win
         self._ping_user_log: bool = ping_user_log
-
 
     # ==== core properties ====
 
@@ -100,12 +99,12 @@ class CEUser:
     def ping_casino_fail(self) -> bool:
         "Whether or not this user wants to be pinged when they fail a casino event."
         return self._ping_casino_fail
-    
+
     @property
     def ping_casino_win(self) -> bool:
         "Whether or not this user wants to be pinged when they win a casino event."
         return self._ping_casino_win
-    
+
     @property
     def ping_user_log(self) -> bool:
         "Whether or not this user wants to be pinged when they accomplish something posted in #user-log."

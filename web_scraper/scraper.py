@@ -1789,7 +1789,9 @@ def check_roles(
                     + f"You have unlocked {category} {CATEGORY_ROLE_NAMES[index_point]} ({point_value}+ points)"
                 )
                 update.location = "userlog"
-                update.allowed_mentions = [user.discord_id] if user.ping_user_log else []
+                update.allowed_mentions = (
+                    [user.discord_id] if user.ping_user_log else []
+                )
                 updates.append(update)
 
     # TIERS
