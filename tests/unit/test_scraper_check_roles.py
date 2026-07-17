@@ -266,3 +266,116 @@ class TestOverpowered:
 class TestNoChangesProducesNoUpdates:
     def test_empty_input_produces_no_updates(self):
         assert check_roles([], [], [], [], _user()) == []
+
+
+# ── allowed_mentions gating (ping_user_log) ──────────────────────────────────
+
+# check_roles has four separate call sites that each independently set
+# `update.allowed_mentions = user.user_log_pingable_ids` (category unlock,
+# tier unlock, Master/Grandmaster of All, Overpowered) -- each is tested here
+# since a copy-paste miss on any one of them would silently re-enable
+# pinging for that specific role type only.
+
+
+def _pref_user(ping_user_log: bool, discord_id: int = 999):
+    return make_user(
+        ce_id="user-001-0000-0000-000000000000",
+        discord_id=discord_id,
+        ping_user_log=ping_user_log,
+    )
+
+
+class TestAllowedMentionsCategoryRole:
+    def test_pings_when_opted_in(self):
+        old_owned, old_db = _game_with_points(GAME_ID, 499)
+        new_owned, new_db = _game_with_points(GAME_ID, 500)
+        user = _pref_user(True)
+        updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        old_owned, old_db = _game_with_points(GAME_ID, 499)
+        new_owned, new_db = _game_with_points(GAME_ID, 500)
+        user = _pref_user(False)
+        updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == []
+
+
+class TestAllowedMentionsTierRole:
+    def test_pings_when_opted_in(self):
+        po = _TIER_PO_POINTS[1]
+        threshold = 500
+        old_count = threshold // po
+        new_count = old_count + 1
+        old_owned, old_db = _n_completed_games(old_count, po, "tierpref-old")
+        new_owned, new_db = _n_completed_games(new_count, po, "tierpref-new")
+        user = _pref_user(True)
+        updates = check_roles(old_owned, new_owned, old_db, new_db, user)
+        tier_update = next(u for u in updates if "Enthusiast" in u.text)
+        assert tier_update.allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        po = _TIER_PO_POINTS[1]
+        threshold = 500
+        old_count = threshold // po
+        new_count = old_count + 1
+        old_owned, old_db = _n_completed_games(old_count, po, "tierpref-old2")
+        new_owned, new_db = _n_completed_games(new_count, po, "tierpref-new2")
+        user = _pref_user(False)
+        updates = check_roles(old_owned, new_owned, old_db, new_db, user)
+        tier_update = next(u for u in updates if "Enthusiast" in u.text)
+        assert tier_update.allowed_mentions == []
+
+
+class TestAllowedMentionsMasterOfAll:
+    def _cross_all_categories(self, user):
+        categories = [
+            "Action",
+            "Arcade",
+            "Bullet Hell",
+            "First-Person",
+            "Platformer",
+            "Strategy",
+        ]
+        old_owned, old_db, new_owned, new_db = [], [], [], []
+        for i, cat in enumerate(categories):
+            ce_id = f"moapref-{i}"
+            o_old, g_old = _game_with_points(ce_id, 499, categories=[cat])
+            o_new, g_new = _game_with_points(ce_id, 500, categories=[cat])
+            old_owned.append(o_old)
+            old_db.append(g_old)
+            new_owned.append(o_new)
+            new_db.append(g_new)
+        return check_roles(old_owned, new_owned, old_db, new_db, user)
+
+    def test_pings_when_opted_in(self):
+        user = _pref_user(True)
+        updates = self._cross_all_categories(user)
+        moa_update = next(u for u in updates if "Master of All" in u.text)
+        assert moa_update.allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        user = _pref_user(False)
+        updates = self._cross_all_categories(user)
+        moa_update = next(u for u in updates if "Master of All" in u.text)
+        assert moa_update.allowed_mentions == []
+
+
+class TestAllowedMentionsOverpowered:
+    def test_pings_when_opted_in(self):
+        old_owned, old_db = _game_with_points(GAME_ID, 2999)
+        new_owned, new_db = _game_with_points(GAME_ID, 3000)
+        user = _pref_user(True)
+        updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
+        op_update = next(u for u in updates if "Overpowered" in u.text)
+        assert op_update.allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        old_owned, old_db = _game_with_points(GAME_ID, 2999)
+        new_owned, new_db = _game_with_points(GAME_ID, 3000)
+        user = _pref_user(False)
+        updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
+        op_update = next(u for u in updates if "Overpowered" in u.text)
+        assert op_update.allowed_mentions == []

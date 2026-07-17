@@ -472,7 +472,7 @@ class PingPreferenceModal(discord.ui.Modal):
         )
         self.add_item(
             discord.ui.Label(
-                text="Ping for #user-log accomplishments?",
+                text="Ping for #player-accomplishments messages?",
                 component=self.user_log_select,
             )
         )
@@ -490,7 +490,7 @@ class PingPreferenceModal(discord.ui.Modal):
             "Your ping preferences have been updated:\n"
             f"- Ping on casino fail: {'Yes' if ping_casino_fail else 'No'}\n"
             f"- Ping on casino win: {'Yes' if ping_casino_win else 'No'}\n"
-            f"- Ping for #user-log: {'Yes' if ping_user_log else 'No'}",
+            f"- Ping for #player-accomplishments: {'Yes' if ping_user_log else 'No'}",
             ephemeral=True,
         )
 

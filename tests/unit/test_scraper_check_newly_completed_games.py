@@ -209,3 +209,66 @@ class TestCompletionAndOvercompletionTogether:
 
     def test_no_games_produces_no_updates(self):
         assert _run(_regular_user()) == []
+
+
+# ── allowed_mentions gating (ping_user_log) ──────────────────────────────────
+
+# Both the completion loop and the overcompletion loop independently set
+# `update.allowed_mentions = user.user_log_pingable_ids` only on the
+# non-muted branch; the muted branch never touches it, so a muted user's
+# update should always default to the dataclass's empty-list default
+# regardless of their ping_user_log preference.
+
+
+def _pref_user(ping_user_log: bool, discord_id: int = 999):
+    return make_user(
+        ce_id="user-001-0000-0000-000000000000",
+        discord_id=discord_id,
+        ping_user_log=ping_user_log,
+    )
+
+
+def _muted_pref_user(ping_user_log: bool):
+    return make_user(ce_id=MUTED_CE_ID, ping_user_log=ping_user_log)
+
+
+class TestAllowedMentionsCompletion:
+    def test_pings_when_opted_in(self):
+        game = _game(po_points=80)
+        updates = _run(_pref_user(True), completed_new=[game])
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        game = _game(po_points=80)
+        updates = _run(_pref_user(False), completed_new=[game])
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == []
+
+    def test_muted_user_never_pings_even_when_opted_in(self):
+        game = _game(po_points=80)
+        updates = _run(_muted_pref_user(True), completed_new=[game])
+        assert len(updates) == 1
+        assert updates[0].location == "privatelog"
+        assert updates[0].allowed_mentions == []
+
+
+class TestAllowedMentionsOvercompletion:
+    def test_pings_when_opted_in(self):
+        game = _game(po_points=150, so_points=80)
+        updates = _run(_pref_user(True), overcompleted_new=[game])
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        game = _game(po_points=150, so_points=80)
+        updates = _run(_pref_user(False), overcompleted_new=[game])
+        assert len(updates) == 1
+        assert updates[0].allowed_mentions == []
+
+    def test_muted_user_never_pings_even_when_opted_in(self):
+        game = _game(po_points=150, so_points=80)
+        updates = _run(_muted_pref_user(True), overcompleted_new=[game])
+        assert len(updates) == 1
+        assert updates[0].location == "privatelog"
+        assert updates[0].allowed_mentions == []

@@ -359,3 +359,143 @@ class TestWonMultiStageNotFinal:
         update, __, ___ = update_one_roll(roll, user, None, [game])
         assert update is not None
         assert update.location == "casino"
+
+
+# ── allowed_mentions gating (ping_casino_win / ping_casino_fail) ─────────────
+
+# "One Hell of a Day" (the default roll_name in these fixtures) falls into
+# CERoll.is_won's "all other rolls" branch, which only checks user1's
+# completion -- user2/the partner is irrelevant to whether the roll is won,
+# so a partner can be opted in/out independently of whether they've
+# "completed" anything.
+
+
+def _completed_user_pref(
+    discord_id: int,
+    game_id: str = GAME_ID,
+    ping_casino_win: bool = False,
+    ping_casino_fail: bool = False,
+    points: int = 100,
+):
+    uobj = make_user_objective(ce_id=OBJ_ID, game_ce_id=game_id, user_points=points)
+    ug = make_user_game(ce_id=game_id, user_objectives=[uobj])
+    return make_user(
+        discord_id=discord_id,
+        owned_games=[ug],
+        ping_casino_win=ping_casino_win,
+        ping_casino_fail=ping_casino_fail,
+    )
+
+
+def _uncompleted_user_pref(
+    discord_id: int, ping_casino_win: bool = False, ping_casino_fail: bool = False
+):
+    return make_user(
+        discord_id=discord_id,
+        ping_casino_win=ping_casino_win,
+        ping_casino_fail=ping_casino_fail,
+    )
+
+
+class TestAllowedMentionsWonRoll:
+    def test_solo_win_pings_when_opted_in(self):
+        user = _completed_user_pref(111, ping_casino_win=True)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, None, [game])
+        assert update is not None
+        assert update.allowed_mentions == [111]
+
+    def test_solo_win_no_ping_when_opted_out(self):
+        user = _completed_user_pref(111, ping_casino_win=False)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, None, [game])
+        assert update is not None
+        assert update.allowed_mentions == []
+
+    def test_win_ignores_casino_fail_pref(self):
+        # Opting into fail-pings shouldn't leak into the win message's mentions.
+        user = _completed_user_pref(111, ping_casino_win=False, ping_casino_fail=True)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, None, [game])
+        assert update is not None
+        assert update.allowed_mentions == []
+
+    def test_coop_win_pings_both_when_both_opted_in(self):
+        user = _completed_user_pref(111, ping_casino_win=True)
+        partner = _uncompleted_user_pref(222, ping_casino_win=True)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, partner, [game])
+        assert update is not None
+        assert update.allowed_mentions == [111, 222]
+
+    def test_coop_win_pings_only_user_when_only_user_opted_in(self):
+        user = _completed_user_pref(111, ping_casino_win=True)
+        partner = _uncompleted_user_pref(222, ping_casino_win=False)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, partner, [game])
+        assert update is not None
+        assert update.allowed_mentions == [111]
+
+    def test_coop_win_pings_only_partner_when_only_partner_opted_in(self):
+        user = _completed_user_pref(111, ping_casino_win=False)
+        partner = _uncompleted_user_pref(222, ping_casino_win=True)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, partner, [game])
+        assert update is not None
+        assert update.allowed_mentions == [222]
+
+    def test_coop_win_pings_neither_when_neither_opted_in(self):
+        user = _completed_user_pref(111, ping_casino_win=False)
+        partner = _uncompleted_user_pref(222, ping_casino_win=False)
+        game = _db_game(GAME_ID)
+        update, _, __ = update_one_roll(_roll("current"), user, partner, [game])
+        assert update is not None
+        assert update.allowed_mentions == []
+
+
+class TestAllowedMentionsFailedRoll:
+    def test_solo_fail_pings_when_opted_in(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=True)
+        update, _, __ = update_one_roll(_expired_current(), user, None, _games())
+        assert update is not None
+        assert update.allowed_mentions == [111]
+
+    def test_solo_fail_no_ping_when_opted_out(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=False)
+        update, _, __ = update_one_roll(_expired_current(), user, None, _games())
+        assert update is not None
+        assert update.allowed_mentions == []
+
+    def test_fail_ignores_casino_win_pref(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=False, ping_casino_win=True)
+        update, _, __ = update_one_roll(_expired_current(), user, None, _games())
+        assert update is not None
+        assert update.allowed_mentions == []
+
+    def test_coop_fail_pings_both_when_both_opted_in(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=True)
+        partner = _uncompleted_user_pref(222, ping_casino_fail=True)
+        update, _, __ = update_one_roll(_expired_current(), user, partner, _games())
+        assert update is not None
+        assert update.allowed_mentions == [111, 222]
+
+    def test_coop_fail_pings_only_user_when_only_user_opted_in(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=True)
+        partner = _uncompleted_user_pref(222, ping_casino_fail=False)
+        update, _, __ = update_one_roll(_expired_current(), user, partner, _games())
+        assert update is not None
+        assert update.allowed_mentions == [111]
+
+    def test_coop_fail_pings_only_partner_when_only_partner_opted_in(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=False)
+        partner = _uncompleted_user_pref(222, ping_casino_fail=True)
+        update, _, __ = update_one_roll(_expired_current(), user, partner, _games())
+        assert update is not None
+        assert update.allowed_mentions == [222]
+
+    def test_coop_fail_pings_neither_when_neither_opted_in(self):
+        user = _uncompleted_user_pref(111, ping_casino_fail=False)
+        partner = _uncompleted_user_pref(222, ping_casino_fail=False)
+        update, _, __ = update_one_roll(_expired_current(), user, partner, _games())
+        assert update is not None
+        assert update.allowed_mentions == []

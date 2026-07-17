@@ -98,3 +98,36 @@ class TestCheckRankMutedMessage:
         assert result is not None
         assert "B Rank" in result.text
         assert "A Rank" in result.text
+
+
+# ── allowed_mentions gating (ping_user_log) ──────────────────────────────────
+
+
+def _pref_user(ping_user_log: bool, discord_id: int = 999):
+    return make_user(
+        ce_id="user-001-0000-0000-000000000000",
+        discord_id=discord_id,
+        ping_user_log=ping_user_log,
+    )
+
+
+def _muted_pref_user(ping_user_log: bool):
+    return make_user(ce_id=MUTED_CE_ID, ping_user_log=ping_user_log)
+
+
+class TestAllowedMentionsRankUp:
+    def test_pings_when_opted_in(self):
+        result = check_rank("B Rank", "A Rank", 400, 1000, _pref_user(True))
+        assert result is not None
+        assert result.allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        result = check_rank("B Rank", "A Rank", 400, 1000, _pref_user(False))
+        assert result is not None
+        assert result.allowed_mentions == []
+
+    def test_muted_user_never_pings_even_when_opted_in(self):
+        result = check_rank("B Rank", "A Rank", 400, 1000, _muted_pref_user(True))
+        assert result is not None
+        assert result.location == "privatelog"
+        assert result.allowed_mentions == []
