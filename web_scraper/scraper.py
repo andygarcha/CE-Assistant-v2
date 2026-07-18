@@ -351,7 +351,6 @@ async def process_loop(
     logger.debug(
         "FLAGS: SAVEDATA=%s, DEBUG=%s, SKIPUPDATES=%s", SAVEDATA, DEBUG, SKIPUPDATES
     )
-    time_current: datetime.datetime = datetime.datetime.now(datetime.UTC)
 
     updates: list[UpdateMessageForScraperProcess] = []
 
@@ -505,12 +504,6 @@ async def process_loop(
             )
         except Exception:
             logger.exception("Integrity check failed.")
-
-    if SAVEDATA and not full_scrape:
-        try:
-            SupabaseReader.dump_loop(time_current)
-        except Exception as e:
-            logger.error("dump_loop failed to save last run time: %s", e)
 
     return {
         "games_updated": len(games_new),

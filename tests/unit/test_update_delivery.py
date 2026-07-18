@@ -3,6 +3,7 @@ import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
+import httpx
 import pytest
 
 from update_delivery import deliver_updates
@@ -443,6 +444,72 @@ class TestDeliverUpdatesExceptionRecovery:
             pytest.raises(Exception, match="supabase down"),
         ):
             asyncio.run(deliver_updates(mock_client))
+
+
+class TestCallWithRetry:
+    """A hung/stale Supabase connection should be retried once, transparently,
+    rather than blocking forever or failing on a one-off pooler blip."""
+
+    def test_succeeds_without_retry(self):
+        from update_delivery import _call_with_retry
+
+        func = MagicMock(return_value="ok")
+
+        result = asyncio.run(_call_with_retry(func, "arg", kw="v"))
+
+        assert result == "ok"
+        func.assert_called_once_with("arg", kw="v")
+
+    def test_retries_once_on_timeout_then_succeeds(self):
+        from update_delivery import _call_with_retry
+
+        func = MagicMock(
+            side_effect=[httpx.ReadTimeout("timed out"), "recovered"]
+        )
+
+        result = asyncio.run(_call_with_retry(func))
+
+        assert result == "recovered"
+        assert func.call_count == 2
+
+    def test_second_timeout_propagates(self):
+        from update_delivery import _call_with_retry
+
+        func = MagicMock(side_effect=httpx.ReadTimeout("timed out"))
+
+        with pytest.raises(httpx.ReadTimeout):
+            asyncio.run(_call_with_retry(func))
+
+        assert func.call_count == 2
+
+    def test_non_timeout_exception_is_not_retried(self):
+        from update_delivery import _call_with_retry
+
+        func = MagicMock(side_effect=ValueError("not a timeout"))
+
+        with pytest.raises(ValueError, match="not a timeout"):
+            asyncio.run(_call_with_retry(func))
+
+        func.assert_called_once()
+
+    def test_get_last_loop_retries_once_on_timeout(self):
+        mock_client = MagicMock()
+        recent = datetime.datetime.now(datetime.UTC)
+
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_last_loop",
+                side_effect=[httpx.ConnectTimeout("timed out"), recent],
+            ) as mock_get_last_loop,
+            patch(
+                "update_delivery.SupabaseReader.get_stable_updates",
+                return_value=[],
+            ),
+        ):
+            count = asyncio.run(deliver_updates(mock_client))
+
+        assert count == 0
+        assert mock_get_last_loop.call_count == 2
 
 
 class TestDeliverUpdatesEmbedConstruction:

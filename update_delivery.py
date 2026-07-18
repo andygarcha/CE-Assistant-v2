@@ -1,11 +1,29 @@
+import asyncio
 import datetime
 import logging
 
 import discord
+import httpx
 
 from Modules import SupabaseReader, hm
 
 logger = logging.getLogger(__name__)
+
+
+async def _call_with_retry(func, *args, **kwargs):
+    """Runs a blocking Supabase call off the event loop, retrying once on timeout.
+
+    Keeps a hung/stale connection (e.g. a pooler-side reconnect) from blocking
+    the caller's event loop, and from failing outright on what's usually a
+    one-off blip.
+    """
+    try:
+        return await asyncio.to_thread(func, *args, **kwargs)
+    except httpx.TimeoutException:
+        logger.warning(
+            "%s timed out, retrying once.", getattr(func, "__name__", func)
+        )
+        return await asyncio.to_thread(func, *args, **kwargs)
 
 
 def _format_not_ready_list(not_ready_updates: list[dict]) -> str:
@@ -16,7 +34,7 @@ def _format_not_ready_list(not_ready_updates: list[dict]) -> str:
 
 
 async def deliver_updates(client: discord.Client) -> int:
-    last_run = SupabaseReader.get_last_loop(offset=False)
+    last_run = await _call_with_retry(SupabaseReader.get_last_loop, offset=False)
     ts = int(last_run.timestamp())
     if datetime.datetime.now(datetime.UTC) - last_run > datetime.timedelta(hours=1):
         check_msg = f":mag: Checking, last scraper loop at <t:{ts}:f> (<t:{ts}:R>)."
@@ -24,8 +42,8 @@ async def deliver_updates(client: discord.Client) -> int:
         logger.info("Checking, last scraper loop at %s.", last_run)
         await hm.send_message(client, "privatelog", check_msg, False)
 
-    updates = SupabaseReader.get_stable_updates()
-    not_ready_updates = SupabaseReader.get_pending_game_updates()
+    updates = await _call_with_retry(SupabaseReader.get_stable_updates)
+    not_ready_updates = await _call_with_retry(SupabaseReader.get_pending_game_updates)
     not_ready = len(not_ready_updates)
 
     if not updates:
@@ -71,7 +89,7 @@ async def deliver_updates(client: discord.Client) -> int:
             sent = await hm.send_message(client, channel, embed=embed)
 
         if sent:
-            SupabaseReader.mark_updates_delivered([update["id"]])
+            await _call_with_retry(SupabaseReader.mark_updates_delivered, [update["id"]])
             delivered += 1
         else:
             logger.warning(

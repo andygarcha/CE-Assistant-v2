@@ -38,7 +38,11 @@ if SUPABASE_KEY is None:
 supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_KEY,
-    options=ClientOptions(httpx_client=httpx.Client(timeout=120, verify=True)),
+    options=ClientOptions(
+        httpx_client=httpx.Client(
+            timeout=httpx.Timeout(10.0, connect=5.0), verify=True
+        )
+    ),
 )
 
 logger = logging.getLogger(__name__)
@@ -1253,15 +1257,6 @@ def get_last_loop(offset=True) -> datetime.datetime:
         dt = dt - datetime.timedelta(hours=2, minutes=10)
 
     return dt
-
-
-def dump_loop(dt: datetime.datetime):
-    supabase.table("loopruns").insert(
-        {
-            "ran_at": dt.isoformat(),
-            "start": False,
-        }
-    ).execute()
 
 
 def start_loop_run(full_scrape: bool = False) -> str:
