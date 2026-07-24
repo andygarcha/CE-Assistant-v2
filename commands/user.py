@@ -312,7 +312,9 @@ async def set_color(interaction: discord.Interaction):
         Assigns the requested role, sends a log, and alerts the user that it happened.
         """
         if isinstance(interaction.user, discord.User):
-            await interaction.response.send_message("error.")
+            await interaction.response.send_message(
+                "interaction.user is discord.User instead of discord.Member!."
+            )
             raise Exception(
                 "interaction.user is discord.User instead of discord.Member!"
             )
@@ -354,10 +356,9 @@ async def set_color(interaction: discord.Interaction):
         "Orange",  # S Rank
         "Yellow",  # SS Rank
         "Red",  # SSS Rank
-        "Black",  # EX Rank
     ]
     # These should be in order of highest to lowest
-    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
+    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴"]
     # -- bounty allowed ------
     bounty_emoji_by_name = dict(hm.BOUNTY_COLORS)
     # Filter out any granted color that's since been renamed/removed from
@@ -383,7 +384,9 @@ async def set_color(interaction: discord.Interaction):
         missing: list[str] = [
             c for c, r in zip(COLORS, maybe_roles, strict=True) if r is None
         ]
-        await interaction.followup.send("error")
+        await interaction.followup.send(
+            f"Could not find roles for colors {missing} (set_color)"
+        )
         raise Exception(f"Could not find roles for colors {missing} (set_color)")
 
     # `None in maybe_roles` above doesn't narrow the list's element type for
