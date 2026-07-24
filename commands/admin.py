@@ -222,7 +222,8 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
         guild=guild,
     )
     @app_commands.describe(
-        user="The user you're revoking this from.", color="The role of the Bounty Color."
+        user="The user you're revoking this from.",
+        color="The role of the Bounty Color.",
     )
     async def remove_bounty_color_command(
         interaction: discord.Interaction, user: discord.User, color: discord.Role
