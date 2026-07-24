@@ -884,7 +884,15 @@ async def assign_bounty_color(
     If the Role is not one of the utils/channel.py::BOUNTY_COLORS, this will return an error.
     """
     await interaction.response.defer()
-    return await interaction.followup.send("Under construction.")
+
+    await hm.log_command(
+        client,
+        interaction,
+        "add-bounty-color",
+        True,
+        user_discord=user_discord,
+        color_role=color_role,
+    )
 
     user = SupabaseReader.get_user(user_discord.id, use_discord_id=True)
     if user is None:
