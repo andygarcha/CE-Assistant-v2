@@ -27,6 +27,7 @@ def _bounty_emoji_id(color_name: str) -> int:
     assert parsed.id is not None
     return parsed.id
 
+
 BASE_COLORS = [
     "Gray",
     "Brown",
