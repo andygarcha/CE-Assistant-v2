@@ -760,6 +760,31 @@ def get_user_bounty_colors(ce_id: str) -> list[str]:
     return LocalCache.get_bounty_colors(ce_id)
 
 
+def remove_user_bounty_color(ce_id: str, color: str) -> None:
+    """
+    Revokes `ce_id`'s access to `color` in /set-color.
+
+    Deleting the row directly in Supabase is not enough on its own --
+    get_user_bounty_colors() always reads through the LocalCache mirror, and
+    bounty_color isn't part of run_integrity_check()'s routine self-healing
+    (it's only synced as a child of `users` when the parent user row itself
+    is missing locally, not when a single child row changes), so a
+    Supabase-only delete would leave the stale grant visible indefinitely.
+    This dual-deletes from both, matching add_user_bounty_color.
+
+    Parameters
+    ---
+    ce_id: `str`
+        The CE ID of the user losing access to the color.
+    color: `str`
+        The color name being revoked.
+    """
+    supabase.table("bounty_color").delete().eq("user_id", ce_id).eq(
+        "color_name", color
+    ).execute()
+    LocalCache.delete_bounty_color(ce_id, color)
+
+
 def bulk_dump_users(
     users: Sequence[CEUser], batch_size: int = 50, pause_seconds: float = 0.1
 ):

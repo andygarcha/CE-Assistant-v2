@@ -215,6 +215,20 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     ):
         return await assign_bounty_color(interaction, user, color)
 
+    # -- /remove-bounty-color {user} {color_name}
+    @tree.command(
+        name="remove-bounty-color",
+        description="Remove a user's permission to assign a Bounty color to themselves.",
+        guild=guild,
+    )
+    @app_commands.describe(
+        user="The user you're revoking this from.", color="The role of the Bounty Color."
+    )
+    async def remove_bounty_color_command(
+        interaction: discord.Interaction, user: discord.User, color: discord.Role
+    ):
+        return await remove_bounty_color(interaction, user, color)
+
 
 async def test(interaction: discord.Interaction):
     """
@@ -910,5 +924,47 @@ async def assign_bounty_color(
 
     return await interaction.followup.send(
         f"Added {color_role.name} to {user.display_name_with_link}'s /set-color permissions!"
+        f"\nCurrent permissions: {', '.join(SupabaseReader.get_user_bounty_colors(user.ce_id))}"
+    )
+
+
+async def remove_bounty_color(
+    interaction: discord.Interaction,
+    user_discord: discord.User,
+    color_role: discord.Role,
+):
+    """
+    Takes in a user and a role, and revokes their access to that role's color in /set-color.
+
+    If the User is not registered, this will return an error.
+    If the Role is not one of the utils/channel.py::BOUNTY_COLORS, this will return an error.
+    """
+    await interaction.response.defer()
+
+    await hm.log_command(
+        client,
+        interaction,
+        "remove-bounty-color",
+        True,
+        user_discord=user_discord,
+        color_role=color_role,
+    )
+
+    user = SupabaseReader.get_user(user_discord.id, use_discord_id=True)
+    if user is None:
+        return await interaction.followup.send(
+            f"User with name {user_discord.display_name} is not registered with the bot!"
+        )
+
+    if color_role.name not in [color[0] for color in hm.BOUNTY_COLORS]:
+        return await interaction.followup.send(
+            f"Role with name {color_role.name} is not one of the {len(hm.BOUNTY_COLORS)} bounty colors."
+            f"\nBounty colors are the following: {[color[0] for color in hm.BOUNTY_COLORS]}."
+        )
+
+    SupabaseReader.remove_user_bounty_color(user.ce_id, color_role.name)
+
+    return await interaction.followup.send(
+        f"Removed {color_role.name} from {user.display_name_with_link}'s /set-color permissions!"
         f"\nCurrent permissions: {', '.join(SupabaseReader.get_user_bounty_colors(user.ce_id))}"
     )
