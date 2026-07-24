@@ -13,6 +13,7 @@ import pytest
 from commands.admin import (
     RollManagementModal,
     UnlinkView,
+    _grant_bounty_color,
     assign_bounty_color,
     ban_game,
     clear_roll_portion,
@@ -1205,7 +1206,54 @@ class TestRollManagementModalOnSubmit:
 # ── assign_bounty_color ─────────────────────────────────────────────────────
 
 
-class TestAssignBountyColor:
+class TestAssignBountyColorIsDisabled:
+    """/add-bounty-color is intentionally a no-op right now: it's visible to
+    anyone who can see the guild's slash commands, not just admins, until
+    the server admin restricts it in Discord's integration permissions. The
+    real logic lives in _grant_bounty_color (tested separately below) and
+    isn't called from here yet -- see the docstring on assign_bounty_color
+    in commands/admin.py."""
+
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _run(self, interaction, user_discord, color_role):
+        with (
+            patch("commands.admin.client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user") as mock_get_user,
+            patch("commands.admin.SupabaseReader.add_user_bounty_color") as mock_add,
+        ):
+            asyncio.run(assign_bounty_color(interaction, user_discord, color_role))
+        return mock_get_user, mock_add
+
+    def test_always_sends_under_construction(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        self._run(
+            interaction, SimpleNamespace(id=222, display_name="Target"), color_role
+        )
+        msg = interaction.followup.send.call_args[0][0]
+        assert msg == "Under construction."
+
+    def test_never_looks_up_or_grants_anything(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        mock_get_user, mock_add = self._run(
+            interaction, SimpleNamespace(id=222, display_name="Target"), color_role
+        )
+        mock_get_user.assert_not_called()
+        mock_add.assert_not_called()
+
+
+class TestGrantBountyColor:
+    """The real grant logic, extracted out of assign_bounty_color so it
+    keeps working (and stays covered) while that command is disabled -- see
+    TestAssignBountyColorIsDisabled above."""
+
     def _make_interaction(self) -> SimpleNamespace:
         return SimpleNamespace(
             response=SimpleNamespace(defer=AsyncMock()),
@@ -1219,8 +1267,16 @@ class TestAssignBountyColor:
         with (
             patch("commands.admin.SupabaseReader.get_user", return_value=target),
             patch("commands.admin.SupabaseReader.add_user_bounty_color") as mock_add,
+            # explicitly mocked rather than relying on the real LocalCache --
+            # Modules/SupabaseReader.py auto-initializes it against the repo's
+            # data/cache.db at import time as a side effect, which is real,
+            # persistent, cross-test state, not test-local isolation.
+            patch(
+                "commands.admin.SupabaseReader.get_user_bounty_colors",
+                return_value=["Cotton Candy"],
+            ),
         ):
-            asyncio.run(assign_bounty_color(interaction, user_discord, color_role))
+            asyncio.run(_grant_bounty_color(interaction, user_discord, color_role))
         return mock_add
 
     def test_unregistered_user_does_not_grant(self):
@@ -1281,12 +1337,12 @@ class TestAssignBountyColor:
         assert "Recipient" in msg
 
 
-class TestAssignBountyColorAlreadyGranted:
-    """Re-running /assign-bounty-color for a user who already has the color
-    must not error or duplicate the grant -- add_user_bounty_color's upsert
-    is idempotent (see TestAddUserBountyColorDualWrite in
-    test_bounty_color.py), and this command has no "already granted" guard
-    of its own, so it should just succeed again silently."""
+class TestGrantBountyColorAlreadyGranted:
+    """Re-granting a color to a user who already has it must not error or
+    duplicate the grant -- add_user_bounty_color's upsert is idempotent (see
+    TestAddUserBountyColorDualWrite in test_bounty_color.py), and
+    _grant_bounty_color has no "already granted" guard of its own, so it
+    should just succeed again silently."""
 
     def _make_interaction(self):
         return SimpleNamespace(
@@ -1295,7 +1351,7 @@ class TestAssignBountyColorAlreadyGranted:
         )
 
     def _run(self, interaction, user_discord, color_role):
-        asyncio.run(assign_bounty_color(interaction, user_discord, color_role))
+        asyncio.run(_grant_bounty_color(interaction, user_discord, color_role))
 
     def test_granting_the_same_color_twice_does_not_error_or_duplicate(self):
         tmpdir = tempfile.mkdtemp()
