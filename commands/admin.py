@@ -880,12 +880,38 @@ async def assign_bounty_color(
     """
     Takes in a user and a role, and allows them to have access to that role's color in /set-color.
 
+    Intentionally disabled -- /add-bounty-color is visible to anyone who can
+    see the guild's slash commands, not just admins, until the server admin
+    restricts it to devs/admins in Discord's integration permissions. Once
+    that's done, replace the body below with a call to
+    _grant_bounty_color(interaction, user_discord, color_role), which has
+    the real implementation and is already covered by tests.
+    """
+    await interaction.response.defer()
+
+    await hm.log_command(
+        client,
+        interaction,
+        "add-bounty-color",
+        True,
+        user_discord=user_discord,
+        color_role=color_role,
+    )
+
+    return await interaction.followup.send("Under construction.")
+
+
+async def _grant_bounty_color(
+    interaction: discord.Interaction,
+    user_discord: discord.User,
+    color_role: discord.Role,
+):
+    """
+    Takes in a user and a role, and allows them to have access to that role's color in /set-color.
+
     If the User is not registered, this will return an error.
     If the Role is not one of the utils/channel.py::BOUNTY_COLORS, this will return an error.
     """
-    await interaction.response.defer()
-    return await interaction.followup.send("Under construction.")
-
     user = SupabaseReader.get_user(user_discord.id, use_discord_id=True)
     if user is None:
         return await interaction.followup.send(
