@@ -200,15 +200,19 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     @app_commands.describe(roll_id="The ID of the roll you'd like to change.")
     async def roll_management_command(interaction: discord.Interaction, roll_id: str):
         return await roll_management(interaction, roll_id)
-    
+
     # -- /add-bounty-color {user} {color_name}
     @tree.command(
         name="add-bounty-color",
         description="Add permissions for a user to assign a Bounty color to themselves.",
-        guild=guild
+        guild=guild,
     )
-    @app_commands.describe(user="The user you're assigning this to.", color="The role of the Bounty Color.")
-    async def assign_bounty_color_command(interaction: discord.Interaction, user: discord.User, color: discord.Role):
+    @app_commands.describe(
+        user="The user you're assigning this to.", color="The role of the Bounty Color."
+    )
+    async def assign_bounty_color_command(
+        interaction: discord.Interaction, user: discord.User, color: discord.Role
+    ):
         return await assign_bounty_color(interaction, user, color)
 
 
@@ -897,5 +901,5 @@ async def assign_bounty_color(
 
     return await interaction.followup.send(
         f"Added {color_role.name} to {user.display_name_with_link}'s /set-color permissions!"
-        f"\nCurrent permissions: {", ".join(SupabaseReader.get_user_bounty_colors(user.ce_id))}"
+        f"\nCurrent permissions: {', '.join(SupabaseReader.get_user_bounty_colors(user.ce_id))}"
     )
