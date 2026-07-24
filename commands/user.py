@@ -1,5 +1,6 @@
 """This module contains all the commands about users for the bot."""
 
+import logging
 from typing import TYPE_CHECKING
 
 import discord
@@ -9,6 +10,12 @@ if TYPE_CHECKING:
     from Classes.CE_User import CEUser
 
 from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
+
+logger = logging.getLogger(__name__)
+
+# Populated lazily by _valid_bounty_emoji_ids() and cached for the process
+# lifetime -- see that function for why.
+_bounty_emoji_ids: set[int] | None = None
 
 
 def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guild):
@@ -243,6 +250,34 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     return og_message
 
 
+async def _valid_bounty_emoji_ids() -> set[int]:
+    """
+    Bounty color emojis are Application Emojis (uploaded to this bot's own
+    Developer Portal "Emojis" tab), not guild emojis -- they don't show up
+    in interaction.guild.emojis, and discord.py has no synchronous cache
+    for them the way it does for guild emojis, so fetch_application_emojis()
+    is a real API call every time it's used.
+
+    A bot that doesn't own a given emoji ID (e.g. a test bot that doesn't
+    have these uploaded) fails to send a button referencing it, so this is
+    fetched once per process and cached, and callers fall back to a text
+    label instead of crashing when an emoji isn't in the returned set.
+    """
+    global _bounty_emoji_ids
+    if _bounty_emoji_ids is None:
+        try:
+            emojis = await client.fetch_application_emojis()
+            _bounty_emoji_ids = {e.id for e in emojis}
+        except discord.DiscordException:
+            logger.warning(
+                "Failed to fetch application emojis -- bounty colors will "
+                "fall back to text labels until the next successful fetch.",
+                exc_info=True,
+            )
+            return set()
+    return _bounty_emoji_ids
+
+
 async def set_color(interaction: discord.Interaction):
     """
     Gives the user the color role that they've requested.
@@ -285,9 +320,7 @@ async def set_color(interaction: discord.Interaction):
         # check to see if they already have the color
         if role in interaction.user.roles:
             return await interaction.response.edit_message(
-                embed=discord.Embed(
-                    title=f"You already have the {role.name} role!", color=role.color
-                )
+                content=f"You are currently assigned the {role.name} role!"
             )
 
         # remove all colors
@@ -361,13 +394,33 @@ async def set_color(interaction: discord.Interaction):
     # instantiate the view
     view = discord.ui.View()
 
+    # Bounty emojis are Application Emojis (see _valid_bounty_emoji_ids) --
+    # only fetched when there's actually a bounty color to show, since it's
+    # a real API call with no built-in discord.py cache.
+    valid_bounty_emoji_ids: set[int] = (
+        await _valid_bounty_emoji_ids() if colors_bounty else set()
+    )
+
     # for each role, create a button and make sure each person can only do what theyre allowed
     # (bounty colors are unlocked via admin grant, not rank, so they're never
     # disabled by user_rank_num the way the base rank colors are)
     for i, role in enumerate(ROLES):
         is_bounty = i >= len(colors_base)
+
+        emoji: str | None = EMOJIS[i]
+        label: str | None = None
+        if is_bounty and discord.PartialEmoji.from_str(emoji).id not in (
+            valid_bounty_emoji_ids
+        ):
+            # this bot doesn't own this application emoji (e.g. a test bot
+            # without it uploaded) -- fall back to the color's name instead
+            # of a button that would fail to send or render broken.
+            emoji, label = None, COLORS[i]
+
         _button = discord.ui.Button(
-            emoji=EMOJIS[i], disabled=(user_rank_num < i) and not is_bounty
+            emoji=emoji,
+            label=label,
+            disabled=(user_rank_num < i) and not is_bounty,
         )
 
         async def callback(interaction, role=role):
