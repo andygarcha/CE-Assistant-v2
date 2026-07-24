@@ -356,10 +356,9 @@ async def set_color(interaction: discord.Interaction):
         "Orange",  # S Rank
         "Yellow",  # SS Rank
         "Red",  # SSS Rank
-        "Black",  # EX Rank
     ]
     # These should be in order of highest to lowest
-    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
+    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴"]
     # -- bounty allowed ------
     bounty_emoji_by_name = dict(hm.BOUNTY_COLORS)
     # Filter out any granted color that's since been renamed/removed from

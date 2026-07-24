@@ -37,8 +37,8 @@ BASE_COLORS = [
     "Orange",
     "Yellow",
     "Red",
-    "Black",
 ]
+BASE_COLOR_COUNT = len(BASE_COLORS)
 
 
 def _make_role(name: str) -> SimpleNamespace:
@@ -102,16 +102,16 @@ class TestStaleBountyColorIsSkippedNotCrashed:
         interaction = _make_interaction()
         _run(interaction, bounty_colors=["Extinct Color"])
         view = interaction.followup.send.call_args.kwargs["view"]
-        # 9 base color buttons + 1 clear button; the stale bounty color
+        # base color buttons + 1 clear button; the stale bounty color
         # contributes nothing since it never resolved to a role.
-        assert len(view.children) == 10
+        assert len(view.children) == BASE_COLOR_COUNT + 1
 
     def test_valid_and_stale_bounty_colors_together(self):
         interaction = _make_interaction(extra_roles=["Cotton Candy"])
         _run(interaction, bounty_colors=["Cotton Candy", "Extinct Color"])
         view = interaction.followup.send.call_args.kwargs["view"]
-        # 9 base + 1 valid bounty + 1 clear button.
-        assert len(view.children) == 11
+        # base colors + 1 valid bounty + 1 clear button.
+        assert len(view.children) == BASE_COLOR_COUNT + 2
 
 
 class TestBountyColorButtonsAreNeverRankDisabled:
@@ -119,8 +119,8 @@ class TestBountyColorButtonsAreNeverRankDisabled:
         interaction = _make_interaction(extra_roles=["Cotton Candy"])
         _run(interaction, rank_num=0, bounty_colors=["Cotton Candy"])
         view = interaction.followup.send.call_args.kwargs["view"]
-        # Bounty button is appended right after the 9 base-color buttons.
-        bounty_button = view.children[9]
+        # Bounty button is appended right after the base-color buttons.
+        bounty_button = view.children[BASE_COLOR_COUNT]
         assert bounty_button.disabled is False
 
     def test_base_color_buttons_still_respect_rank(self):
@@ -130,7 +130,7 @@ class TestBountyColorButtonsAreNeverRankDisabled:
         # rank_num=0 (E Rank) should only leave the first base button (Gray)
         # enabled; every other base color is above the user's rank.
         assert view.children[0].disabled is False
-        assert all(button.disabled for button in view.children[1:9])
+        assert all(button.disabled for button in view.children[1:BASE_COLOR_COUNT])
 
 
 class TestBountyEmojiFallsBackToLabelWhenNotOwned:
@@ -148,7 +148,7 @@ class TestBountyEmojiFallsBackToLabelWhenNotOwned:
             owned_emoji_ids=set(),  # bot owns none of its application emojis
         )
         view = interaction.followup.send.call_args.kwargs["view"]
-        bounty_button = view.children[9]
+        bounty_button = view.children[BASE_COLOR_COUNT]
         assert bounty_button.emoji is None
         assert bounty_button.label == "Cotton Candy"
 
@@ -160,7 +160,7 @@ class TestBountyEmojiFallsBackToLabelWhenNotOwned:
             owned_emoji_ids={_bounty_emoji_id("Cotton Candy")},
         )
         view = interaction.followup.send.call_args.kwargs["view"]
-        bounty_button = view.children[9]
+        bounty_button = view.children[BASE_COLOR_COUNT]
         assert bounty_button.emoji is not None
         assert bounty_button.label is None
 
@@ -168,8 +168,10 @@ class TestBountyEmojiFallsBackToLabelWhenNotOwned:
         interaction = _make_interaction(extra_roles=["Cotton Candy"])
         _run(interaction, bounty_colors=["Cotton Candy"], owned_emoji_ids=set())
         view = interaction.followup.send.call_args.kwargs["view"]
-        assert all(button.label is None for button in view.children[:9])
-        assert all(button.emoji is not None for button in view.children[:9])
+        assert all(button.label is None for button in view.children[:BASE_COLOR_COUNT])
+        assert all(
+            button.emoji is not None for button in view.children[:BASE_COLOR_COUNT]
+        )
 
     def test_does_not_fetch_application_emojis_when_no_bounty_colors_granted(self):
         interaction = _make_interaction()
@@ -184,7 +186,7 @@ class TestBountyEmojiFallsBackToLabelWhenNotOwned:
             fetch_application_emojis_side_effect=discord.DiscordException("boom"),
         )
         view = interaction.followup.send.call_args.kwargs["view"]
-        bounty_button = view.children[9]
+        bounty_button = view.children[BASE_COLOR_COUNT]
         assert bounty_button.label == "Cotton Candy"
 
 
@@ -199,16 +201,17 @@ class TestMissingRoleRaises:
 
     def test_missing_base_color_role_raises_and_notifies(self):
         interaction = _make_interaction()
-        # Simulate "Black" (EX Rank) never having been created in the guild.
+        # Simulate "Red" (SSS Rank, the topmost base color) never having
+        # been created in the guild.
         interaction.guild.roles = [
-            r for r in interaction.guild.roles if r.name != "Black"
+            r for r in interaction.guild.roles if r.name != "Red"
         ]
 
-        with pytest.raises(Exception, match="Black"):
+        with pytest.raises(Exception, match="Red"):
             _run(interaction)
 
         msg = interaction.followup.send.call_args[0][0]
-        assert "Black" in msg
+        assert "Red" in msg
 
     def test_missing_bounty_color_role_raises_and_notifies(self):
         # "Cotton Candy" was granted (returned by get_user_bounty_colors)
@@ -224,10 +227,10 @@ class TestMissingRoleRaises:
     def test_missing_role_does_not_send_the_color_picker_view(self):
         interaction = _make_interaction()
         interaction.guild.roles = [
-            r for r in interaction.guild.roles if r.name != "Black"
+            r for r in interaction.guild.roles if r.name != "Red"
         ]
 
-        with pytest.raises(Exception, match="Black"):
+        with pytest.raises(Exception, match="Red"):
             _run(interaction)
 
         # only the error-notification call happened -- the view-with-buttons
