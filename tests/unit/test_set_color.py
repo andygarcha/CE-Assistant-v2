@@ -189,12 +189,13 @@ class TestBountyEmojiFallsBackToLabelWhenNotOwned:
 
 
 class TestMissingRoleRaises:
-    """set_color intentionally fails loud (sends "error" + raises) rather
-    than silently proceeding when a color it expects to find as a guild
-    role isn't there -- this guards against COLORS/ROLES silently drifting
-    out of alignment. Covers both the base colors (guild misconfiguration)
-    and bounty colors (a color exists in BOUNTY_COLORS/was granted, but the
-    Discord role for it was never created or was deleted)."""
+    """set_color intentionally fails loud (sends an error naming the
+    missing color(s), then raises) rather than silently proceeding when a
+    color it expects to find as a guild role isn't there -- this guards
+    against COLORS/ROLES silently drifting out of alignment. Covers both
+    the base colors (guild misconfiguration) and bounty colors (a color
+    exists in BOUNTY_COLORS/was granted, but the Discord role for it was
+    never created or was deleted)."""
 
     def test_missing_base_color_role_raises_and_notifies(self):
         interaction = _make_interaction()
@@ -206,7 +207,8 @@ class TestMissingRoleRaises:
         with pytest.raises(Exception, match="Black"):
             _run(interaction)
 
-        interaction.followup.send.assert_called_with("error")
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Black" in msg
 
     def test_missing_bounty_color_role_raises_and_notifies(self):
         # "Cotton Candy" was granted (returned by get_user_bounty_colors)
@@ -216,7 +218,8 @@ class TestMissingRoleRaises:
         with pytest.raises(Exception, match="Cotton Candy"):
             _run(interaction, bounty_colors=["Cotton Candy"])
 
-        interaction.followup.send.assert_called_with("error")
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Cotton Candy" in msg
 
     def test_missing_role_does_not_send_the_color_picker_view(self):
         interaction = _make_interaction()
@@ -227,5 +230,7 @@ class TestMissingRoleRaises:
         with pytest.raises(Exception, match="Black"):
             _run(interaction)
 
-        # only the "error" call happened -- the view-with-buttons send never ran
-        interaction.followup.send.assert_called_once_with("error")
+        # only the error-notification call happened -- the view-with-buttons
+        # send never ran
+        interaction.followup.send.assert_called_once()
+        assert "view" not in interaction.followup.send.call_args.kwargs
