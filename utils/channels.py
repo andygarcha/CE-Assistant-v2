@@ -54,6 +54,16 @@ USER_LOG_ID = CHANNELS["userlog"]
 PROOF_SUBMISSIONS_ID = CHANNELS["proofsubmissions"]
 INPUT_LOG_ID = CHANNELS["inputlog"]
 
+BOUNTY_COLORS = [
+    ("Cotton Candy", "<:circle_cottoncandy:1282859418043678782>"),
+    ("Aquamarine", "<:circle_aquamarine:1282859393251147847>"),
+    ("Ice", "<:circle_ice:1282859443704565811>"),
+    ("Forest", "<:circle_forest:1282859426671231006>"),
+    ("Blood", "<:circle_blood:1282859402457776138>"),
+    ("Abyss", "<:circle_abyss:1282859383604248607>"),
+    ("Nuclear", "<:circle_nuclear:1282859451757629583>"),
+]
+
 
 def id_num(channel_name: CHANNEL_NAMES):
     """

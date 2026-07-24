@@ -312,7 +312,7 @@ async def set_color(interaction: discord.Interaction):
         )
 
     # Keep these in order of lowest rank to highest rank
-    COLORS = [
+    colors_base = [
         "Gray",  # E Rank
         "Brown",  # D Rank
         "Green",  # C Rank
@@ -324,23 +324,51 @@ async def set_color(interaction: discord.Interaction):
         "Black",  # EX Rank
     ]
     # These should be in order of highest to lowest
-    EMOJIS = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
-    ROLES: list[discord.Role] = [
-        role
-        for i in COLORS
-        if (role := discord.utils.get(interaction.guild.roles, name=i)) is not None
+    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
+    # -- bounty allowed ------
+    bounty_emoji_by_name = dict(hm.BOUNTY_COLORS)
+    # Filter out any granted color that's since been renamed/removed from
+    # BOUNTY_COLORS -- a stale grant shouldn't crash /set-color for the user,
+    # it should just no longer show up as an option.
+    colors_bounty = [
+        c
+        for c in SupabaseReader.get_user_bounty_colors(user_ce.ce_id)
+        if c in bounty_emoji_by_name
+    ]
+    emojis_bounty = [bounty_emoji_by_name[c] for c in colors_bounty]
+
+    COLORS = colors_base + colors_bounty
+    EMOJIS = emojis_base + emojis_bounty
+    # Kept 1:1 with COLORS/EMOJIS -- a missing role must not silently shift
+    # every later index out of alignment, so None entries are left in place
+    # and caught below rather than filtered out.
+    maybe_roles: list[discord.Role | None] = [
+        discord.utils.get(interaction.guild.roles, name=i) for i in COLORS
     ]
 
-    if None in ROLES:
+    if None in maybe_roles:
+        missing: list[str] = [
+            c for c, r in zip(COLORS, maybe_roles, strict=True) if r is None
+        ]
         await interaction.followup.send("error")
-        raise Exception(f"None found in ROLES (set_color). {len(ROLES)=}")
+        raise Exception(f"Could not find roles for colors {missing} (set_color)")
+
+    # `None in maybe_roles` above doesn't narrow the list's element type for
+    # static checkers -- this per-element filter does, since every entry
+    # kept was already proven not to be None by the check above.
+    ROLES: list[discord.Role] = [r for r in maybe_roles if r is not None]
 
     # instantiate the view
     view = discord.ui.View()
 
     # for each role, create a button and make sure each person can only do what theyre allowed
+    # (bounty colors are unlocked via admin grant, not rank, so they're never
+    # disabled by user_rank_num the way the base rank colors are)
     for i, role in enumerate(ROLES):
-        _button = discord.ui.Button(emoji=EMOJIS[i], disabled=(user_rank_num < i))
+        is_bounty = i >= len(colors_base)
+        _button = discord.ui.Button(
+            emoji=EMOJIS[i], disabled=(user_rank_num < i) and not is_bounty
+        )
 
         async def callback(interaction, role=role):
             await assign_role(interaction, role)
