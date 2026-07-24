@@ -1,6 +1,9 @@
 import asyncio
 import datetime
+import os
 import re
+import shutil
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,6 +13,7 @@ import pytest
 from commands.admin import (
     RollManagementModal,
     UnlinkView,
+    assign_bounty_color,
     ban_game,
     clear_roll_portion,
     fail_roll,
@@ -17,6 +21,7 @@ from commands.admin import (
     loop,
     roll_management,
 )
+from Modules import LocalCache
 from tests.conftest import make_game, make_roll, make_user
 
 
@@ -1195,3 +1200,124 @@ class TestRollManagementModalOnSubmit:
         self._submit(modal, interaction, new_game=new_game)
         msg = interaction.response.send_message.call_args[0][0]
         assert "Extended due time from <t:None> to <t:None>." in msg
+
+
+# ── assign_bounty_color ─────────────────────────────────────────────────────
+
+
+class TestAssignBountyColor:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_discord_user(self, display_name: str = "Target") -> SimpleNamespace:
+        return SimpleNamespace(id=222, display_name=display_name)
+
+    def _run(self, interaction, user_discord, color_role, target=None):
+        with (
+            patch("commands.admin.SupabaseReader.get_user", return_value=target),
+            patch("commands.admin.SupabaseReader.add_user_bounty_color") as mock_add,
+        ):
+            asyncio.run(assign_bounty_color(interaction, user_discord, color_role))
+        return mock_add
+
+    def test_unregistered_user_does_not_grant(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        mock_add = self._run(
+            interaction, self._make_discord_user(), color_role, target=None
+        )
+        mock_add.assert_not_called()
+
+    def test_unregistered_user_sends_registration_message(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        self._run(
+            interaction,
+            self._make_discord_user(display_name="Ghost"),
+            color_role,
+            target=None,
+        )
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Ghost" in msg
+        assert "not registered" in msg.lower()
+
+    def test_non_bounty_role_does_not_grant(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Admin")  # not in hm.BOUNTY_COLORS
+        target = make_user(ce_id="target-ce-id")
+        mock_add = self._run(
+            interaction, self._make_discord_user(), color_role, target=target
+        )
+        mock_add.assert_not_called()
+
+    def test_non_bounty_role_sends_error_naming_the_role(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Admin")
+        target = make_user(ce_id="target-ce-id")
+        self._run(interaction, self._make_discord_user(), color_role, target=target)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Admin" in msg
+        assert "not one of" in msg.lower()
+
+    def test_valid_grant_calls_add_with_target_ce_id_and_role_name(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        target = make_user(ce_id="target-ce-id")
+        mock_add = self._run(
+            interaction, self._make_discord_user(), color_role, target=target
+        )
+        mock_add.assert_called_once_with("target-ce-id", "Cotton Candy")
+
+    def test_valid_grant_success_message_names_color_and_user(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        target = make_user(ce_id="target-ce-id", display_name="Recipient")
+        self._run(interaction, self._make_discord_user(), color_role, target=target)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Cotton Candy" in msg
+        assert "Recipient" in msg
+
+
+class TestAssignBountyColorAlreadyGranted:
+    """Re-running /assign-bounty-color for a user who already has the color
+    must not error or duplicate the grant -- add_user_bounty_color's upsert
+    is idempotent (see TestAddUserBountyColorDualWrite in
+    test_bounty_color.py), and this command has no "already granted" guard
+    of its own, so it should just succeed again silently."""
+
+    def _make_interaction(self):
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _run(self, interaction, user_discord, color_role):
+        asyncio.run(assign_bounty_color(interaction, user_discord, color_role))
+
+    def test_granting_the_same_color_twice_does_not_error_or_duplicate(self):
+        tmpdir = tempfile.mkdtemp()
+        LocalCache.init(os.path.join(tmpdir, "test.db"))
+        try:
+            target = make_user(ce_id="target-ce-id", display_name="Recipient")
+            user_discord = SimpleNamespace(id=222, display_name="Recipient")
+            color_role = SimpleNamespace(name="Cotton Candy")
+
+            with (
+                patch("commands.admin.SupabaseReader.get_user", return_value=target),
+                patch("Modules.SupabaseReader.supabase", MagicMock()),
+            ):
+                interaction1 = self._make_interaction()
+                self._run(interaction1, user_discord, color_role)
+                interaction2 = self._make_interaction()
+                self._run(interaction2, user_discord, color_role)
+
+            assert LocalCache.get_bounty_colors("target-ce-id") == ["Cotton Candy"]
+            second_msg = interaction2.followup.send.call_args[0][0]
+            assert "Cotton Candy" in second_msg
+            assert "error" not in second_msg.lower()
+        finally:
+            LocalCache.close()
+            shutil.rmtree(tmpdir)

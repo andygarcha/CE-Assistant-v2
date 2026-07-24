@@ -728,6 +728,38 @@ def update_ping_preferences(
     )
 
 
+# === BOUNTY COLOR ===
+
+# get_user_bounty_colors() reads from the LocalCache mirror, like every other
+# table in this file. add_user_bounty_color() dual-writes to both, matching
+# ban_game()/dump_roll()/dump_user(), and the table is included in
+# LocalCache.rebuild_from_supabase() and run_integrity_check() so it
+# self-heals the same way every other table does.
+
+
+def add_user_bounty_color(ce_id: str, color: str) -> None:
+    """
+    Grants `ce_id` access to `color` in /set-color.
+
+    Parameters
+    ---
+    ce_id: `str`
+        The CE ID of the user being granted the color.
+    color: `str`
+        The color name being granted, matching a name in utils.channels.BOUNTY_COLORS.
+    """
+    data = {"user_id": ce_id, "color_name": color}
+    supabase.table("bounty_color").upsert(data).execute()
+    LocalCache.upsert_bounty_colors_bulk([data])
+
+
+def get_user_bounty_colors(ce_id: str) -> list[str]:
+    """
+    Returns the list of color_names `ce_id` currently has access to. Empty if none.
+    """
+    return LocalCache.get_bounty_colors(ce_id)
+
+
 def bulk_dump_users(
     users: Sequence[CEUser], batch_size: int = 50, pause_seconds: float = 0.1
 ):

@@ -201,6 +201,20 @@ def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guil
     async def roll_management_command(interaction: discord.Interaction, roll_id: str):
         return await roll_management(interaction, roll_id)
 
+    # -- /add-bounty-color {user} {color_name}
+    @tree.command(
+        name="add-bounty-color",
+        description="Add permissions for a user to assign a Bounty color to themselves.",
+        guild=guild,
+    )
+    @app_commands.describe(
+        user="The user you're assigning this to.", color="The role of the Bounty Color."
+    )
+    async def assign_bounty_color_command(
+        interaction: discord.Interaction, user: discord.User, color: discord.Role
+    ):
+        return await assign_bounty_color(interaction, user, color)
+
 
 async def test(interaction: discord.Interaction):
     """
@@ -856,3 +870,36 @@ async def roll_management(interaction: discord.Interaction, roll_id: str):
 
     modal = RollManagementModal(roll, games)
     return await interaction.response.send_modal(modal)
+
+
+async def assign_bounty_color(
+    interaction: discord.Interaction,
+    user_discord: discord.User,
+    color_role: discord.Role,
+):
+    """
+    Takes in a user and a role, and allows them to have access to that role's color in /set-color.
+
+    If the User is not registered, this will return an error.
+    If the Role is not one of the utils/channel.py::BOUNTY_COLORS, this will return an error.
+    """
+    await interaction.response.defer()
+
+    user = SupabaseReader.get_user(user_discord.id, use_discord_id=True)
+    if user is None:
+        return await interaction.followup.send(
+            f"User with name {user_discord.display_name} is not registered with the bot!"
+        )
+
+    if color_role.name not in [color[0] for color in hm.BOUNTY_COLORS]:
+        return await interaction.followup.send(
+            f"Role with name {color_role.name} is not one of the {len(hm.BOUNTY_COLORS)} bounty colors."
+            f"\nBounty colors are the following: {[color[0] for color in hm.BOUNTY_COLORS]}."
+        )
+
+    SupabaseReader.add_user_bounty_color(user.ce_id, color_role.name)
+
+    return await interaction.followup.send(
+        f"Added {color_role.name} to {user.display_name_with_link}'s /set-color permissions!"
+        f"\nCurrent permissions: {', '.join(SupabaseReader.get_user_bounty_colors(user.ce_id))}"
+    )

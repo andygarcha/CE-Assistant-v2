@@ -1,5 +1,6 @@
 """This module contains all the commands about users for the bot."""
 
+import logging
 from typing import TYPE_CHECKING
 
 import discord
@@ -9,6 +10,12 @@ if TYPE_CHECKING:
     from Classes.CE_User import CEUser
 
 from Modules import CEAPIReader, Discord_Helper, SupabaseReader, hm
+
+logger = logging.getLogger(__name__)
+
+# Populated lazily by _valid_bounty_emoji_ids() and cached for the process
+# lifetime -- see that function for why.
+_bounty_emoji_ids: set[int] | None = None
 
 
 def setup(cli: discord.Client, tree: app_commands.CommandTree, gui: discord.Guild):
@@ -243,6 +250,34 @@ async def profile(interaction: discord.Interaction, user: discord.User | None = 
     return og_message
 
 
+async def _valid_bounty_emoji_ids() -> set[int]:
+    """
+    Bounty color emojis are Application Emojis (uploaded to this bot's own
+    Developer Portal "Emojis" tab), not guild emojis -- they don't show up
+    in interaction.guild.emojis, and discord.py has no synchronous cache
+    for them the way it does for guild emojis, so fetch_application_emojis()
+    is a real API call every time it's used.
+
+    A bot that doesn't own a given emoji ID (e.g. a test bot that doesn't
+    have these uploaded) fails to send a button referencing it, so this is
+    fetched once per process and cached, and callers fall back to a text
+    label instead of crashing when an emoji isn't in the returned set.
+    """
+    global _bounty_emoji_ids
+    if _bounty_emoji_ids is None:
+        try:
+            emojis = await client.fetch_application_emojis()
+            _bounty_emoji_ids = {e.id for e in emojis}
+        except discord.DiscordException:
+            logger.warning(
+                "Failed to fetch application emojis -- bounty colors will "
+                "fall back to text labels until the next successful fetch.",
+                exc_info=True,
+            )
+            return set()
+    return _bounty_emoji_ids
+
+
 async def set_color(interaction: discord.Interaction):
     """
     Gives the user the color role that they've requested.
@@ -285,9 +320,7 @@ async def set_color(interaction: discord.Interaction):
         # check to see if they already have the color
         if role in interaction.user.roles:
             return await interaction.response.edit_message(
-                embed=discord.Embed(
-                    title=f"You already have the {role.name} role!", color=role.color
-                )
+                content=f"You are currently assigned the {role.name} role!"
             )
 
         # remove all colors
@@ -312,7 +345,7 @@ async def set_color(interaction: discord.Interaction):
         )
 
     # Keep these in order of lowest rank to highest rank
-    COLORS = [
+    colors_base = [
         "Gray",  # E Rank
         "Brown",  # D Rank
         "Green",  # C Rank
@@ -324,23 +357,71 @@ async def set_color(interaction: discord.Interaction):
         "Black",  # EX Rank
     ]
     # These should be in order of highest to lowest
-    EMOJIS = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
-    ROLES: list[discord.Role] = [
-        role
-        for i in COLORS
-        if (role := discord.utils.get(interaction.guild.roles, name=i)) is not None
+    emojis_base = ["⚪", "🟤", "🟢", "🔵", "🟣", "🟠", "🟡", "🔴", "⚫"]
+    # -- bounty allowed ------
+    bounty_emoji_by_name = dict(hm.BOUNTY_COLORS)
+    # Filter out any granted color that's since been renamed/removed from
+    # BOUNTY_COLORS -- a stale grant shouldn't crash /set-color for the user,
+    # it should just no longer show up as an option.
+    colors_bounty = [
+        c
+        for c in SupabaseReader.get_user_bounty_colors(user_ce.ce_id)
+        if c in bounty_emoji_by_name
+    ]
+    emojis_bounty = [bounty_emoji_by_name[c] for c in colors_bounty]
+
+    COLORS = colors_base + colors_bounty
+    EMOJIS = emojis_base + emojis_bounty
+    # Kept 1:1 with COLORS/EMOJIS -- a missing role must not silently shift
+    # every later index out of alignment, so None entries are left in place
+    # and caught below rather than filtered out.
+    maybe_roles: list[discord.Role | None] = [
+        discord.utils.get(interaction.guild.roles, name=i) for i in COLORS
     ]
 
-    if None in ROLES:
+    if None in maybe_roles:
+        missing: list[str] = [
+            c for c, r in zip(COLORS, maybe_roles, strict=True) if r is None
+        ]
         await interaction.followup.send("error")
-        raise Exception(f"None found in ROLES (set_color). {len(ROLES)=}")
+        raise Exception(f"Could not find roles for colors {missing} (set_color)")
+
+    # `None in maybe_roles` above doesn't narrow the list's element type for
+    # static checkers -- this per-element filter does, since every entry
+    # kept was already proven not to be None by the check above.
+    ROLES: list[discord.Role] = [r for r in maybe_roles if r is not None]
 
     # instantiate the view
     view = discord.ui.View()
 
+    # Bounty emojis are Application Emojis (see _valid_bounty_emoji_ids) --
+    # only fetched when there's actually a bounty color to show, since it's
+    # a real API call with no built-in discord.py cache.
+    valid_bounty_emoji_ids: set[int] = (
+        await _valid_bounty_emoji_ids() if colors_bounty else set()
+    )
+
     # for each role, create a button and make sure each person can only do what theyre allowed
+    # (bounty colors are unlocked via admin grant, not rank, so they're never
+    # disabled by user_rank_num the way the base rank colors are)
     for i, role in enumerate(ROLES):
-        _button = discord.ui.Button(emoji=EMOJIS[i], disabled=(user_rank_num < i))
+        is_bounty = i >= len(colors_base)
+
+        emoji: str | None = EMOJIS[i]
+        label: str | None = None
+        if is_bounty and discord.PartialEmoji.from_str(emoji).id not in (
+            valid_bounty_emoji_ids
+        ):
+            # this bot doesn't own this application emoji (e.g. a test bot
+            # without it uploaded) -- fall back to the color's name instead
+            # of a button that would fail to send or render broken.
+            emoji, label = None, COLORS[i]
+
+        _button = discord.ui.Button(
+            emoji=emoji,
+            label=label,
+            disabled=(user_rank_num < i) and not is_bounty,
+        )
 
         async def callback(interaction, role=role):
             await assign_role(interaction, role)

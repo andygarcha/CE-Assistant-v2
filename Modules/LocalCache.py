@@ -109,7 +109,14 @@ CREATE TABLE IF NOT EXISTS banned_games (
     banned_by TEXT
 );
 
+CREATE TABLE IF NOT EXISTS bounty_color (
+    user_id TEXT NOT NULL,
+    color_name TEXT NOT NULL,
+    PRIMARY KEY (user_id, color_name)
+);
+
 CREATE INDEX IF NOT EXISTS idx_objectives_game ON objectives(game_ce_id);
+CREATE INDEX IF NOT EXISTS idx_bounty_color_user ON bounty_color(user_id);
 CREATE INDEX IF NOT EXISTS idx_obj_reqs_objective ON objective_requirements(objective_ce_id);
 CREATE INDEX IF NOT EXISTS idx_categories_game ON categories(game_id);
 CREATE INDEX IF NOT EXISTS idx_user_games_user ON user_games(user_ce_id);
@@ -890,6 +897,32 @@ def delete_banned_game(game_id: str) -> None:
     conn.commit()
 
 
+# === BOUNTY COLOR ===
+
+
+def upsert_bounty_colors_bulk(rows: list[dict]) -> None:
+    if not rows:
+        return
+    conn = get_connection()
+    conn.executemany(
+        """INSERT INTO bounty_color (user_id, color_name)
+           VALUES (:user_id, :color_name)
+           ON CONFLICT(user_id, color_name) DO NOTHING""",
+        rows,
+    )
+    conn.commit()
+
+
+def get_bounty_colors(user_id: str) -> list[str]:
+    conn = get_connection()
+    return [
+        r[0]
+        for r in conn.execute(
+            "SELECT color_name FROM bounty_color WHERE user_id = ?", (user_id,)
+        ).fetchall()
+    ]
+
+
 # === REBUILD ===
 
 _SUPABASE_PAGE_SIZE = 1000
@@ -910,6 +943,7 @@ _UPSERT_BULK_FUNCS: dict[str, typing.Callable[[list[dict]], None]] = {
     "roll_games": upsert_roll_games_bulk,
     "tier": upsert_tier_bulk,
     "banned_games": upsert_banned_games_bulk,
+    "bounty_color": upsert_bounty_colors_bulk,
 }
 
 # Child tables to sync when new parent rows are inserted by the integrity check.
@@ -923,6 +957,7 @@ _CHILD_SYNCS: dict[str, list[tuple[str, str, str]]] = {
     "users": [
         ("userGames", "user_ce_id", "user_games"),
         ("userObjectives", "user_ce_id", "user_objectives"),
+        ("bounty_color", "user_id", "bounty_color"),
     ],
 }
 
@@ -988,6 +1023,7 @@ def rebuild_from_supabase() -> dict:
         ("rollGames", "roll_games"),
         ("tier", "tier"),
         ("bannedGames", "banned_games"),
+        ("bounty_color", "bounty_color"),
     ]
 
     conn = get_connection()
@@ -1177,6 +1213,11 @@ def run_integrity_check() -> dict:
                 conn.execute(
                     "DELETE FROM user_objectives "
                     "WHERE user_ce_id IN (SELECT value FROM json_each(?))",
+                    (stale_json,),
+                )
+                conn.execute(
+                    "DELETE FROM bounty_color "
+                    "WHERE user_id IN (SELECT value FROM json_each(?))",
                     (stale_json,),
                 )
             elif local_table == "rolls":
