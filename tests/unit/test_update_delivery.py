@@ -5,7 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from update_delivery import deliver_updates
+from update_delivery import (
+    DISCORD_EMBED_DESCRIPTION_LIMIT,
+    TRUNCATION_SUFFIX,
+    _truncate_description,
+    deliver_updates,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -445,6 +450,23 @@ class TestDeliverUpdatesExceptionRecovery:
             asyncio.run(deliver_updates(mock_client))
 
 
+class TestTruncateDescription:
+    def test_leaves_short_description_untouched(self):
+        assert _truncate_description("A cool game") == "A cool game"
+
+    def test_leaves_exactly_at_limit_untouched(self):
+        description = "x" * DISCORD_EMBED_DESCRIPTION_LIMIT
+        assert _truncate_description(description) == description
+
+    def test_truncates_oversized_description(self):
+        description = "x" * (DISCORD_EMBED_DESCRIPTION_LIMIT + 500)
+
+        result = _truncate_description(description)
+
+        assert len(result) == DISCORD_EMBED_DESCRIPTION_LIMIT
+        assert result.endswith(TRUNCATION_SUFFIX)
+
+
 class TestDeliverUpdatesEmbedConstruction:
     """Verify embed details beyond just title/description."""
 
@@ -507,6 +529,31 @@ class TestDeliverUpdatesEmbedConstruction:
         assert embed.author.name == "Challenge Enthusiasts"
         assert embed.footer.text == "CE Assistant"
         assert embed.timestamp is not None
+
+    def test_oversized_description_is_truncated_before_send(self):
+        mock_client = MagicMock()
+        oversized = "x" * (DISCORD_EMBED_DESCRIPTION_LIMIT + 500)
+        updates = [self._make_embed_update(description=oversized)]
+
+        with (
+            patch(
+                "update_delivery.SupabaseReader.get_stable_updates",
+                return_value=updates,
+            ),
+            patch("update_delivery.SupabaseReader.mark_updates_delivered") as mock_mark,
+            patch(
+                "update_delivery.hm.send_message",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
+        ):
+            count = asyncio.run(deliver_updates(mock_client))
+
+        embed = _find_call(mock_send, "gameadditions").kwargs["embed"]
+        assert len(embed.description) == DISCORD_EMBED_DESCRIPTION_LIMIT
+        assert embed.description.endswith(TRUNCATION_SUFFIX)
+        mock_mark.assert_called_once_with(["u1"])
+        assert count == 1
 
     def test_embed_color_and_url_set(self):
         mock_client = MagicMock()
