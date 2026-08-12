@@ -7,6 +7,16 @@ from Modules import SupabaseReader, hm
 
 logger = logging.getLogger(__name__)
 
+DISCORD_EMBED_DESCRIPTION_LIMIT = 4096
+TRUNCATION_SUFFIX = "\n\n*(truncated)*"
+
+
+def _truncate_description(description: str) -> str:
+    if len(description) <= DISCORD_EMBED_DESCRIPTION_LIMIT:
+        return description
+    cutoff = DISCORD_EMBED_DESCRIPTION_LIMIT - len(TRUNCATION_SUFFIX)
+    return description[:cutoff] + TRUNCATION_SUFFIX
+
 
 def _format_not_ready_list(not_ready_updates: list[dict]) -> str:
     suffix = ""
@@ -58,7 +68,7 @@ async def deliver_updates(client: discord.Client) -> int:
         else:
             embed = discord.Embed()
             embed.title = update["title"]
-            embed.description = update["description"]
+            embed.description = _truncate_description(update["description"])
             embed.color = update["color"]
             embed.url = update["url"]
             if update["image"]:
