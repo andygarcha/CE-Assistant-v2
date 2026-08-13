@@ -593,6 +593,9 @@ class CEAPIUser(CEUser):
         avatar: str,
         last_updated: datetime.datetime,
         steam_id="b",
+        ping_casino_fail: bool = False,
+        ping_casino_win: bool = False,
+        ping_user_log: bool = False,
     ):
         super().__init__(
             discord_id,
@@ -603,6 +606,9 @@ class CEAPIUser(CEUser):
             avatar,
             last_updated,
             steam_id,
+            ping_casino_fail,
+            ping_casino_win,
+            ping_user_log,
         )
         self.__full_data = full_data
 

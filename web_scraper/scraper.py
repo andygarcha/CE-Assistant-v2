@@ -760,6 +760,18 @@ async def update_games(
     return updates, games, game_list_removed, objectives_removed, notIsFinished
 
 
+def _backfill_supabase_fields(user_new: CEAPIUser, user_old: CEUser) -> None:
+    """
+    Copies fields that only live in Supabase (not the CE API) from `user_old`
+    onto the freshly-scraped `user_new`, since CEAPIUser has no way to know
+    about them otherwise.
+    """
+    user_new._discord_id = user_old.discord_id
+    user_new._ping_casino_fail = user_old.ping_casino_fail
+    user_new._ping_casino_win = user_old.ping_casino_win
+    user_new._ping_user_log = user_old.ping_user_log
+
+
 async def update_users(
     games_old: list[CEGame],
     games_new: list[CEGame],
@@ -908,7 +920,7 @@ async def update_users(
                 updates.extend(_updates)
 
             if user_old is not None:
-                users[i]._discord_id = user_old.discord_id
+                _backfill_supabase_fields(users[i], user_old)
 
         logger.info("Done updating users.")
 
