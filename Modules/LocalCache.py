@@ -923,6 +923,15 @@ def get_bounty_colors(user_id: str) -> list[str]:
     ]
 
 
+def delete_bounty_color(user_id: str, color_name: str) -> None:
+    conn = get_connection()
+    conn.execute(
+        "DELETE FROM bounty_color WHERE user_id = ? AND color_name = ?",
+        (user_id, color_name),
+    )
+    conn.commit()
+
+
 # === REBUILD ===
 
 _SUPABASE_PAGE_SIZE = 1000

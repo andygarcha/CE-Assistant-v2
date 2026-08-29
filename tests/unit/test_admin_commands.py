@@ -19,6 +19,7 @@ from commands.admin import (
     fail_roll,
     force_unlink,
     loop,
+    remove_bounty_color,
     roll_management,
 )
 from Modules import LocalCache
@@ -1336,6 +1337,145 @@ class TestAssignBountyColorAlreadyGranted:
             second_msg = interaction2.followup.send.call_args[0][0]
             assert "Cotton Candy" in second_msg
             assert "error" not in second_msg.lower()
+        finally:
+            LocalCache.close()
+            shutil.rmtree(tmpdir)
+
+
+# ── remove_bounty_color ──────────────────────────────────────────────────────
+
+
+class TestRemoveBountyColor:
+    def _make_interaction(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _make_discord_user(self, display_name: str = "Target") -> SimpleNamespace:
+        return SimpleNamespace(id=222, display_name=display_name)
+
+    def _run(self, interaction, user_discord, color_role, target=None):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+            patch("commands.admin.SupabaseReader.get_user", return_value=target),
+            patch(
+                "commands.admin.SupabaseReader.remove_user_bounty_color"
+            ) as mock_remove,
+            # explicitly mocked rather than relying on the real LocalCache --
+            # Modules/SupabaseReader.py auto-initializes it against the repo's
+            # data/cache.db at import time as a side effect, which is real,
+            # persistent, cross-test state, not test-local isolation.
+            patch(
+                "commands.admin.SupabaseReader.get_user_bounty_colors",
+                return_value=[],
+            ),
+        ):
+            asyncio.run(remove_bounty_color(interaction, user_discord, color_role))
+        return mock_remove
+
+    def test_unregistered_user_does_not_revoke(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        mock_remove = self._run(
+            interaction, self._make_discord_user(), color_role, target=None
+        )
+        mock_remove.assert_not_called()
+
+    def test_unregistered_user_sends_registration_message(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        self._run(
+            interaction,
+            self._make_discord_user(display_name="Ghost"),
+            color_role,
+            target=None,
+        )
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Ghost" in msg
+        assert "not registered" in msg.lower()
+
+    def test_non_bounty_role_does_not_revoke(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Admin")  # not in hm.BOUNTY_COLORS
+        target = make_user(ce_id="target-ce-id")
+        mock_remove = self._run(
+            interaction, self._make_discord_user(), color_role, target=target
+        )
+        mock_remove.assert_not_called()
+
+    def test_non_bounty_role_sends_error_naming_the_role(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Admin")
+        target = make_user(ce_id="target-ce-id")
+        self._run(interaction, self._make_discord_user(), color_role, target=target)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Admin" in msg
+        assert "not one of" in msg.lower()
+
+    def test_valid_revoke_calls_remove_with_target_ce_id_and_role_name(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        target = make_user(ce_id="target-ce-id")
+        mock_remove = self._run(
+            interaction, self._make_discord_user(), color_role, target=target
+        )
+        mock_remove.assert_called_once_with("target-ce-id", "Cotton Candy")
+
+    def test_valid_revoke_success_message_names_color_and_user(self):
+        interaction = self._make_interaction()
+        color_role = SimpleNamespace(name="Cotton Candy")
+        target = make_user(ce_id="target-ce-id", display_name="Recipient")
+        self._run(interaction, self._make_discord_user(), color_role, target=target)
+        msg = interaction.followup.send.call_args[0][0]
+        assert "Cotton Candy" in msg
+        assert "Recipient" in msg
+
+
+class TestRemoveBountyColorNeverGranted:
+    """Revoking a color the user was never granted must not error --
+    remove_user_bounty_color's delete is a no-op when nothing matches (see
+    TestRemoveUserBountyColorDualDelete in test_bounty_color.py), and this
+    command has no "does the user actually have it" guard of its own, so it
+    should just succeed silently."""
+
+    def _make_interaction(self):
+        return SimpleNamespace(
+            response=SimpleNamespace(defer=AsyncMock()),
+            followup=SimpleNamespace(send=AsyncMock()),
+        )
+
+    def _run(self, interaction, user_discord, color_role):
+        import commands.admin as admin_mod
+
+        with (
+            patch.object(admin_mod, "client", create=True, new=MagicMock()),
+            patch("commands.admin.hm.log_command", new_callable=AsyncMock),
+        ):
+            asyncio.run(remove_bounty_color(interaction, user_discord, color_role))
+
+    def test_revoking_an_ungranted_color_does_not_error(self):
+        tmpdir = tempfile.mkdtemp()
+        LocalCache.init(os.path.join(tmpdir, "test.db"))
+        try:
+            target = make_user(ce_id="target-ce-id", display_name="Recipient")
+            user_discord = SimpleNamespace(id=222, display_name="Recipient")
+            color_role = SimpleNamespace(name="Cotton Candy")
+
+            with (
+                patch("commands.admin.SupabaseReader.get_user", return_value=target),
+                patch("Modules.SupabaseReader.supabase", MagicMock()),
+            ):
+                interaction = self._make_interaction()
+                self._run(interaction, user_discord, color_role)
+
+            assert LocalCache.get_bounty_colors("target-ce-id") == []
+            msg = interaction.followup.send.call_args[0][0]
+            assert "Cotton Candy" in msg
+            assert "error" not in msg.lower()
         finally:
             LocalCache.close()
             shutil.rmtree(tmpdir)

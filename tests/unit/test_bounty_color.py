@@ -33,6 +33,8 @@ def _mock_supabase() -> MagicMock:
     mock_sb = MagicMock()
     mock_table = MagicMock()
     mock_table.upsert.return_value = mock_table
+    mock_table.delete.return_value = mock_table
+    mock_table.eq.return_value = mock_table
     mock_table.execute.return_value = MagicMock(data=[])
     mock_sb.table.return_value = mock_table
     return mock_sb
@@ -129,6 +131,73 @@ class TestAddUserBountyColorDualWrite:
                 "Aquamarine",
                 "Cotton Candy",
             ]
+        finally:
+            _teardown_cache(tmpdir)
+
+
+class TestRemoveUserBountyColorDualDelete:
+    def test_deletes_from_local_cache(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_bounty_colors_bulk(
+                [{"user_id": "u1", "color_name": "Cotton Candy"}]
+            )
+            with patch("Modules.SupabaseReader.supabase", _mock_supabase()):
+                SupabaseReader.remove_user_bounty_color("u1", "Cotton Candy")
+            assert LocalCache.get_bounty_colors("u1") == []
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_deletes_from_supabase(self):
+        tmpdir = _init_cache()
+        try:
+            mock_sb = _mock_supabase()
+            with patch("Modules.SupabaseReader.supabase", mock_sb):
+                SupabaseReader.remove_user_bounty_color("u1", "Cotton Candy")
+            mock_sb.table.assert_called_with("bounty_color")
+            mock_sb.table.return_value.delete.assert_called_once()
+            mock_sb.table.return_value.eq.assert_any_call("user_id", "u1")
+            mock_sb.table.return_value.eq.assert_any_call("color_name", "Cotton Candy")
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_only_removes_the_named_color(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_bounty_colors_bulk(
+                [
+                    {"user_id": "u1", "color_name": "Cotton Candy"},
+                    {"user_id": "u1", "color_name": "Aquamarine"},
+                ]
+            )
+            with patch("Modules.SupabaseReader.supabase", _mock_supabase()):
+                SupabaseReader.remove_user_bounty_color("u1", "Cotton Candy")
+            assert LocalCache.get_bounty_colors("u1") == ["Aquamarine"]
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_only_removes_for_the_named_user(self):
+        tmpdir = _init_cache()
+        try:
+            LocalCache.upsert_bounty_colors_bulk(
+                [
+                    {"user_id": "u1", "color_name": "Cotton Candy"},
+                    {"user_id": "u2", "color_name": "Cotton Candy"},
+                ]
+            )
+            with patch("Modules.SupabaseReader.supabase", _mock_supabase()):
+                SupabaseReader.remove_user_bounty_color("u1", "Cotton Candy")
+            assert LocalCache.get_bounty_colors("u1") == []
+            assert LocalCache.get_bounty_colors("u2") == ["Cotton Candy"]
+        finally:
+            _teardown_cache(tmpdir)
+
+    def test_removing_a_color_never_granted_is_a_no_op(self):
+        tmpdir = _init_cache()
+        try:
+            with patch("Modules.SupabaseReader.supabase", _mock_supabase()):
+                SupabaseReader.remove_user_bounty_color("u1", "Cotton Candy")
+            assert LocalCache.get_bounty_colors("u1") == []
         finally:
             _teardown_cache(tmpdir)
 
