@@ -29,6 +29,11 @@ from Modules import (
     hm,
     http_session,
 )
+from utils.game_utils import (
+    TIER_5_ENTHUSIAST_POINTS,
+    compute_role_points,
+    t5_enthusiast_points,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1746,45 +1751,9 @@ def check_roles(
     "Gets updates based on roles the user has achieved."
 
     # POINT CHANGES
-    old_tiers = [0, 0, 0, 0, 0, 0, 0]
-    old_categories = [0, 0, 0, 0, 0, 0]  # action arcade bh fps platformer strategy
-    new_tiers = [0, 0, 0, 0, 0, 0, 0]
-    new_categories = [0, 0, 0, 0, 0, 0]
+    old_tiers, old_categories = compute_role_points(games_old, database_name_old)
+    new_tiers, new_categories = compute_role_points(games_new, database_name_new)
     updates: list[UpdateMessageForScraperProcess] = []
-
-    for game_old in games_old:
-        game_database = hm.get_item_from_list(game_old.ce_id, database_name_old)
-
-        if game_database is None:
-            continue
-
-        # if the game is completed
-        if game_old.is_overcompleted(game_database):
-            old_tiers[game_database.tier_num_include_so - 1] += game_old.user_points
-        elif game_old.is_completed(game_database):
-            old_tiers[game_database.tier_num - 1] += game_old.primary_points
-
-        # category roles don't care about completion
-        # PO points only?
-        for c_num in game_database.categories_num:
-            old_categories[c_num - 1] += game_old.user_points
-
-    for game_new in games_new:
-        game_database = hm.get_item_from_list(game_new.ce_id, database_name_new)
-
-        if game_database is None:
-            continue
-
-        # if the game is completed
-        if game_new.is_overcompleted(game_database):
-            new_tiers[game_database.tier_num_include_so - 1] += game_new.user_points
-        elif game_new.is_completed(game_database):
-            new_tiers[game_database.tier_num - 1] += game_new.primary_points
-
-        # category roles don't care about completion
-        # PO points only?
-        for c_num in game_database.categories_num:
-            new_categories[c_num - 1] += game_new.user_points
 
     # CATEGORIES
     CATEGORY_ROLE_NAMES = ["Expert", "Master", "Grandmaster"]
@@ -1816,6 +1785,22 @@ def check_roles(
             update.location = "userlog"
             update.allowed_mentions = user.user_log_pingable_ids
             updates.append(update)
+
+    # Tier 5 Enthusiast counts Tier 5+ games together
+    if (
+        t5_enthusiast_points(old_tiers) < TIER_5_ENTHUSIAST_POINTS
+        and t5_enthusiast_points(new_tiers) >= TIER_5_ENTHUSIAST_POINTS
+    ):
+        update = UpdateMessageForScraperProcess()
+        update.is_embed = False
+        update.text = (
+            f"Congratulations to {user.mention} ({user.display_name_with_link})! "
+            + f"You have unlocked Tier 5 Enthusiast ({TIER_5_ENTHUSIAST_POINTS} "
+            + "points in Tier 5 and above completed games)."
+        )
+        update.location = "userlog"
+        update.allowed_mentions = user.user_log_pingable_ids
+        updates.append(update)
 
     # conglomerates
     """

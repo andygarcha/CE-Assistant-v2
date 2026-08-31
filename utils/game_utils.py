@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import logging
 import secrets
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, NamedTuple, get_args
 
 from Modules import http_session
 from utils.general_utils import get_item_from_list
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from Classes.CE_Game import CEGame
     from Classes.CE_User import CEUser
+    from Classes.CE_User_Game import CEUserGame
 
 
 def get_rollable_game(
@@ -327,3 +330,91 @@ def achievements_are_equal(
         return old_achievements is None and new_achievements is None
 
     return set(old_achievements) == set(new_achievements)
+
+
+# ==== Tier Enthusiast / Category Master roles ====
+
+TIER_COUNT = 7
+CATEGORY_COUNT = 6
+
+TIER_X_ENTHUSIAST_POINTS = 500
+"Tier X Enthusiast requires X * 500 points, for Tiers 1 through 4."
+
+TIER_5_ENTHUSIAST_POINTS = 2500
+"Tier 5 Enthusiast requires 2500 points across Tier 5+ games."
+
+
+class RolePoints(NamedTuple):
+    """
+    The points a user has accrued toward Tier X Enthusiast and
+    category-based roles (eg: X Expert, or Master of All etc).
+
+    tiers: 7 entries, where index 0 is Tier 1 and index 6 is Tier 7.
+    categories: 6 entries, ordered Action, Arcade, Bullet Hell, First-Person,
+    Platformer, Strategy (matching `CEGame.categories_num`).
+    """
+
+    tiers: list[int]
+    categories: list[int]
+
+
+def compute_role_points(
+    games: Sequence[CEUserGame], database_name: Sequence[CEGame]
+) -> RolePoints:
+    """
+    Totals up the points a user has earned toward their Tier Enthusiast and Category-based roles.
+
+    Tier points only count games where the user has finished every PO (only).
+    If SOs are earned beyond that, the tier can change is SO points exceed the
+    tier thresholds.
+    Eg: A game worth 75 PO points is T3, but a user who also clears a 10 point SO
+    will have the game count as a T4 for them.
+
+    A game the user hasn't finished the POs of contributes no tier points at
+    all. Category points, by contrast, don't care about completion.
+
+    Parameters
+    ---
+    games: `Sequence[CEUserGame]`
+        Games the user owns.
+    database_name: `Sequence[CEGame]`
+        List of games on CE. Games that aren't present are skipped.
+    """
+    from Classes.CE_Game import tier_for_points
+
+    tiers = [0] * TIER_COUNT
+    categories = [0] * CATEGORY_COUNT
+
+    games_by_ce_id: dict[str, CEGame] = {game.ce_id: game for game in database_name}
+
+    for game in games:
+        game_database = games_by_ce_id.get(game.ce_id)
+
+        if game_database is None:
+            continue
+
+        # is_completed covers "if every PO is completed"
+        # is_overcompleted covers games with no POs (ie. SO only games)
+        if game.is_completed(game_database) or game.is_overcompleted(game_database):
+            earned = game.user_points
+            tier_num = tier_for_points(earned)
+
+            # add a catch for the chance a game has >0 but <5 points ('tier 0')
+            if tier_num > 0:
+                tiers[tier_num - 1] += earned
+
+        # category only care about points earned, not whether completed
+        for c_num in game_database.categories_num:
+            categories[c_num - 1] += game.user_points
+
+    return RolePoints(tiers=tiers, categories=categories)
+
+
+def t5_enthusiast_points(tiers: Sequence[int]) -> int:
+    """
+    Returns the points earned in completed Tier 5+ games.
+    Tiers 5, 6 and 7 align with indices 4, 5 and 6 of a `RolePoints.tiers` list.
+    Unsure if this will get screwed around if ever a 'Tier 8' is implemented.
+    "...surely that won't bite me in the ass" -Past Schmole
+    """
+    return sum(tiers[4:])

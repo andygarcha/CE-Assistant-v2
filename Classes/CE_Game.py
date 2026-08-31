@@ -18,6 +18,19 @@ TIER_THRESHOLDS = [
 ]
 
 
+def tier_for_points(points: int) -> int:
+    """
+    Returns the tier that a point total falls into, or 0 if it sits below
+    Tier 1. Usable for both a game's own point total, and for cases when
+    assessing a user's earned points (i.e. when SOs might raise the effective
+    tier for an Enthusiast role).
+    """
+    for threshold, tier in TIER_THRESHOLDS:
+        if points >= threshold:
+            return tier
+    return 0
+
+
 class CEGame:
     """A game that's on Challenge Enthusiasts."""
 
@@ -207,20 +220,12 @@ class CEGame:
     @property
     def tier_num(self) -> int:
         """Returns the tier as an int. Tier 1 is 1, Tier 2 is 2, etc."""
-        points = self.get_po_points(include_uncleareds=False)
-        for threshold, tier in TIER_THRESHOLDS:
-            if points >= threshold:
-                return tier
-        return 0
+        return tier_for_points(self.get_po_points(include_uncleareds=False))
 
     @property
     def tier_num_include_so(self) -> int:
         "Returns this tier as an int, if we counted SOs."
-        points = self.get_total_points(include_uncleareds=False)
-        for threshold, tier in TIER_THRESHOLDS:
-            if points >= threshold:
-                return tier
-        return 0
+        return tier_for_points(self.get_total_points(include_uncleareds=False))
 
     @property
     def is_t0(self) -> bool:

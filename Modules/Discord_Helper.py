@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import discord
 
 import Modules.hm as hm
+from utils.game_utils import (
+    TIER_5_ENTHUSIAST_POINTS,
+    TIER_X_ENTHUSIAST_POINTS,
+    compute_role_points,
+    t5_enthusiast_points,
+)
 
 if TYPE_CHECKING:
     from Classes.CE_Game import CEGame
@@ -195,10 +201,16 @@ async def get_buttons(view: discord.ui.View, embeds: list[discord.Embed]):
 
 # set up the view
 class ProfileView(discord.ui.View):
-    def __init__(self, summary_embed: discord.Embed, recent_embed: discord.Embed):
+    def __init__(
+        self,
+        summary_embed: discord.Embed,
+        recent_embed: discord.Embed,
+        enthusiast_embed: discord.Embed,
+    ):
         super().__init__(timeout=120)
         self.__summary_embed = summary_embed
         self.__recent_embed = recent_embed
+        self.__enthusiast_embed = enthusiast_embed
         self.message: discord.Message | None = None
 
     async def on_timeout(self):
@@ -266,6 +278,117 @@ class ProfileView(discord.ui.View):
             message_id=interaction.message.id, embed=self.__recent_embed, view=self
         )
 
+    @discord.ui.button(label="Enthusiast", style=discord.ButtonStyle.gray)
+    async def enthusiast_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        # defer the message
+        await interaction.response.defer()
+
+        if interaction.message is None:
+            return await interaction.followup.send("Could not find message ID.")
+
+        # un-disable everything
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = False
+
+        # but disable this one
+        button.disabled = True
+
+        # and now edit the message
+        return await interaction.followup.edit_message(
+            message_id=interaction.message.id, embed=self.__enthusiast_embed, view=self
+        )
+
+
+ENTHUSIAST_BAR_SEGMENTS = 10
+ENTHUSIAST_BAR_FILLED = "▰"
+ENTHUSIAST_BAR_EMPTY = "▱"
+
+# The emoji key for each Enthusiast row, in order. Typed as literals so they
+# can be handed straight to hm.get_emoji().
+ENTHUSIAST_TIER_EMOJI_KEYS: tuple[
+    Literal["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"], ...
+] = ("Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5")
+
+
+def get_progress_bar(current: int, threshold: int) -> str:
+    """
+    Returns a text progress bar showing how far `current` has gotten
+    toward `threshold`. Always exactly `ENTHUSIAST_BAR_SEGMENTS` long,
+    even if the user is over the threshold.
+    """
+    if threshold <= 0:
+        filled = ENTHUSIAST_BAR_SEGMENTS
+    else:
+        filled = int(ENTHUSIAST_BAR_SEGMENTS * current / threshold)
+
+    filled = max(0, min(ENTHUSIAST_BAR_SEGMENTS, filled))
+    empty = ENTHUSIAST_BAR_SEGMENTS - filled
+    return (ENTHUSIAST_BAR_FILLED * filled) + (ENTHUSIAST_BAR_EMPTY * empty)
+
+
+def get_enthusiast_row(current: int, threshold: int) -> str:
+    "Returns the body of a single Tier Enthusiast row."
+    bar = get_progress_bar(current, threshold)
+    points_emoji = hm.get_emoji("Points")
+
+    percentage = int(100 * current / threshold) if threshold > 0 else 100
+
+    if current >= threshold:
+        return (
+            f"{bar}\nCompleted! — {current:,} / {threshold:,} "
+            f"{points_emoji} ({percentage}%)"
+        )
+
+    remaining = threshold - current
+    return (
+        f"{bar}\n{current:,} / {threshold:,} {points_emoji} "
+        f"({percentage}%) — {remaining:,} to go"
+    )
+
+
+def get_enthusiast_embed(user: CEUser, database_name: list[CEGame]) -> discord.Embed:
+    """
+    Returns a `discord.Embed` showing how close this user is to each of
+    the Tier Enthusiast roles.
+    """
+    enthusiast_embed = discord.Embed(
+        title="Profile",
+        color=0xFF9494,
+        timestamp=datetime.datetime.now(datetime.UTC),
+        description=(
+            "Progress toward each **Tier Enthusiast** role. Only games where "
+            "you've finished every Primary Objective count, and each one lands "
+            "in the tier its points put it in — so clearing a Secondary "
+            "Objective can lift a game into a higher tier."
+        ),
+    )
+
+    tiers = compute_role_points(user.owned_games, database_name).tiers
+
+    # Tiers 1 through 4 each read their own bucket.
+    for tier_num in range(1, 5):
+        threshold = tier_num * TIER_X_ENTHUSIAST_POINTS
+        enthusiast_embed.add_field(
+            name=(
+                f"{hm.get_emoji(ENTHUSIAST_TIER_EMOJI_KEYS[tier_num - 1])} "
+                f"Enthusiast"
+            ),
+            value=get_enthusiast_row(tiers[tier_num - 1], threshold),
+            inline=False,
+        )
+
+    # Tier 5 Enthusiast counts Tier 5+ games together.
+    enthusiast_embed.add_field(
+        name=f"{hm.get_emoji(ENTHUSIAST_TIER_EMOJI_KEYS[4])} Enthusiast (T5+)",
+        value=get_enthusiast_row(t5_enthusiast_points(tiers), TIER_5_ENTHUSIAST_POINTS),
+        inline=False,
+    )
+
+    return enthusiast_embed
+
 
 async def get_user_embeds(
     user: CEUser, database_name: list[CEGame]
@@ -315,4 +438,10 @@ async def get_user_embeds(
         name="Monthly Breakdown", value=api_user.monthly_report_str()
     )
 
-    return (summary_embed, ProfileView(summary_embed, recent_embed))
+    # enthusiast
+    enthusiast_embed = get_enthusiast_embed(user, database_name)
+
+    return (
+        summary_embed,
+        ProfileView(summary_embed, recent_embed, enthusiast_embed),
+    )

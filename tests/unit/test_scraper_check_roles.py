@@ -162,13 +162,12 @@ class TestTierThresholdCrossing:
         assert not any("Tier" in u.text and "Enthusiast" in u.text for u in updates)
 
     def test_t0_game_does_not_crash_or_grant_tier_role(self):
-        # A T0 game (0 PO points) means tier_num - 1 == -1, which indexes the
-        # *last* slot of the internal tiers array instead of raising or being
-        # ignored. That internal array isn't exposed here, so this test can
-        # only confirm the externally-visible behavior (no crash, no spurious
-        # role message) -- it does not prove the -1 indexing is harmless in
-        # general, only that it's harmless today because only indices 0-3 are
-        # ever read back out by the TIERS loop below.
+        # A T0 game (0 PO points) has tier_num == 0, so tier_num - 1 == -1
+        # would index the *last* slot of the internal tiers array -- the Tier 7
+        # bucket. That bucket is no longer write-only: Tier 5 Enthusiast reads
+        # tiers 5-7, so compute_role_points now skips tierless games outright.
+        # See TestSubTierOneGames in tests/unit/test_compute_role_points.py,
+        # which asserts that directly on the tiers array.
         obj = make_objective(
             ce_id="obj-t0",
             obj_type="Primary",
@@ -379,3 +378,109 @@ class TestAllowedMentionsOverpowered:
         updates = check_roles([old_owned], [new_owned], [old_db], [new_db], user)
         op_update = next(u for u in updates if "Overpowered" in u.text)
         assert op_update.allowed_mentions == []
+
+
+# ── Tier 5 Enthusiast (Tiers 5, 6 and 7 combined) ────────────────────────────
+
+# PO values inside each tier's band, per TIER_THRESHOLDS in Classes/CE_Game.py.
+T5_PO_POINTS = 250
+T6_PO_POINTS = 500
+T7_PO_POINTS = 900
+T5_PLUS_THRESHOLD = 2500
+
+
+def _t5_updates(old_count, old_po, new_count, new_po, prefix="t5"):
+    """Runs check_roles over `n` completed games of a given PO value, before
+    and after, and returns the resulting updates."""
+    old_owned, old_db = _n_completed_games(old_count, old_po, f"{prefix}old")
+    new_owned, new_db = _n_completed_games(new_count, new_po, f"{prefix}new")
+    return check_roles(old_owned, new_owned, old_db, new_db, _user())
+
+
+def _t5_messages(updates):
+    return [u for u in updates if "Tier 5 Enthusiast" in u.text]
+
+
+class TestTierFiveEnthusiast:
+    def test_crossing_threshold_with_t5_games_sends_message(self):
+        # 9 x 250 = 2250, then 10 x 250 = 2500.
+        updates = _t5_updates(9, T5_PO_POINTS, 10, T5_PO_POINTS)
+        assert len(_t5_messages(updates)) == 1
+
+    def test_message_names_the_threshold_and_tier_range(self):
+        updates = _t5_updates(9, T5_PO_POINTS, 10, T5_PO_POINTS)
+        text = _t5_messages(updates)[0].text
+        assert "2500" in text
+        assert "Tier 5 and above" in text
+
+    def test_staying_under_threshold_sends_no_message(self):
+        # 9 x 250 = 2250 both before and after.
+        updates = _t5_updates(8, T5_PO_POINTS, 9, T5_PO_POINTS)
+        assert _t5_messages(updates) == []
+
+    def test_already_over_threshold_does_not_resend(self):
+        # 10 x 250 = 2500 before, 11 x 250 = 2750 after: no new crossing.
+        updates = _t5_updates(10, T5_PO_POINTS, 11, T5_PO_POINTS)
+        assert _t5_messages(updates) == []
+
+    def test_tier_6_games_alone_can_unlock_it(self):
+        # 5 x 500 = 2500, proving this aggregates rather than reading tiers[4].
+        updates = _t5_updates(4, T6_PO_POINTS, 5, T6_PO_POINTS, prefix="t6")
+        assert len(_t5_messages(updates)) == 1
+
+    def test_tier_7_games_alone_can_unlock_it(self):
+        # 3 x 900 = 2700.
+        updates = _t5_updates(2, T7_PO_POINTS, 3, T7_PO_POINTS, prefix="t7")
+        assert len(_t5_messages(updates)) == 1
+
+    def test_mixed_tiers_combine_toward_the_threshold(self):
+        # 2 x 900 (T7) + 2 x 500 (T6) + 1 x 250 (T5) = 3050.
+        old_owned, old_db = _n_completed_games(2, T7_PO_POINTS, "mixold")
+        new_owned, new_db = _n_completed_games(2, T7_PO_POINTS, "mixold")
+        extra_owned, extra_db = _n_completed_games(2, T6_PO_POINTS, "mixt6")
+        last_owned, last_db = _n_completed_games(1, T5_PO_POINTS, "mixt5")
+        new_owned += extra_owned + last_owned
+        new_db += extra_db + last_db
+
+        updates = check_roles(old_owned, new_owned, old_db, new_db, _user())
+
+        assert len(_t5_messages(updates)) == 1
+
+    def test_emitted_exactly_once_per_crossing(self):
+        # Guards against chaining this onto the Tier 1-4 loop, which would
+        # append the same message on several iterations.
+        updates = _t5_updates(0, T5_PO_POINTS, 10, T5_PO_POINTS)
+        assert len(_t5_messages(updates)) == 1
+
+    def test_tier_1_to_4_points_do_not_count_toward_it(self):
+        # 2500+ points, but all in Tier 4 games (100 PO points each).
+        updates = _t5_updates(24, 100, 26, 100, prefix="t4only")
+        assert _t5_messages(updates) == []
+
+    def test_sub_t1_games_cannot_push_a_user_over(self):
+        # A pile of 4-point games has no tier and must not leak into the
+        # Tier 7 bucket that the T5+ total reads.
+        updates = _t5_updates(0, 4, 700, 4, prefix="subt1")
+        assert _t5_messages(updates) == []
+
+    def test_message_is_plain_text_to_userlog(self):
+        update = _t5_messages(_t5_updates(9, T5_PO_POINTS, 10, T5_PO_POINTS))[0]
+        assert update.is_embed is False
+        assert update.location == "userlog"
+
+    def test_pings_when_opted_in(self):
+        old_owned, old_db = _n_completed_games(9, T5_PO_POINTS, "pingold")
+        new_owned, new_db = _n_completed_games(10, T5_PO_POINTS, "pingnew")
+        updates = check_roles(old_owned, new_owned, old_db, new_db, _pref_user(True))
+        assert _t5_messages(updates)[0].allowed_mentions == [999]
+
+    def test_no_ping_when_opted_out(self):
+        old_owned, old_db = _n_completed_games(9, T5_PO_POINTS, "pingold")
+        new_owned, new_db = _n_completed_games(10, T5_PO_POINTS, "pingnew")
+        updates = check_roles(old_owned, new_owned, old_db, new_db, _pref_user(False))
+        assert _t5_messages(updates)[0].allowed_mentions == []
+
+    def test_tier_4_enthusiast_still_fires_independently(self):
+        # The new block must not disturb the existing Tier 1-4 loop.
+        updates = _t5_updates(7, 100, 21, 100, prefix="t4indep")
+        assert any("Tier 4 Enthusiast" in u.text for u in updates)
