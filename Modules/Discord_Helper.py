@@ -15,10 +15,10 @@ import discord
 
 import Modules.hm as hm
 from utils.game_utils import (
-    ENTHUSIAST_POINTS_PER_TIER,
-    ENTHUSIAST_T5_PLUS_THRESHOLD,
+    TIER_5_ENTHUSIAST_POINTS,
+    TIER_X_ENTHUSIAST_POINTS,
     compute_role_points,
-    t5_plus_points,
+    t5_enthusiast_points,
 )
 
 if TYPE_CHECKING:
@@ -330,18 +330,22 @@ def get_progress_bar(current: int, threshold: int) -> str:
 
 
 def get_enthusiast_row(current: int, threshold: int) -> str:
-    "Returns the body of a single Enthusiast row."
+    "Returns the body of a single Tier Enthusiast row."
     bar = get_progress_bar(current, threshold)
     points_emoji = hm.get_emoji("Points")
 
-    if current >= threshold:
-        return f"{bar}\n✅ Unlocked — {current} {points_emoji}"
-
     percentage = int(100 * current / threshold) if threshold > 0 else 100
+
+    if current >= threshold:
+        return (
+            f"{bar}\nCompleted! — {current:,} / {threshold:,} "
+            f"{points_emoji} ({percentage}%)"
+        )
+
     remaining = threshold - current
     return (
-        f"{bar}\n{current} / {threshold} {points_emoji} "
-        f"({percentage}%) — {remaining} to go"
+        f"{bar}\n{current:,} / {threshold:,} {points_emoji} "
+        f"({percentage}%) — {remaining:,} to go"
     )
 
 
@@ -366,20 +370,20 @@ def get_enthusiast_embed(user: CEUser, database_name: list[CEGame]) -> discord.E
 
     # Tiers 1 through 4 each read their own bucket.
     for tier_num in range(1, 5):
-        threshold = tier_num * ENTHUSIAST_POINTS_PER_TIER
+        threshold = tier_num * TIER_X_ENTHUSIAST_POINTS
         enthusiast_embed.add_field(
             name=(
                 f"{hm.get_emoji(ENTHUSIAST_TIER_EMOJI_KEYS[tier_num - 1])} "
-                f"Tier {tier_num} Enthusiast"
+                f"Enthusiast"
             ),
             value=get_enthusiast_row(tiers[tier_num - 1], threshold),
             inline=False,
         )
 
-    # Tier 5 Enthusiast counts Tier 5, 6 and 7 games together.
+    # Tier 5 Enthusiast counts Tier 5+ games together.
     enthusiast_embed.add_field(
-        name=f"{hm.get_emoji(ENTHUSIAST_TIER_EMOJI_KEYS[4])} Tier 5 Enthusiast (T5+)",
-        value=get_enthusiast_row(t5_plus_points(tiers), ENTHUSIAST_T5_PLUS_THRESHOLD),
+        name=f"{hm.get_emoji(ENTHUSIAST_TIER_EMOJI_KEYS[4])} Enthusiast (T5+)",
+        value=get_enthusiast_row(t5_enthusiast_points(tiers), TIER_5_ENTHUSIAST_POINTS),
         inline=False,
     )
 

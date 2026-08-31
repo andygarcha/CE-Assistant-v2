@@ -21,8 +21,9 @@ TIER_THRESHOLDS = [
 def tier_for_points(points: int) -> int:
     """
     Returns the tier that a point total falls into, or 0 if it sits below
-    Tier 1. Works for a game's own value and for the points a user has
-    earned in one.
+    Tier 1. Usable for both a game's own point total, and for cases when
+    assessing a user's earned points (i.e. when SOs might raise the effective
+    tier for an Enthusiast role).
     """
     for threshold, tier in TIER_THRESHOLDS:
         if points >= threshold:

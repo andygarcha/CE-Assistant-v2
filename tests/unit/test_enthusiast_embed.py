@@ -84,22 +84,42 @@ class TestProgressBar:
 class TestEnthusiastRow:
     def test_unlocked_row_marks_completion(self):
         row = get_enthusiast_row(640, 500)
-        assert "Unlocked" in row
+        assert "Completed" in row
         assert "640" in row
 
     def test_locked_row_shows_progress_and_remainder(self):
         row = get_enthusiast_row(780, 1000)
-        assert "780 / 1000" in row
+        assert "780 / 1,000" in row
         assert "(78%)" in row
         assert "220 to go" in row
 
     def test_row_at_exactly_the_threshold_is_unlocked(self):
-        assert "Unlocked" in get_enthusiast_row(1000, 1000)
+        assert "Completed" in get_enthusiast_row(1000, 1000)
 
     def test_zero_progress_row(self):
         row = get_enthusiast_row(0, 2500)
-        assert "0 / 2500" in row
+        assert "0 / 2,500" in row
         assert "(0%)" in row
+
+    def test_thousands_are_comma_separated(self):
+        row = get_enthusiast_row(1234, 2500)
+        assert "1,234 / 2,500" in row
+        assert "1234" not in row
+        assert "2500" not in row
+
+    def test_remainder_is_comma_separated(self):
+        # 2500 - 250 = 2250 left to go.
+        row = get_enthusiast_row(250, 2500)
+        assert "2,250 to go" in row
+
+    def test_completed_row_is_comma_separated(self):
+        row = get_enthusiast_row(3300, 2500)
+        assert "3,300 / 2,500" in row
+
+    def test_values_under_a_thousand_are_left_alone(self):
+        row = get_enthusiast_row(300, 500)
+        assert "300 / 500" in row
+        assert "," not in row
 
 
 class TestEnthusiastEmbed:
@@ -128,14 +148,14 @@ class TestEnthusiastEmbed:
         owned, db = _completed_games(10, TIER_PO_POINTS[2], "t2")
         embed = _embed_for(owned, db)
         tier2 = _field(embed, "Tier 2 Enthusiast")
-        assert "250 / 1000" in (tier2.value or "")
+        assert "250 / 1,000" in (tier2.value or "")
 
     def test_unlocked_tier_renders_checkmark_form(self):
         # 50 x 10 = 500 points of Tier 1, exactly the threshold.
         owned, db = _completed_games(50, TIER_PO_POINTS[1], "t1")
         embed = _embed_for(owned, db)
         tier1 = _field(embed, "Tier 1 Enthusiast")
-        assert "Unlocked" in (tier1.value or "")
+        assert "Completed" in (tier1.value or "")
 
     def test_tier_five_row_sums_tiers_five_six_and_seven(self):
         # 1 x 250 (T5) + 1 x 500 (T6) + 1 x 900 (T7) = 1650, not just the 250.
@@ -146,14 +166,14 @@ class TestEnthusiastEmbed:
         embed = _embed_for(owned_5 + owned_6 + owned_7, db_5 + db_6 + db_7)
 
         tier5 = _field(embed, "Tier 5 Enthusiast")
-        assert "1650 / 2500" in (tier5.value or "")
+        assert "1,650 / 2,500" in (tier5.value or "")
 
     def test_tier_five_row_unlocks_at_2500(self):
         # 3 x 900 = 2700 of Tier 7.
         owned, db = _completed_games(3, TIER_PO_POINTS[7], "t7")
         embed = _embed_for(owned, db)
         tier5 = _field(embed, "Tier 5 Enthusiast")
-        assert "Unlocked" in (tier5.value or "")
+        assert "Completed" in (tier5.value or "")
 
     def test_over_threshold_tier_does_not_overflow_its_bar(self):
         owned, db = _completed_games(200, TIER_PO_POINTS[1], "over")

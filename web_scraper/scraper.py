@@ -30,9 +30,9 @@ from Modules import (
     http_session,
 )
 from utils.game_utils import (
-    ENTHUSIAST_T5_PLUS_THRESHOLD,
+    TIER_5_ENTHUSIAST_POINTS,
     compute_role_points,
-    t5_plus_points,
+    t5_enthusiast_points,
 )
 
 logger = logging.getLogger(__name__)
@@ -1788,14 +1788,14 @@ def check_roles(
 
     # Tier 5 Enthusiast counts Tier 5+ games together
     if (
-        t5_plus_points(old_tiers) < ENTHUSIAST_T5_PLUS_THRESHOLD
-        and t5_plus_points(new_tiers) >= ENTHUSIAST_T5_PLUS_THRESHOLD
+        t5_enthusiast_points(old_tiers) < TIER_5_ENTHUSIAST_POINTS
+        and t5_enthusiast_points(new_tiers) >= TIER_5_ENTHUSIAST_POINTS
     ):
         update = UpdateMessageForScraperProcess()
         update.is_embed = False
         update.text = (
             f"Congratulations to {user.mention} ({user.display_name_with_link})! "
-            + f"You have unlocked Tier 5 Enthusiast ({ENTHUSIAST_T5_PLUS_THRESHOLD} "
+            + f"You have unlocked Tier 5 Enthusiast ({TIER_5_ENTHUSIAST_POINTS} "
             + "points in Tier 5 and above completed games)."
         )
         update.location = "userlog"

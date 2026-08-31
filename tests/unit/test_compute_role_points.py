@@ -12,7 +12,7 @@ from utils.game_utils import (
     CATEGORY_COUNT,
     TIER_COUNT,
     compute_role_points,
-    t5_plus_points,
+    t5_enthusiast_points,
 )
 
 # PO point values that land inside each tier's own band, per the
@@ -300,7 +300,7 @@ class TestSubTierOneGames:
 
         tiers = compute_role_points([owned], [db_game]).tiers
 
-        assert t5_plus_points(tiers) == 0
+        assert t5_enthusiast_points(tiers) == 0
 
     def test_sub_t1_game_still_counts_toward_categories(self):
         # Category roles don't care about completion or tier at all.
@@ -350,12 +350,12 @@ class TestT5PlusPoints:
         # index 0 is Tier 1, so Tiers 5-7 are indices 4, 5 and 6.
         tiers = [1, 2, 4, 8, 100, 200, 400]
 
-        assert t5_plus_points(tiers) == 700
+        assert t5_enthusiast_points(tiers) == 700
 
     def test_ignores_tiers_one_through_four(self):
         tiers = [1000, 1000, 1000, 1000, 0, 0, 0]
 
-        assert t5_plus_points(tiers) == 0
+        assert t5_enthusiast_points(tiers) == 0
 
     def test_zeroed_tiers_are_zero(self):
-        assert t5_plus_points([0] * TIER_COUNT) == 0
+        assert t5_enthusiast_points([0] * TIER_COUNT) == 0
